@@ -1364,9 +1364,7 @@ function processData(rawData: any) {
         const statsCols = h
           .map((col, i) => ({ col, i }))
           .filter(
-            ({ col }) =>
-              col &&
-              (statsKeywords.some(kw => col.includes(kw)) || individualStats.some(kw => col === kw)), // 必须完全匹配独立列名
+            ({ col }) => col && (statsKeywords.some(kw => col.includes(kw)) || individualStats.some(kw => col === kw)), // 必须完全匹配独立列名
           );
 
         if (statsCols.length > 0) {
