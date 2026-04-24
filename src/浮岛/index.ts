@@ -186,18 +186,16 @@ const MAP_TEMPLATES = {
       alternateLevel: 0,
       skipTop: false,
       selectedCustomStyleKey: '',
-      customStyles: {}
+      customStyles: {},
     },
     sourceData: {
       note: '【浮岛地图】记录当前活动层级的具体地点。',
       initNode: '游戏初始化时，需为当前层级区域新增至少三个主要地点。',
       deleteNode: '当发生地点层级深入时删除。',
       updateNode: '地点的环境描述等信息发生变化时更新。',
-      insertNode: '在当前层级内发现新地点时添加。'
+      insertNode: '在当前层级内发现新地点时添加。',
     },
-    content: [
-      [null, '地点名称', 'X坐标', 'Y坐标', '宽度', '高度', '环境描述']
-    ]
+    content: [[null, '地点名称', 'X坐标', 'Y坐标', '宽度', '高度', '环境描述']],
   },
   // 地图元素表模板（增强版：带坐标和尺寸）
   elementTable: {
@@ -217,19 +215,33 @@ const MAP_TEMPLATES = {
       alternateLevel: 0,
       skipTop: false,
       selectedCustomStyleKey: '',
-      customStyles: {}
+      customStyles: {},
     },
     sourceData: {
       note: '【浮岛地图】记录场景中可交互的实体（怪物/NPC/物品）。所属主地点必须与主要地点表对应。X/Y坐标和宽高用于在地图上精确定位元素。',
       initNode: '新地点创建时，必须为其添加至少一个地图元素。',
       deleteNode: '实体被消灭/摧毁/取走时删除。',
       updateNode: '实体状态因交互改变时更新。每轮必须刷新互动选项。',
-      insertNode: '场景中出现新的可交互实体时添加。'
+      insertNode: '场景中出现新的可交互实体时添加。',
     },
     content: [
-      [null, '元素名称', '元素类型', '元素描述', '所属主地点', '状态', 'X坐标', 'Y坐标', '宽度', '高度', '互动选项1', '互动选项2', '互动选项3']
-    ]
-  }
+      [
+        null,
+        '元素名称',
+        '元素类型',
+        '元素描述',
+        '所属主地点',
+        '状态',
+        'X坐标',
+        'Y坐标',
+        '宽度',
+        '高度',
+        '互动选项1',
+        '互动选项2',
+        '互动选项3',
+      ],
+    ],
+  },
 };
 
 // 地图提示词模板（简化版，只包含地图相关的表格说明）
@@ -262,7 +274,6 @@ const MAP_PROMPT_TEMPLATE = `
 元素的实际显示位置 = 所属地点的坐标 + 元素的相对坐标
 建议元素坐标在所属地点范围内，避免超出边界。
 `;
-
 
 let storedOpacity: any;
 try {
@@ -620,7 +631,7 @@ function processData(rawData: any) {
               name: r[idx.name],
               x: x,
               y: y,
-              width: parseInt(r[idx.w]) || 200,  // 默认宽度从100增加到200
+              width: parseInt(r[idx.w]) || 200, // 默认宽度从100增加到200
               height: parseInt(r[idx.h]) || 150, // 默认高度从80增加到150
               desc: r[idx.desc] || '',
             });
@@ -1086,7 +1097,7 @@ function renderGrid(type: any, $pan: any) {
       } else {
         // 6. 展开卡片
         dbg('[角色卡] 展开角色卡');
-        $grid.find('.is-expanded').each(function() {
+        $grid.find('.is-expanded').each(function () {
           $(this).find('.ci-nb-right').removeClass('full-width');
           $(this).removeClass('is-expanded').find('.ci-expanded-box').hide();
           $(this).find('.ci-card-compact').show();
@@ -1122,9 +1133,9 @@ function checkOverlap(r1: any, r2: any) {
 
 function adjustLayout(locs: any[]) {
   if (!locs || locs.length < 2) return locs;
-  
+
   // AI自动布局,不使用保存的位置
-  
+
   const forceFactor = 0.8;
   for (let i = 0; i < 200; i++) {
     for (let j = 0; j < locs.length; j++) {
@@ -1346,7 +1357,7 @@ function renderMap() {
     const $svg = $('#ci-map-svg');
     if (!$svg.length) return;
     $svg.empty();
-    
+
     if (!locs.length) {
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       t.setAttribute('x', '400');
@@ -1359,31 +1370,35 @@ function renderMap() {
       $svg.attr('viewBox', '0 0 800 600');
       return;
     }
-    
+
     // 调整布局避免重叠
     const adjustedLocs = adjustLayout(locs);
-    
+
     // 计算viewBox
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     adjustedLocs.forEach((l: any) => {
       minX = Math.min(minX, l.x);
       minY = Math.min(minY, l.y);
       maxX = Math.max(maxX, l.x + l.width);
       maxY = Math.max(maxY, l.y + l.height);
     });
-    
+
     const padding = Math.max((maxX - minX) * 0.1, (maxY - minY) * 0.1, 50);
-    const vbX = minX - padding, vbY = minY - padding;
-    const vbW = (maxX - minX) + (padding * 2);
-    const vbH = (maxY - minY) + (padding * 2);
+    const vbX = minX - padding,
+      vbY = minY - padding;
+    const vbW = maxX - minX + padding * 2;
+    const vbH = maxY - minY + padding * 2;
     $svg.attr('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
     $svg.data('vb', { x: vbX, y: vbY, w: vbW, h: vbH });
-    
+
     // 渲染地点
     adjustedLocs.forEach((loc: any) => {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', 'map-location-group');
-      
+
       // 地点矩形
       const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       r.setAttribute('x', String(loc.x));
@@ -1392,32 +1407,32 @@ function renderMap() {
       r.setAttribute('height', String(loc.height));
       r.setAttribute('class', 'map-location-rect');
       r.setAttribute('rx', '8');
-      
+
       // 地点文字
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       t.setAttribute('x', String(loc.x + loc.width / 2));
       t.setAttribute('y', String(loc.y + loc.height / 2));
       t.setAttribute('class', 'map-location-label');
       t.textContent = loc.name;
-      
+
       g.appendChild(r);
       g.appendChild(t);
-      
+
       // 点击事件
       g.addEventListener('click', () => {
         const rect = g.getBoundingClientRect();
         showMapPopup(rect.left + rect.width / 2, rect.top + rect.height / 2, [`前往 ${loc.name}`]);
       });
-      
+
       $svg[0].appendChild(g);
-      
+
       // 渲染地点内的元素
       const locElements = rawElements.filter((e: any) => {
         const elLoc = String(e.location || '').trim();
         const locName = String(loc.name).trim();
         return locName.includes(elLoc) || elLoc.includes(locName);
       });
-      
+
       const seedBase = stringHash(loc.name);
       locElements.forEach((el: any, i: number) => {
         // 使用伪随机位置
@@ -1425,32 +1440,31 @@ function renderMap() {
         const ry = pseudoRandom(seedBase + i * 100 + 1);
         const x = loc.x + 20 + rx * (loc.width - 70); // 留出50px给元素
         const y = loc.y + 20 + ry * (loc.height - 70);
-        
+
         renderElement(el, x, y, $svg[0]);
       });
-      
+
       // 渲染地点内的角色
       const locChars = allChars.filter((c: any) => {
         const cLoc = String(c.loc || '').trim();
         const locName = String(loc.name).trim();
         return locName.includes(cLoc) || cLoc.includes(locName);
       });
-      
+
       locChars.forEach((char: any, i: number) => {
         const rx = pseudoRandom(seedBase + i * 200 + 50);
         const ry = pseudoRandom(seedBase + i * 200 + 51);
         const x = loc.x + 20 + rx * (loc.width - 70);
         const y = loc.y + 20 + ry * (loc.height - 70);
-        
+
         renderCharacter(char, x, y, $svg[0]);
       });
-      
+
       // 渲染主角位置标记
       if (protLoc && String(protLoc).trim() === String(loc.name).trim()) {
         renderProtagonistMarker(loc.x + loc.width / 2, loc.y + loc.height / 2, $svg[0]);
       }
     });
-    
   } catch (e) {
     console.error('[renderMap] Error:', e);
   }
@@ -1462,7 +1476,7 @@ function renderMap() {
 function renderElement(el: any, x: number, y: number, svg: SVGElement) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', 'map-element-group');
-  
+
   // 30x30矩形
   const size = 30;
   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1475,7 +1489,7 @@ function renderElement(el: any, x: number, y: number, svg: SVGElement) {
   rect.setAttribute('stroke', '#9e9e9e');
   rect.setAttribute('stroke-width', '1.5');
   g.appendChild(rect);
-  
+
   // 文字在下方
   const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
   txt.setAttribute('x', String(x + size / 2));
@@ -1485,28 +1499,28 @@ function renderElement(el: any, x: number, y: number, svg: SVGElement) {
   txt.setAttribute('fill', 'var(--map-text)');
   txt.textContent = el.name;
   g.appendChild(txt);
-  
+
   // 点击事件
-  g.addEventListener('click', (e) => {
+  g.addEventListener('click', e => {
     e.stopPropagation();
     const rect = g.getBoundingClientRect();
     const opts: string[] = [];
-    
+
     // 自定义互动选项
     if (el.interactions && el.interactions.length > 0) {
       el.interactions.forEach((i: string) => {
         if (i && i.trim()) opts.push(i);
       });
     }
-    
+
     // 默认选项
     if (opts.length === 0) {
       opts.push(`查看${el.name}`, `使用${el.name}`);
     }
-    
+
     showMapPopup(rect.left + rect.width / 2, rect.top + rect.height / 2, opts);
   });
-  
+
   svg.appendChild(g);
 }
 
@@ -1517,7 +1531,7 @@ function renderCharacter(char: any, x: number, y: number, svg: SVGElement) {
   const localImg = safeGetItem(STORAGE_AVATAR_PREFIX + char.name, '');
   const gAv = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   gAv.setAttribute('class', 'map-char-avatar');
-  
+
   if (localImg) {
     const clipId = 'clip-' + char.name.replace(/[^a-zA-Z0-9]/g, '');
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -1530,7 +1544,7 @@ function renderCharacter(char: any, x: number, y: number, svg: SVGElement) {
     clipPath.appendChild(clipCircle);
     defs.appendChild(clipPath);
     gAv.appendChild(defs);
-    
+
     const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circ.setAttribute('cx', String(x + 26));
     circ.setAttribute('cy', String(y + 26));
@@ -1539,7 +1553,7 @@ function renderCharacter(char: any, x: number, y: number, svg: SVGElement) {
     circ.setAttribute('stroke', '#5a3e2b');
     circ.setAttribute('stroke-width', '2');
     gAv.appendChild(circ);
-    
+
     const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     img.setAttribute('x', String(x + 2));
     img.setAttribute('y', String(y + 2));
@@ -1557,7 +1571,7 @@ function renderCharacter(char: any, x: number, y: number, svg: SVGElement) {
     circ.setAttribute('stroke', '#006064');
     circ.setAttribute('stroke-width', '2');
     gAv.appendChild(circ);
-    
+
     const tAv = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     tAv.setAttribute('x', String(x + 26));
     tAv.setAttribute('y', String(y + 26));
@@ -1567,14 +1581,14 @@ function renderCharacter(char: any, x: number, y: number, svg: SVGElement) {
     tAv.textContent = char.name[0];
     gAv.appendChild(tAv);
   }
-  
-  gAv.addEventListener('click', (e) => {
+
+  gAv.addEventListener('click', e => {
     e.stopPropagation();
     const rect = gAv.getBoundingClientRect();
     const opts = [`查看 ${char.name}`, `对话 ${char.name}`];
     showMapPopup(rect.left + rect.width / 2, rect.top + rect.height / 2, opts);
   });
-  
+
   svg.appendChild(gAv);
 }
 
@@ -1584,14 +1598,14 @@ function renderCharacter(char: any, x: number, y: number, svg: SVGElement) {
 function renderProtagonistMarker(x: number, y: number, svg: SVGElement) {
   const avatarGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   avatarGroup.setAttribute('class', 'protagonist-map-avatar');
-  
+
   // 脉冲波
   const pulseCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   pulseCircle.setAttribute('cx', String(x));
   pulseCircle.setAttribute('cy', String(y));
   pulseCircle.setAttribute('r', '12');
   pulseCircle.setAttribute('class', 'pulse-wave');
-  
+
   // 头像圆圈
   const avatarCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   avatarCircle.setAttribute('cx', String(x));
@@ -1600,7 +1614,7 @@ function renderProtagonistMarker(x: number, y: number, svg: SVGElement) {
   avatarCircle.setAttribute('fill', '#4caf50');
   avatarCircle.setAttribute('stroke', '#fff');
   avatarCircle.setAttribute('stroke-width', '2');
-  
+
   avatarGroup.appendChild(pulseCircle);
   avatarGroup.appendChild(avatarCircle);
   svg.appendChild(avatarGroup);
@@ -1669,7 +1683,7 @@ function createSettingsUI() {
     const $opacitySec = $(`<div class="ci-settings-section"><div class="ci-settings-title">透明度</div></div>`);
     $opacitySec.append(mkSlider('主界面透明度', 'main'));
     $opacitySec.append(mkSlider('地图面板透明度', 'map'));
-    
+
     // ======== 地图功能开关 ========
     const mapEnabled = isMapEnabled();
     const $mapSec = $(`<div class="ci-settings-section"><div class="ci-settings-title">地图功能</div></div>`);
@@ -1685,8 +1699,10 @@ function createSettingsUI() {
         </label>
       </div>
     `);
-    const $mapStatus = $(`<div class="ci-map-status" style="font-size:11px;padding:8px;background:rgba(0,0,0,0.03);border-radius:6px;margin-bottom:10px;"></div>`);
-    
+    const $mapStatus = $(
+      `<div class="ci-map-status" style="font-size:11px;padding:8px;background:rgba(0,0,0,0.03);border-radius:6px;margin-bottom:10px;"></div>`,
+    );
+
     // 更新状态显示
     const updateMapStatus = () => {
       const existing = checkMapTablesExist();
@@ -1703,12 +1719,12 @@ function createSettingsUI() {
       $mapStatus.html(statusText);
     };
     updateMapStatus();
-    
+
     // 开关事件
-    $mapToggle.find('#ci-map-toggle').on('change', async function() {
+    $mapToggle.find('#ci-map-toggle').on('change', async function () {
       const isChecked = $(this).prop('checked');
       const $slider = $mapToggle.find('.ci-slider');
-      
+
       if (isChecked) {
         // 注入地图表格
         dbg('[设置] 用户启用地图功能');
@@ -1723,7 +1739,9 @@ function createSettingsUI() {
         }
       } else {
         // 提示用户：移除只会移除浮岛标记的表格
-        if (confirm('确定要关闭地图功能吗？\\n\\n注意：这只会移除由浮岛自动注入的表格，不会影响您自己创建的地图表格。')) {
+        if (
+          confirm('确定要关闭地图功能吗？\\n\\n注意：这只会移除由浮岛自动注入的表格，不会影响您自己创建的地图表格。')
+        ) {
           dbg('[设置] 用户禁用地图功能');
           const success = await removeMapTables();
           if (success) {
@@ -1740,9 +1758,9 @@ function createSettingsUI() {
         }
       }
     });
-    
+
     $mapSec.append($mapToggle).append($mapStatus);
-    
+
     // ======== 重置按钮 ========
     const $resetBtn = $(
       `<button class="ci-btn" style="width:100%;border:1px solid var(--ci-border);border-radius:8px;margin-top:10px;">重置浮岛位置</button>`,
@@ -1764,7 +1782,6 @@ function createSettingsUI() {
   }
 }
 
-
 // ================== 地图模板热插拔功能 ==================
 
 /**
@@ -1775,20 +1792,20 @@ function checkMapTablesExist(): { hasLocation: boolean; hasElement: boolean } {
   if (!api || !api.exportTableAsJson) {
     return { hasLocation: false, hasElement: false };
   }
-  
+
   const data = api.exportTableAsJson();
   if (!data) return { hasLocation: false, hasElement: false };
-  
+
   let hasLocation = false;
   let hasElement = false;
-  
+
   Object.values(data).forEach((table: any) => {
     if (!table || !table.name) return;
     // 检查是否为浮岛注入的表格（带标记）或用户原有的地图表格
     if (table.name.includes('主要地点表')) hasLocation = true;
     if (table.name.includes('地图元素表')) hasElement = true;
   });
-  
+
   return { hasLocation, hasElement };
 }
 
@@ -1798,10 +1815,10 @@ function checkMapTablesExist(): { hasLocation: boolean; hasElement: boolean } {
 function getTableCount(): number {
   const api = (window as any).AutoCardUpdaterAPI || (window.parent as any).AutoCardUpdaterAPI;
   if (!api || !api.exportTableAsJson) return 0;
-  
+
   const data = api.exportTableAsJson();
   if (!data) return 0;
-  
+
   // 排除mate等非表格对象
   return Object.keys(data).filter(k => k.startsWith('sheet_')).length;
 }
@@ -1827,9 +1844,9 @@ async function injectMapTables(): Promise<boolean> {
     showToast('无法连接到数据库API', 'error');
     return false;
   }
-  
+
   dbg('[地图注入] ========== 开始注入地图表格 ==========');
-  
+
   try {
     const existing = checkMapTablesExist();
     if (existing.hasLocation && existing.hasElement) {
@@ -1837,12 +1854,12 @@ async function injectMapTables(): Promise<boolean> {
       showToast('地图表格已存在', 'error');
       return false;
     }
-    
+
     const locUid = generateTableUid();
     const elUid = generateTableUid();
-    
+
     dbg('[地图注入] 生成UID:', locUid, elUid);
-    
+
     const locationTable = {
       uid: locUid,
       name: '主要地点表' + MAP_TABLE_MARKER,
@@ -1861,21 +1878,19 @@ async function injectMapTables(): Promise<boolean> {
         alternateLevel: 0,
         skipTop: false,
         selectedCustomStyleKey: '',
-        customStyles: {}
+        customStyles: {},
       },
       sourceData: {
         note: '记录当前活动层级的具体地点。当地点层级深入时（如从"小区"进入"公寓楼"），此表会被清空并填充新层级的子地点。',
         initNode: '游戏初始化时，需为当前层级区域新增至少三个主要地点。',
         deleteNode: '当发生地点层级深入时，原表中的地点在移至"外部区域列表"后将被删除。',
         updateNode: '地点的环境描述等信息发生变化时更新。',
-        insertNode: '在当前层级内发现新地点时添加。'
+        insertNode: '在当前层级内发现新地点时添加。',
       },
-      content: [
-        [null, '地点名称', 'X坐标', 'Y坐标', '宽度', '高度', '环境描述']
-      ],
-      exportConfig: {}
+      content: [[null, '地点名称', 'X坐标', 'Y坐标', '宽度', '高度', '环境描述']],
+      exportConfig: {},
     };
-    
+
     const elementTable = {
       uid: elUid,
       name: '地图元素表' + MAP_TABLE_MARKER,
@@ -1894,47 +1909,53 @@ async function injectMapTables(): Promise<boolean> {
         alternateLevel: 0,
         skipTop: false,
         selectedCustomStyleKey: '',
-        customStyles: {}
+        customStyles: {},
       },
       sourceData: {
         note: '记录场景中可交互的实体（怪物/NPC/物品）。`所属主地点`必须与主要地点表对应。',
         initNode: '新地点创建时，必须为其添加至少一个地图元素。',
         deleteNode: '实体被消灭/摧毁/取走，或者普通NPC因为剧情发展变成剧情重要角色时删除。',
         updateNode: '实体状态因交互改变时更新。每轮必须根据最新情景刷新所有互动选项。',
-        insertNode: '场景中出现新的可交互实体时添加。'
+        insertNode: '场景中出现新的可交互实体时添加。',
       },
       content: [
-        [null, '元素名称', '元素类型', '元素描述', '所属主地点', '状态', '互动选项1', '互动选项2', '互动选项3']
+        [null, '元素名称', '元素类型', '元素描述', '所属主地点', '状态', '互动选项1', '互动选项2', '互动选项3'],
       ],
-      exportConfig: {}
+      exportConfig: {},
     };
-    
+
     dbg('[地图注入] 🔧 修改数据库模板...');
-    
+
     const templateKey = 'shujuku_v36_customTemplate';
     let TABLE_TEMPLATE_ACU = localStorage.getItem(templateKey);
-    
+
     if (!TABLE_TEMPLATE_ACU) {
       showToast('无法读取数据库模板', 'error');
       dbg('[地图注入] ❌ localStorage中没有模板');
       return false;
     }
-    
+
     let templateData: any;
     try {
       templateData = JSON.parse(TABLE_TEMPLATE_ACU);
-      dbg('[地图注入] ✅ 模板解析成功，当前表格数:', Object.keys(templateData).filter(k => k.startsWith('sheet_')).length);
+      dbg(
+        '[地图注入] ✅ 模板解析成功，当前表格数:',
+        Object.keys(templateData).filter(k => k.startsWith('sheet_')).length,
+      );
     } catch (e) {
       showToast('模板解析失败', 'error');
       dbg('[地图注入] ❌ 模板解析失败:', e);
       return false;
     }
-    
+
     templateData[locUid] = locationTable;
     templateData[elUid] = elementTable;
-    
-    dbg('[地图注入] ✅ 已添加表格到模板，新表格数:', Object.keys(templateData).filter(k => k.startsWith('sheet_')).length);
-    
+
+    dbg(
+      '[地图注入] ✅ 已添加表格到模板，新表格数:',
+      Object.keys(templateData).filter(k => k.startsWith('sheet_')).length,
+    );
+
     const newTemplate = JSON.stringify(templateData);
     try {
       localStorage.setItem(templateKey, newTemplate);
@@ -1944,25 +1965,25 @@ async function injectMapTables(): Promise<boolean> {
       dbg('[地图注入] ❌ 保存localStorage失败:', e);
       return false;
     }
-    
+
     const fullData = api.exportTableAsJson();
     fullData[locUid] = locationTable;
     fullData[elUid] = elementTable;
-    
+
     dbg('[地图注入] 📤 调用importTableAsJson保存数据...');
     await api.importTableAsJson(JSON.stringify(fullData));
-    
+
     dbg('[地图注入] ✅ 数据已保存（会自动触发刷新）');
-    
+
     dbg('[地图注入] ⏳ 等待3000ms让数据库完成处理...');
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     dbg('[地图注入] 🔍 验证...');
     const verifyData = api.exportTableAsJson();
-    
+
     let locationExists = false;
     let elementExists = false;
-    
+
     Object.values(verifyData).forEach((table: any) => {
       if (table && table.name) {
         if (table.name.includes('主要地点表')) {
@@ -1975,24 +1996,28 @@ async function injectMapTables(): Promise<boolean> {
         }
       }
     });
-    
+
     if (!locationExists || !elementExists) {
       dbg('[地图注入] ❌ 验证失败');
-      dbg('[地图注入] 当前表格:', Object.values(verifyData).filter((t: any) => t?.name).map((t: any) => t.name));
+      dbg(
+        '[地图注入] 当前表格:',
+        Object.values(verifyData)
+          .filter((t: any) => t?.name)
+          .map((t: any) => t.name),
+      );
       showToast('注入失败：请查看控制台', 'error');
       return false;
     }
-    
+
     dbg('[地图注入] ✅✅✅ 验证成功!');
-    
+
     safeSetItem(STORAGE_MAP_ENABLED_KEY, 'true');
     state.cachedData = processData(verifyData);
-    
+
     showToast('地图表格注入成功！模板已永久更新');
     dbg('[地图注入] ========== 完成 ==========');
-    
+
     return true;
-    
   } catch (e) {
     console.error('[地图注入] 异常:', e);
     showToast('注入失败: ' + e, 'error');
@@ -2000,61 +2025,59 @@ async function injectMapTables(): Promise<boolean> {
   }
 }
 
-
 async function removeMapTables(): Promise<boolean> {
   const api = (window as any).AutoCardUpdaterAPI || (window.parent as any).AutoCardUpdaterAPI;
   if (!api || !api.exportTableAsJson || !api.importTableAsJson) {
     showToast('无法连接到数据库API', 'error');
     return false;
   }
-  
+
   dbg('[地图移除] ========== 开始移除地图表格 ==========');
-  
+
   try {
     const fullData = api.exportTableAsJson();
-    
+
     const markedKeys = Object.keys(fullData).filter(key => {
       const table = fullData[key];
       return table && table.name && table.name.includes(MAP_TABLE_MARKER);
     });
-    
+
     if (markedKeys.length === 0) {
       showToast('没有找到地图表格', 'error');
       dbg('[地图移除] 没有找到带标记的表格');
       return false;
     }
-    
+
     dbg('[地图移除] 找到', markedKeys.length, '个地图表格:', markedKeys);
-    
+
     const templateKey = 'shujuku_v36_customTemplate';
     let TABLE_TEMPLATE_ACU = localStorage.getItem(templateKey);
-    
+
     if (!TABLE_TEMPLATE_ACU) {
       dbg('[地图移除] ⚠️ localStorage中没有模板');
     } else {
       try {
         const templateData = JSON.parse(TABLE_TEMPLATE_ACU);
         const originalCount = Object.keys(templateData).filter(k => k.startsWith('sheet_')).length;
-        
+
         markedKeys.forEach(key => {
           if (templateData[key]) {
             delete templateData[key];
             dbg('[地图移除] 已从模板删除:', key);
           }
         });
-        
+
         const newCount = Object.keys(templateData).filter(k => k.startsWith('sheet_')).length;
         dbg('[地图移除] 模板表格数:', originalCount, '->', newCount);
-        
+
         const newTemplate = JSON.stringify(templateData);
         localStorage.setItem(templateKey, newTemplate);
         dbg('[地图移除] ✅ 已保存新模板到localStorage');
-        
       } catch (e) {
         dbg('[地图移除] ⚠️ 更新模板失败:', e);
       }
     }
-    
+
     const cleanData: any = {};
     Object.keys(fullData).forEach(key => {
       if (!markedKeys.includes(key)) {
@@ -2063,53 +2086,52 @@ async function removeMapTables(): Promise<boolean> {
         dbg('[地图移除] 从数据中排除:', key);
       }
     });
-    
+
     dbg('[地图移除] 清理后的表格数:', Object.keys(cleanData).filter(k => k.startsWith('sheet_')).length);
-    
+
     dbg('[地图移除] 📤 保存清理后的数据...');
     await api.importTableAsJson(JSON.stringify(cleanData));
-    
+
     dbg('[地图移除] ✅ 数据已保存');
-    
+
     dbg('[地图移除] ⏳ 等待3000ms让数据库完成处理...');
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     dbg('[地图移除] 🔍 验证...');
     const verifyData = api.exportTableAsJson();
-    
+
     const verifyTableNames = Object.values(verifyData)
       .filter((t: any) => t?.name)
       .map((t: any) => t.name);
-    
+
     dbg('[地图移除] 验证后的所有表格:', verifyTableNames);
-    
-    const stillExists = Object.values(verifyData).some((table: any) => 
-      table && table.name && table.name.includes(MAP_TABLE_MARKER)
+
+    const stillExists = Object.values(verifyData).some(
+      (table: any) => table && table.name && table.name.includes(MAP_TABLE_MARKER),
     );
-    
+
     if (stillExists) {
       dbg('[地图移除] ⚠️ 验证失败：表格仍然存在');
-      
+
       const remainingTables = Object.values(verifyData)
         .filter((t: any) => t?.name?.includes(MAP_TABLE_MARKER))
         .map((t: any) => t.name);
       dbg('[地图移除] 仍存在的地图表格:', remainingTables);
-      
+
       showToast('移除失败：表格仍然存在', 'error');
       return false;
     }
-    
+
     dbg('[地图移除] ✅✅✅ 验证成功！表格已完全移除');
-    
+
     safeRemoveItem(STORAGE_MAP_ENABLED_KEY);
-    
+
     state.cachedData = processData(verifyData);
-    
+
     showToast(`已移除${markedKeys.length}个地图表格`);
     dbg('[地图移除] ========== 完成 ==========');
-    
+
     return true;
-    
   } catch (e) {
     console.error('[地图移除] 异常:', e);
     showToast('移除失败: ' + e, 'error');
@@ -2117,12 +2139,11 @@ async function removeMapTables(): Promise<boolean> {
   }
 }
 
-
 function isMapEnabled(): boolean {
   // 检查localStorage标记
   const stored = safeGetItem(STORAGE_MAP_ENABLED_KEY, 'false');
   if (stored === 'true') return true;
-  
+
   // 或者检查数据库中是否已有地图表格
   const existing = checkMapTablesExist();
   return existing.hasLocation || existing.hasElement;
@@ -2164,7 +2185,7 @@ function createUI() {
                 <div class="ci-split-handle"></div><div class="ci-external-areas"></div><div class="ci-resize-handle ci-resize-br" data-mode="br">${ICONS.resize}</div><div class="ci-resize-handle ci-resize-bl" data-mode="bl">${ICONS.resize}</div>
             </div>
         `);
-    
+
     $('body').append($con).append($pan).append($mapPan);
     setTimeout(() => {
       $('#ci-toast').addClass('show');
@@ -2663,14 +2684,14 @@ function bindEvents($con: any, $pan: any, $ops: any, $mapPan: any) {
   try {
     $(window.parent.document).on('click', globalClickHandler);
   } catch (e) {}
-  
+
   // ==================== 元素侧边栏事件 ====================
-  
+
   // 关闭侧边栏
   $('.ci-sidebar-close').on('click', () => {
     $('#ci-elements-sidebar').addClass('ci-sidebar-hidden');
   });
-  
+
   // 搜索事件
   $('#ci-elements-search').on('input', () => {
     renderElementsSidebar();

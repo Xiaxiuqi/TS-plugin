@@ -53,13 +53,19 @@ export class MapManager {
     }
   }
 
-  public updateData(locations: MapLocation[], walls: MapWall[], facilities: MapFacility[], protagonistLocation: string, externalAreas: string[] = []) {
+  public updateData(
+    locations: MapLocation[],
+    walls: MapWall[],
+    facilities: MapFacility[],
+    protagonistLocation: string,
+    externalAreas: string[] = [],
+  ) {
     console.log('[地图模块] 接收到更新数据:', {
       地点数量: locations.length,
       墙壁数量: walls.length,
       设施数量: facilities.length,
       主角位置: protagonistLocation,
-      外部区域: externalAreas.length
+      外部区域: externalAreas.length,
     });
     this.locations = locations;
     this.walls = walls;
@@ -92,13 +98,22 @@ export class MapManager {
 
     // Debug: Check container size and visibility
     const rect = this.container.getBoundingClientRect();
-    console.log('[地图模块] 容器尺寸:', rect.width, 'x', rect.height, 'Visibility:', this.container.style.display, 'Parent Display:', this.container.parentElement?.style.display);
+    console.log(
+      '[地图模块] 容器尺寸:',
+      rect.width,
+      'x',
+      rect.height,
+      'Visibility:',
+      this.container.style.display,
+      'Parent Display:',
+      this.container.parentElement?.style.display,
+    );
 
     // [Debug] Force container height if zero (Leaflet needs non-zero height)
     if (rect.height === 0) {
-        console.warn('[地图模块] 容器高度为0，强制设置最小高度');
-        this.container.style.height = '100%';
-        this.container.style.minHeight = '400px';
+      console.warn('[地图模块] 容器高度为0，强制设置最小高度');
+      this.container.style.height = '100%';
+      this.container.style.minHeight = '400px';
     }
 
     if (this.currentMicroLocation) {
@@ -135,41 +150,42 @@ export class MapManager {
 
     // 1. World List
     this.locations.forEach(loc => {
-        const isCurrent = loc.name === this.protagonistLocation;
-        const $item = $(`
+      const isCurrent = loc.name === this.protagonistLocation;
+      const $item = $(`
           <div class="ci-map-list-item ${isCurrent ? 'active' : ''}">
             <div class="ci-map-item-content">
                 <div class="ci-map-item-title">${loc.name}</div>
                 ${loc.desc ? `<div class="ci-map-item-desc">${loc.desc}</div>` : ''}
             </div>
-            ${isCurrent ?
-                '<div class="ci-map-item-action" style="background:rgba(255,255,255,0.2); color:white; font-size:10px;">当前</div>' :
-                '<div class="ci-map-item-action action-go" title="前往"><i class="fas fa-walking"></i></div>'
+            ${
+              isCurrent
+                ? '<div class="ci-map-item-action" style="background:rgba(255,255,255,0.2); color:white; font-size:10px;">当前</div>'
+                : '<div class="ci-map-item-action action-go" title="前往"><i class="fas fa-walking"></i></div>'
             }
           </div>
         `);
 
-        // 点击整体聚焦
-        $item.on('click', () => {
-            this.focusLocation(loc.name);
+      // 点击整体聚焦
+      $item.on('click', () => {
+        this.focusLocation(loc.name);
+      });
+
+      // 点击前往按钮
+      if (!isCurrent) {
+        $item.find('.action-go').on('click', (e: any) => {
+          e.stopPropagation();
+          this.onActionRequest(`前往 ${loc.name}`);
         });
+      }
 
-        // 点击前往按钮
-        if (!isCurrent) {
-            $item.find('.action-go').on('click', (e: any) => {
-                e.stopPropagation();
-                this.onActionRequest(`前往 ${loc.name}`);
-            });
-        }
-
-        $worldList.append($item);
+      $worldList.append($item);
     });
 
     // External Areas
     if (this.externalAreas && this.externalAreas.length > 0) {
-        $worldList.append(`<div class="ci-map-list-header" style="margin-top:10px;">外部区域</div>`);
-        this.externalAreas.forEach(area => {
-            const $item = $(`
+      $worldList.append(`<div class="ci-map-list-header" style="margin-top:10px;">外部区域</div>`);
+      this.externalAreas.forEach(area => {
+        const $item = $(`
               <div class="ci-map-list-item">
                 <div class="ci-map-item-content">
                     <div class="ci-map-item-title">${area}</div>
@@ -177,21 +193,21 @@ export class MapManager {
                 <div class="ci-map-item-action"><i class="fas fa-external-link-alt"></i></div>
               </div>
             `);
-            $item.on('click', () => this.onActionRequest(`前往 ${area}`));
-            $worldList.append($item);
-        });
+        $item.on('click', () => this.onActionRequest(`前往 ${area}`));
+        $worldList.append($item);
+      });
     }
 
     // 2. Local List
     const currentLoc = this.locations.find(l => l.name === this.protagonistLocation);
     if (currentLoc) {
-        let hasContent = false;
-        // Elements
-        if (currentLoc.elements && currentLoc.elements.length > 0) {
-            hasContent = true;
-            $localList.append(`<div class="ci-map-list-header">可交互元素</div>`);
-            currentLoc.elements.forEach((el: any) => {
-                const $item = $(`
+      let hasContent = false;
+      // Elements
+      if (currentLoc.elements && currentLoc.elements.length > 0) {
+        hasContent = true;
+        $localList.append(`<div class="ci-map-list-header">可交互元素</div>`);
+        currentLoc.elements.forEach((el: any) => {
+          const $item = $(`
                     <div class="ci-map-list-item">
                         <div class="ci-map-item-content">
                             <div class="ci-map-item-title">${el.name}</div>
@@ -200,22 +216,22 @@ export class MapManager {
                         <div class="ci-map-item-action"><i class="fas fa-hand-pointer"></i></div>
                     </div>
                 `);
-                $item.on('click', (e: any) => {
-                    this.handleElementClick(el, e);
-                });
-                $localList.append($item);
-            });
-        }
+          $item.on('click', (e: any) => {
+            this.handleElementClick(el, e);
+          });
+          $localList.append($item);
+        });
+      }
 
-        // Facilities
-        const locFacilities = this.facilities.filter(f => f.sceneId === currentLoc.name);
-        if (locFacilities.length > 0) {
-             const interactiveFurniture = locFacilities.filter(f => f.interactions && f.interactions.length > 0);
-             if (interactiveFurniture.length > 0) {
-                 hasContent = true;
-                 $localList.append(`<div class="ci-map-list-header">场景设施</div>`);
-                 interactiveFurniture.forEach(f => {
-                     const $item = $(`
+      // Facilities
+      const locFacilities = this.facilities.filter(f => f.sceneId === currentLoc.name);
+      if (locFacilities.length > 0) {
+        const interactiveFurniture = locFacilities.filter(f => f.interactions && f.interactions.length > 0);
+        if (interactiveFurniture.length > 0) {
+          hasContent = true;
+          $localList.append(`<div class="ci-map-list-header">场景设施</div>`);
+          interactiveFurniture.forEach(f => {
+            const $item = $(`
                         <div class="ci-map-list-item">
                             <div class="ci-map-item-content">
                                 <div class="ci-map-item-title">${f.name}</div>
@@ -224,19 +240,19 @@ export class MapManager {
                             <div class="ci-map-item-action"><i class="fas fa-cog"></i></div>
                         </div>
                      `);
-                     $item.on('click', (e: any) => {
-                          this.handleElementClick(f, e);
-                     });
-                     $localList.append($item);
-                 });
-             }
+            $item.on('click', (e: any) => {
+              this.handleElementClick(f, e);
+            });
+            $localList.append($item);
+          });
         }
+      }
 
-        if (!hasContent) {
-            $localList.html('<div style="padding:20px; text-align:center; color:#999;">当前区域无可交互内容</div>');
-        }
+      if (!hasContent) {
+        $localList.html('<div style="padding:20px; text-align:center; color:#999;">当前区域无可交互内容</div>');
+      }
     } else {
-        $localList.html('<div style="padding:20px; text-align:center; color:#999;">当前不在已知区域内</div>');
+      $localList.html('<div style="padding:20px; text-align:center; color:#999;">当前不在已知区域内</div>');
     }
   }
 
@@ -251,12 +267,8 @@ export class MapManager {
 
     console.log('[MapManager] Rendering Macro Map'); // Debug log
 
-    renderMacroMap(
-      this.container,
-      this.locations,
-      this.walls,
-      this.protagonistLocation,
-      (loc: MapLocation) => this.enterLocation(loc)
+    renderMacroMap(this.container, this.locations, this.walls, this.protagonistLocation, (loc: MapLocation) =>
+      this.enterLocation(loc),
     );
   }
 
@@ -283,7 +295,7 @@ export class MapManager {
       locFacilities,
       locElements,
       (el, e) => this.handleElementClick(el, e),
-      () => this.exitLocation()
+      () => this.exitLocation(),
     );
   }
 
@@ -328,11 +340,18 @@ export class MapManager {
     // 简单判断：如果没有明显的观察选项，添加一个
     const hasObserve = options.some(opt => opt.includes('观察') || opt.includes('查看'));
     if (!hasObserve) {
-        options.unshift(`观察 ${name}`);
+      options.unshift(`观察 ${name}`);
     }
 
-    showMapPopup(x, y, options, (opt) => {
+    showMapPopup(
+      x,
+      y,
+      options,
+      opt => {
         this.onActionRequest(opt);
-    }, name, desc);
+      },
+      name,
+      desc,
+    );
   }
 }

@@ -42,8 +42,8 @@ export function adjustMapLayout(locations: any[], iterations = 150, forceFactor 
             dy = (Math.random() - 0.5) * 0.1;
             distance = Math.sqrt(dx * dx + dy * dy);
           }
-          const overlapX = (locA.width / 2 + locB.width / 2 + margin) - Math.abs(dx);
-          const overlapY = (locA.height / 2 + locB.height / 2 + margin) - Math.abs(dy);
+          const overlapX = locA.width / 2 + locB.width / 2 + margin - Math.abs(dx);
+          const overlapY = locA.height / 2 + locB.height / 2 + margin - Math.abs(dy);
           if (overlapX > 0 && overlapY > 0) {
             const moveX = (dx / distance) * overlapX * forceFactor;
             const moveY = (dy / distance) * overlapY * forceFactor;
@@ -65,7 +65,10 @@ export function adjustMapLayout(locations: any[], iterations = 150, forceFactor 
 export function calculateBoundingBox(elements: any[], padding = 50) {
   if (!elements || elements.length === 0) return { x: 0, y: 0, w: 800, h: 600 };
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
 
   elements.forEach(l => {
     minX = Math.min(minX, l.x);
@@ -84,7 +87,7 @@ export function calculateBoundingBox(elements: any[], padding = 50) {
     x: minX - padding,
     y: minY - padding,
     w: Math.max(100, maxX - minX + padding * 2),
-    h: Math.max(100, maxY - minY + padding * 2)
+    h: Math.max(100, maxY - minY + padding * 2),
   };
 }
 
@@ -97,7 +100,14 @@ export function calculateBoundingBox(elements: any[], padding = 50) {
  * @param title - (可选) 标题
  * @param desc - (可选) 描述
  */
-export function showMapPopup(x: number, y: number, options: string[], onSelect: (opt: string) => void, title?: string, desc?: string) {
+export function showMapPopup(
+  x: number,
+  y: number,
+  options: string[],
+  onSelect: (opt: string) => void,
+  title?: string,
+  desc?: string,
+) {
   // Remove existing popups
   const existing = document.querySelector('.ci-map-popup-card');
   if (existing) existing.remove();
@@ -120,10 +130,10 @@ export function showMapPopup(x: number, y: number, options: string[], onSelect: 
     // Bind close button
     const closeBtn = header.querySelector('.ci-map-popup-close');
     if (closeBtn) {
-        closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            popup.remove();
-        });
+      closeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        popup.remove();
+      });
     }
   }
 
@@ -150,7 +160,7 @@ export function showMapPopup(x: number, y: number, options: string[], onSelect: 
     else icon = '<i class="fas fa-circle" style="font-size:6px; vertical-align:middle;"></i> ';
 
     btn.innerHTML = `${icon}${opt}`;
-    btn.onclick = (e) => {
+    btn.onclick = e => {
       e.stopPropagation();
       onSelect(opt);
       popup.remove();
@@ -212,7 +222,7 @@ export function parseCoordinatesWithFallback(
   index: number,
   gridWidth: number = 200,
   gridHeight: number = 150,
-  cols: number = 4
+  cols: number = 4,
 ): { x: number; y: number; isFallback: boolean } {
   let x = parseInt(rawX);
   let y = parseInt(rawY);

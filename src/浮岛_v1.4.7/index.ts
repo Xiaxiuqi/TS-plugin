@@ -69,10 +69,7 @@ function safeRemoveItem(key: string): boolean {
   return false;
 }
 
-console.log(
-  '%c[浮岛] 脚本加载中... (v1.4.7 - Release)',
-  'color: #00ff00; font-weight: bold; font-size: 16px;',
-);
+console.log('%c[浮岛] 脚本加载中... (v1.4.7 - Release)', 'color: #00ff00; font-weight: bold; font-size: 16px;');
 
 const ICONS = {
   grip: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 5h2v2H9V5zm4 0h2v2h-2V5zm-4 6h2v2H9v-2zm4 0h2v2h-2v-2zm-4 6h2v2H9v-2zm4 0h2v2h-2v-2z"/></svg>`,
@@ -1363,16 +1360,20 @@ function processData(rawData: any) {
         // 提取属性信息 (v1.36 新增 & 独立列扩展)
         const statsKeywords = ['属性', 'Stats', '能力值', '五维', '六维'];
         const individualStats = ['力量', '敏捷', '体质', '智力', '感知', '魅力'];
-        
+
         const statsCols = h
           .map((col, i) => ({ col, i }))
-          .filter(({ col }) => col && (
-            statsKeywords.some(kw => col.includes(kw)) || 
-            individualStats.some(kw => col === kw) // 必须完全匹配独立列名
-          ));
+          .filter(
+            ({ col }) =>
+              col &&
+              (statsKeywords.some(kw => col.includes(kw)) || individualStats.some(kw => col === kw)), // 必须完全匹配独立列名
+          );
 
         if (statsCols.length > 0) {
-          dbg(`[属性提取] 在表 ${tableName} 中找到属性列:`, statsCols.map(c => c.col));
+          dbg(
+            `[属性提取] 在表 ${tableName} 中找到属性列:`,
+            statsCols.map(c => c.col),
+          );
         }
 
         statsCols.forEach(({ i, col }) => {
@@ -1384,7 +1385,7 @@ function processData(rawData: any) {
             const valStr = String(content).trim();
             let val = 0;
             let displayValue = valStr;
-            
+
             if (valStr.toUpperCase() === 'MAX') {
               val = 100;
               displayValue = 'MAX';
@@ -1398,7 +1399,7 @@ function processData(rawData: any) {
                 info.stats.push({ label: col, value: val, displayValue });
               }
             }
-          } 
+          }
           // 2. 如果是复合属性列 (如：五维: 力量:10, 敏捷:12)
           else {
             const parts = String(content).split(/[,;，；]/);
@@ -4146,7 +4147,7 @@ function extractWorldInfoData(rawData: any): any {
             matchedOutlineLabel: outlineIdx > -1 ? h[outlineIdx] : '大纲',
             details: {} as Record<string, string>,
           };
-          
+
           // 如果纪要表中包含“概览”（大纲）列，则记录到 matchedOutline
           if (outlineIdx > -1 && row[outlineIdx]) {
             item.matchedOutline = row[outlineIdx];
@@ -4159,7 +4160,7 @@ function extractWorldInfoData(rawData: any): any {
             }
           });
           worldInfo.summaryHistory.push(item);
-          
+
           // 更新当前大纲
           if (outlineIdx > -1 && row[outlineIdx]) {
             worldInfo.outline = {
@@ -4349,7 +4350,7 @@ function renderLatestNews(worldInfo: any): any {
           .map(([key, val]) => {
             // 过滤掉已经作为大纲显示的“概览”或“摘要”
             if (key === outlineLabel || key === matchedOutlineLabel || key === '摘要') return '';
-            
+
             const isDialogue = key.includes('对话');
             if (isDialogue) {
               const lines = String(val)
@@ -7187,12 +7188,12 @@ function createAvatarSelectionModal(d: any) {
   `);
 
   // Prevent clicks inside modal body from bubbling
-  $modal.find('.ci-modal-body').on('click', (e) => {
+  $modal.find('.ci-modal-body').on('click', e => {
     e.stopPropagation();
   });
 
   // Click outside to close (click on overlay)
-  $modal.on('click', (e) => {
+  $modal.on('click', e => {
     // Only close if the click is directly on the modal container (the overlay)
     if ($(e.target).is($modal)) {
       e.stopPropagation(); // Prevent bubbling to parent panels
@@ -7200,16 +7201,15 @@ function createAvatarSelectionModal(d: any) {
     }
   });
 
-
   // Local upload handler
-  $modal.find('.ci-local-upload-btn').on('click', (e) => {
+  $modal.find('.ci-local-upload-btn').on('click', e => {
     e.stopPropagation();
     state.currentUploadChar = d;
     $('#ci-hidden-input').click();
   });
 
   // Reset avatar handler
-  $modal.find('.ci-reset-avatar-btn').on('click', (e) => {
+  $modal.find('.ci-reset-avatar-btn').on('click', e => {
     e.stopPropagation();
     if (confirm('确定要恢复默认头像吗？这将删除当前自定义头像。')) {
       safeRemoveItem(STORAGE_AVATAR_PREFIX + d.name);
@@ -7220,7 +7220,7 @@ function createAvatarSelectionModal(d: any) {
   });
 
   // URL upload handler
-  $modal.find('.ci-url-confirm-btn').on('click', (e) => {
+  $modal.find('.ci-url-confirm-btn').on('click', e => {
     e.stopPropagation();
     const url = ($modal.find('.ci-url-input').val() as string).trim();
     if (!url) {
@@ -7230,7 +7230,7 @@ function createAvatarSelectionModal(d: any) {
 
     // Validate image URL and fetch data to avoid CORS issues in Canvas
     fetch(url)
-      .then(async (response) => {
+      .then(async response => {
         if (!response.ok) throw new Error('Network response was not ok');
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
@@ -7301,12 +7301,12 @@ function createCropperModal(imageSrc: string, d: any) {
   };
 
   // Prevent clicks inside modal body from closing (if we add overlay click to close later)
-  $modal.find('.ci-modal-body').on('click', (e) => {
+  $modal.find('.ci-modal-body').on('click', e => {
     e.stopPropagation();
   });
 
   // Click outside to close (click on overlay)
-  $modal.on('click', (e) => {
+  $modal.on('click', e => {
     // Only close if the click is directly on the modal container (the overlay)
     if ($(e.target).is($modal)) {
       e.stopPropagation(); // Prevent bubbling to parent panels
@@ -7314,13 +7314,13 @@ function createCropperModal(imageSrc: string, d: any) {
     }
   });
 
-  $modal.find('.ci-cancel-btn').on('click', (e) => {
+  $modal.find('.ci-cancel-btn').on('click', e => {
     e.stopPropagation(); // Prevent global handlers
     close();
   });
 
   // Confirm handler
-  $modal.find('.ci-confirm-btn').on('click', (e) => {
+  $modal.find('.ci-confirm-btn').on('click', e => {
     e.stopPropagation(); // Prevent global handlers
     if (!cropper) return;
 
@@ -7361,7 +7361,7 @@ function createCropperModal(imageSrc: string, d: any) {
         toggleDragModeOnDblclick: false,
         ready() {
           // Auto-center or adjust if needed
-        }
+        },
       });
     }
   };
@@ -8195,7 +8195,9 @@ function createSettingsUI() {
       `<div class="ci-settings-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:2400;display:flex;align-items:center;justify-content:center;"></div>`,
     );
     // 修改：添加 ci-settings-card-accordion 类，max-height 改为 80vh
-    const $card = $(`<div class="ci-settings-card ci-settings-card-accordion" style="max-height:80vh;overflow-y:auto;max-width:95vw;"></div>`);
+    const $card = $(
+      `<div class="ci-settings-card ci-settings-card-accordion" style="max-height:80vh;overflow-y:auto;max-width:95vw;"></div>`,
+    );
     const $header = $(
       `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0;"><span style="font-weight:bold;font-size:16px;">浮岛设置 <span style="font-size:10px;font-weight:normal;opacity:0.6;">v1.4.7</span></span><span class="ci-close-btn">${ICONS.close}</span></div>`,
     );
@@ -8225,7 +8227,7 @@ function createSettingsUI() {
         `<div class="ci-color-opt" style="background:${t.color}; border:1px solid #ccc;" title="${t.name}"></div>`,
       );
       if (state.theme === t.id) $opt.addClass('active');
-      $opt.click((e) => {
+      $opt.click(e => {
         e.stopPropagation();
         applyTheme(t.id);
         $themeSec.find('.ci-color-opt').removeClass('active');
@@ -8241,7 +8243,7 @@ function createSettingsUI() {
         `<div class="ci-color-opt" style="background:${t.color}; border:1px solid #555;" title="${t.name}"></div>`,
       );
       if (state.theme === t.id) $opt.addClass('active');
-      $opt.click((e) => {
+      $opt.click(e => {
         e.stopPropagation();
         applyTheme(t.id);
         $themeSec.find('.ci-color-opt').removeClass('active');
@@ -8265,7 +8267,7 @@ function createSettingsUI() {
         $label.find('span:last-child').text(val);
         applyOpacity(key, val);
       });
-      $input.on('click', (e) => e.stopPropagation());
+      $input.on('click', e => e.stopPropagation());
       $div.append($label).append($input);
       return $div;
     };
@@ -8360,32 +8362,30 @@ function createSettingsUI() {
           $slider.css('background', '#ccc');
         }
       } else if (
-          confirm('确定要关闭地图功能吗？\\n\\n注意：这只会移除由浮岛自动注入的表格，不会影响您自己创建的地图表格。')
-        ) {
-          dbg('[设置] 用户禁用地图功能');
-          const success = await removeMapTables();
-          if (success) {
-            $slider.css('background', '#ccc');
-            updateMapStatus();
-          } else {
-            $(this).prop('checked', true);
-            $slider.css('background', '#4caf50');
-          }
+        confirm('确定要关闭地图功能吗？\\n\\n注意：这只会移除由浮岛自动注入的表格，不会影响您自己创建的地图表格。')
+      ) {
+        dbg('[设置] 用户禁用地图功能');
+        const success = await removeMapTables();
+        if (success) {
+          $slider.css('background', '#ccc');
+          updateMapStatus();
         } else {
           $(this).prop('checked', true);
+          $slider.css('background', '#4caf50');
         }
+      } else {
+        $(this).prop('checked', true);
+      }
     });
-    $mapToggle.find('.ci-switch').on('click', (e) => e.stopPropagation());
+    $mapToggle.find('.ci-switch').on('click', e => e.stopPropagation());
 
     $mapSec.append($mapToggle).append($mapStatus);
 
     // 删除模板按钮事件
-    $mapToggle
-      .find('#ci-delete-map-btn')
-      .on('click', async function (e) {
-        e.stopPropagation();
-        if (
-          !confirm(`⚠️ 确定要删除地图模板吗？
+    $mapToggle.find('#ci-delete-map-btn').on('click', async function (e) {
+      e.stopPropagation();
+      if (
+        !confirm(`⚠️ 确定要删除地图模板吗？
 
 此操作将：
 1. 从数据库模板中删除地图表格
@@ -8393,28 +8393,28 @@ function createSettingsUI() {
 3. 调用覆盖最新楼层生效
 
 只会删除带"_浮岛地图_"标记的表格，不会影响您自己创建的表格。`)
-        ) {
-          return;
-        }
+      ) {
+        return;
+      }
 
-        const $btn = $(this);
-        const originalText = $btn.text();
-        $btn.prop('disabled', true).text('删除中...');
+      const $btn = $(this);
+      const originalText = $btn.text();
+      $btn.prop('disabled', true).text('删除中...');
 
-        try {
-          const success = await forceDeleteMapTemplate();
-          if (success) {
-            $mapToggle.find('#ci-map-toggle').prop('checked', false);
-            $mapToggle.find('.ci-slider').css('background', '#ccc');
-            updateMapStatus();
-          }
-        } catch (e) {
-          console.error('[删除模板] 异常:', e);
-          showToast('删除失败: ' + e, 'error');
-        } finally {
-          $btn.prop('disabled', false).text(originalText);
+      try {
+        const success = await forceDeleteMapTemplate();
+        if (success) {
+          $mapToggle.find('#ci-map-toggle').prop('checked', false);
+          $mapToggle.find('.ci-slider').css('background', '#ccc');
+          updateMapStatus();
         }
-      });
+      } catch (e) {
+        console.error('[删除模板] 异常:', e);
+        showToast('删除失败: ' + e, 'error');
+      } finally {
+        $btn.prop('disabled', false).text(originalText);
+      }
+    });
 
     // 地图注意事项
     const $mapNotice = $(`
@@ -8485,7 +8485,7 @@ function createSettingsUI() {
       dbg(`[设置] 自动重绘人物关系图: ${isChecked ? '开启' : '关闭'}`);
     });
     // 阻止开关标签点击冒泡
-    $relationToggle.find('.ci-switch').on('click', (e) => e.stopPropagation());
+    $relationToggle.find('.ci-switch').on('click', e => e.stopPropagation());
 
     $relationSec.append($relationToggle);
     $perfContent.append($relationSec);
@@ -10870,16 +10870,20 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
   const $editFields = $overlay.find('textarea.ci-input-field');
   const uiAdjustHeight = (el: HTMLElement) => {
     el.style.height = 'auto';
-    el.style.height = (el.scrollHeight + 2) + 'px';
+    el.style.height = el.scrollHeight + 2 + 'px';
   };
 
-  $editFields.on('input', function () {
-    uiAdjustHeight(this);
-  }).css({ resize: 'none', overflow: 'hidden' });
+  $editFields
+    .on('input', function () {
+      uiAdjustHeight(this);
+    })
+    .css({ resize: 'none', overflow: 'hidden' });
 
   // 初始渲染后的高度校准
   setTimeout(() => {
-    $editFields.each(function () { uiAdjustHeight(this); });
+    $editFields.each(function () {
+      uiAdjustHeight(this);
+    });
   }, 50);
 
   // 绑定事件
@@ -10953,11 +10957,11 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
         // 重新提取数据并更新面板
         state.cachedData = processData(rawData);
         updateOpenPanels();
-        
+
         // 刷新往期报道弹窗
         $('.ci-news-history-overlay').remove();
         showNewsHistoryModal();
-        
+
         $overlay.remove();
       } catch (e: any) {
         showToast('保存失败: ' + e.message, 'error');

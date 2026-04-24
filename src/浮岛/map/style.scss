@@ -9,7 +9,7 @@
   overflow: hidden;
   background: var(--ci-bg);
   color: var(--ci-text);
-  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   position: relative;
 
   /* Sidebar */
@@ -23,66 +23,72 @@
     /* border-right: 1px solid var(--ci-border); */ /* Border removed, handled by splitter */
     background: var(--ci-bg-secondary);
     z-index: 10;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
     /* transition: width 0.3s ease; Removed to allow smooth dragging */
     overflow: hidden; /* Prevent content overflow during resize */
 
     .ci-map-sidebar-header {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--ci-border);
-        font-weight: bold;
-        font-size: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: var(--ci-bg);
-        color: var(--ci-text-primary);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--ci-border);
+      font-weight: bold;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--ci-bg);
+      color: var(--ci-text-primary);
     }
 
     .ci-map-sidebar-content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
 
-        /* Hide scrollbar but keep functionality */
-        &::-webkit-scrollbar {
-            width: 0;
-            height: 0;
-            display: none;
-        }
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE/Edge */
+      /* Hide scrollbar but keep functionality */
+      &::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+      }
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
     }
   }
 
   /* Splitter */
   .ci-map-splitter {
-      width: 1px;
-      height: 100%;
-      background: var(--ci-border);
+    width: 1px;
+    height: 100%;
+    background: var(--ci-border);
+    cursor: col-resize;
+    z-index: 1000;
+    flex-shrink: 0;
+    position: relative;
+    overflow: visible;
+    transition:
+      background 0.2s,
+      width 0.2s;
+
+    /* Increase hit area using pseudo-element */
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -5px;
+      right: -5px;
+      z-index: 10;
       cursor: col-resize;
-      z-index: 1000;
-      flex-shrink: 0;
-      position: relative;
-      overflow: visible;
-      transition: background 0.2s, width 0.2s;
+    }
 
-      /* Increase hit area using pseudo-element */
-      &::before {
-          content: '';
-          position: absolute;
-          top: 0; bottom: 0; left: -5px; right: -5px;
-          z-index: 10;
-          cursor: col-resize;
-      }
-
-      &:hover, &.dragging {
-          background: var(--ci-accent);
-          width: 2px; /* Slight visual feedback */
-      }
+    &:hover,
+    &.dragging {
+      background: var(--ci-accent);
+      width: 2px; /* Slight visual feedback */
+    }
   }
 
   /* Map Viewer */
@@ -95,486 +101,516 @@
 
     /* Leaflet container override */
     .leaflet-container {
-        background: #f0f2f5; /* HSR Light Grey */
-        background-image:
-            linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
-        background-size: 40px 40px; /* Grid pattern */
-        width: 100%;
-        height: 100%;
-        outline: none;
-        cursor: grab;
+      background: #f0f2f5; /* HSR Light Grey */
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px; /* Grid pattern */
+      width: 100%;
+      height: 100%;
+      outline: none;
+      cursor: grab;
     }
     .leaflet-container:active {
-        cursor: grabbing;
+      cursor: grabbing;
     }
   }
 }
 
 /* 2. Sidebar Lists */
 .ci-map-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .ci-map-list-header {
+    font-size: 12px;
+    color: var(--ci-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-left: 8px;
+    border-left: 3px solid var(--ci-accent);
+    font-weight: 600;
+  }
+
+  .ci-map-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-
-    .ci-map-list-header {
-        font-size: 12px;
-        color: var(--ci-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding-left: 8px;
-        border-left: 3px solid var(--ci-accent);
-        font-weight: 600;
-    }
-
-    .ci-map-list {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
+    gap: 6px;
+  }
 }
 
 .ci-map-list-item {
-    padding: 10px 12px;
-    background: var(--ci-bg);
-    border: 1px solid var(--ci-border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 13px;
-    position: relative;
+  padding: 10px 12px;
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  position: relative;
 
-    &:hover {
-        background: var(--ci-bg-secondary);
-        border-color: var(--ci-accent);
-        transform: translateX(2px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
+  &:hover {
+    background: var(--ci-bg-secondary);
+    border-color: var(--ci-accent);
+    transform: translateX(2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
 
-    &.active {
-        background: var(--ci-accent);
-        color: white;
-        border-color: var(--ci-accent);
-        box-shadow: 0 2px 8px rgba(var(--ci-accent-rgb), 0.3);
-
-        .ci-map-item-desc {
-            color: rgba(255,255,255,0.8);
-        }
-
-        .ci-map-item-action {
-            color: white;
-            &:hover { background: rgba(255,255,255,0.2); }
-        }
-    }
-
-    .ci-map-item-content {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        flex: 1;
-        min-width: 0; /* Text truncation fix */
-    }
-
-    .ci-map-item-title {
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+  &.active {
+    background: var(--ci-accent);
+    color: white;
+    border-color: var(--ci-accent);
+    box-shadow: 0 2px 8px rgba(var(--ci-accent-rgb), 0.3);
 
     .ci-map-item-desc {
-        font-size: 11px;
-        color: var(--ci-text-secondary);
-        white-space: normal; /* Allow wrapping */
-        overflow: visible;   /* Show full content */
-        text-overflow: clip; /* Remove ellipsis */
-        line-height: 1.4;
-        display: block; /* Ensure it behaves as a block for wrapping */
-        max-height: none; /* Remove any height restriction */
+      color: rgba(255, 255, 255, 0.8);
     }
 
     .ci-map-item-action {
-        padding: 6px;
-        border-radius: 4px;
-        margin-left: 8px;
-        color: var(--ci-text-secondary);
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        &:hover {
-            background: rgba(0,0,0,0.05);
-            color: var(--ci-accent);
-        }
+      color: white;
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
     }
+  }
+
+  .ci-map-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0; /* Text truncation fix */
+  }
+
+  .ci-map-item-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ci-map-item-desc {
+    font-size: 11px;
+    color: var(--ci-text-secondary);
+    white-space: normal; /* Allow wrapping */
+    overflow: visible; /* Show full content */
+    text-overflow: clip; /* Remove ellipsis */
+    line-height: 1.4;
+    display: block; /* Ensure it behaves as a block for wrapping */
+    max-height: none; /* Remove any height restriction */
+  }
+
+  .ci-map-item-action {
+    padding: 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    color: var(--ci-text-secondary);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--ci-accent);
+    }
+  }
 }
 
 /* 3. Map Interactions & Popups */
 .ci-map-popup-card {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  background: var(--ci-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--ci-border);
+  animation: fadeIn 0.2s ease-out;
+  position: fixed;
+  z-index: 5000; /* Ensure it's above panels (which start at 2100) */
+
+  .ci-map-popup-header {
+    padding: 10px 12px;
+    background: var(--ci-bg-secondary);
+    border-bottom: 1px solid var(--ci-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .ci-map-popup-title {
+      font-weight: bold;
+      font-size: 14px;
+      color: var(--ci-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .ci-map-popup-close {
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--ci-text-secondary);
+      line-height: 1;
+      padding: 0 4px;
+      &:hover {
+        color: var(--ci-text);
+      }
+    }
+  }
+
+  .ci-map-popup-body {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--ci-text-secondary);
+    line-height: 1.5;
+    max-height: 120px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--ci-border);
+    background: var(--ci-bg);
+  }
+
+  .ci-map-popup-actions {
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    width: 220px;
-    background: var(--ci-bg);
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    border: 1px solid var(--ci-border);
-    animation: fadeIn 0.2s ease-out;
-    position: fixed;
-    z-index: 5000; /* Ensure it's above panels (which start at 2100) */
+    gap: 6px;
+    background: var(--ci-bg-secondary); /* Contrast with body */
+  }
 
-    .ci-map-popup-header {
-        padding: 10px 12px;
-        background: var(--ci-bg-secondary);
-        border-bottom: 1px solid var(--ci-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+  .ci-map-action-btn {
+    padding: 8px 12px;
+    text-align: left;
+    background: rgba(var(--ci-accent-rgb), 0.1);
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--ci-text);
+    border-radius: 6px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
 
-        .ci-map-popup-title {
-            font-weight: bold;
-            font-size: 14px;
-            color: var(--ci-text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
-        }
-
-        .ci-map-popup-close {
-            cursor: pointer;
-            font-size: 16px;
-            color: var(--ci-text-secondary);
-            line-height: 1;
-            padding: 0 4px;
-            &:hover { color: var(--ci-text); }
-        }
+    &:hover {
+      background: var(--ci-accent);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
-    .ci-map-popup-body {
-        padding: 12px;
-        font-size: 12px;
-        color: var(--ci-text-secondary);
-        line-height: 1.5;
-        max-height: 120px;
-        overflow-y: auto;
-        border-bottom: 1px solid var(--ci-border);
-        background: var(--ci-bg);
+    i {
+      width: 16px;
+      text-align: center;
     }
-
-    .ci-map-popup-actions {
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        background: var(--ci-bg-secondary); /* Contrast with body */
-    }
-
-    .ci-map-action-btn {
-        padding: 8px 12px;
-        text-align: left;
-        background: rgba(var(--ci-accent-rgb), 0.1);
-        border: 1px solid transparent;
-        cursor: pointer;
-        font-size: 12px;
-        color: var(--ci-text);
-        border-radius: 6px;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 500;
-
-        &:hover {
-            background: var(--ci-accent);
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        i { width: 16px; text-align: center; }
-    }
+  }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 4. Leaflet Customization */
 .leaflet-popup-content-wrapper {
-    border-radius: 8px;
-    padding: 0;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    background: transparent; /* Let our menu handle bg */
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: transparent; /* Let our menu handle bg */
 }
 .leaflet-popup-content {
-    margin: 0;
-    width: auto !important;
+  margin: 0;
+  width: auto !important;
 }
 .leaflet-popup-tip-container {
-    display: none; /* Optional: hide the tip for cleaner look */
+  display: none; /* Optional: hide the tip for cleaner look */
 }
 
 /* Map Elements (Furniture, Walls) */
 .ci-map-wall {
-    stroke: #3b4252;
-    stroke-width: 3;
-    stroke-linecap: round;
-    fill: none;
-    filter: drop-shadow(0 0 2px rgba(59, 66, 82, 0.3));
+  stroke: #3b4252;
+  stroke-width: 3;
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 2px rgba(59, 66, 82, 0.3));
 }
 
 .ci-map-location-group {
+  transition: all 0.3s ease;
+
+  path {
     transition: all 0.3s ease;
+  }
 
-    path {
-        transition: all 0.3s ease;
-    }
-
-    &:hover path {
-        filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.6));
-    }
+  &:hover path {
+    filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.6));
+  }
 }
 
 .ci-map-furniture {
-    /* Styles handled by Leaflet Path options, but we can add hover effects here if class is passed */
-    transition: fill-opacity 0.2s, filter 0.2s;
-    stroke: rgba(0,0,0,0.2);
-    stroke-width: 1px;
+  /* Styles handled by Leaflet Path options, but we can add hover effects here if class is passed */
+  transition:
+    fill-opacity 0.2s,
+    filter 0.2s;
+  stroke: rgba(0, 0, 0, 0.2);
+  stroke-width: 1px;
 
-    &:hover {
-        fill-opacity: 0.9;
-        filter: drop-shadow(0 0 3px rgba(0,0,0,0.2));
-    }
+  &:hover {
+    fill-opacity: 0.9;
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.2));
+  }
 }
 .ci-map-tooltip {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid var(--ci-border);
-    border-radius: 12px; /* Bubble shape */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    font-weight: 600;
-    color: #333;
-    text-shadow: none;
-    font-size: 12px;
-    padding: 2px 8px;
-    white-space: nowrap;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--ci-border);
+  border-radius: 12px; /* Bubble shape */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  color: #333;
+  text-shadow: none;
+  font-size: 12px;
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 .theme-night .ci-map-tooltip {
-    background: rgba(45, 45, 48, 0.9);
-    border-color: #444;
-    color: #eee;
-    text-shadow: none;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  background: rgba(45, 45, 48, 0.9);
+  border-color: #444;
+  color: #eee;
+  text-shadow: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 /* Leaflet tooltip override to remove default arrow if we want pure bubble */
-.leaflet-tooltip-left::before, .leaflet-tooltip-right::before,
-.leaflet-tooltip-top::before, .leaflet-tooltip-bottom::before {
-    border: none !important;
+.leaflet-tooltip-left::before,
+.leaflet-tooltip-right::before,
+.leaflet-tooltip-top::before,
+.leaflet-tooltip-bottom::before {
+  border: none !important;
 }
 
 /* 5. Night Mode Adjustments */
 body.theme-night {
-    .ci-map-layout-hsr {
-        background: #1e1e1e;
+  .ci-map-layout-hsr {
+    background: #1e1e1e;
+    color: #e0e0e0;
+
+    .ci-map-sidebar {
+      background: #252526;
+      border-color: #3e3e42;
+      .ci-map-sidebar-header {
+        background: #252526;
         color: #e0e0e0;
-
-        .ci-map-sidebar {
-            background: #252526;
-            border-color: #3e3e42;
-            .ci-map-sidebar-header {
-                background: #252526;
-                color: #e0e0e0;
-            }
-        }
-
-        .ci-map-viewer .leaflet-container {
-            background: #18181b; /* Darker tech background */
-            background-image:
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
+      }
     }
 
-    .ci-map-list-item {
-        background: #2d2d30;
-        border-color: #3e3e42;
-        color: #e0e0e0;
+    .ci-map-viewer .leaflet-container {
+      background: #18181b; /* Darker tech background */
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+  }
 
-        &:hover {
-            background: #3e3e42;
-        }
+  .ci-map-list-item {
+    background: #2d2d30;
+    border-color: #3e3e42;
+    color: #e0e0e0;
 
-        &.active {
-            background: var(--ci-accent);
-            color: white;
-        }
-
-        .ci-map-item-desc { color: #aaa; }
+    &:hover {
+      background: #3e3e42;
     }
 
-    .ci-map-popup-menu {
-        background: #2d2d30;
-        border-color: #444;
-
-        .ci-map-popup-header {
-            background: #333;
-            border-color: #444;
-            color: #eee;
-        }
-
-        .ci-map-action-btn {
-            color: #ddd;
-            &:hover {
-                background: var(--ci-accent);
-                color: white;
-            }
-        }
+    &.active {
+      background: var(--ci-accent);
+      color: white;
     }
+
+    .ci-map-item-desc {
+      color: #aaa;
+    }
+  }
+
+  .ci-map-popup-menu {
+    background: #2d2d30;
+    border-color: #444;
+
+    .ci-map-popup-header {
+      background: #333;
+      border-color: #444;
+      color: #eee;
+    }
+
+    .ci-map-action-btn {
+      color: #ddd;
+      &:hover {
+        background: var(--ci-accent);
+        color: white;
+      }
+    }
+  }
 }
 
 /* 6. Responsive Design */
 @media (max-width: 768px) {
-    .ci-map-layout-hsr {
-        flex-direction: column-reverse;
-        height: 80vh; /* Taller on mobile */
+  .ci-map-layout-hsr {
+    flex-direction: column-reverse;
+    height: 80vh; /* Taller on mobile */
 
-        .ci-map-sidebar {
-            width: 100%;
-            max-width: 100%;
-            height: 40%;
-            border-right: none;
-            border-top: 1px solid var(--ci-border);
-        }
+    .ci-map-sidebar {
+      width: 100%;
+      max-width: 100%;
+      height: 40%;
+      border-right: none;
+      border-top: 1px solid var(--ci-border);
+    }
 
-        .ci-map-splitter {
-        width: 100%;
-        height: 1px;
-        background: var(--ci-border);
+    .ci-map-splitter {
+      width: 100%;
+      height: 1px;
+      background: var(--ci-border);
+      cursor: row-resize;
+      border: none;
+
+      /* Increase vertical hit area for bottom layout */
+      &::before {
+        top: -5px;
+        bottom: -5px;
+        left: 0;
+        right: 0;
         cursor: row-resize;
-        border: none;
+      }
 
-        /* Increase vertical hit area for bottom layout */
-        &::before {
-            top: -5px; bottom: -5px; left: 0; right: 0;
-            cursor: row-resize;
-        }
-
-        &:hover, &.dragging {
-            background: var(--ci-accent);
-            height: 2px;
-        }
+      &:hover,
+      &.dragging {
+        background: var(--ci-accent);
+        height: 2px;
+      }
     }
 
-        .ci-map-viewer {
-            height: 60%;
-        }
+    .ci-map-viewer {
+      height: 60%;
     }
+  }
 }
 
 /* 7. Layout Variants */
 .ci-map-layout-hsr {
-    /* Layout: Right Sidebar */
-    &.layout-right {
-        flex-direction: row-reverse;
-        .ci-map-sidebar {
-            border-right: none;
-            border-left: 1px solid var(--ci-border);
-        }
+  /* Layout: Right Sidebar */
+  &.layout-right {
+    flex-direction: row-reverse;
+    .ci-map-sidebar {
+      border-right: none;
+      border-left: 1px solid var(--ci-border);
+    }
+  }
+
+  /* Layout: Bottom Sidebar */
+  &.layout-bottom {
+    flex-direction: column-reverse;
+
+    .ci-map-sidebar {
+      width: 100%;
+      max-width: 100%;
+      height: 200px;
+      border-right: none;
+      border-top: 1px solid var(--ci-border);
+      flex-direction: row; /* Horizontal layout for content? Optional */
     }
 
-    /* Layout: Bottom Sidebar */
-    &.layout-bottom {
-        flex-direction: column-reverse;
-
-        .ci-map-sidebar {
-            width: 100%;
-            max-width: 100%;
-            height: 200px;
-            border-right: none;
-            border-top: 1px solid var(--ci-border);
-            flex-direction: row; /* Horizontal layout for content? Optional */
-        }
-
-        .ci-map-sidebar-content {
-            /* If we want horizontal scrolling for bottom layout */
-            /* flex-direction: row; overflow-x: auto; overflow-y: hidden; */
-        }
-
-        .ci-map-splitter {
-            width: 100%;
-            height: 1px;
-            background: var(--ci-border);
-            cursor: row-resize;
-            border: none;
-
-            &::before {
-                top: -5px; bottom: -5px; left: 0; right: 0;
-                cursor: row-resize;
-            }
-
-            &:hover, &.dragging {
-                background: var(--ci-accent);
-                height: 2px;
-            }
-        }
+    .ci-map-sidebar-content {
+      /* If we want horizontal scrolling for bottom layout */
+      /* flex-direction: row; overflow-x: auto; overflow-y: hidden; */
     }
 
-    /* Collapsed Sidebar */
-    &.sidebar-collapsed {
-        .ci-map-sidebar {
-            display: none;
-        }
-        .ci-map-splitter {
-            display: none;
-        }
+    .ci-map-splitter {
+      width: 100%;
+      height: 1px;
+      background: var(--ci-border);
+      cursor: row-resize;
+      border: none;
 
-        /* Adjust expand button position when sidebar is collapsed */
-        .ci-sidebar-expand-btn {
-            top: 50px; /* Move down to avoid overlapping with back button */
-        }
+      &::before {
+        top: -5px;
+        bottom: -5px;
+        left: 0;
+        right: 0;
+        cursor: row-resize;
+      }
+
+      &:hover,
+      &.dragging {
+        background: var(--ci-accent);
+        height: 2px;
+      }
     }
+  }
+
+  /* Collapsed Sidebar */
+  &.sidebar-collapsed {
+    .ci-map-sidebar {
+      display: none;
+    }
+    .ci-map-splitter {
+      display: none;
+    }
+
+    /* Adjust expand button position when sidebar is collapsed */
+    .ci-sidebar-expand-btn {
+      top: 50px; /* Move down to avoid overlapping with back button */
+    }
+  }
 }
 
 /* Layout Dropdown Menu */
 .ci-layout-menu {
-    position: fixed; /* Changed from absolute to fixed to avoid clipping */
-    background: var(--ci-bg);
-    border: 1px solid var(--ci-border);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 9999; /* Increased z-index to be above everything */
-    min-width: 120px;
-    overflow: hidden;
-    animation: fadeIn 0.15s ease-out;
+  position: fixed; /* Changed from absolute to fixed to avoid clipping */
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999; /* Increased z-index to be above everything */
+  min-width: 120px;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
 
-    .ci-layout-menu-item {
-        padding: 8px 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: var(--ci-text);
-        transition: background 0.2s;
+  .ci-layout-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ci-text);
+    transition: background 0.2s;
 
-        &:hover {
-            background: var(--ci-bg-secondary);
-            color: var(--ci-accent);
-        }
-
-        &.active {
-            font-weight: bold;
-            color: var(--ci-accent);
-            background: rgba(var(--ci-accent-rgb), 0.05);
-        }
-
-        i { width: 16px; text-align: center; }
+    &:hover {
+      background: var(--ci-bg-secondary);
+      color: var(--ci-accent);
     }
+
+    &.active {
+      font-weight: bold;
+      color: var(--ci-accent);
+      background: rgba(var(--ci-accent-rgb), 0.05);
+    }
+
+    i {
+      width: 16px;
+      text-align: center;
+    }
+  }
 }
