@@ -59,7 +59,7 @@
         color: #666 !important;
       }
       .acu-search-icon-btn {
-        background: transparent !important; /* 彻底去掉大白背景 */
+        background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         color: var(--acu-primary, #5c9dff) !important;
@@ -117,8 +117,8 @@
   let isCellEditing = false;
   let isRefreshing = false;
   let currentDiffMap = new Set();
-  let currentPagination = {};
-  let currentUserEditMap = new Set();
+  const currentPagination = {};
+  const currentUserEditMap = new Set();
 
   // --- 新增：搜索功能状态 ---
   let currentSearchTerm = '';
@@ -131,10 +131,10 @@
   let dragRowElement = null;
 
   // 行位置映射表（用于存储前端显示位置与原始数据索引的映射关系）
-  let rowPositionMapping = {};
+  const rowPositionMapping = {};
 
   // 使用集合管理待删除行
-  let pendingDeletes = new Set();
+  const pendingDeletes = new Set();
 
   // [新增] 防回弹控制器
   const UpdateController = {
@@ -148,14 +148,12 @@
         // 2秒后恢复监听，给数据库一点写入时间
         setTimeout(() => {
           UpdateController._suppressNext = false;
-
         }, 2000);
       }
     },
     // 过滤更新信号 (需要在 init 中注册这个函数替代原来的回调)
     handleUpdate: () => {
       if (UpdateController._suppressNext) {
-
         return;
       }
       // 这里调用原本的刷新逻辑，比如 smartUpdateTable 或 insertTableAfterLatestAIMessage
@@ -237,16 +235,16 @@
   const shouldShowBadge = tableName => {
     const tabStatus = getSingleTabStatus(tableName);
     // 核心逻辑：有更新 且 (用户未看 且 哈希不一致)
-    return tabStatus.hasNewUpdates &&
-           !tabStatus.userHasSeen &&
-           tabStatus.lastViewedHash !== tabStatus.currentUpdateHash;
+    return (
+      tabStatus.hasNewUpdates && !tabStatus.userHasSeen && tabStatus.lastViewedHash !== tabStatus.currentUpdateHash
+    );
   };
 
   const markTabAsSeen = tableName => {
     const status = getSingleTabStatus(tableName);
     return updateTabStatus(tableName, {
       userHasSeen: true,
-      lastViewedHash: status.currentUpdateHash // 记录当前版本为已看
+      lastViewedHash: status.currentUpdateHash, // 记录当前版本为已看
     });
   };
 
@@ -259,7 +257,7 @@
 
     const updates = {
       hasNewUpdates: hasUpdates,
-      currentUpdateHash: updateHash
+      currentUpdateHash: updateHash,
     };
 
     // 如果检测到新哈希且与已看的不同，重置 userHasSeen
@@ -418,7 +416,7 @@
     let total = 0;
     for (let key in localStorage) {
       if (localStorage.hasOwnProperty(key)) {
-        total += localStorage[key].length + key.length;
+        tconsal += localStorage[key].length + key.length;
       }
     }
     return (total / 1024 / 1024).toFixed(2); // 返回 MB
@@ -438,7 +436,6 @@
   const cleanupStorage = () => {
     try {
       const size = parseFloat(getStorageSize());
-
 
       if (size > STORAGE_SIZE_LIMIT_MB) {
         console.warn('[ACU] 存储超限，开始清理...');
@@ -542,10 +539,8 @@
     let cleanedItems = [];
     let keptItems = [];
     const originalSize = parseFloat(getStorageSize());
-
-    try {
-
-
+cons
+    consy {
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -585,7 +580,6 @@
 
             // 注意: 这里不清除 currentDiffMap,以保留现有的高亮显示
             // 只有当下次 generateDiffMap 运行时,新的快照才会生效
-
           }
         }
       } else {
@@ -887,7 +881,7 @@
         tableName,
         rowIndex,
         colIndex,
-        newValue: strValue
+        newValue: strValue,
       });
 
       $dialog.remove();
@@ -934,7 +928,8 @@
       if (!oldSheet) {
         if (newSheet.content) {
           newSheet.content.forEach((row, rIdx) => {
-            if (rIdx > 0) { // 跳过表头
+            if (rIdx > 0) {
+              // 跳过表头
               diffSet.add(`${tableName}-row-${rIdx - 1}`);
             }
           });
@@ -996,7 +991,6 @@
         });
       }
     }
-
 
     return diffSet;
   };
@@ -1433,13 +1427,13 @@
 
         // 【新增】如果清理了历史记录或快照,强制刷新表格以重新应用高亮
         if (cleanupSettings.clearHistory || cleanupSettings.clearSnapshots) {
-            console.log('[ACU] 清理后刷新表格');
-            setTimeout(() => {
-                // 强制完全刷新
-                lastTableDataHash = '';
-                isFirstRender = true;
-                smartUpdateTable(true);
-            }, 500);
+          console.log('[ACU] 清理后刷新表格');
+          setTimeout(() => {
+            // 强制完全刷新
+            lastTableDataHash = '';
+            isFirstRender = true;
+            smartUpdateTable(true);
+          }, 500);
         }
       } else {
         showStatusMessage(`清理失败: ${result.error}`, 'error');
@@ -1490,10 +1484,10 @@
         // 【新增】清理后强制刷新表格
         console.log('[ACU] 清理所有数据后刷新表格');
         setTimeout(() => {
-            // 强制完全刷新
-            lastTableDataHash = '';
-            isFirstRender = true;
-            smartUpdateTable(true);
+          // 强制完全刷新
+          lastTableDataHash = '';
+          isFirstRender = true;
+          smartUpdateTable(true);
         }, 500);
       } else {
         showStatusMessage(`清理失败: ${result.error}`, 'error');
@@ -1565,14 +1559,16 @@
 
     // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
     let settingsMouseDownOnBg = false;
-    $('.acu-settings-overlay').on('mousedown', function (e) {
-      settingsMouseDownOnBg = $(e.target).hasClass('acu-settings-overlay');
-    }).on('mouseup', function (e) {
-      if (settingsMouseDownOnBg && $(e.target).hasClass('acu-settings-overlay')) {
-        $(this).remove();
-      }
-      settingsMouseDownOnBg = false;
-    });
+    $('.acu-settings-overlay')
+      .on('mousedown', function (e) {
+        settingsMouseDownOnBg = $(e.target).hasClass('acu-settings-overlay');
+      })
+      .on('mouseup', function (e) {
+        if (settingsMouseDownOnBg && $(e.target).hasClass('acu-settings-overlay')) {
+          $(this).remove();
+        }
+        settingsMouseDownOnBg = false;
+      });
   };
 
   // 显示清理确认对话框
@@ -1646,15 +1642,17 @@
 
       // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
       let confirmMouseDownOnBg = false;
-      $('.acu-confirm-overlay').on('mousedown', function (e) {
-        confirmMouseDownOnBg = $(e.target).hasClass('acu-confirm-overlay');
-      }).on('mouseup', function (e) {
-        if (confirmMouseDownOnBg && $(e.target).hasClass('acu-confirm-overlay')) {
-          $(this).remove();
-          resolve(false);
-        }
-        confirmMouseDownOnBg = false;
-      });
+      $('.acu-confirm-overlay')
+        .on('mousedown', function (e) {
+          confirmMouseDownOnBg = $(e.target).hasClass('acu-confirm-overlay');
+        })
+        .on('mouseup', function (e) {
+          if (confirmMouseDownOnBg && $(e.target).hasClass('acu-confirm-overlay')) {
+            $(this).remove();
+            resolve(false);
+          }
+          confirmMouseDownOnBg = false;
+        });
     });
   };
 
@@ -1691,2082 +1689,2082 @@
                 }
                 .acu-theme-dark {
                     --acu-primary: #8479b8;
-                    --acu-secondary: #f0ebff;
-                    --acu-background: #f8f5ff;
-                    --acu-area-bg: rgba(240, 235, 255, 0.8); /* 浅紫灰 */
-                    --acu-text: #5a4f7c;
-                    --acu-border: #d4cce8;
-                    --acu-highlight: #958ac5;
+                    --acu-seconry: #f0ebff;
+                    nd: #f8f5ff;
+                    gba(240, 235, 255, 0.8); /* 浅紫灰 */
+                    7c;
+                    #d4cce8;
+                    ight: #958ac5;
                 }
-                .acu-theme-modern {
-                    --acu-primary: #5c9dff;
-                    --acu-secondary: #f0f4f8;
-                    --acu-background: #ffffff;
-                    --acu-area-bg: rgba(245, 248, 252, 0.9); /* 极致冷白 */
-                    --acu-text: #444;
-                    --acu-border: #d0d0d0;
-                    --acu-highlight: #4a8ae6;
+                .acu
+                   --acu-primary: #5c9dff;
+                    --acu-seconda: #f0f4f8;
+                    nd: #ffffff;
+                    gba(245, 248, 252, 0.9); /* 极致冷白 */
+
+                    #
+                    ight: #4a8ae6;
                 }
-                .acu-theme-forest {
-                    --acu-primary: #4a8c5c;
-                    --acu-secondary: #e8f0e8;
-                    --acu-background: #ffffff;
-                    --acu-area-bg: rgba(240, 248, 240, 0.9); /* 清爽浅绿 */
-                    --acu-text: #3a6b4a;
-                    --acu-border: #b8d0b8;
-                    --acu-highlight: #5a9c6c;
+                .acu
+                   --acu-primary: #4a8c5c;
+                    --acu-seconda: #e8f0e8;
+                    nd: #ffffff;
+                    gba(240, 248, 240, 0.9); /* 清爽浅绿 */
+                    4
+                    #
+                    ight: #5a9c6c;
                 }
-                .acu-theme-ocean {
-                    --acu-primary: #4a7ca8;
-                    --acu-secondary: #e8f0f8;
-                    --acu-background: #ffffff;
-                    --acu-area-bg: rgba(240, 245, 250, 0.9); /* 冰海浅蓝 */
-                    --acu-text: #3a6c98;
-                    --acu-border: #b8d0e0;
-                    --acu-highlight: #5a8cb8;
+                .acu
+                   --acu-primary: #4a7ca8;
+                    --acu-secondy: #e8f0f8;
+                    nd: #ffffff;
+                    gba(240, 245, 250, 0.9); /* 冰海浅蓝 */
+                    9
+                    #
+                    ight: #5a8cb8;
                 }
 
-                .acu-table-container.night-mode.acu-theme-dark {
+                acu-table-container.night-mode.acu-theme-dark {
                     --acu-secondary: #3a3a3a;
                     --acu-background: #2d2d2d;
-                    --acu-area-bg: rgba(45, 45, 45, 0.9); /* 深色透明 */
-                    --acu-text: #dbdbd6;
-                    --acu-border: #444;
-                    --acu-danger: #c44d4d;
-                    --acu-info: #4a8ca8;
+                    gba(45, 45, 45, 0.9); /* 深色透明 */
+                    d6;
+                    #444;
+                    r: #c44d4d;
+                    4;
                 }
 
-                /* 统一通知样式 */
+                * 统一通知样式 */
                 .acu-notification {
-                    color: white;
-                    padding: 12px 20px;
+                  colorhite;
+                    padding: 12px0px;
                     border-radius: 4px;
                     position: fixed;
                     top: 20px; /* 初始顶部位置 */
                     right: 20px;
-                    z-index: 9999;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-ind
+                    box-sh0 4px 12px rgba(0,0,0,0.15);
                     animation: acu-fadeInOut 3s ease-in-out;
-                    font-family: 'Microsoft YaHei', sans-serif;
+                    font-family: 'Micr YaHei', sans-serif;
                     font-size: 14px;
                     transition: top 0.3s ease;
                 }
 
-                .acu-notification.success {
+                acu-notification.success {
                     background-color: #66BB6A;
                 }
 
-                .acu-notification.error {
+                acu-notification.error {
                     background-color: #EF5350;
                 }
 
-                .acu-notification.warning {
+                acu-notification.warning {
                     background-color: #FFA726;
                 }
 
-                .acu-notification.info {
+                acu-notification.info {
                     background-color: #42A5F5;
                 }
 
-                /* =========================================
+                * =========================================
                    [修复] 编辑单元格弹窗全局样式 (强制覆盖)
-                   ========================================= */
+                 ========================================= */
                 .acu-edit-overlay {
-                    position: fixed;
+
                     top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
+
+                    h: 100%;
+                    heigh100%;
                     background: rgba(0, 0, 0, 0.5);
-                    z-index: 10002;
+                    z-index2;
                     display: flex;
-                    justify-content: center;
+                    content: center;
                     align-items: center;
                 }
-                .acu-edit-dialog {
-                    width: 400px;
-                    background: #ffffff !important; /* 日间模式强制白底 */
-                    color: #333333 !important;      /* 日间模式强制深色字 */
-                    border-radius: 8px;
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-                    padding: 0;
-                    overflow: hidden;
-                    display: flex;
+                .acu-edit-dialog
+                   width: 400px;
+                    background: fffff !important; /* 日间模式强制白底 */
+                     #333333 !important;      /* 日间模式强制深色字 */
+                    us: 8px;
+                    adow: 0 4, 0.2);
+
+                    id
+                     ex;
                     flex-direction: column;
                 }
                 .acu-edit-header {
-                    /* 使用半透明黑底确保白色文字可见，或者直接用主色 */
-                    background: var(--acu-primary);
-                    color: #ffffff !important;
-                    padding: 12px 15px;
-                    font-weight: bold;
-                    font-size: 14px;
+                   /* 使用半透明黑底确保白色文字可见，或者直接用主色 */
+                    background: r(--acu-primary);
+                    lor: #ffffff !important;
+                    px 15px;
+                    eo
+                    epx;
                     /* 增加文字阴影，防止背景色过浅导致看不清 */
-                    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                    wpx 2px rgba(0,0,0,0.3);
                 }
-                .acu-edit-content {
-                    padding: 15px;
+                .acu-edit-conten{
+                   padding: 15px;
                 }
-                .acu-edit-textarea {
-                    width: 100%;
+                .acux {
+                   width: 100%;
                     height: 150px;
-                    margin-bottom: 10px;
-                    padding: 8px;
+                    -m: 10px;
+                    : 8px;
                     box-sizing: border-box;
-                    border: 1px solid #ccc;
+                    1olid #ccc;
                     border-radius: 4px;
-                    resize: vertical;
-                    font-family: inherit;
+                    resize:tical;
+                    nt;
                     /* 核心修复：日间模式强制白底黑字 */
-                    background-color: #ffffff !important;
-                    color: #333333 !important;
+                    olor: #ffffff !important;
+                    lor: #333333 !imtant;
                 }
-                .acu-edit-buttons {
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 10px;
+                .acub{
+                   display: flex;
+                    justify-conte: flex-end;
+                    x
                 }
-                .acu-edit-buttons button {
-                    padding: 6px 12px;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 13px;
+                .acu-edions button {
+                   padding: 6px 12px;
+
+                    adius: 4px;
+                     pointer;
+                    x
                 }
-                .acu-save-btn {
-                    background-color: var(--acu-primary);
-                    color: white;
+                .acu{
+                   background-color: var(--acu-primary);
+                    color: whe;
                 }
-                .acu-cancel-btn {
-                    background-color: #e0e0e0;
-                    color: #333;
+                .acul
+                   background-color: #e0e0e0;
+                    color: #333
                 }
 
-                /* 夜间模式适配 */
+                * 夜间模式适配 */
                 .acu-edit-overlay.night-mode .acu-edit-dialog {
-                    background-color: #2d2d2d !important;
-                    color: #dbdbd6 !important;
-                    border: 1px solid #444;
+                  backgnd-color: #2d2d2d !important;
+                    color: #dbdbd6 !importa
+                     #444;
                 }
-                .acu-edit-overlay.night-mode .acu-edit-textarea {
-                    background-color: #3a3a3a !important;
-                    color: #dbdbd6 !important;
-                    border-color: #555;
+                .acuvahe .acu-edit-textarea {
+                   background-color: #3a3a3a !important;
+                t
+                    5;
                 }
                 .acu-edit-overlay.night-mode .acu-cancel-btn {
-                    background-color: #4a4a4a;
-                    color: #fff;
+                   background-color: #4a4a4a;
+
                 }
 
-                /* 保留兼容性 */
+                * 保留兼容性 */
                 .acu-load-success-notification {
-                    background-color: #66BB6A;
+                  backund-color: #66BB6A;
                     color: white;
-                    padding: 12px 20px;
-                    border-radius: 4px;
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 9999;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    animation: acu-fadeInOut 3s ease-in-out;
-                    font-family: 'Microsoft YaHei', sans-serif;
-                    font-size: 14px;
+                    x
+                    -: 4px;
+                    :e
+
+                    p
+                    d999;
+                    a0 4px 12px rgba(0,0,0,0.15);
+                    n-fadeInOut 3s ease-in-out;
+                    :'rtif;
+
                 }
 
-                @keyframes acu-fadeInOut {
+                keyframes acu-fadeInOut {
                     0% { opacity: 0; transform: translateY(-20px); }
-                    15% { opacity: 1; transform: translateY(0); }
-                    85% { opacity: 1; transform: translateY(0); }
-                    100% { opacity: 0; transform: translateY(-20px); }
+                    15% { sform: translateY(0); }
+                    85% opacity: transform: translateY(0); }
+                    100% 0; translateY(-2x); }
                 }
 
-                .acu-tab-btn.has-updates {
+                acu-tab-btn.has-updates {
                     position: relative;
                 }
 
-                .acu-tab-btn .acu-update-badge {
+                acu-tab-btn .acu-update-badge {
                     position: absolute;
                     top: 2px;
-                    right: 2px;
-                    width: 6px !important;
-                    height: 6px !important;
-                    background-color: var(--acu-primary, #5c9dff);
-                    border-radius: 50% !important;
-                    animation: acu-pulse 2s infinite;
-                    z-index: 10;
-                    box-shadow: 0 0 4px var(--acu-primary, #5c9dff);
+                    x;
+                    h: 6px !important;
+                    : !important;
+                    o---acu-primary, #5c9dff);
+                    ruortant;
+                    lse 2s infinite;
+
+                    : 0 0 4px var(--acu-primary, #5c9dff);
                 }
 
-                @keyframes acu-pulse {
+                keyframes acu-pulse {
                     0% { transform: scale(1); opacity: 1; }
-                    50% { transform: scale(1.3); opacity: 0.7; }
-                    100% { transform: scale(1); opacity: 1; }
+                t cale(1.3); opacity: 0.7; }
+                    0 m: scale(1 }
                 }
 
-                .acu-table-container {
+                acu-table-container {
                     position: relative !important;
-                    margin: 15px 0 !important;
-                    border: 1px solid var(--acu-border) !important;
-                    border-radius: 8px !important;
-                    background: var(--acu-background) !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                    transition: all 0.3s ease !important;
-                    color: var(--acu-text) !important;
+                    margin: 15px 0 !portant;
+                    pv(urgi-:rder) !important;
+                    rs ant;
+                    u acu-background) !
+                    por
+                    border-box !important
+                    t se !important;
+                    cocu-text)
                 }
-                .acu-table-container.night-mode {
-                    border-color: #444 !important;
-                    background: #2d2d2d !important;
-                    color: #dbdbd6 !important;
+                .acucontainer.night
+                    background: #2d2d2d !importt;
+
+   6                 !im
                 }
-                .acu-table-container summary {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    padding: 5px 10px !important;
-                    cursor: pointer !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    font-weight: bold !important;
-                    border: none !important;
-                    border-radius: 6px 6px 0 0 !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    font-size: 14px !important;
-                    transition: background-color 0.2s ease !important;
+                .acu-e
+                   background: var(--acu-primary) !important;
+                ortant;
+                     10px !important;
+                     poinnt;
+                    flex !im
+                   -conteneeen !important;
+c                    d !important;
+                      !impo
+                     s: 6p
+x                    mily:YaHei', sans-serif !important;
+                 xmtn;
+                     bc2p
+                 }saserf
+                .acuainer.night-mode
+ sr                0.2s   background: var(--acu-primary) !important;
+
+
+}
+.acu-i                   opacity: 0.9 !important;
+
+                 0.9
+.acuoi                   display: none !important;
+
+
+.acuon                   padding: 5px !important;
+               --acu-background) !im
+ p
+    as
+     a
+}
+.acuarhd                   background: #2d2d2d !important;
+
+
+.acuaa                   height: 60vh !important;
+                !important;
+                 ght:
+2                    overflow: a
+i                    border: 1px solid
+                     dius!ant;
+                    u
+                     dgb (128,i128,r0.2)
+                      0 !important;
+                    0!个性化背景
+                    i mportant;
+                    t  se !important;
+                    v!
                 }
-                .acu-table-container.night-mode summary {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
+                .acu -table-containere-content-area {
+
+          ,
+            }
+                .acut
+                      0.9)     max-height: 60vh mportant;
+
+    g2           tant;
+                    ui
                 }
-                .acu-table-container summary:hover {
-                    opacity: 0.9 !important;
+                .acune-header {
+                         display: flex !important;
+                    justtween !iortant;
+                  rtant;
+                    p
+                    rp
+                    on
                 }
-                .acu-table-container summary::-webkit-details-marker {
-                    display: none !important;
+                .aculn-tabs-title {
+                          fontt;
+
+    -            acu-text) !
+                    SC', wgrift: 60;
+                    :
+                    colo!important;
+                    n mportant;
+                    import
+                    :tmportant;
+                    anmportant;
+               }tex-lig:
+                .acuaicu-tabs-title {
+
+
+/* ==/
+                      width: 32px !importa
+               nt;
+                    height: 24px !important;on: rortant;
+               :x;
+                  mr24mx;
+                    cnimportant;
+                    tp
+                    s
+                     m
+                    !important
+                     m
+                     ont;
+                    dwortant;
+                    -webkit-or: transparent !important;
                 }
-                .acu-table-container .acu-content-wrapper {
-                    padding: 5px !important;
-                    background: var(--acu-background) !important;
-                    border-radius: 0 0 8px 8px !important;
-                    transition: all 0.3s ease !important;
+                /* 锁定容器位置：取消由于 hover 或 active 引起
+    的                 锁定容器位置：取消由于acu-mode-toggle.acu-moon-box:hover,
+                  cle.acu-moon-box
+               :act
+              translateY 位移     transform: translate(0, 0) !impo }
+                                    width: 14px !important;
+                     height: 1
+4                    -uortant;
+
+
+               u#ortant; /* 精致香槟金 */
+                    0p 241, 118, 0.4) !important;
+                    elative
+                  !
+                    r05!important;
+                    118,20.4)transition: all 0.6er(0.4, 0, 0.2, 1);
+                    uto !important;
+                    e !important;
+                }0.2,1)
+
+                     content: "" !important;
+                        position: absolutcontent: !important;
+                 !
+
+
+                : 10t;
+                    t tant;
+                    o rimary) !important;
+                    radiurtant;
+                    r;
+                    nsla
+                    ion: transfoc-bezier(0.4, 0, 0.2, 1);
+                    ;
+                 }
+
+                3;                .night-mode .acu-moon-orb {
+                      background: #ff     box-sha
+    dr
+ }
+
+       .nigumob
+                     transform: translateX(-35%) !important;
+                    0}5)
+  缥缈流云：右侧对向滑入                .acu-moon-cloud {
+               aolute !important;
+                    width: 22pximportant;
+                    pt22;x
+              o
+ient(90deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.9) 100%) !important;
+                 rportant;
+                us: 10px !important;
+                    %;
+                    mo%,
+                    i t;
+                    100%)x55% : 10
+                    o:ubic-bezier(0.4, 0, 0.2, 1) !important;
+                    e vemportant;
                 }
-                .acu-table-container.night-mode .acu-content-wrapper {
-                    background: #2d2d2d !important;
-                }
-                .acu-table-container .table-content-area {
-                    height: 60vh !important;
-                    max-height: 60vh !important;
-                    min-height: 200px !important;
-                    overflow: auto !important;
-                    border: 1px solid rgba(128, 128, 128, 0.2) !important;
-                    border-radius: 4px !important;
-                    background: var(--acu-area-bg) !important; /* 个性化背景 */
-                    padding: 5px !important;
-                    margin: 5px 0 !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                    transition: all 0.3s ease !important;
-                    scroll-behavior: auto !important;
-                }
-                .acu-table-container.night-mode .table-content-area {
-                    border-color: #444 !important;
-                    background: rgba(45, 45, 45, 0.9) !important;
-                }
-                .acu-scroll-container {
-                    height: 60vh !important;
-                    max-height: 60vh !important;
-                    min-height: 200px !important;
-                    overflow: auto !important;
-                }
-                .acu-table-container .acu-tabs-header {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    margin-bottom: 5px !important;
-                    flex-wrap: wrap !important;
-                    gap: 10px !important;
-                }
-                .acu-table-container .acu-tabs-title {
-                    font-family: 'Noto Serif SC', serif !important;
-                    font-size: 16px !important;
-                    color: var(--acu-text) !important;
-                    font-weight: 600 !important;
-                    margin: 0 !important;
-                    transition: color 0.3s ease !important;
-                    position: absolute !important;
-                    left: 50% !important;
-                    transform: translateX(-50%) !important;
-                    text-align: center !important;
-                }
-                .acu-table-container.night-mode .acu-tabs-title {
-                    color: #dbdbd6 !important;
-                }
-                /* ========== 极致月相/太阳切换器 (结构化绑定版) ========== */
-                .acu-mode-toggle.acu-moon-box {
-                    width: 32px !important;
-                    height: 24px !important;
-                    position: relative !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    cursor: pointer !important;
-                    background: transparent !important;
-                    border: none !important;
-                    padding: 0 !important;
-                    margin: 0 !important;
-                    outline: none !important;
-                    box-shadow: none !important;
-                    -webkit-tap-highlight-color: transparent !important;
-                }
-                /* 锁定容器位置：取消由于 hover 或 active 引起的 translateY 位移 */
-                .acu-mode-toggle.acu-moon-box:hover,
-                .acu-mode-toggle.acu-moon-box:active {
-                    transform: translate(0, 0) !important;
+                .
+acut                 1)night-mode .acu-moon-cloud {
+                atiner-eves:
+                :     0.7 !important::after
                 }
 
-                .acu-moon-orb {
-                    width: 14px !important;
-                    height: 14px !important;
-                    border-radius: 50% !important;
-                    background: #fff9c4 !important; /* 精致香槟金 */
-                    box-shadow: 0 0 10px rgba(255, 241, 118, 0.4) !important;
-                    position: relative !important;
-                    filter: blur(0.5px) !important;
-                    z-index: 2;
-                    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                    margin: auto !important;
-                    overflow: visible !important;
+            0.7* 太阳日冕动画：绝对中心锁定 */
+                 content: "" !    position: absolut!important;
+                     m
+                     n
+
+
+           h0
+               t0nt;
+                    -uortant;
+                     s55, 241, 118, 0.6) !important;
+
+
+               : r提，背
+                   ng.6) border-box !important;
+                     m:
+                    ni提到最高层，穿透日间背景
+                   e: transform, opacity
+  so                }
+                .acuop-co-y;le.acu-moon-box
+ ,               2.5s infiniteacu-moon-orb {
+                      overflow: visible !important;
+
+
+
+      aa
+
+                }.8
+
+
+    100%
+                    scale(2);
+           a
+     }              夜间模式：彻底隐藏日冕
+  }
+
+
+                * 增强版粒子特效
+                 o   absolute !important;
+                    width: 1.5px !portant;
+
+
+                 und: ortant;
+
+
+  r:
+
+       :n
+                    1
+         #            3px
+    }#fff,
+
+                      .acu-p1acu-p1 { animation: acu-p-top 4s infinite linear; }
+                      acu-p-lef
+tse;                4s linear; .acu-p4 acu-p-right 6s
+ila2}
+
+        snin    imation-delay: 1.1 }.acu-p3 acu-p-left
+                   0.5s; .acu-p6 acu-p-tl 4s in
+fni5}              2s; .acu-p7 acu-p-br
+                  1.5s; .acu-p8 acu-p-bl
+    2.5s;
+               3s; @keyfra { 0% { t
+              rsa0:0; }                 @keyframes acu-p-bottom { 0% { transform: translate(0, 7px); opacity:0; } 20% { opacity:0.7; } 100% { transform: translate(0, 18px); opacity:0; } }
+            t{%{:7px, 0); opacity:0} 20{ opacity:0x0
+
+;}                 -180); o;0); opacity:0;.7
+               % rr18 -); translate(17x, -12px); opacit.6y} }
+             0 taanslate(-5p-18, -: translate712p0; } }
+                  translate(18px,translate(15x, 125); }
+                  translate(12px, 512x); translate(-15x,
+-5
+                d12
+             color: #fffacu-twinkleff !important;
+
+                4
+                    ilw4e-heighs:infinite ease-in-out !important;
+
+                    l
+a;                    星尘g(随机错位布局): 1 !important;
+                    e.atu-s!ir-dusp.s1rtant;
+                    cnant;
+                }
+                /* 星*
+
+             cs. { bottom: 3px !important; left: 3px !important; font-size: 3px !important; width: 3px !important; height: 3px !important; animation: acu-twinkle 4.7s infinite ease-in-out !important; animation-delay: 2.1s !important; }
+
+   5!f4!w4!h4!aa5.9se1.2s  .acu-star-dust.s4 bottom:
+  :x;:x;:x;:x;:e 7.1s 3.5s.acu-star-dust.s5 5.9s
+    :x;:a%oneir:rtxease-7.1s
+
+   }
+
+
+
+                       0.8)  backgnd: var(--acu-primary) !important;
+                p     ortant;
+
+
+                  rtant;
+                    :
+              xm
+
+
+                  ei', sans-serif !important;
+                    i important;
+                }
+                .acuarader:hover {
+                          t-1px) !important;
+                }
+                .acutainer.night-modegs-btn-header {
+
+
+                         chm
+
+    e
+        -s
+        :
+        xm
+              pti
+                    yiei', sans-serif !important;
+
+
+    i
+    }
+              .acuarhdr-edit-btn {
+
+
+      .acuai
+                     lateY(-1px) !important;
+                }
+      .acut-
+                    portant;
+              e
+                -srtant;
+                    : tant;
+
+   xm
+       pti
+        yi
+        i
+               t
+                  3;
+                    x
+                     ster;
+                    margun-ntft:t: center;
+                }mwdh36px
+                 .acu eme-btn:hover {
+                         opacity: 0.9 !important;
+                   lateY(-1px) !importan
+ t                }
+                .acut btn {
+
+               .acuan
+                        g t
+                    ortant;
+
+    ic            ter !important;
+                    pp
                 }
 
-                /* 遮罩：默认处于滑出状态 (日间状态：位于左侧隐藏) */
-                .acu-moon-orb::after {
-                    content: "" !important;
-                    position: absolute !important;
-                    top: -10% !important;
-                    left: 0 !important;
-                    width: 100% !important;
-                    height: 120% !important;
-                    background: var(--acu-primary) !important;
-                    border-radius: 45% !important;
-                    filter: blur(1.5px) !important;
-                    transform: translateX(-110%);
-                    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                    z-index: 3;
+.acutr
+
+
+.acuon
+                        psdvng rd6p-btn,x !impcrncalnt;
+                p
+                asx   ;
+                     tnt;
+                    xm
+
+    i0            13mx;
+                    yiei', sans-serif !important;
+
+    a0
+     }
+           .acuarue    {
+                         background: #5cb85c !important;
+                p   ortant;
+                }
+                .acu-incel-order-btn {
+
+                     solid var(--acu-bordnt;
+                }
+              .a
+cucann
+
+                    r!
+
+            .acuner .tainer {
+                     ant;
+                    cnrt !important;
+ -p                    0px !impo
+
+ }
+     .acuec
+                      center;
+                    eenter;
+
+                 0
+                    -wrap: wrap;
+              }
+                 .acutainer .acu-page-btn {
+                     d var(--acu-bo
+                     rer);
+
+             nv
+                 v-text);
+                   us: 4px;
+                   : pointer;
+                    x
+                      11px;t30hx;
+                    :er;
+
+                 :0.2s;
+                 }.acupe-bthov
+
+               .acuar-page-btn:hover {
+                        background: var(--acu-primary);
+                        cplg: bti
+                    r);
+                }
+                .acuntive {
+                        background: var(--acu-primary);
+                     disbld
+               r);
+                e0.5 bold;
+                }ntalwed
+                .acuiacu-page-btn.disabled {
+
+           w
+             }
+                .acucu-tab-btn {
+
+           do
+            -t
+             :x!
+
+  -p
+   e3!
+     rm
+           :
+               mo
+                px,
+               !t
+                  :naimportant;
+                }
+                .acu-table-container.nmu-tab-btn {
+                    n
+   bo
+  4                }
+               .acuan.-tab-btn:hover {
+
+                .acuainer.niu-tab-btn:hover {
+                   background: #4a4a4a !important;
+
+                .acuainer .tctive {
+                     portant;
+                    r: var(--acu-highlight;
+               }
+            .acu
+na                   background: var(--acu-highlight) !important;
+                h
+            }
+                .a
+                          curs:a;
+
+}
+                .acucontainerer .acu-tab-btn {
+                         border: 2px dashed var(--acu-pant;
                 }
 
-                /* 夜间模式：月亮形态 (滑入遮罩) */
-                .night-mode .acu-moon-orb {
-                    background: #ffffff !important;
-                    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5) !important;
-                }
-                .night-mode .acu-moon-orb::after {
-                    transform: translateX(-35%) !important;
-                }
-
-                /* 缥缈流云：右侧对向滑入 */
-                .acu-moon-cloud {
-                    position: absolute !important;
-                    width: 22px !important;
-                    height: 6px !important;
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.9) 100%) !important;
-                    filter: blur(1.5px) !important;
-                    border-radius: 10px !important;
-                    top: 55% !important;
-                    right: -7px !important;
-                    opacity: 0 !important;
-                    z-index: 10 !important;
-                    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                    pointer-events: none !important;
-                }
-                .acu-moon-cloud::after { display: none !important; }
-                .night-mode .acu-moon-cloud {
-                    right: 2px !important;
-                    opacity: 0.7 !important;
-                }
-
-                /* 太阳日冕动画：绝对中心锁定 */
-                .acu-moon-orb::before {
-                    content: "" !important;
-                    position: absolute !important;
-                    top: 50% !important;
-                    left: 50% !important;
-                    width: 100% !important;
-                    height: 100% !important;
-                    border-radius: 50% !important;
-                    border: 1px solid rgba(255, 241, 118, 0.6) !important;
-                    opacity: 0;
-                    z-index: 15 !important; /* 提到最高层，穿透日间背景 */
-                    box-sizing: border-box !important;
-                    transform: translate(-50%, -50%) scale(1);
-                    pointer-events: none !important;
-                    will-change: transform, opacity;
-                    animation: acu-sun-corona 2.5s infinite ease-out !important;
-                }
-                .acu-mode-toggle.acu-moon-box,
-                .acu-moon-orb {
-                  overflow: visible !important;
-                }
-
-                @keyframes acu-sun-corona {
-                    0% {
-                        transform: translate(-50%, -50%) scale(1);
-                        opacity: 0.8;
+.acuca            iner.n
+ir                       border-color: var(--acu-primary) !important;
                     }
-                    100% {
-                      transform: translate(-50%, -50%) scale(2);
-                      opacity: 0;
+
+.acuna
+
+                .acuainer.niting-order .acu-tab-btn:hover {
+                   background: #4a4a4a !important;
+
+                .acuaction {
+
+               .
+acuon
+
+
+.acuoe            .section-title
+                    !
+
+    -eit
+           t5        18px
+            gm
+
+                      font-weight: 70
+0m
+                 transition: al
+l3e                   !important;
+
+                70.title {
+                       i
+                }
+                  .acu-table-container .da
+ tb                      margin-bottom: 20px !important;
+                d     rgba(90,62,43,0.2)important;
+                     4px
+                  u  !important;
+
+
+              }
+                .acu-table-contnight-mode .data-table-wrapper {
+                    auto;
+            a
+              }
+                /* 行
+                        curs move !important;
+                        user-select: none !important;
+                    :re !important;
+                }move
+                .acu-table-container.edi
+tr              ata-table tbody tr:hover {
+                     background-color: rgba(255, 165, 0, 0.1) !important;
+
+                .acunng-ro
+             wr  tbody tr {
+                0.1)   cursor: default !important;
+                }
+                .acucontainbe tbody tr.dragging {
+                         opacity: 0.5 !important;
+                  (r
+              no55, 215, 0, 0.3) !important;
+                  abbing !impo
+                }
+
+.acuc.
+
+
+.acu.edta
+                         background-color: rgba(135, 206, 250, 0.2) !important;
+                  sAortant;
+                }
+                .acu-table-contbody tr.drag-over {
+                #87CEFA   background-color: rgba(135, 206, 250, 0.15) !important;
+
+
+                0.15)                    width: 100% !important;
+                 m
+                  i1   min-width: 600px
+ n                }600
+
+  .acut           th
+                      i#fpftf5
+
+
+ !
+     ln
+     g d
+       r
+       o
+      z1i
+              a3ept
+                }
+                .acuarle th {
+
+         n
+      }
+      .acund
+                    ei
+                    1lef9,43,0.2) !important;
+                    c:
+
+   ni
+       rrspn
+          ak
+          1
+                 color: var(--acu-text;
+                    t0 ;
+                }
+                .acuner.data-table td {
+                       4!a(54,54,
+                    m
+                }
+                .acu-ele tr:nth-child(even) td {
+
+                .acueght-mode
+ al:                     background-color: rgba(58, 58, 58, 0.9) !important;
+
+
+                .acu.  acu-editable
+-   le                   background-color: rgba(180, 138, 92, 0.15) !important;
+
+
+           .acunight-mode .acu-edi
+                         b(132,
+          .acu.e tr.
+pnl             184,
+                   b 100, 0.4) !importan
+                200,
+    m
+       }      100,
+          .acu-ee .data-table tr.pending-deletion td {
+                #8b0000   background-color: rgba(139, 0, 0, 0.3) !important;
+                ,!
+               mportant;
+           }
+
+                    #ff9999     border: 2px solid #3D32 !important;
+                   mportant;
+            i:!n
+                 #32CD32on: reli
+                .acuhuefore {
+                            position: absolute !importan
+                    imp
+          o
+
+               i;
+                    t t;
+                    m   t;
+                    on0 !important;
+                    :-t;
+                }-1
+                .acuoamode .acu-highlight-user-edit {
+                   background-color: rgba(76, 175, 80, 0.85) !important;
+                 !ob(76,
+                }
+
+                          border: 2px solid 0a3e0 !important;
+                    m portant;
+                    i:
+                    ona0p3e0ant;
+                    !#15490
+                }
+
+.acuhc
+                          position: absolute !importt;
+                    io
+
+
+    i;
+         t
+         m
+       on
+       :-
+   }
+   .acuoa                background-color: rgba(33, 150, 243, 0.85) !important;
+                !ob(33,
+
+
+                    #bbdefbacu-table-container .acu-save-db-btn-header {
+                p    ortant;
+                    et
+                    -srtant;
+                    : tant;
+                    xm
+
+  pti
+         yi
+             i
+      }
+        .acuarhd
+-db-btn-header {
+                     background: var(--acu-primary) !important;
+
+                .acuabover {
+                         background: #6fc86f !important;
+                   lateY(-1px) !important;
+               }
+                .acut b-btn-header:hover {
+                         background: var(--acu-highlight) !important;
+                       disabld
+                 .acu#ccccacabled {
+                not-allowed   background: #cccccc !important;
+                w
+                    np
+
+}            #666
+    .acutr
+                    }rfh
+           .acuai337fb7h-btn-header {
+
+              p
+              et
+                -srtant;
+                    : tant;
+                    xm
+                   pti
+
+  yi
+      i
+  }
+          .acuarhdesh-btn-header {
+
+
+      .acuab
+                        ts1px) !important;
+                }
+                .acut h-btn-header:hover {
+                         background: var(--acu-highlight) !important;
+                        }mpysg
+
+                40pxacu-table-container .empty-message {
+                p
+                    -ef!nm-sryle:ant;
+             lt
+                it
+                     5, 0.7) !important;
+                   i60.7)nt;
+
+xt
+       l3
+   }
+
+          .acuarhdssage {
+
+          ,n
+     }
+
+                          backgroundwhite !important;
+                    pi   -primary) !important;
+                    ux;
+                    d  nt;
+                     p
+                tant;
+                  : 90v;
+                    h idden
+                     transition: allimportant;
+             }
+
+
+  .acunte
+                        border-color: var(--a
+ c                     2,0,0.4) !important;
+                }
+刷新按钮菜单（4项）-
+                     rgba(255, 25    border: 1px solid rgba(0, 00, 0.12) !important;
+                    ui
+t
+                    d
+xg(01                   0.x )
+
+    x!r;
+                    h
+                    -4filtlgbr(0,0,0,0.18)x);
+                    a-220txr(8px);
+
+
+              }
+            .acu-cell-menu.acu-refresh-mode {
+                         border-color: rgba(255, 255, 255, 0.14 rgba(34,)34,!important;
+                        0r(0,140rtant;
+             }
+                .acuaesh-menu .acu-cell-me
+                        border-rad
+                    1!
+                    xp
+                    2
+bp
+ :k
+   }
+        .acuanmae   #2b2b2b nu-item {,
+
+                .acum enu.acuu .acu-cell-menu-item:hover {
+                }
+                .a-u-refresh-menu.acu-cell-menu-item:hover {
+                         background: rgba(255,255,255,0.07) !important;
+
+                .acu-u-refresh-menu .acu-cm:active {
                     }
-                }
-
-                /* 夜间模式：彻底隐藏日冕 */
-                .night-mode .acu-moon-orb::before { display: none !important; }
-
-                /* 增强版粒子特效 */
-                .acu-glow-particle {
-                    position: absolute !important;
-                    width: 1.5px !important;
-                    height: 1.5px !important;
-                    background: #ffffff !important;
-                    border-radius: 50% !important;
-                    opacity: 0;
-                    pointer-events: none !important;
-                    z-index: 1 !important;
-                    box-shadow: 0 0 3px #fff, 0 0 6px rgba(255,255,255,0.6) !important;
-                }
-
-                .acu-p1 { animation: acu-p-top 4s infinite linear; }
-                .acu-p2 { animation: acu-p-bottom 5s infinite linear; animation-delay: 1s; }
-                .acu-p3 { animation: acu-p-left 3s infinite linear; animation-delay: 0.5s; }
-                .acu-p4 { animation: acu-p-right 6s infinite linear; animation-delay: 2s; }
-                .acu-p5 { animation: acu-p-tr 5s infinite linear; animation-delay: 1.5s; }
-                .acu-p6 { animation: acu-p-tl 4s infinite linear; animation-delay: 2.5s; }
-                .acu-p7 { animation: acu-p-br 6s infinite linear; animation-delay: 3s; }
-                .acu-p8 { animation: acu-p-bl 4s infinite linear; animation-delay: 0.2s; }
-
-                @keyframes acu-p-top { 0% { transform: translate(0, -7px); opacity:0; } 20% { opacity:0.8; } 100% { transform: translate(0, -18px); opacity:0; } }
-                @keyframes acu-p-bottom { 0% { transform: translate(0, 7px); opacity:0; } 20% { opacity:0.7; } 100% { transform: translate(0, 18px); opacity:0; } }
-                @keyframes acu-p-left { 0% { transform: translate(-7px, 0); opacity:0; } 20% { opacity:0.6; } 100% { transform: translate(-18px, 0); opacity:0; } }
-                @keyframes acu-p-right { 0% { transform: translate(7px, 0); opacity:0; } 20% { opacity:0.7; } 100% { transform: translate(18px, 0); opacity:0; } }
-                @keyframes acu-p-tr { 0% { transform: translate(5px, -5px); opacity:0; } 20% { opacity:0.6; } 100% { transform: translate(12px, -12px); opacity:0; } }
-                @keyframes acu-p-tl { 0% { transform: translate(-5px, -5px); opacity:0; } 20% { opacity:0.7; } 100% { transform: translate(-12px, -12px); opacity:0; } }
-                @keyframes acu-p-br { 0% { transform: translate(5px, 5px); opacity:0; } 20% { opacity:0.6; } 100% { transform: translate(12px, 12px); opacity:0; } }
-                @keyframes acu-p-bl { 0% { transform: translate(-5px, 5px); opacity:0; } 20% { opacity:0.7; } 100% { transform: translate(-12px, 12px); opacity:0; } }
-
-                .acu-star-dust {
-                    position: absolute !important;
-                    color: #ffffff !important;
-                    opacity: 0;
-                    animation: acu-twinkle 4s infinite ease-in-out !important;
-                    z-index: 4;
-                    display: block !important;
-                    line-height: 1 !important;
-                    pointer-events: none !important;
-                    text-align: center !important;
-                }
-                /* 星尘 (随机错位布局) */
-                .acu-star-dust.s1 { top: 2px !important; right: 4px !important; font-size: 5px !important; width: 5px !important; height: 5px !important; animation: acu-twinkle 3.3s infinite ease-in-out !important; animation-delay: 0.5s !important; }
-                .acu-star-dust.s2 { bottom: 3px !important; left: 3px !important; font-size: 3px !important; width: 3px !important; height: 3px !important; animation: acu-twinkle 4.7s infinite ease-in-out !important; animation-delay: 2.1s !important; }
-                .acu-star-dust.s3 { top: 4px !important; left: 5px !important; font-size: 4px !important; width: 4px !important; height: 4px !important; animation: acu-twinkle 5.9s infinite ease-in-out !important; animation-delay: 1.2s !important; }
-                .acu-star-dust.s4 { bottom: 2px !important; right: 6px !important; font-size: 2px !important; width: 2px !important; height: 2px !important; animation: acu-twinkle 7.1s infinite ease-in-out !important; animation-delay: 3.5s !important; }
-                .acu-star-dust.s5 { top: 50% !important; right: 2px !important; transform: translateY(-50%) !important; font-size: 3px !important; width: 3px !important; height: 3px !important; animation: acu-twinkle 3.8s infinite ease-in-out !important; animation-delay: 0.1s !important; }
-
-
-                @keyframes acu-twinkle {
-                    0%, 100% { opacity: 0; transform: scale(0.3); }
-                    50% { opacity: 0.8; transform: scale(1.1); }
-                }
-
-                .acu-mode-toggle:hover .acu-moon-orb {
-                    box-shadow: 0 0 12px rgba(255, 255, 255, 0.8) !important;
-                }
-
-                /* 设置按钮样式 */
-                .acu-table-container .acu-settings-btn-header {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 6px 12px !important;
-                    font-size: 12px !important;
-                    cursor: pointer !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.2s ease !important;
-                }
-                .acu-table-container .acu-settings-btn-header:hover {
-                    opacity: 0.9 !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-table-container.night-mode .acu-settings-btn-header {
-                    background: var(--acu-primary) !important;
-                }
-
-                .acu-table-container .acu-order-edit-btn {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 6px 12px !important;
-                    font-size: 12px !important;
-                    cursor: pointer !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.2s ease !important;
-                }
-                .acu-table-container.night-mode .acu-order-edit-btn {
-                    background: var(--acu-primary) !important;
-                }
-                .acu-table-container .acu-order-edit-btn:hover {
-                    opacity: 0.9 !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-table-container .acu-theme-btn {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 6px 10px !important;
-                    font-size: 14px !important;
-                    cursor: pointer !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.2s ease !important;
-                    margin-left: 8px !important;
-                    min-width: 36px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .acu-table-container .acu-theme-btn:hover {
-                    opacity: 0.9 !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-table-container.night-mode .acu-theme-btn {
-                    background: var(--acu-primary) !important;
-                }
-                .acu-table-container .acu-order-controls {
-                    display: none !important;
-                    gap: 8px !important;
-                    margin-bottom: 15px !important;
-                    justify-content: center !important;
-                    flex-wrap: wrap !important;
-                }
-                .acu-table-container .acu-order-controls.visible {
-                    display: flex !important;
-                }
-                .acu-table-container .acu-save-order-btn,
-                .acu-table-container .acu-cancel-order-btn {
-                    padding: 8px 16px !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    cursor: pointer !important;
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-table-container .acu-save-order-btn {
-                    background: #5cb85c !important;
-                    color: white !important;
-                }
-                .acu-table-container .acu-cancel-order-btn {
-                    background: var(--acu-secondary) !important;
-                    color: var(--acu-text) !important;
-                    border: 1px solid var(--acu-border) !important;
-                }
-                .acu-table-container.night-mode .acu-cancel-order-btn {
-                    background: #3a3a3a !important;
-                    color: #dbdbd6 !important;
-                    border-color: #555 !important;
-                }
-                .acu-table-container .acu-tabs-container {
-                    display: flex !important;
-                    gap: 5px !important;
-                    justify-content: flex-start !important;
-                    flex-wrap: wrap !important;
-                    margin-bottom: 10px !important;
-                }
-                .acu-table-container .acu-pagination-container {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 5px;
-                    margin: 6px 0 6px 0;
-                    flex-wrap: wrap;
-                }
-                .acu-table-container .acu-page-btn {
-                    padding: 3px 8px;
-                    border: 1px solid var(--acu-border);
-                    background: var(--acu-secondary);
-                    color: var(--acu-text);
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 11px;
-                    min-width: 30px;
-                    text-align: center;
-                    transition: all 0.2s;
-                }
-                .acu-table-container .acu-page-btn:hover {
-                    background: var(--acu-primary);
-                    color: white;
-                    border-color: var(--acu-primary);
-                }
-                .acu-table-container .acu-page-btn.active {
-                    background: var(--acu-primary);
-                    color: white;
-                    border-color: var(--acu-primary);
-                    font-weight: bold;
-                }
-                .acu-table-container .acu-page-btn.disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                .acu-table-container .acu-tab-btn {
-                    background: var(--acu-secondary) !important;
-                    border: 1px solid var(--acu-border) !important;
-                    color: var(--acu-text) !important;
-                    padding: 6px 5px !important;
-                    border-radius: 6px !important;
-                    font-size: 13px !important;
-                    cursor: pointer !important;
-                    transition: all 0.2s ease-in-out !important;
-                    font-family: 'Noto Serif SC', serif !important;
-                    box-shadow: 0 2px 4px rgba(62,39,26,0.1) !important;
-                    margin: 2px !important;
-                    white-space: nowrap !important;
-                }
-                .acu-table-container.night-mode .acu-tab-btn {
-                    background: #3a3a3a !important;
-                    border-color: #555 !important;
-                    color: #dbdbd6 !important;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-                }
-                .acu-table-container .acu-tab-btn:hover {
-                    background: #e8dfd0 !important;
-                }
-                .acu-table-container.night-mode .acu-tab-btn:hover {
-                    background: #4a4a4a !important;
-                }
-                .acu-table-container .acu-tab-btn.active {
-                    background: var(--acu-highlight) !important;
-                    color: white !important;
-                    border-color: var(--acu-highlight) !important;
-                }
-                .acu-table-container.night-mode .acu-tab-btn.active {
-                    background: var(--acu-highlight) !important;
-                    border-color: var(--acu-highlight) !important;
-                }
-                .acu-table-container .acu-tab-btn.dragging {
-                    opacity: 0.5 !important;
-                    cursor: grabbing !important;
-                }
-                .acu-table-container.editing-order .acu-tab-btn {
-                    cursor: grab !important;
-                    border: 2px dashed var(--acu-primary) !important;
-                }
-                .acu-table-container.night-mode.editing-order .acu-tab-btn {
-                    border-color: var(--acu-primary) !important;
-                }
-                .acu-table-container.editing-order .acu-tab-btn:hover {
-                    background: #f0e6d5 !important;
-                }
-                .acu-table-container.night-mode.editing-order .acu-tab-btn:hover {
-                    background: #4a4a4a !important;
-                }
-                .acu-table-container .acu-table-section {
-                    display: none !important;
-                }
-                .acu-table-container .acu-table-section.active {
-                    display: block !important;
-                }
-                .acu-table-container .section-title {
-                    font-family: 'Noto Serif SC', serif !important;
-                    font-size: 18px !important;
-                    color: var(--acu-text) !important;
-                    margin-bottom: 5px !important;
-                    padding-bottom: 5px !important;
-                    border-bottom: 2px solid rgba(90,62,43,0.3) !important;
-                    font-weight: 700 !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-table-container.night-mode .section-title {
-                    color: #dbdbd6 !important;
-                    border-bottom-color: #555 !important;
-                }
-                .acu-table-container .data-table-wrapper {
-                    margin-bottom: 20px !important;
-                    border: 1px solid rgba(90,62,43,0.2) !important;
-                    border-radius: 4px !important;
-                    background: white !important;
-                    transition: all 0.3s ease !important;
-                    overflow-x: auto;
-                }
-                .acu-table-container.night-mode .data-table-wrapper {
-                    border-color: #444 !important;
-                    background: #363636 !important;
-                }
-                /* 行拖动样式 */
-                .acu-table-container.editing-row-order .data-table tbody tr {
-                    cursor: move !important;
-                    user-select: none !important;
-                    -webkit-user-select: none !important;
-                }
-                .acu-table-container.editing-row-order .data-table tbody tr:hover {
-                    background-color: rgba(255, 165, 0, 0.1) !important;
-                }
-                .acu-table-container:not(.editing-row-order) .data-table tbody tr {
-                    cursor: default !important;
-                }
-                .acu-table-container .data-table tbody tr.dragging {
-                    opacity: 0.5 !important;
-                    transform: scale(1.02) !important;
-                    background-color: rgba(255, 215, 0, 0.3) !important;
-                    cursor: grabbing !important;
-                }
-                .acu-table-container.night-mode .data-table tbody tr.dragging {
-                    background-color: rgba(255, 215, 0, 0.2) !important;
-                }
-                .acu-table-container .data-table tbody tr.drag-over {
-                    background-color: rgba(135, 206, 250, 0.2) !important;
-                    border-top: 2px solid #87CEFA !important;
-                }
-                .acu-table-container.night-mode .data-table tbody tr.drag-over {
-                    background-color: rgba(135, 206, 250, 0.15) !important;
-                }
-
-                .acu-table-container .data-table {
-                    width: 100% !important;
-                    border-collapse: collapse !important;
-                    font-size: 13px !important;
-                    min-width: 600px !important;
-                }
-                .acu-table-container .data-table th {
-                    background-color: var(--acu-primary) !important;
-                    color: #fdfaf5 !important;
-                    padding: 5px 5px !important;
-                    text-align: center !important;
-                    font-weight: bold !important;
-                    border: 1px solid rgba(90,62,43,0.3) !important;
-                    font-family: 'Noto Serif SC', serif !important;
-                    font-size: 14px !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-table-container.night-mode .data-table th {
-                    background-color: var(--acu-primary) !important;
-                    border-color: #555 !important;
-                }
-                .acu-table-container .data-table td {
-                    padding: 5px 5px !important;
-                    text-align: left !important;
-                    border: 1px solid rgba(90,62,43,0.2) !important;
-                    background-color: rgba(255, 255, 255, 0.9) !important;
-                    cursor: pointer !important;
-                    transition: background-color 0.2s !important;
-                    word-wrap: break-word !important;
-                    font-size: 13px !important;
-                    color: var(--acu-text) !important;
-                    font-weight: 500 !important;
-                }
-                .acu-table-container.night-mode .data-table td {
-                    background-color: rgba(54, 54, 54, 0.9) !important;
-                    border-color: #444 !important;
-                    color: #dbdbd6 !important;
-                }
-                .acu-table-container .data-table tr:nth-child(even) td {
-                    background-color: rgba(250, 245, 235, 0.9) !important;
-                }
-                .acu-table-container.night-mode .data-table tr:nth-child(even) td {
-                    background-color: rgba(58, 58, 58, 0.9) !important;
-                }
-                .acu-table-container .acu-editable-cell:hover {
-                    background-color: rgba(180, 138, 92, 0.15) !important;
-                }
-                .acu-table-container.night-mode .acu-editable-cell:hover {
-                    background-color: rgba(132, 121, 184, 0.2) !important;
-                }
-                .acu-table-container .data-table tr.pending-deletion td {
-                    background-color: rgba(255, 200, 200, 0.6) !important;
-                    border-color: rgba(255, 100, 100, 0.4) !important;
-                    color: #8b0000 !important;
-                }
-                .acu-table-container.night-mode .data-table tr.pending-deletion td {
-                    background-color: rgba(139, 0, 0, 0.3) !important;
-                    border-color: rgba(255, 100, 100, 0.3) !important;
-                    color: #ff9999 !important;
-                }
-
-                .acu-highlight-user-edit {
-                    background-color: #90ee9080 !important;
-                    border: 2px solid #32CD32 !important;
-                    color: #2d5016 !important;
-                    font-weight: 600 !important;
-                    position: relative !important;
-                    z-index: 10 !important;
-                }
-                .acu-highlight-user-edit::before {
-                    content: '' !important;
-                    position: absolute !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    bottom: 0 !important;
-                    background: #90ee9080 !important;
-                    z-index: -1 !important;
-                }
-                .acu-table-container.night-mode .acu-highlight-user-edit {
-                    background-color: rgba(76, 175, 80, 0.85) !important;
-                    color: #c8ffc8 !important;
-                }
-
-                .acu-highlight-changed {
-                    background-color: #8795fa61 !important;
-                    border: 2px solid #00a3e0 !important;
-                    color: #1a5490 !important;
-                    font-weight: 600 !important;
-                    position: relative !important;
-                    z-index: 10 !important;
-                }
-                .acu-highlight-changed::before {
-                    content: '' !important;
-                    position: absolute !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    bottom: 0 !important;
-                    background: #8795fa61 !important;
-                    z-index: -1 !important;
-                }
-                .acu-table-container.night-mode .acu-highlight-changed {
-                    background-color: rgba(33, 150, 243, 0.85) !important;
-                    color: #bbdefb !important;
-                }
-
-                .acu-table-container .acu-save-db-btn-header {
-                    background: #5cb85c !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 6px 12px !important;
-                    font-size: 12px !important;
-                    cursor: pointer !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.2s ease !important;
-                }
-                .acu-table-container.night-mode .acu-save-db-btn-header {
-                    background: var(--acu-primary) !important;
-                }
-                .acu-table-container .acu-save-db-btn-header:hover {
-                    background: #6fc86f !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-table-container.night-mode .acu-save-db-btn-header:hover {
-                    background: var(--acu-highlight) !important;
-                }
-                .acu-table-container .acu-save-db-btn-header:disabled {
-                    background: #cccccc !important;
-                    cursor: not-allowed !important;
-                    transform: none !important;
-                }
-                .acu-table-container.night-mode .acu-save-db-btn-header:disabled {
-                    background: #666 !important;
-                }
-                .acu-table-container .acu-refresh-btn-header {
-                    background: #337ab7 !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 6px 12px !important;
-                    font-size: 12px !important;
-                    cursor: pointer !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.2s ease !important;
-                }
-                .acu-table-container.night-mode .acu-refresh-btn-header {
-                    background: var(--acu-primary) !important;
-                }
-                .acu-table-container .acu-refresh-btn-header:hover {
-                    background: #286090 !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-table-container.night-mode .acu-refresh-btn-header:hover {
-                    background: var(--acu-highlight) !important;
-                }
-
-                .acu-table-container .empty-message {
-                    text-align: center !important;
-                    padding: 40px 20px !important;
-                    color: var(--acu-text) !important;
-                    font-style: italic !important;
-                    font-size: 16px !important;
-                    background: rgba(255, 255, 255, 0.7) !important;
-                    border-radius: 6px !important;
-                    margin: 10px 0 !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-table-container.night-mode .empty-message {
-                    color: #dbdbd6 !important;
-                    background: rgba(58, 58, 58, 0.7) !important;
-                }
-
-                .acu-cell-menu {
-                    position: fixed !important;
-                    background: white !important;
-                    border: 1px solid var(--acu-primary) !important;
-                    border-radius: 6px !important;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-                    z-index: 10000 !important;
-                    min-width: 150px !important;
-                    max-width: 90vw !important;
-                    overflow: hidden !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-cell-menu.night-mode {
-                    background: #3a3a3a !important;
-                    border-color: var(--acu-primary) !important;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
-                }
-
-                /* 刷新按钮菜单（4项）- 高对比、非透明、跟随日夜 */
-                .acu-cell-menu.acu-refresh-menu {
-                    background: rgba(255, 255, 255, 0.98) !important;
-                    border: 1px solid rgba(0, 0, 0, 0.12) !important;
-                    border-radius: 12px !important;
-                    box-shadow: 0 18px 46px rgba(0,0,0,0.18) !important;
-                    min-width: 220px !important;
-                    padding: 6px !important;
-                    overflow: hidden !important;
-                    backdrop-filter: blur(8px);
-                    -webkit-backdrop-filter: blur(8px);
-                }
-                .acu-cell-menu.acu-refresh-menu.night-mode {
-                    background: rgba(34, 34, 34, 0.98) !important;
-                    border-color: rgba(255, 255, 255, 0.14) !important;
-                    box-shadow: 0 18px 60px rgba(0,0,0,0.55) !important;
-                }
-                .acu-cell-menu.acu-refresh-menu .acu-cell-menu-item {
-                    border-bottom: none !important;
-                    border-radius: 10px !important;
-                    padding: 10px 12px !important;
-                    font-size: 13px !important;
-                    color: #2b2b2b !important;
-                    transition: background-color 0.12s ease, transform 0.12s ease !important;
-                }
-                .acu-cell-menu.acu-refresh-menu.night-mode .acu-cell-menu-item {
-                    color: #e7e7e1 !important;
-                }
-                .acu-cell-menu.acu-refresh-menu .acu-cell-menu-item:hover {
-                    background: rgba(0,0,0,0.05) !important;
-                }
-                .acu-cell-menu.acu-refresh-menu.night-mode .acu-cell-menu-item:hover {
-                    background: rgba(255,255,255,0.07) !important;
-                }
-                .acu-cell-menu.acu-refresh-menu .acu-cell-menu-item:active {
-                    transform: translateY(1px) !important;
-                }
-                .acu-cell-menu.acu-refresh-menu .acu-cell-menu-item.close {
-                    opacity: 0.85 !important;
-                }
-
-                /* 快捷选项：托管数据库面板时的“新CSS架构” */
-                .auto-card-updater-popup.acu-db-shortcut-layout{
-                    padding: 12px !important;
-                }
-                .auto-card-updater-popup.acu-db-shortcut-layout .acu-layout{
-                    grid-template-columns: 1fr !important;
+                .acu-cellefresh-menmenu-item.close {
+                     }
+                 padding: 12px !import;
+                 }
+                .autprdb-shortcut-layout .acu-layout{
                     gap: 12px !important;
-                }
-                /* 只要三页按钮，且横排置顶（更符合快捷弹窗） */
-                .auto-card-updater-popup.acu-db-shortcut-layout .acu-tabs-nav{
-                    display: flex !important;
-                    flex-direction: row !important;
-                    gap: 8px !important;
-                    padding: 10px !important;
-                    border-radius: 14px !important;
-                    overflow-x: auto !important;
-                }
-                .auto-card-updater-popup.acu-db-shortcut-layout .acu-tab-button{
-                    flex: 1 1 0 !important;
-                    min-width: 140px !important;
-                    justify-content: center !important;
-                    border-radius: 12px !important;
-                    padding: 12px 12px !important;
-                    font-size: 13px !important;
-                    letter-spacing: .2px !important;
-                }
-                .auto-card-updater-popup.acu-db-shortcut-layout .acu-tab-button::after{ display:none !important; }
+                .acu-layout{}
+                /* 只钮置*/
+                auto-card-updater-popup.acu-db-shortcut-layout .acu-tabs-nav{
+                   display: flex !import;
 
-                /* 仅在 status 页激活时做左右分栏，避免破坏分页 */
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status.active{
-                    display: grid;
-                    grid-template-columns: minmax(340px, 1fr) minmax(360px, 1fr);
-                    gap: 12px;
-                    align-items: start;
+
+                 ortw
+                    ir
+
+      ea
+          -u
+      }
+
+            .auttoshortcut-layout .acu-tab-button{
+                   flex: 1 1 0 !important;
+                    flex:
+
+             f-ot !important;
+                    ius: 1nt;
+                    po
+
+          xp
+              pgpt;
                 }
-                @media (max-width: 780px){
-                    .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status.active{
-                        grid-template-columns: 1fr;
+                 .auto-card-updater-popup
+     .
+
+                     d
+                   isplay: grid;
+
+               inmax(360px, 1fr);
+                   x;
+               }fr)
+                @medh: 780px){
+                            grid-template-col
+              }
+
+                    标记卡片：用 JS 打
+            udpater-p-db-shortcut-layout #acu-tab-status .acu-sc-card-common{ grid-column: 1; grid-row: 2; }
+                后做定位 #acu-tab-status .acu-sc-card-confi
+
+             g  { grid-column; grid-ro
+w3                }
+                    .acu-sc-card-status{
+    /
+    fig{
+
+
+
+
+                    :
+                .autpopup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status thead,
+                auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status tbody tr{
+
+                /pnmnl{
+                  状态表：限制高度并可滚动，减少横向占用
+                  .acu-sc-cart-bt-tusyotody{ b:ockf 240px;ixed;
+                }  ead,
+                .actr{u-cell; table-menu-it
+                       important;
+f0 !important;
+                z
+               pt;
+                   yiei', sans-serif !important;
+                    tion: baor 0.2s !important;
+             }
+              .a
+cunee
+                  t
+               }
+               .acumm
+
+
+             .acu
+mt
+
+       .acuad
+                     }
+                .acumt
+                         color: #626262 !impoant;
+                .acumh-cell-menu-item.edit {
+                   color: #ffffff !important;
+
+                .acumm
+                         color: #4a7ca8 !import
+          a
+           }
+                .acumenu.nig-cell-menu-item.insert {
+                   color: #87ceeb !important;
+
+                .acumenu-ite
+                   font-weight: 600 !important;
+                    color: #cc0000 !importt;
+                }
+
+.acumh          #cc0000
+
+                .acum enu-ite
+                   font-weight: 600 !important;
+                     color: #5cb85c !importa;
+                }
+
+.acumh
+
+                .acum enu-ite
+                   font-weight: 600 !important;
+                  f0f0f0 !important;
+                    !o
+
+}
+                .acumnacu-cell-menu-item.close {
+
+          5
+            }
+
+                                    position: fixed !important;
+                tnt;
+                    ia
+                    h rtant;
+
+                t rtant;
+                    ound:
+          r
+               : 9999
+                    er
+n                    ems: rtant;
+                    cnimportant;
+
+                xr
+                    e!
+                }
+
+
+.acuad
+
+                   .ac
+ug                   background: white !important;
+                s     lid var(--acu-highlight) !important;
+                    ux;
+                    d
+                    pa
+                    60tant;
+                    i ghtrtant;
+                    lm
+                    i on: rtant;
+                    :dnt;
+
+                0.3s ent;
+                }
+             .ac
+uaim.
+                    htnt;
+                     4  ,0,0.5) !important;
+                }
+             .acur{
+                      important;
+                    p
+                    -s 0 !important;
+                   gb!
+                 xmtn;
+                     m
+  :                 }
+
+  .acuaim.
+
+                  .a
+cun
+           !
+                -nt;
+                }
+                .acu -edit-texta
+
+         0               21ix-acu-border) !important;
+                    ux;
+                    :p
+                    nit;
+                    ep  nhepiot;
+                ant;
+                  ;
+                    sng: border-box !
+
+    u            nd: whit;
+                     ant;
+                }
+                .acuaixtarea {
+                   background: #2d2d2d !important;
+                r
+                    1,tant;
+                }
+                .acutf
+                         outline: none !important;
+                          border-color: var(--u-highlight) !important;
+                }
+                .acu.-cus {
+
+
+    .acu
+                    p rtant;
+                    c  onte-eed !important;
+                1!rgippop:
+                  podderg-top:0 !important;
+                     m
+                    ep
+               }
+             .ac
+uaim.
+
+                .acua-
+                   padding: 8px 16px !important;
+                      border: no
+        n
+        asx
+                tnt;
+                    xm
+                    i0;
+                    : important;
+                     ci', sans-serif !important;
                     }
+                .a
+cuyt.t                   background-color: #4CAF50 !important;
+                           color: white !important;
+
+                ortant;
+                    -srtant;
+
+                : tant;
+                     24,0,0.2) !important;
+                  }
+                .ac
+ua:(ga                   background-color: #45a049 !important;
+                    ,0,0.25) !important;
+                    ateY(-1p
+                }
+                .aculay.night-mode .acu-save-btn {
+                   background-color: #2E7D32 !important;
+                #2E7D32
+                    o
+                }
+                .acuvy .acu-save-btn:hover {
+
+                .acu.night-ancel-btn {
+
+
+             o
+                 -
+                 :
+              24
+           }
+                ht-mode) .acu-cver {
+                         b0) !important;
+                    ateY(-1p
                 }
 
-                /* 标记卡片：用 JS 打 class 后做定位 */
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-core{ grid-column: 1; grid-row: 1; }
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-common{ grid-column: 1; grid-row: 2; }
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-config{ grid-column: 1; grid-row: 3; }
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status{ grid-column: 2; grid-row: 1 / span 2; }
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-manual{ grid-column: 2; grid-row: 3; }
+.acul                background-color: #333 !important;
 
-                /* 状态表：限制高度并可滚动，减少横向占用 */
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status tbody{
-                    display: block;
-                    max-height: 240px;
-                    overflow: auto;
-                }
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status thead,
-                .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status tbody tr{
-                    display: table;
-                    width: 100%;
-                    table-layout: fixed;
-                }
-                .acu-cell-menu-item {
-                    padding: 10px 15px !important;
-                    cursor: pointer !important;
-                    border-bottom: 1px solid #f0f0f0 !important;
-                    font-size: 13px !important;
-                    color: #626262 !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: background-color 0.2s !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item {
-                    border-bottom-color: #555 !important;
-                    color: #ffffff !important;
-                }
-                .acu-cell-menu-item:hover {
-                    background-color: var(--acu-secondary) !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item:hover {
-                    background-color: #4a4a4a !important;
-                }
-                .acu-cell-menu-item:last-child {
-                    border-bottom: none !important;
-                }
-                .acu-cell-menu-item.edit {
-                    font-weight: 600 !important;
-                    color: #626262 !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item.edit {
-                    color: #ffffff !important;
-                }
-                .acu-cell-menu-item.insert {
-                    font-weight: 600 !important;
-                    color: #4a7ca8 !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item.insert {
-                    color: #87ceeb !important;
-                }
-                .acu-cell-menu-item.delete {
-                    font-weight: 600 !important;
-                    color: #cc0000 !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item.delete {
-                    color: #ff6666 !important;
-                }
-                .acu-cell-menu-item.restore {
-                    font-weight: 600 !important;
-                    color: #5cb85c !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item.restore {
-                    color: #66cc66 !important;
-                }
-                .acu-cell-menu-item.close {
-                    font-weight: 600 !important;
-                    border-top: 1px solid #f0f0f0 !important;
-                    color: #666 !important;
-                }
-                .acu-cell-menu.night-mode .acu-cell-menu-item.close {
-                    color: #ffffff !important;
-                    border-top-color: #555 !important;
+
+                }333
+                .acuvatcccel-btn:hover {
+
+          r
+      }
+
+                            font-weight: bold !important;
+
+}
+    .acun-
+                     }
+               .acucu
+                   color: #626262 !important;
+
+                .acu-gu-cell-menu-item {
+
+                                .acu-table-container .acu-save-db-btn-header.has-pending-deletes {
+                 background: #
+e                portant;
+                    acu-pulsite;
                 }
 
-                .acu-edit-overlay {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    background: rgba(0, 0, 0, 0.4) !important;
-                    z-index: 9999 !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    padding: 20px !important;
-                    box-sizing: border-box !important;
-                }
-                .acu-edit-overlay.night-mode {
-                    background: rgba(0, 0, 0, 0.6) !important;
-                }
-                .acu-edit-dialog {
-                    background: white !important;
-                    border: 2px solid var(--acu-highlight) !important;
-                    border-radius: 8px !important;
-                    box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
-                    width: 90% !important;
-                    max-width: 600px !important;
-                    max-height: 85vh !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    overflow: hidden !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-edit-overlay.night-mode .acu-edit-dialog {
-                    background: #3a3a3a !important;
-                    border-color: var(--acu-highlight) !important;
-                    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
-                }
-                .acu-edit-header {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    padding: 12px 16px !important;
-                    border-radius: 6px 6px 0 0 !important;
-                    font-weight: bold !important;
-                    font-size: 14px !important;
-                    flex-shrink: 0 !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-edit-overlay.night-mode .acu-edit-header {
-                    background: var(--acu-primary) !important;
-                }
-                .acu-edit-content {
-                    padding: 16px !important;
-                    flex-grow: 1 !important;
-                    overflow-y: auto !important;
-                }
-                .acu-edit-textarea {
-                    width: 100% !important;
-                    min-height: 120px !important;
-                    border: 1px solid var(--acu-border) !important;
-                    border-radius: 4px !important;
-                    padding: 10px !important;
-                    font-family: inherit !important;
-                    font-size: 13px !important;
-                    color: rgb(140, 191, 64) !important;
-                    resize: vertical !important;
-                    box-sizing: border-box !important;
-                    background: white !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-edit-overlay.night-mode .acu-edit-textarea {
-                    background: #2d2d2d !important;
-                    border-color: #555 !important;
-                    color: rgb(140, 191, 64) !important;
-                }
-                .acu-edit-textarea:focus {
-                    outline: none !important;
-                    border-color: var(--acu-highlight) !important;
-                }
-                .acu-edit-overlay.night-mode .acu-edit-textarea:focus {
-                    border-color: var(--acu-highlight) !important;
-                }
-                .acu-edit-buttons {
-                    display: flex !important;
-                    gap: 10px !important;
-                    justify-content: flex-end !important;
-                    margin-top: 16px !important;
-                    padding-top: 16px !important;
-                    border-top: 1px solid #e8dfd0 !important;
-                    flex-shrink: 0 !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-edit-overlay.night-mode .acu-edit-buttons {
-                    border-top-color: #555 !important;
-                }
-                .acu-save-btn, .acu-cancel-btn {
-                    padding: 8px 16px !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    cursor: pointer !important;
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
-                    transition: all 0.3s ease !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                }
-                .acu-edit-overlay:not(.night-mode) .acu-save-btn {
-                    background-color: #4CAF50 !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 8px 16px !important;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-                }
-                .acu-edit-overlay:not(.night-mode) .acu-save-btn:hover {
-                    background-color: #45a049 !important;
-                    box-shadow: 0 3px 6px rgba(0,0,0,0.25) !important;
-                    transform: translateY(-1px);
-                }
-                .acu-edit-overlay.night-mode .acu-save-btn {
-                    background-color: #2E7D32 !important;
-                    color: white !important;
-                    border: none !important;
-                }
-                .acu-edit-overlay.night-mode .acu-save-btn:hover {
-                    background-color: #1B5E20 !important;
-                }
-                .acu-edit-overlay:not(.night-mode) .acu-cancel-btn {
-                    background-color: #f0f0f0 !important;
-                    color: #626262 !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    padding: 8px 16px !important;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-                }
-                .acu-edit-overlay:not(.night-mode) .acu-cancel-btn:hover {
-                    background-color: #e0e0e0 !important;
-                    box-shadow: 0 3px 6px rgba(0,0,0,0.15) !important;
-                    transform: translateY(-1px);
-                }
-                .acu-edit-overlay.night-mode .acu-cancel-btn {
-                    background-color: #333 !important;
-                    color: #ccc !important;
-                    border: 1px solid #555 !important;
-                }
-                .acu-edit-overlay.night-mode .acu-cancel-btn:hover {
-                    background-color: #444 !important;
-                    border-color: #666 !important;
+
+            .acutht-mo
+     d                   background: #c0392b !important;
+
+
+                                 .acu-settings-overlay {
+                     position:     top: 0 !important
+ ;
+      ia
+          h
+          t
+                or, 0.5) !important;
+                    :0;
+
+
+         ern
+                eetant;
+                   cn10010important;
+                    xr
+                     e!
+
+            }
+                .acuvt
+
+   background: rgba(0, 0, 0, 0.7) !important;
                 }
 
-                .acu-theme-menu .acu-cell-menu-item.active {
-                    background-color: var(--acu-secondary) !important;
-                    font-weight: bold !important;
+  .acui
+                         border: 2px solivar(--acu-highlight) !important;
+                    u
+                    d ;
+                    pn
+                    80i  mpor
+                    i:rtant;
+                    lm
+                    o00mxrtant;
+                    :dnt;
+                     ant;
+                    r-rtant;
+
+}
+                .acunt   settings-dialog {
+                   border-color: var(--acu-highlight) !important;
+                (
                 }
-                .acu-theme-menu.night-mode .acu-cell-menu-item.active {
-                    background-color: #4a4a4a !important;
+                .acued
+                          color: white !imrtant;
+                    p
+                    yx;
+                    cn !important;
+                    ecrtant;
+                    pp
+                     o
                 }
-                .acu-theme-menu .acu-cell-menu-item {
-                    color: #626262 !important;
+                .acua
+                      mrtant;
+                portant;
+                  ei', sans-serif !important;
                 }
-                .acu-theme-menu.night-mode .acu-cell-menu-item {
-                    color: #dbdbd6 !important;
+                .acu o
+                   background: transparent !important;
+                     border: none !iortant;
+                    e;
+                    z0nt;
+                     :tnt;
+                    xp
+                     m
+                    yet;
+                 t
+              cn
+              s!
+                gcimportant;
+                }
+               .acul
+                    }
+               .acua
+                   display: flex !important;
+                    background: va--acu-secondary) !important;
+                    o:var(--acu-border) !important;
+                    :
+              }
+                .acub{
+                          padding: 12px5px !important;
+                    rurent !important;
+                   n!r
+                    -!
+                    z3nt;
+                    :t
+                    yiei', sans-serif !important;
+                     i important;
+
+             mdar
+                 }
+
+         .acuhr
+                         background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
+                      }
+                .acua b.active {
+
+                   background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.15) !important;
+                    color: var(--acu-priry) !important;
+                    o
+ot
+ ea                }
+
+.acun                    flex-grow: 1 !important;
+                         overflow-y: auto mportant;
+                    0x;
+                .acus-
+                      }bacive {
+                       }
+
+.acuse
+                        border-top: 1px lid var(--acu-border) !important;
+
+
+   t:en                   rtant;
+                    i
+                    vc) !important;
+                }
+           .acut.ttigs-sus   font-size: 12px !important;
+                -ext) !important;
+                    .m
+                    tant;
+               }
+               .
+acutsc{
+                          opacity: 1 !important;
+
+      }
+                .acuss {
+                   color: var(--acu-danger) !important;
+                     opacity: 1 !important;
+                }
+                .acuss      opacity: 1 !important
+                }
+                .acusb
+                          gap: 10px !importt;
+                }
+                .acu
+                   padding: 8px 16px !important;
+                    bord: none !important;
+                    as;
+                     tnt;
+                    xm
+                    i0  ;
+
+    yi           ei', sans-serif !important;
+                    a0mportant;
+                    im
+;
+             :n!r
+                    ctnt;
+                    p;
+
+           }
+                .acu-m
+                         background: var(--acu-primary) !important;
+                    color: white
+
+}
+.acur:                   opacity: 0.9 !important;
+                    transform: translaY(-1px) !important;
+           }
+                 .acud
+                          color: var(--a-text) !important;
+                     ent;
+                }
+                    .a
+cucav                   background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
+                     }
+              .acu
+                         color: whit!important;
+                }
+                .acuah
+                         transform: transleY(-1px) !important;
+
+}
+     .acul
+                         cursor: not-aowed !important;
+
+    mo           nt;
+                }
+                /* 存
+                acu-storage-info {
+                  displ flex !important;
+                         flex-directio column !important;
+                    xp
+                }
+                   background: var(--acu-secondary) !important;
+                    border-radius: 8 !important;
+                    p
+
+               lvrder) !important;
+                }
+              .acuemh
+                h4   margin-top: 0 !important;
+               5 important;
+                    1pt;
+                    cxnt;
+               }
+
+    .acug
+                        background: ba(0, 0, 0, 0.1) !important;
+                    rsortant;
+              im
+rn
+
+      }
+      .acui
+                          background: linea
+               rgradient(90deg, var(--acu-primary), var(--acu-highlight)) !important;
+
+        rs
+         t          ant;
+                }
+                .acuats {
+                   display: flex !important;
+                    justify-conten space-between !important;
+                    ept;
+                    -a
+                }
+.acug{                   font-weight: bold !important;
+
+
+.acu                   color: var(--acu-success) !important;
+                    }样
+                      back
+   g                    border: 1px lid var(--acu-warning) !important;
+                   us: 8px !important;
+             7),
+             :pp
+                    !o
+                    vat(--cu-waring)
+                    efimportant;
                 }
 
-                /* 新增：保存按钮待删除状态样式 */
-                .acu-table-container .acu-save-db-btn-header.has-pending-deletes {
-                    background: #e74c3c !important;
-                    color: white !important;
-                    animation: acu-pulse 1.5s infinite;
+.acun
+                         flex-shrink: !important;
                 }
-                .acu-table-container.night-mode .acu-save-db-btn-header.has-pending-deletes {
-                    background: #c0392b !important;
+                .acutn
+                     }
+          .acuot{
+
+              !a
+              y;
+               t5nt;
+                }
+            .acu
+n                    margin: 5px 0 !important;
+                !ortant;
+                    ihnt;
+                    (u
+                .acui
+                          font-weight: bold mportant;
+                    ent;
+                }
+                /* 清 理选项样式 */
+                acu-cleanup-options {
+                  backgnd: var(--acu-secondary) !important;
+                         border-radius: 8 !important;
+                    p
+
+    lv
+     }
+     .acupth
+                     margin-top: 0 !important;
+                5     important;
+                    1pt;
+                    cxnt;
                 }
 
-                /* 【新增】设置界面样式 */
-                .acu-settings-overlay {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    background: rgba(0, 0, 0, 0.5) !important;
-                    z-index: 10010 !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    padding: 20px !important;
-                    box-sizing: border-box !important;
+.acun
+                          flex-directio column !important;
+                    xp
                 }
-                .acu-settings-overlay.night-mode {
-                    background: rgba(0, 0, 0, 0.7) !important;
+                .acuc
+                    flex-direion: column !important;
+
+                     t
                 }
-                .acu-settings-dialog {
-                    background: var(--acu-background) !important;
-                    border: 2px solid var(--acu-highlight) !important;
-                    border-radius: 10px !important;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
-                    width: 90% !important;
-                    max-width: 800px !important;
-                    max-height: 85vh !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    overflow: hidden !important;
-                    transition: all 0.3s ease !important;
-                    color: var(--acu-text) !important;
+                .acuo[box"] {
+                   margin-right: 8px !important;
+
+                .-checkbox spa
+                       !important;
+                    (uortant;
                 }
-                .acu-settings-overlay.night-mode .acu-settings-dialog {
-                    border-color: var(--acu-highlight) !important;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
+                .acub
+                   font-size: 11px !important;
+                 r(--ac
+u                    .7 !i
+                    -o
                 }
-                .acu-settings-header {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    padding: 15px 20px !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    border-radius: 8px 8px 0 0 !important;
-                    flex-shrink: 0 !important;
-                }
-                .acu-settings-header h3 {
-                    margin: 0 !important;
-                    font-size: 16px !important;
-                    font-weight: bold !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                }
-                .acu-settings-close {
-                    background: transparent !important;
-                    border: none !important;
-                    color: white !important;
-                    font-size: 20px !important;
-                    cursor: pointer !important;
-                    width: 30px !important;
-                    height: 30px !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    border-radius: 4px !important;
-                    transition: background-color 0.2s !important;
-                }
-                .acu-settings-close:hover {
-                    background: rgba(255, 255, 255, 0.2) !important;
-                }
-                .acu-settings-tabs {
-                    display: flex !important;
-                    background: var(--acu-secondary) !important;
-                    border-bottom: 1px solid var(--acu-border) !important;
-                    flex-shrink: 0 !important;
-                }
-                .acu-settings-tab {
-                    flex: 1 !important;
-                    padding: 12px 15px !important;
-                    background: transparent !important;
-                    border: none !important;
-                    color: var(--acu-text) !important;
-                    font-size: 13px !important;
-                    cursor: pointer !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.3s ease !important;
-                    border-bottom: 3px solid transparent !important;
-                }
-                .acu-settings-tab:hover {
-                    background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
-                }
-                .acu-settings-tab.active {
-                    background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.15) !important;
-                    color: var(--acu-primary) !important;
-                    border-bottom-color: var(--acu-primary) !important;
-                    font-weight: bold !important;
-                }
-                .acu-settings-content {
-                    flex-grow: 1 !important;
-                    overflow-y: auto !important;
-                    padding: 20px !important;
-                }
-                .acu-settings-tab-content {
-                    display: none !important;
-                }
-                .acu-settings-tab-content.active {
-                    display: block !important;
-                }
-                .acu-settings-footer {
-                    padding: 15px 20px !important;
-                    border-top: 1px solid var(--acu-border) !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    flex-shrink: 0 !important;
-                    background: var(--acu-secondary) !important;
-                }
-                .acu-settings-status {
-                    font-size: 12px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.8 !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-settings-status.success {
-                    color: var(--acu-success) !important;
-                    opacity: 1 !important;
-                }
-                .acu-settings-status.error {
-                    color: var(--acu-danger) !important;
-                    opacity: 1 !important;
-                }
-                .acu-settings-status.info {
-                    color: var(--acu-info) !important;
-                    opacity: 1 !important;
-                }
-                .acu-settings-buttons {
-                    display: flex !important;
-                    gap: 10px !important;
-                }
-                .acu-btn {
-                    padding: 8px 16px !important;
-                    border: none !important;
-                    border-radius: 4px !important;
-                    cursor: pointer !important;
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
-                    font-family: 'Microsoft YaHei', sans-serif !important;
-                    transition: all 0.3s ease !important;
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    gap: 6px !important;
-                }
-                .acu-btn-primary {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                }
-                .acu-btn-primary:hover {
-                    opacity: 0.9 !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-btn-secondary {
-                    background: var(--acu-secondary) !important;
-                    color: var(--acu-text) !important;
-                    border: 1px solid var(--acu-border) !important;
-                }
-                .acu-btn-secondary:hover {
-                    background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
-                }
-                .acu-btn-danger {
-                    background: var(--acu-danger) !important;
-                    color: white !important;
-                }
-                .acu-btn-danger:hover {
-                    opacity: 0.9 !important;
-                    transform: translateY(-1px) !important;
-                }
-                .acu-btn:disabled {
-                    opacity: 0.5 !important;
-                    cursor: not-allowed !important;
-                    transform: none !important;
-                }
-                /* 存储信息样式 */
-                .acu-storage-info {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 20px !important;
-                }
-                .acu-storage-summary {
-                    background: var(--acu-secondary) !important;
-                    border-radius: 8px !important;
-                    padding: 15px !important;
-                    border: 1px solid var(--acu-border) !important;
-                }
-                .acu-storage-summary h4 {
-                    margin-top: 0 !important;
-                    margin-bottom: 15px !important;
-                    font-size: 14px !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-storage-bar {
-                    height: 20px !important;
-                    background: rgba(0, 0, 0, 0.1) !important;
-                    border-radius: 10px !important;
-                    overflow: hidden !important;
-                    margin-bottom: 10px !important;
-                }
-                .acu-storage-bar-fill {
-                    height: 100% !important;
-                    background: linear-gradient(90deg, var(--acu-primary), var(--acu-highlight)) !important;
-                    border-radius: 10px !important;
-                    transition: width 0.5s ease !important;
-                }
-                .acu-storage-stats {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    font-size: 12px !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-storage-stats strong {
-                    font-weight: bold !important;
-                }
-                .acu-cleanable {
-                    color: var(--acu-success) !important;
-                }
-                /* 警告框样式 */
-                .acu-warning-box {
-                    background: rgba(var(--acu-warning-rgb, 255, 193, 7), 0.1) !important;
-                    border: 1px solid var(--acu-warning) !important;
-                    border-radius: 8px !important;
-                    padding: 15px !important;
-                    display: flex !important;
-                    gap: 12px !important;
-                    align-items: flex-start !important;
-                }
-                .acu-warning-icon {
-                    font-size: 20px !important;
-                    flex-shrink: 0 !important;
-                }
-                .acu-warning-content {
-                    flex-grow: 1 !important;
-                }
-                .acu-warning-content strong {
-                    color: var(--acu-warning) !important;
-                    font-size: 13px !important;
-                    display: block !important;
-                    margin-bottom: 5px !important;
-                }
-                .acu-warning-content p {
-                    margin: 5px 0 !important;
-                    font-size: 12px !important;
-                    line-height: 1.4 !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-highlight-warning {
-                    color: var(--acu-danger) !important;
-                    font-weight: bold !important;
-                    text-decoration: underline !important;
-                }
-                /* 清理选项样式 */
-                .acu-cleanup-options {
-                    background: var(--acu-secondary) !important;
-                    border-radius: 8px !important;
-                    padding: 15px !important;
-                    border: 1px solid var(--acu-border) !important;
-                }
-                .acu-cleanup-options h4 {
-                    margin-top: 0 !important;
-                    margin-bottom: 15px !important;
-                    font-size: 14px !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-option-group {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 12px !important;
-                }
-                .acu-checkbox {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 4px !important;
-                    cursor: pointer !important;
-                }
-                .acu-checkbox input[type="checkbox"] {
-                    margin-right: 8px !important;
-                }
-                .acu-checkbox span {
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-checkbox small {
-                    font-size: 11px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.7 !important;
-                    margin-left: 22px !important;
-                }
-                .acu-checkbox.protected {
-                    opacity: 0.7 !important;
-                }
-                .acu-checkbox.protected input[type="checkbox"] {
-                    cursor: not-allowed !important;
-                }
-                .acu-protected-settings {
+                .acuoe
+                   opacity: 0.7 !important;
+                 }
+                .acuxot[type="checkbox"] {
+
+
+          .acut
                     margin-top: 20px !important;
-                    padding-top: 15px !important;
-                    border-top: 1px dashed var(--acu-border) !important;
+                        padding-top: 15px !portant;
+                     d-acu-border) !important;
                 }
-                .acu-protected-settings h5 {
-                    margin-top: 0 !important;
-                    margin-bottom: 10px !important;
-                    font-size: 13px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.8 !important;
+              .acusi
+                   margin-top: 0 !important;
+                  !iortant;
+                    1pt;
+
+                cxnt;
+                    .m
                 }
-                /* 清理操作按钮 */
-                .acu-cleanup-actions {
-                    display: flex !important;
-                    gap: 10px !important;
-                    justify-content: flex-end !important;
-                    margin-top: 10px !important;
+                /* 清
+                acu-cleanup-actions {
+                  displ
+   a                    gap: 10px !impornt;
+                    cn !important;
+                    iportant;
                 }
-                /* 外观设置样式 */
-                .acu-appearance-options {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 20px !important;
-                }
-                .acu-theme-selector {
+              /*
+ 外
+                     displ     flex-direction: col
+     u
+          xp
+          }
+          .acuml
                     display: grid !important;
-                    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-                    gap: 10px !important;
-                    margin-top: 10px !important;
+                        grid-template-c
+o                    x!eaea;(uo-fill,
+                  r
+
+}
+    .acuo           .acu-theme-option
+                     :8px !important;
+                    :p
+                    rm
+                    ol !important;
+
+    :i
+        i mm
+                    ecrtant;
+                    t
                 }
-                .acu-theme-option {
-                    border: 2px solid var(--acu-border) !important;
-                    border-radius: 8px !important;
-                    padding: 10px !important;
-                    cursor: pointer !important;
-                    transition: all 0.3s ease !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    align-items: center !important;
-                    gap: 5px !important;
+                .acump{
+                   border-color: var(--acu-primary) !important;
+                    transform: translat(-2px) !important;
                 }
-                .acu-theme-option:hover {
-                    border-color: var(--acu-primary) !important;
-                    transform: translateY(-2px) !important;
+                .acuion.active {
+                         background: rgba(var-acu-highlight-rgb, 180, 138, 92), 0.1) !important;
                 }
-                .acu-theme-option.active {
-                    border-color: var(--acu-highlight) !important;
-                    background: rgba(var(--acu-highlight-rgb, 180, 138, 92), 0.1) !important;
+
+.acuo           n input {
+                 92),   display: none !important;
+
+                .acuc
+                     }
+
+.acue
+                         font-weight600 !important;
+                    (uortant;
                 }
-                .acu-theme-option input {
-                    display: none !important;
+                .acu-    margin-botto
+mx                    ex;
+                    0i
+                    (uortant;
                 }
-                .acu-theme-icon {
-                    font-size: 24px !important;
+                .acur
+                    flex-directio column !important;
+
                 }
-                .acu-theme-name {
-                    font-size: 12px !important;
-                    font-weight: 600 !important;
-                    color: var(--acu-text) !important;
+                .acudg
+                   font-size: 13px !important;
+               6iportant;
+                    (uortant;
+                .acurp{
+                   width: 100% !important;
+                 important;
+                    o econdary) !important;
+
+               ruortant;
+                    n
+
+               a:rtant;
                 }
-                .acu-radio-group span {
-                    display: block !important;
-                    margin-bottom: 5px !important;
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
-                    color: var(--acu-text) !important;
+                 .acu-slider-group input
+    [=                   -webkit-appearance: none !important;
+               important;
+                t
+                    o rimary) !important;
+                    rsrtant;
+                    n
                 }
-                .acu-slider-group {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 8px !important;
+                /* 高/
+                acu-advanced-options {
+
+    a               高级选项样式     flex-direction: cumn !important;
+                    xp
                 }
-                .acu-slider-group span {
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
-                    color: var(--acu-text) !important;
+
+.acurd
+                        border-radius: 8 !important;
+                    p
+                    lvrder) !important;
+              }
+
+  .acueth
+                    5 important;
+                    1pt;
+                    cxnt;
                 }
-                .acu-slider-group input[type="range"] {
-                    width: 100% !important;
-                    height: 6px !important;
-                    background: var(--acu-secondary) !important;
-                    border-radius: 3px !important;
-                    outline: none !important;
-                    -webkit-appearance: none !important;
+                .acug
+                   display: flex !important;
+                     flex-directioncolumn !important;
+                    xp
                 }
-                .acu-slider-group input[type="range"]::-webkit-slider-thumb {
-                    -webkit-appearance: none !important;
-                    width: 18px !important;
-                    height: 18px !important;
-                    background: var(--acu-primary) !important;
-                    border-radius: 50% !important;
-                    cursor: pointer !important;
+                .acurs
+                        margin-bottom: 8px mportant;
+                    1pt;
+                    ceant;
+
+    .m
+    }
+         .acu-m
+                         justify-conte: space-between !important;
+                    ecrtant;
+
+               x
+                    r5 0.1) !important;
+                    as;
+                    om
+a                }
+
+.acuci
+                     }
+                .acu-storage-ite
+mee                     border-left: 3px solid var(--acu-warning) !important;
+                    }
+
+.acumm
+                          color: var(--acu-tt) !important;
                 }
-                /* 高级选项样式 */
-                .acu-advanced-options {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 20px !important;
+                .acug
+                   font-size: 11px !important;
+                     font-weight: bold mportant;
+                    (uortant;
+                     o
                 }
-                .acu-storage-details {
-                    background: var(--acu-secondary) !important;
-                    border-radius: 8px !important;
-                    padding: 15px !important;
-                    border: 1px solid var(--acu-border) !important;
+                .acudt
+                         gap: 10px !importt;
+
+    cn
+         ip
+     }
+     /* 确
+                      positio    top: 0 !importan
+                    ia
+                    h rtant;
+                    t rtant;
+
+    or
+         :0
+       ern
+                ems: ctant;
+                    cn
+
+
                 }
-                .acu-storage-details h5 {
-                    margin-top: 0 !important;
-                    margin-bottom: 15px !important;
-                    font-size: 14px !important;
-                    color: var(--acu-text) !important;
+                .acua
+                   background: var(--acu-background) !important;
+                     border: 2px sol var(--acu-danger) !important;
+                    u
+                    d
+x0
+      pn
+      50it
+               ylnt;
+                    tcrtant;
+                    :dnt;
+                   u 500px
                 }
-                .acu-storage-items {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 15px !important;
-                }
-                .acu-storage-section h6 {
-                    margin-top: 0 !important;
-                    margin-bottom: 8px !important;
-                    font-size: 12px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.8 !important;
-                }
-                .acu-storage-item {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    padding: 8px 10px !important;
-                    background: rgba(255, 255, 255, 0.1) !important;
-                    border-radius: 4px !important;
-                    margin-bottom: 5px !important;
-                }
-                .acu-storage-item.critical {
-                    border-left: 3px solid var(--acu-success) !important;
-                }
-                .acu-storage-item.cleanable {
-                    border-left: 3px solid var(--acu-warning) !important;
-                }
-                .acu-storage-item-name {
-                    font-size: 12px !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-storage-item-size {
-                    font-size: 11px !important;
-                    font-weight: bold !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.8 !important;
-                }
-                .acu-advanced-actions {
-                    display: flex !important;
-                    gap: 10px !important;
-                    justify-content: flex-end !important;
-                    margin-top: 20px !important;
-                }
-                /* 确认对话框样式 */
-                .acu-confirm-overlay {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    background: rgba(0, 0, 0, 0.6) !important;
-                    z-index: 10020 !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    padding: 20px !important;
-                    box-sizing: border-box !important;
-                }
-                .acu-confirm-dialog {
-                    background: var(--acu-background) !important;
-                    border: 2px solid var(--acu-danger) !important;
-                    border-radius: 10px !important;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.4) !important;
-                    width: 90% !important;
-                    max-width: 500px !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    overflow: hidden !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-confirm-header {
+
+            .acur
                     background: var(--acu-danger) !important;
-                    color: white !important;
-                    padding: 15px 20px !important;
-                    border-radius: 8px 8px 0 0 !important;
+                          color: white !iortant;
+                    p;
+                    -s 0 !important;
+               }
+                .acur
+
+           m
+          ih
+      }
+      .acut{
+                         flex-grow: 1 !imrtant;
                 }
-                .acu-confirm-header h3 {
+
+.acuit
+                         padding-left:0px !important;
+                } -cleanup-list
+                      mportant;
+                    cltant;
+                }
+                .acur
+                         padding-top: 15pximportant;
+                     sacu-border) !important;
+                    cr;
+                }
+
+.acuep
+                     irtant;
+                    ihportant;
+                    (u ortant;
+                }
+             .ac
+                      display: flex !iortant;
+                    xp
+                    cn !important;
+                    ep var(--acu-border) !important;
+
+    -o
+     }
+                    适
+                acu-settings-overlay.night-mode .acu-settings-dialog {
+
+   c                  kground: #d2d !important;
+
+
+}
+    .acunl
+
+                .acuva-tabs {
+                   background: #3a3a3a !important;
+               m
+                }
+                .acugotings-tab {
+
+
+       }
+
+.acunl                   background: #3a3a3a !important;
+                    r
+                }
+                .acu.twarning-box {
+                   background: rgba(212, 161, 92, 0.15) !important;
+               i
+                 }
+
+.acuru                   background: rgba(255, 255, 255, 0.05) !important;
+
+                 .acuvhd
+c-                  0.05)
+
+                    r!
+                }
+
+
+               nfixed !important;
+                历史记录弹窗样式     top: 0 !importan
+                    ia
+
+    h
+        t
+        or
+        :5
+              ern
+                    e    ms: ctant;
+                    cnimportant;
+
+
+                }
+                .acue-
+                   background: rgba(0, 0, 0, 0.7) !important;
+                  }
+                .acua
+                          border: 2px sol var(--acu-highlight) !important;
+
+    u
+        d x)
+       pn
+             70it
+                    i:rtant;
+                    lm
+                    ic700mxrtant;
+
+
+    :d           80vh
+         u
+                }
+                .acur
+                         background: var(--acu-primary) !important;
+                        color: white !i
+m                     ortant;
+                    p
+                    yx;
+                    cn
+p                      !important;
+                    ecrtant;
+                    pp
+                     o
+
+        }
+
+          .acudr
                     margin: 0 !important;
-                    font-size: 16px !important;
-                    font-weight: bold !important;
+                         font-sizeclosp
+                       mortant;
+                    ihportant;
+                   }
+                .acus
+                         background: transparent !important;
+                     iportant;
+                    e;
+                    z0nt;
+                    :tnt;
+                    xp
+
+                 .ahe-higthty-close:h0v!n
+                    yet;
+                    t ortant;
+                    cn.acu-h:steny-conter important;
+                    s!
+                    gcimportant;
                 }
-                .acu-confirm-content {
-                    padding: 20px !important;
-                    flex-grow: 1 !important;
+                 .acu.icu-hitr-vy-i f
+
+                   background: rgba(255, 255, 255, 0.2) !important;
+
+                   .ac
+un                   flex-grow: 1 !important;
+                          overflow-lisoimportant;
+
+    0x
+     }
+     .acu-
+                         justify-cotem: space-between !important;
+                    o:rtant;
+                    !
+                    cxnt;
+                    .m
                 }
-                .acu-cleanup-list {
-                    margin: 15px 0 !important;
-                    padding-left: 20px !important;
+                .acu-t
+                         display: flex !important;
+                          flex-diretoem:hover column !important;
+                    xp
+
+}
+                .acuti   rslaeX(4px)
+                   background: var(--acu-secondary) !important;
+                     border: 1px s-headerid var(--acu-border) !important;
+                    u
+                    :p
+p
+
+    rm
+                    ol !important;
                 }
-                .acu-cleanup-list li {
-                    margin-bottom: 5px !important;
-                    font-size: 13px !important;
-                    color: var(--acu-text) !important;
+                .acuhgbi(vmr(--cu-bder-rgb, 212, 196,
+                    168),   background: rgba(var(--acu-highlight-rgb, 180, 138, 92), 0.15) !important;
+                         border-color:-numb(-cu-highlight) !important;
+                    t
+
+    }
+                .acut
+
+          c
+         ec
+               p
+                    o
+                       .ocu-histo y-irem-dgaevar(--acu-border-rgb, 212, 196, 168), 0.5) !important;
                 }
-                .acu-confirm-question {
-                    margin-top: 20px !important;
-                    padding-top: 15px !important;
-                    border-top: 1px solid var(--acu-border) !important;
-                    text-align: center !important;
+                .acune
+                   font-size: 11px !important;
+                         font-weight: bcoot!nt
+          m
+               (uimportant;
+                    rv1.6imary-rgb, 140, 110, 84), 0.1) !important;
+                    gp2e wiop
+                     n
+
+           u
+
+               }
+                .acud
+                         font-size: 11px !important;
+                         color: vafoo-tr
+                           et) !important;
+
+               .m
                 }
-                .acu-confirm-question p {
-                    margin: 0 !important;
-                    font-size: 14px !important;
-                    font-weight: bold !important;
-                    color: var(--acu-text) !important;
+                .acu-m
+                         font-size: 13px !important;
+                           color: vahrxt
+)                    t6;
+                    r!
+
+                -夜间模式适配增强tant;
+                    :p
+                    ao
+                    xo
+
+                (55, 0.5) !important;
+                    asrtant;
+
+             }
+                .acur
+                         padding: 15px 20px !important;
+
+                 o
+                t:en
+                    ec   rtant;
+                    i
+
+    vc           ) !important;
                 }
-                .acu-confirm-buttons {
-                    padding: 15px 20px !important;
-                    display: flex !important;
-                    gap: 10px !important;
-                    justify-content: flex-end !important;
-                    border-top: 1px solid var(--acu-border) !important;
-                    background: var(--acu-secondary) !important;
+                .acun
+                         font-size: 12px !important;
+                a     u-text) !important;
+                    .m
                 }
-                    /* 设置界面夜间模式适配 */
+
+                * 夜间模式适配增强 */
+                设置面板 -                .acu-history-overlay.night-mode .acu-history-dialog {
+                     bac完整kg: #2d2d2d !important;
+
+            }
+            .acu
+
+ra                   background: #3a3a3a !important;
+                o
+                }
+                .acun-istory-item {
+                   background: #3a3a3a !important;
+                n
+                }
+                .aculicu-history-item:hover {
+                   background: #4a4a4a !important;
+
+                .acuegu-history-info {
+                         color: #dbdbd6 !important;
+
+
+
+          .acurae .acu-history-item-date {
+                     color: #dbdbd6 !important;
+
+
+            .acurae .acu-history-item-content {
+                         color: #dbdbd6 !important;
+                    ncl b0up-opt,,ns,
+                .2) !iortaagetsumary,
+                }
+                .acueg-dcint {
+                   color: #dbdbd6 !important;
+
+
+                * 设置面板 - 夜间模式完整适配 */
                 .acu-settings-overlay.night-mode .acu-settings-dialog {
-                    background: #2d2d2d !important;
-                    color: #dbdbd6 !important;
+                 krd2d !important;
+                p,
                 }
-                .acu-settings-overlay.night-mode .acu-settings-header {
-                    background: var(--acu-primary) !important;
+                .acunlde .acu-settings-header {
+                   background: var(--acu-primary) !important;
+
+              .acuvah4,-tabs {
+                   background: #3a3a3a !important;
+                mh5,
                 }
-                .acu-settings-overlay.night-mode .acu-settings-tabs {
-                    background: #3a3a3a !important;
-                    border-bottom-color: #555 !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-tab {
-                    background: rgba(132, 121, 184, 0.3) !important;
-                    color: #dbdbd6 !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-footer {
-                    background: #3a3a3a !important;
-                    border-top-color: #555 !important;
-                }
-                .acu-settings-overlay.night-mode .acu-warning-box {
-                    background: rgba(212, 161, 92, 0.15) !important;
-                    border-color: var(--acu-warning) !important;
-                }
-                .acu-settings-overlay.night-mode .acu-storage-item {
-                    background: rgba(255, 255, 255, 0.05) !important;
-                }
-                .acu-settings-overlay.night-mode .acu-btn-secondary {
-                    background: #3a3a3a !important;
-                    color: #dbdbd6 !important;
-                    border-color: #555 !important;
+                .acugotings-tab {
+                   color: #dbdbd6 !important;
+                8t
+              }s,
+                .acuvhdctover {
+                   background: rgba(132, 121, 184, 0.2) !important;
+                }e-stas,oraeiem-nm,
+                .acuvhdctr {
+                   background: #3a3a3a !important;
+                r
                 }
 
-                /* 历史记录弹窗样式 */
-                .acu-history-overlay {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    background: rgba(0, 0, 0, 0.5) !important;
-                    z-index: 10015 !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    padding: 20px !important;
-                    box-sizing: border-box !important;
-                }
-                .acu-history-overlay.night-mode {
-                    background: rgba(0, 0, 0, 0.7) !important;
-                }
-                .acu-history-dialog {
-                    background: var(--acu-background) !important;
-                    border: 2px solid var(--acu-highlight) !important;
-                    border-radius: 10px !important;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
-                    width: 90% !important;
-                    max-width: 700px !important;
-                    max-height: 80vh !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    overflow: hidden !important;
-                    color: var(--acu-text) !important;
-                }
-                .acu-history-header {
-                    background: var(--acu-primary) !important;
-                    color: white !important;
-                    padding: 15px 20px !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    border-radius: 8px 8px 0 0 !important;
-                    flex-shrink: 0 !important;
-                }
-                .acu-history-header h3 {
-                    margin: 0 !important;
-                    font-size: 16px !important;
-                    font-weight: bold !important;
-                }
-                .acu-history-close {
-                    background: transparent !important;
-                    border: none !important;
-                    color: white !important;
-                    font-size: 20px !important;
-                    cursor: pointer !important;
-                    width: 30px !important;
-                    height: 30px !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    border-radius: 4px !important;
-                    transition: background-color 0.2s !important;
-                }
-                .acu-history-close:hover {
-                    background: rgba(255, 255, 255, 0.2) !important;
-                }
-                .acu-history-content {
-                    flex-grow: 1 !important;
-                    overflow-y: auto !important;
-                    padding: 20px !important;
-                }
-                .acu-history-info {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    margin-bottom: 15px !important;
-                    font-size: 12px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.8 !important;
-                }
-                .acu-history-list {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 12px !important;
-                }
-                .acu-history-item {
-                    background: var(--acu-secondary) !important;
-                    border: 1px solid var(--acu-border) !important;
-                    border-radius: 8px !important;
-                    padding: 12px !important;
-                    cursor: pointer !important;
-                    transition: all 0.3s ease !important;
-                }
-                .acu-history-item:hover {
-                    background: rgba(var(--acu-highlight-rgb, 180, 138, 92), 0.15) !important;
-                    border-color: var(--acu-highlight) !important;
-                    transform: translateX(4px) !important;
-                }
-                .acu-history-item-header {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    margin-bottom: 8px !important;
-                    padding-bottom: 8px !important;
-                    border-bottom: 1px solid rgba(var(--acu-border-rgb, 212, 196, 168), 0.5) !important;
-                }
-                .acu-history-item-number {
-                    font-size: 11px !important;
-                    font-weight: bold !important;
-                    color: var(--acu-primary) !important;
-                    background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
-                    padding: 2px 8px !important;
-                    border-radius: 4px !important;
-                }
-                .acu-history-item-date {
-                    font-size: 11px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.7 !important;
-                }
-                .acu-history-item-content {
-                    font-size: 13px !important;
-                    color: var(--acu-text) !important;
-                    line-height: 1.6 !important;
-                    word-wrap: break-word !important;
-                    white-space: pre-wrap !important;
-                    max-height: 200px !important;
-                    overflow-y: auto !important;
-                    padding: 8px !important;
-                    background: rgba(255, 255, 255, 0.5) !important;
-                    border-radius: 4px !important;
-                }
-                .acu-history-footer {
-                    padding: 15px 20px !important;
-                    border-top: 1px solid var(--acu-border) !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    flex-shrink: 0 !important;
-                    background: var(--acu-secondary) !important;
-                }
-                .acu-history-hint {
-                    font-size: 12px !important;
-                    color: var(--acu-text) !important;
-                    opacity: 0.7 !important;
-                }
-
-                /* 夜间模式适配增强 */
-                .acu-history-overlay.night-mode .acu-history-dialog {
-                    background: #2d2d2d !important;
-                    color: #dbdbd6 !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-footer {
-                    background: #3a3a3a !important;
-                    border-top-color: #555 !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-item {
-                    background: #3a3a3a !important;
-                    border-color: #555 !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-item:hover {
-                    background: #4a4a4a !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-info {
-                    color: #dbdbd6 !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-item-date {
-                    color: #dbdbd6 !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-item-content {
-                    color: #dbdbd6 !important;
-                    background: rgba(0, 0, 0, 0.2) !important;
-                }
-                .acu-history-overlay.night-mode .acu-history-hint {
-                    color: #dbdbd6 !important;
-                }
-
-                /* 设置面板 - 夜间模式完整适配 */
-                .acu-settings-overlay.night-mode .acu-settings-dialog {
-                    background: #2d2d2d !important;
-                    color: #dbdbd6 !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-header {
-                    background: var(--acu-primary) !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-tabs {
-                    background: #3a3a3a !important;
-                    border-bottom-color: #555 !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-tab {
-                    color: #dbdbd6 !important;
-                    background: rgba(132, 121, 184, 0.3) !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-tab:hover {
-                    background: rgba(132, 121, 184, 0.2) !important;
-                }
-                .acu-settings-overlay.night-mode .acu-settings-footer {
-                    background: #3a3a3a !important;
-                    border-top-color: #555 !important;
-                }
-
-                .acu-settings-overlay.night-mode .acu-cleanup-options,
+                acu-settings-overlay.night-mode .acu-cleanup-options,
                 .acu-settings-overlay.night-mode .acu-storage-summary,
-                .acu-settings-overlay.night-mode .acu-storage-details {
-                    background: #3a3a3a !important;
-                    border-color: #555 !important;
+                 {
+                n
+                t
                 }
 
-                .acu-settings-overlay.night-mode .acu-warning-box {
+                acu-settings-overlay.night-mode .acu-warning-box {
                     background: rgba(212, 161, 92, 0.15) !important;
-                    border-color: var(--acu-warning) !important;
+                修复确认对话框的夜间模式     bco-firmlor: var(--acu-warn
                 }
-                .acu-settings-overlay.night-mode .acu-warning-content p,
-                .acu-settings-overlay.night-mode .acu-warning-content strong {
-                    color: #dbdbd6 !important;
-                }
+                .acuruntent p,
+                acu-settings-overlay.night-mode .acu-warning-content strong {
+                  o
 
-                .acu-settings-overlay.night-mode .acu-cleanup-options h4,
+
+                collapseacu-settings-overlay.night-mode .acu-cleanup-options h4,
                 .acu-settings-overlay.night-mode .acu-storage-summary h4,
-                .acu-settings-overlay.night-mode .acu-storage-details h5,
-                .acu-settings-overlay.night-mode .acu-protected-settings h5 {
-                    color: #dbdbd6 !important;
-                }
+                visible absotgte
+                 nh5 {
 
-                .acu-settings-overlay.night-mode .acu-checkbox span,
+                 fx
+elive
+                acu-settings-overlay.night-mode .acu-checkbox span,
                 .acu-settings-overlay.night-mode .acu-checkbox small {
-                    color: #dbdbd6 !important;
-                }
 
-                .acu-settings-overlay.night-mode .acu-storage-stats,
+                b
+fex
+                acu-settings-overlay.night-mode .acu-storage-stats,
                 .acu-settings-overlay.night-mode .acu-storage-item-name,
-                .acu-settings-overlay.night-mode .acu-storage-item-size {
-                    color: #dbdbd6 !important;
-                }
+                 ize {
 
-                .acu-settings-overlay.night-mode .acu-storage-item {
+
+
+                acu-settings-overlay.night-mode .acu-storage-item {
                     background: rgba(255, 255, 255, 0.05) !important;
-                }
 
-                .acu-settings-overlay.night-mode .acu-btn-secondary {
+
+                acu-settings-overlay.night-mode .acu-btn-secondary {
                     background: #3a3a3a !important;
-                    color: #dbdbd6 !important;
-                    border-color: #555 !important;
+
+                    r!
                 }
 
-                /* 修复确认对话框的夜间模式 */
+                * 修复确认对话框的夜间模式 */
                 .acu-confirm-overlay.night-mode .acu-confirm-dialog {
-                    background: #2d2d2d !important;
-                    color: #dbdbd6 !important;
+                  d2d2d !important;
+                gdpd rid;
                 }
-                .acu-confirm-overlay.night-mode .acu-cleanup-list li,
-                .acu-confirm-overlay.night-mode .acu-confirm-question p {
-                    color: #dbdbd6 !important;
-                }
+                .acurainl.me-flexe .acu-cleanup-list li,
+                transformacu-confirm-overlay.night-mode .acu-confirm-question p {
+                 it li   odbd6im
+                ese
         `;
-
+ease-out
     $('head').append(styles);
   };
 
@@ -3912,7 +3910,8 @@
     if (!$popup || !$popup.length) return;
 
     // 清理旧标记
-    $popup.find('.acu-card')
+    $popup
+      .find('.acu-card')
       .removeClass('acu-sc-card-status acu-sc-card-core acu-sc-card-manual acu-sc-card-common acu-sc-card-config');
 
     // 通过稳定的子元素ID后缀定位（不依赖 UNIQUE_SCRIPT_ID）
@@ -3946,7 +3945,9 @@
     $popup.removeAttr('data-acu-shortcut');
     $popup.find('#acu-shortcut-style').remove();
     $popup.find('#acu-shortcut-dialog-style').remove();
-    $popup.find('.acu-card').removeClass('acu-sc-card-status acu-sc-card-core acu-sc-card-manual acu-sc-card-common acu-sc-card-config');
+    $popup
+      .find('.acu-card')
+      .removeClass('acu-sc-card-status acu-sc-card-core acu-sc-card-manual acu-sc-card-common acu-sc-card-config');
   };
 
   // 快捷选项：真正独立弹窗（不打开/不托管数据库面板），仅使用暴露API + 数据库存储
@@ -3963,7 +3964,7 @@
           background: rgba(0,0,0,0.38);
           z-index: 10050;
           display: flex;
-          align-items: center;
+          align-items: cen
           justify-content: center;
         }
         .acu-shortcut-lite-overlay.night-mode{ background: rgba(0,0,0,0.55); }
@@ -3971,373 +3972,373 @@
         /* 弹窗主体 - 窄面板 */
         .acu-shortcut-lite-dialog{
           width: min(420px, 94vw);
-          max-height: 80vh;
+           80vh;
           background: var(--acu-background, #fafafa);
           color: var(--acu-text, #333);
           border: 1px solid var(--acu-border, #ddd);
           border-radius: 8px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-          overflow: hidden;
+          :en;
           display: flex;
-          flex-direction: column;
+         flex-direction: column;
         }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-dialog{
-          background: #2d2d2d;
+        .a-lite-overlay.night-mode .acu-shortcut-lite-dialog{
+          ound: #2d2d2d;
           color: #dbdbd6;
-          border-color: #444;
-          box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+          r 4;
+         box-shadow: 0 8px 40px rgba(0,0,0,0.45);
         }
 
         /* 头部 */
-        .acu-shortcut-lite-header{
-          display: flex;
-          align-items: center;
+        .acte-header{
+          x
+          ter;
           justify-content: space-between;
-          padding: 10px 14px;
-          background: var(--acu-primary, #5c9dff);
-          color: #fff;
-          border-radius: 6px 6px 0 0;
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-header{
-          background: var(--acu-primary, #8479b8);
+          px 14px;
+          ound: var(--acu-primary, #5c9dff);
+
+         border-radius: 6px 6px 0 0;
+
+        .a--mode .acu-shortcut-lite-header{
+         background: var(--acu-primary, #8479b8);
         }
         .acu-shortcut-lite-title{
           font-size: 13px;
           font-weight: 600;
-          letter-spacing: .3px;
+         letter-spacing: .3px;
         }
-        .acu-shortcut-lite-close{
-          border: none;
-          background: rgba(255,255,255,0.18);
-          color: #fff;
-          width: 24px;
-          height: 24px;
+        .atcut-lite-close{
+          e;
+          orgba(255,255,255,0.18);
+           #fff;
+          width:
+
           border-radius: 4px;
-          cursor: pointer;
-          font-size: 14px;
-          line-height: 24px;
+          i
+          font-size: 1
+          line-height
           text-align: center;
-          transition: background .15s;
+         transition: background .15s;
         }
         .acu-shortcut-lite-close:hover{ background: rgba(255,255,255,0.32); }
 
         /* 内容区 */
-        .acu-shortcut-lite-body{
-          padding: 16px 18px 20px;
-          overflow: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
+        .acut-lite-body{
+          16px 18px 20px;
+          :;
+
+          flextion: column;
+         gap: 14px;
         }
 
         /* 信息行 */
-        .acu-shortcut-lite-info{
-          font-size: 12px;
-          text-align: center;
+        .at-lite-info{
+          1
+          l
           color: var(--acu-text, #444);
-          opacity: .88;
+         opacity: .88;
         }
-        .acu-shortcut-lite-info strong{
-          color: var(--acu-primary, #5c9dff);
-          font-weight: 600;
+        .aro
+          -primary, #5c9dff);
+         font-weight: 600;
         }
 
         /* 2x2 网格布局 */
-        .acu-shortcut-lite-config-grid{
+        .acut-lite-config-grid{
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
+          -template-columns: repeat(2, 1fr);
+         gap: 10px;
         }
-        .acu-shortcut-lite-field{
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          text-align: center;
+        .acte-field{
+
+          -ction: column;
+
+         text-align: center;
         }
-        .acu-shortcut-lite-field label{
-          font-size: 11px;
-          opacity: .75;
-          color: inherit; /* 修复 Label 对比度 */
-        }
-        /* [关键修复] 输入框样式：使用 !important 强制覆盖 */
-        .acu-shortcut-lite-field input{
-          width: 100%;
-          padding: 9px 12px;
-          border-radius: 5px;
-          border: 1.5px solid var(--acu-primary, #5c9dff);
-          /* 日间模式：强制白底黑字 */
-          background: #ffffff !important;
-          color: #333333 !important;
-          font-size: 13px;
+        .at-lite-field label{
+          e: 11px;
+          y: .75;
+         color: inherit; /* 修复 Label 对比度 */
+
+        rtant 强制覆盖 */
+        .artcut-lite-field input{
+          00%;
+          2px;
+          radius
+          rder: 1.5px id var(--acu-primary, #5c9dff);
+          底黑字 */
+          ound: #ftant;
+          3important;
+          3px;
           font-weight: 500;
-          box-sizing: border-box;
-          text-align: center;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-          transition: border-color .15s, box-shadow .15s;
-        }
-        .acu-shortcut-lite-field input:focus{
-          outline: none;
-          border-color: var(--acu-primary, #5c9dff);
-          box-shadow: 0 0 0 3px rgba(92,157,255,0.18);
-          background: #ffffff !important;
+           box;
+           er;
+           0 1px 4px rgba(0,0,0,0.08);
+         transition: border-color .15s, box-shadow .15s;
+
+        .acu-shortte-field input:focus{
+          ;
+          r a(--acu-primary, #5c9dff);
+           p57,255,0.18);
+         background: #ffffff !important;
         }
 
-        /* 夜间模式：强制深底浅字 */
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-field input{
-          border-color: var(--acu-primary, #8479b8);
-          background: #2b2b2b !important;
-          color: #e0e0e0 !important;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-field input:focus{
-          box-shadow: 0 0 0 3px rgba(132,121,184,0.25);
-          background: #333333 !important;
+
+        .aiohortcut-lite-field input{
+          r: var(-, #8479b8);
+          ound: #2tant;
+          00mtant;
+         box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+
+        .a-ieolay.night-mode .acu-shortcut-lite-field input:focus{
+           p121,184,0.25);
+         background: #333333 !important;
         }
 
         /* 按钮组（纵向居中） */
-        .acu-shortcut-lite-btns{
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+        .acte-btns{
+
+          omn;
+          nms: center;
           gap: 8px;
-          margin-top: 4px;
+         margin-top: 4px;
         }
-        .acu-shortcut-lite-btn{
+        .arlite-btn{
           width: 100%;
-          max-width: 220px;
-          padding: 9px 16px;
-          border-radius: 4px;
-          border: 1px solid var(--acu-border, #bbb);
-          background: var(--acu-background, #fff);
-          color: var(--acu-text, #333);
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 12px;
-          text-align: center;
-          transition: background .12s, border-color .12s, transform .1s;
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-btn{
-          border-color: #555;
-          background: #3a3a3a;
-          color: #dbdbd6;
-        }
-        .acu-shortcut-lite-btn:hover{
-          background: var(--acu-secondary, #e8ecf0);
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-btn:hover{
-          background: #454545;
-        }
-        .acu-shortcut-lite-btn:active{
-          transform: scale(0.97);
+          h20px;
+          6
+          rux
+           r, #bbb);
+          obund, #fff);
+          v-text, #333);
+          t
+          t;
+          1
+
+         transition: background .12s, border-color .12s, transform .1s;
+
+       .aite-overlay.night-mode .acu-shortcut-lite-btn{
+         r: #555;
+  o         color: #dbdbd6;
         }
 
-        /* 可视化按钮：更大、渐变色、醒目 */
-        .acu-shortcut-lite-btn.accent{
-          max-width: 260px;
-          padding: 12px 20px;
-          font-size: 13px;
-          font-weight: 600;
-          border: none;
-          border-radius: 6px;
-          background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
-          color: #fff;
-          box-shadow: 0 3px 10px rgba(255,126,95,0.35);
-          margin-top: 6px;
+       .a-lite-btn:hover{
+         background: var(--acu-secondary, #e8ecf0);
+
+       .a-lite-ove background: #454545;
         }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-btn.accent{
-          background: linear-gradient(135deg, #e85d40 0%, #f09b5c 100%);
-          box-shadow: 0 3px 12px rgba(232,93,64,0.4);
+      .acu-shortcu
+         t-lite-btn:active{
+         transform: scale(0.97);
         }
-        .acu-shortcut-lite-btn.accent:hover{
-          filter: brightness(1.06);
-          box-shadow: 0 4px 14px rgba(255,126,95,0.45);
+ /* 可视化按钮：更大、渐变色、醒目 */
+
+       .at-lite-btn.accent{
+         h: 26
+          2px;
+          3
+          i600;
+
+          s: 6px;
+          olinear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+          ;
+           x 10px rgba(255,126,95,0.35);
+         margin-top: 6px;
+
+        .a-.acu-shot-lite-ent{
+           irient(135deg, #e85d40 0%, #f09b5c 100%);
         }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-btn.accent:hover{
-          box-shadow: 0 4px 16px rgba(232,93,64,0.5);
+        cu-shor
+t         cut-lite-btn.accent:hover{
+          gt(1.06);
+         box-shadow: 0 4px 14px rgba(255,126,95,0.45);
+
+        .a-ioy.night-mode .acu-shortcut-lite-btn.accent:hover{
+         box-shadow: 0 4px 16px rgba(232,93,64,0.5);
+        }
+/* ===== 选择更新表区域 ===== */
+
+.a-        -table-selector{
+          ox;
+          :p
+          lar(--acu-border, #ddd);
+          u
+         background: var(--acu-secondary, #f0f4f8);
+
+        .alite-overlay.night-mode .acu-shortcut-lite-table-selector{
+          3;
+        }
+        te-table-selector-header{
+
+          ece-between;
+           align-items: c
+            margin-bottom: 10px;
         }
 
-        /* ===== 选择更新表区域 ===== */
-        .acu-shortcut-lite-table-selector{
-          margin-top: 8px;
-          padding: 12px;
-          border: 1px solid var(--acu-border, #ddd);
-          border-radius: 6px;
-          background: var(--acu-secondary, #f0f4f8);
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-table-selector{
-          background: #353535;
-          border-color: #444;
-        }
-        .acu-shortcut-lite-table-selector-header{
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 10px;
-        }
-        .acu-shortcut-lite-table-selector-title{
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--acu-text, #333);
-        }
-        .acu-shortcut-lite-table-selector-actions{
-          display: flex;
-          gap: 6px;
-        }
-        .acu-shortcut-lite-table-selector-actions button{
-          padding: 4px 10px;
-          font-size: 11px;
-          border: 1px solid var(--acu-border, #bbb);
-          border-radius: 4px;
-          background: var(--acu-background, #fff);
-          color: var(--acu-text, #333);
-          cursor: pointer;
-          transition: background .12s;
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-table-selector-actions button{
-          background: #3a3a3a;
-          border-color: #555;
-          color: #dbdbd6;
-        }
-        .acu-shortcut-lite-table-selector-actions button:hover{
-          background: var(--acu-secondary, #e8ecf0);
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-table-selector-actions button:hover{
-          background: #454545;
-        }
-        .acu-shortcut-lite-table-grid{
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-          gap: 6px;
-          max-height: 150px;
-          overflow-y: auto;
-          padding-right: 4px;
-        }
-        .acu-shortcut-lite-table-grid::-webkit-scrollbar{
-          width: 5px;
-        }
-        .acu-shortcut-lite-table-grid::-webkit-scrollbar-track{
-          background: transparent;
-        }
-        .acu-shortcut-lite-table-grid::-webkit-scrollbar-thumb{
-          background: rgba(128,128,128,0.3);
-          border-radius: 3px;
-        }
-        .acu-shortcut-lite-table-item{
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 8px;
-          border: 1px solid var(--acu-border, #ddd);
-          border-radius: 4px;
-          background: var(--acu-background, #fff);
-          cursor: pointer;
-          transition: background .12s, border-color .12s;
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-table-item{
-          background: #3a3a3a;
-          border-color: #555;
-        }
-        .acu-shortcut-lite-table-item:hover{
-          background: var(--acu-secondary, #e8ecf0);
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-table-item:hover{
-          background: #454545;
-        }
-        .acu-shortcut-lite-table-item.selected{
-          border-color: var(--acu-primary, #5c9dff);
-          background: rgba(92, 157, 255, 0.1);
-        }
-        .acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-table-item.selected{
-          background: rgba(92, 157, 255, 0.15);
-        }
-        .acu-shortcut-lite-table-item input[type="checkbox"]{
-          width: 14px;
-          height: 14px;
-          accent-color: var(--acu-primary, #5c9dff);
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .acu-shortcut-lite-table-item-name{
-          font-size: 11px;
-          color: var(--acu-text, #333);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          flex: 1;
-        }
-        .acu-shortcut-lite-no-tables{
-          text-align: center;
-          font-size: 11px;
-          color: var(--acu-text, #666);
-          opacity: 0.7;
-          padding: 10px;
+.at
+  2
+  e         color: var(--acu-text, #333);
         }
 
-        /* ===== 主题适配 ===== */
-        /* [优化] 为所有主题显式定义输入框颜色，确保高对比度 */
-        .acu-shortcut-lite-overlay.acu-theme-retro{
-          --acu-primary: #8c6e54;
-          --acu-secondary: #f5ebdc;
-          --acu-background: #fdfaf5;
-          --acu-text: #5a3e2b;
-          --acu-border: #d4c4a8;
-          --acu-input-bg: #ffffff;
-          --acu-input-text: #5a3e2b;
-        }
-        .acu-shortcut-lite-overlay.acu-theme-dark{
-          /* 注意：名为 dark 的主题其实是浅紫风格 */
-          --acu-primary: #8479b8;
-          --acu-secondary: #f0ebff;
-          --acu-background: #f8f5ff;
-          --acu-text: #5a4f7c;
-          --acu-border: #d4cce8;
-          --acu-input-bg: #ffffff;
-          --acu-input-text: #5a4f7c;
-        }
-        .acu-shortcut-lite-overlay.acu-theme-modern{
-          --acu-primary: #5c9dff;
-          --acu-secondary: #f0f4f8;
-          --acu-background: #ffffff;
-          --acu-text: #444;
-          --acu-border: #d0d0d0;
-          --acu-input-bg: #ffffff;
-          --acu-input-text: #333333;
-        }
-        .acu-shortcut-lite-overlay.acu-theme-forest{
-          --acu-primary: #4a8c5c;
-          --acu-secondary: #e8f0e8;
-          --acu-background: #ffffff;
-          --acu-text: #3a6b4a;
-          --acu-border: #b8d0b8;
-          --acu-input-bg: #ffffff;
-          --acu-input-text: #2d5a3a;
-        }
-        .acu-shortcut-lite-overlay.acu-theme-ocean{
-          --acu-primary: #4a7ca8;
-          --acu-secondary: #e8f0f8;
-          --acu-background: #ffffff;
-          --acu-text: #3a6c98;
-          --acu-border: #b8d0e0;
-          --acu-input-bg: #ffffff;
-          --acu-input-text: #2b5070;
+.ac
+  l         gap: 6px;
         }
 
-        /* 夜间模式覆盖（所有主题共用） */
-        .acu-shortcut-lite-overlay.night-mode{
-          --acu-secondary: #353535;
-          --acu-background: #2d2d2d;
-          --acu-text: #dbdbd6;
-          --acu-border: #444;
-          --acu-input-bg: #2b2b2b;
-          --acu-input-text: #e0e0e0;
-          --acu-input-bg-focus: #333333;
+        .aclable-selector-actions button{
+          px;
+          z1
+          lar(--acu-border, #bbb);
+          u
+          obund, #fff);
+          v-text, #333);
+         n
+         transition: background .12s;
+
+        .a-rlay.night-mode .acu-shortcut-lite-table-selector-actions button{
+          3;
+          -555;
+         color: #dbdbd6;
+
+        .a-atton:hover{
+         background: var(--acu-secondary, #e8ecf0);
+
+.a-         background: #454545;
         }
+
+        .acte-table-grid{
+
+          -late-columns: repeat(auto-fill, minmax(130px, 1fr));
+          max-height:
+           overflow-y: au
+  t         padding-right: 4px;
+        }
+
+.ar         width: 5px;
+        }
+
+       .a-lite-table-g background: transparent;
+        }
+
+       .a-lite-table-grid::-webkit-scrollbar-thumb{
+         ba(12 border-radius: 3px;
+        }
+
+        .acte-table-item{
+          x
+          nms: center;
+          ;
+          :x
+          lar(--acu-border, #ddd);
+          u
+          u--acu-background, #fff);
+          n
+         transition: background .12s, border-color .12s;
+
+        .a-rlay.night-mode .acu-shortcut-lite-table-item{
+          3;
+        }
+
+.a-r         background: var(--acu-secondary, #e8ecf0);
+
+        .
+a-          background: #454545;
+        }
+
+.aic
+          r var(--acu-primary, #5c9dff);
+         background: rgba(92, 157, 255, 0.1);
+
+        .a-rnmode .acu-shortcut-lite-table-item.selected{
+        }
+
+        .arlite-table-item input[type="checkbox"]{
+          1height: 14px;
+
+c          cursor: poin
+  t         flex-shrink: 0;
+        }
+     .at-table-item-name{
+
+i          color: var(-t, #333);
+          nspraprap;
+           overflow: hidd
+         en; text-
+ o        1; flex: 1;
+        }
+
+        .a--tables{
+          :er;
+         i
+         ar(--acu-text, #666);
+
+         padding: 10px;
+        }
+
+        ===== 主题适配 ===== */ /* [优化] 为所有主题显式定义输入框颜色，确保高对比度 */
+      .acu-shortcut-li
+t         #8c6e54; --acu-primary: #
+8         #f5ebdc; --acu-secondary:
+#         #fdfaf5; --acu-backg
+r         #5a3e2b; --acu-text: #
+5         #d4c4a8; --acu-border: #
+d         #ffffff; --acu-input-bg: #
+  f         --acu-input-text: #5a3e2b;
+        }
+
+       .a-shortcut-lite-overlayu-theme-dark{
+         的主题其实是浅紫风格 */
+         8479b8;
+         #f0ebff;
+         round: #f8f5ff;
+         5a4f7c;
+          d
+          f
+        }
+
+.at       e-overlay.acu-theme-modern{
+          c9dff;
+          #
+          r #ffffff;
+          44;
+          d
+          fffff;
+        }
+
+.at       e-overlay.acu-theme-forest{
+          a8c5c;
+          #
+          ound: #ffffff;
+          a6b4a;
+          b
+          fffff;
+        }
+
+.at       e-overlay.acu-theme-ocean{
+          a7ca8;
+          #
+          ound: #ffffff;
+          a6c98;
+          b
+         ffffff;
+         --acu-input-text: #2b5070;
+        }
+
+
+        .a-night-mode{
+          #
+          rd2d2d;
+          d;
+         444;
+         2b2b2b; --acu-input-text: #e0
+          e
+         --acu-input-bg-focus: #333333;
         /* 夜间模式下保持各主题的 primary 色 */
-        .acu-shortcut-lite-overlay.night-mode.acu-theme-retro{ --acu-primary: #a88468; }
-        .acu-shortcut-lite-overlay.night-mode.acu-theme-dark{ --acu-primary: #9d94cc; }
-        .acu-shortcut-lite-overlay.night-mode.acu-theme-modern{ --acu-primary: #6aa8ff; }
-        .acu-shortcut-lite-overlay.night-mode.acu-theme-forest{ --acu-primary: #5a9c6c; }
-        .acu-shortcut-lite-overlay.night-mode.acu-theme-ocean{ --acu-primary: #5a8cb8; }
+        .acu-shortcut-lite-overlay.night-mode.acu-theme-retro
+       {: #a88468 .acu-shortcut-lite-overlay.night-mode.acu-theme-dark{ -
+       -9d94cc; } .acu-shortcut-lite-overlay.night-mode.acu-theme-modern{
+         #6aa8ff; .acu-shortcut-lite-overlay.night-mode.acu-theme-forest
+       {: #5a9c6c   .acu-s
+      transformhortcut-lite-overlay.night-mode.acu-theme-ocean{ --acu-primary: #5a8cb8; }
       </style>
     `;
     $('head').append(style);
@@ -4376,7 +4377,7 @@
     try {
       let ST = window.SillyTavern || (window.parent ? window.parent.SillyTavern : null);
       if (!ST && window.top && window.top.SillyTavern) ST = window.top.SillyTavern;
-      const chat = (ST && ST.chat) ? ST.chat : [];
+      const chat = ST && ST.chat ? ST.chat : [];
       return chat.filter(m => m && !m.is_user).length;
     } catch (e) {
       return 0;
@@ -4394,9 +4395,9 @@
     const $container = $('.acu-table-container');
     const isNightMode = $container.hasClass('night-mode');
     // 获取当前主题类名
-    const themeClass = ['retro', 'dark', 'modern', 'forest', 'ocean']
-      .map(t => `acu-theme-${t}`)
-      .find(c => $container.hasClass(c)) || 'acu-theme-modern';
+    const themeClass =
+      ['retro', 'dark', 'modern', 'forest', 'ocean'].map(t => `acu-theme-${t}`).find(c => $container.hasClass(c)) ||
+      'acu-theme-modern';
 
     injectShortcutDialogStylesOnce();
     if ($('.acu-shortcut-lite-overlay').length) return;
@@ -4466,157 +4467,119 @@
       </div>
     `;
 
+    const $overlay = $(html);
 
+    $('body').append($overlay);
 
-                const $overlay = $(html);
+    const close = () => $overlay.remove();
 
-                $('body').append($overlay);
+    $overlay.find('.acu-shortcut-lite-close').on('click', close);
 
+    // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
 
+    let shortcutMouseDownOnBg = false;
 
-                const close = () => $overlay.remove();
+    $overlay
+      .on('mousedown', function (e) {
+        shortcutMouseDownOnBg = $(e.target).hasClass('acu-shortcut-lite-overlay');
+      })
+      .on('mouseup', function (e) {
+        if (shortcutMouseDownOnBg && $(e.target).hasClass('acu-shortcut-lite-overlay')) close();
 
-                $overlay.find('.acu-shortcut-lite-close').on('click', close);
+        shortcutMouseDownOnBg = false;
+      });
 
-                // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
+    const saveSettingsFromUi = () => {
+      const autoUpdateThreshold = parseInt(String($('#acu-sc-autoUpdateThreshold').val() || '0'), 10);
 
-                let shortcutMouseDownOnBg = false;
+      const autoUpdateFrequency = parseInt(String($('#acu-sc-autoUpdateFrequency').val() || '1'), 10);
 
-                $overlay.on('mousedown', function (e) {
+      const updateBatchSize = parseInt(String($('#acu-sc-updateBatchSize').val() || '1'), 10);
 
-                  shortcutMouseDownOnBg = $(e.target).hasClass('acu-shortcut-lite-overlay');
+      const skipUpdateFloors = parseInt(String($('#acu-sc-skipUpdateFloors').val() || '0'), 10);
 
-                }).on('mouseup', function (e) {
+      // 优先使用数据库API更新设置（确保内存和localStorage同步）
 
-                  if (shortcutMouseDownOnBg && $(e.target).hasClass('acu-shortcut-lite-overlay')) close();
+      if (api && typeof api.updateSettings === 'function') {
+        const ok = api.updateSettings({
+          autoUpdateThreshold,
 
-                  shortcutMouseDownOnBg = false;
+          autoUpdateFrequency,
 
-                });
+          updateBatchSize,
 
+          skipUpdateFloors,
+        });
 
+        if (ok) {
+          showNotification('配置已保存', 'success');
 
-                const saveSettingsFromUi = () => {
+          return true;
+        }
+      }
 
-                  const autoUpdateThreshold = parseInt(String($('#acu-sc-autoUpdateThreshold').val() || '0'), 10);
+      // 回退到直接写localStorage（兼容旧版数据库）
 
-                  const autoUpdateFrequency = parseInt(String($('#acu-sc-autoUpdateFrequency').val() || '1'), 10);
+      const { key, settings } = readDbSettings();
 
-                  const updateBatchSize = parseInt(String($('#acu-sc-updateBatchSize').val() || '1'), 10);
+      const next = { ...(settings || {}) };
 
-                  const skipUpdateFloors = parseInt(String($('#acu-sc-skipUpdateFloors').val() || '0'), 10);
+      next.autoUpdateThreshold = autoUpdateThreshold;
 
+      next.autoUpdateFrequency = autoUpdateFrequency;
 
+      next.updateBatchSize = updateBatchSize;
 
-                  // 优先使用数据库API更新设置（确保内存和localStorage同步）
+      next.skipUpdateFloors = skipUpdateFloors;
 
-                  if (api && typeof api.updateSettings === 'function') {
+      writeDbSettings(key, next);
 
-                    const ok = api.updateSettings({
+      showNotification('配置已保存（回退模式）', 'success');
 
-                      autoUpdateThreshold,
+      return true;
+    };
 
-                      autoUpdateFrequency,
+    $('#acu-sc-save').on('click', () => saveSettingsFromUi());
 
-                      updateBatchSize,
+    $('#acu-sc-update').on('click', async () => {
+      try {
+        // [修复] 使用 api.manualUpdate() 替代 api.triggerUpdate()
 
-                      skipUpdateFloors
+        // triggerUpdate 是外部触发的自动更新逻辑(单次)，而 manualUpdate 才是数据库内部的"立即手动更新"逻辑(支持分批/Loading提示)
 
-                    });
+        if (typeof api.manualUpdate === 'function') {
+          await api.manualUpdate();
 
-                    if (ok) {
+          // manualUpdate 内部已有 Toast 提示，这里不再重复弹窗，或者仅做简单反馈
 
-                      showNotification('配置已保存', 'success');
+          // showNotification('手动更新指令已发送', 'info');
+        } else {
+          // Fallback
 
-                      return true;
+          showNotification('正在触发手动更新...', 'info');
 
-                    }
+          const ok = await api.triggerUpdate();
 
-                  }
-
-
-
-                  // 回退到直接写localStorage（兼容旧版数据库）
-
-                  const { key, settings } = readDbSettings();
-
-                  const next = { ...(settings || {}) };
-
-                  next.autoUpdateThreshold = autoUpdateThreshold;
-
-                  next.autoUpdateFrequency = autoUpdateFrequency;
-
-                  next.updateBatchSize = updateBatchSize;
-
-                  next.skipUpdateFloors = skipUpdateFloors;
-
-                  writeDbSettings(key, next);
-
-                  showNotification('配置已保存（回退模式）', 'success');
-
-                  return true;
-
-                };
-
-
-
-                $('#acu-sc-save').on('click', () => saveSettingsFromUi());
-
-                $('#acu-sc-update').on('click', async () => {
-
-                  try {
-
-                    // [修复] 使用 api.manualUpdate() 替代 api.triggerUpdate()
-
-                    // triggerUpdate 是外部触发的自动更新逻辑(单次)，而 manualUpdate 才是数据库内部的"立即手动更新"逻辑(支持分批/Loading提示)
-
-                    if (typeof api.manualUpdate === 'function') {
-
-                       await api.manualUpdate();
-
-                       // manualUpdate 内部已有 Toast 提示，这里不再重复弹窗，或者仅做简单反馈
-
-                       // showNotification('手动更新指令已发送', 'info');
-
-                    } else {
-
-                       // Fallback
-
-                       showNotification('正在触发手动更新...', 'info');
-
-                       const ok = await api.triggerUpdate();
-
-                       showNotification(ok !== false ? '手动更新已完成' : '手动更新失败或被终止', ok !== false ? 'success' : 'error');
-
-                    }
-
-                  } catch (e) {
-
-                    showNotification('手动更新出错: ' + (e?.message || e), 'error');
-
-                  }
-
-                });
-
-
-
-                $('#acu-sc-open-visualizer').on('click', () => {
-
-                  try {
-
-                    api.openVisualizer();
-
-                    close(); // 打开可视化编辑器后自动关闭弹窗
-
-                  } catch (e) {
-
-                    showNotification('打开可视化编辑器失败', 'error');
-
-                  }
-
-                });
-
-              };
+          showNotification(
+            ok !== false ? '手动更新已完成' : '手动更新失败或被终止',
+            ok !== false ? 'success' : 'error',
+          );
+        }
+      } catch (e) {
+        showNotification('手动更新出错: ' + (e?.message || e), 'error');
+      }
+    });
+
+    $('#acu-sc-open-visualizer').on('click', () => {
+      try {
+        api.openVisualizer();
+
+        close(); // 打开可视化编辑器后自动关闭弹窗
+      } catch (e) {
+        showNotification('打开可视化编辑器失败', 'error');
+      }
+    });
+  };
 
   const showRefreshMenu = event => {
     const { $ } = getCore();
@@ -4757,10 +4720,10 @@
       const notificationHeight = notification.outerHeight() || 0;
       currentTop += notificationHeight + NOTIFICATION_SPACING;
     });
-  };
+  cons
 
   // 移除通知
-  const removeNotification = (notification) => {
+  const removeNotification = notification => {
     const { $ } = getCore();
 
     notification.fadeOut(500, function () {
@@ -4878,12 +4841,24 @@
 
   // [V8.97] 获取数据隔离代码（仅用于UI显示，不包含chatId）
   const getDataIsolationCode = () => {
-    const SETTINGS_KEYS = ['shujuku_v80_allSettings_v2', 'shujuku_v70_allSettings_v2', 'shujuku_v60_allSettings_v2', 'shujuku_v50_allSettings_v2', 'shujuku_v36_allSettings_v2', 'shujuku_v34_allSettings_v2'];
+    const SETTINGS_KEYS = [
+      'shujuku_v80_allSettings_v2',
+      'shujuku_v70_allSettings_v2',
+      'shujuku_v60_allSettings_v2',
+      'shujuku_v50_allSettings_v2',
+      'shujuku_v36_allSettings_v2',
+      'shujuku_v34_allSettings_v2',
+    ];
     let dataIsolationCode = '';
 
     try {
       let storage = window.localStorage;
-      if (!storage.getItem(SETTINGS_KEYS[0]) && !storage.getItem(SETTINGS_KEYS[1]) && !storage.getItem(SETTINGS_KEYS[2]) && window.parent) {
+      if (
+        !storage.getItem(SETTINGS_KEYS[0]) &&
+        !storage.getItem(SETTINGS_KEYS[1]) &&
+        !storage.getItem(SETTINGS_KEYS[2]) &&
+        window.parent
+      ) {
         try {
           storage = window.parent.localStorage;
         } catch (e) {}
@@ -4893,7 +4868,11 @@
       try {
         const bridge = window.parent?.['__ACU_USERSCRIPT_BRIDGE__'] || window['__ACU_USERSCRIPT_BRIDGE__'];
         const tavernSettings = bridge?.extension_settings;
-        if (tavernSettings && tavernSettings.__userscripts && tavernSettings.__userscripts['shujuku_v100__userscript_settings_v1']) {
+        if (
+          tavernSettings &&
+          tavernSettings.__userscripts &&
+          tavernSettings.__userscripts['shujuku_v100__userscript_settings_v1']
+        ) {
           const userscriptSettings = tavernSettings.__userscripts['shujuku_v100__userscript_settings_v1'];
           const v10GlobalMetaStr = userscriptSettings['shujuku_v100_globalMeta_v1'];
           if (v10GlobalMetaStr) {
@@ -4927,14 +4906,26 @@
 
   const getIsolationKey = () => {
     // 支持多个版本的数据库设置存储键 (v80最新, v70, v60, v50, v36, v34最旧)
-    const SETTINGS_KEYS = ['shujuku_v80_allSettings_v2', 'shujuku_v70_allSettings_v2', 'shujuku_v60_allSettings_v2', 'shujuku_v50_allSettings_v2', 'shujuku_v36_allSettings_v2', 'shujuku_v34_allSettings_v2'];
+    const SETTINGS_KEYS = [
+      'shujuku_v80_allSettings_v2',
+      'shujuku_v70_allSettings_v2',
+      'shujuku_v60_allSettings_v2',
+      'shujuku_v50_allSettings_v2',
+      'shujuku_v36_allSettings_v2',
+      'shujuku_v34_allSettings_v2',
+    ];
     let dataIsolationCode = '';
     let chatId = '';
 
     try {
       let storage = window.localStorage;
       // 尝试获取父级存储
-      if (!storage.getItem(SETTINGS_KEYS[0]) && !storage.getItem(SETTINGS_KEYS[1]) && !storage.getItem(SETTINGS_KEYS[2]) && window.parent) {
+      if (
+        !storage.getItem(SETTINGS_KEYS[0]) &&
+        !storage.getItem(SETTINGS_KEYS[1]) &&
+        !storage.getItem(SETTINGS_KEYS[2]) &&
+        window.parent
+      ) {
         try {
           storage = window.parent.localStorage;
         } catch (e) {}
@@ -4990,7 +4981,7 @@
       isolationKey = `chat_${chatId}`;
     }
 
-      // console.log(`[ACU] 最终隔离Key: ${isoKey || '无标签'}`);
+    // console.log(`[ACU] 最终隔离Key: ${isoKey || '无标签'}`);
     return isolationKey;
   };
 
@@ -5133,7 +5124,7 @@
                   targetMsg = ST.chat[i];
                   break;
                 }
-              }
+            cons}
 
               if (targetMsg) {
                 if (!targetMsg.TavernDB_ACU_IsolatedData) targetMsg.TavernDB_ACU_IsolatedData = {};
@@ -5204,7 +5195,6 @@
       }
     });
   };
-
 
   const ensureProperFormat = data => {
     if (!data) return data;
@@ -5416,7 +5406,6 @@
     const hasSnapshot = loadSnapshot() !== null;
     if (hasSnapshot || forceFullUpdate) {
       currentDiffMap = generateDiffMap(rawData);
-
     } else {
       console.log('[ACU] 无快照,保持现有diffMap');
     }
@@ -5479,7 +5468,13 @@
         if (currentSearchTerm) {
           const term = currentSearchTerm.toLowerCase();
           filteredCount = tableData.rows.filter(row =>
-            row.some((cell, idx) => idx > 0 && String(cell || '').toLowerCase().includes(term))
+            row.some(
+              (cell, idx) =>
+                idx > 0 &&
+                String(cell || '')
+                  .toLowerCase()
+                  .includes(term),
+            ),
           ).length;
         }
 
@@ -5525,7 +5520,7 @@
     const $execBtn = $section.find('.acu-search-execute-btn');
 
     // 切换展开/收起 (最高优先级操作 Style)
-    $toggleBtn.off('click.acu').on('click.acu', function() {
+    $toggleBtn.off('click.acu').on('click.acu', function () {
       isSearchVisible = !isSearchVisible;
 
       // 关键修正：这里的按钮本身就是 i 标签，直接操作 $(this)
@@ -5554,13 +5549,13 @@
     });
 
     // 执行搜索按钮
-    $execBtn.off('click.acu').on('click.acu', function() {
+    $execBtn.off('click.acu').on('click.acu', function () {
       currentSearchTerm = $searchInput.val().trim();
       updateTableContentOnly();
     });
 
     // 回车搜索
-    $searchInput.off('keydown.acu').on('keydown.acu', function(e) {
+    $searchInput.off('keydown.acu').on('keydown.acu', function (e) {
       if (e.key === 'Enter') {
         currentSearchTerm = $(this).val().trim();
         updateTableContentOnly();
@@ -5568,7 +5563,7 @@
     });
 
     // 清空搜索
-    $clearBtn.off('click.acu').on('click.acu', function() {
+    $clearBtn.off('click.acu').on('click.acu', function () {
       $searchInput.val('');
       currentSearchTerm = '';
       $(this).hide();
@@ -5576,7 +5571,7 @@
     });
 
     // 输入框变化动态控制清空按钮
-    $searchInput.on('input.acu', function() {
+    $searchInput.on('input.acu', function () {
       if ($(this).val()) $clearBtn.show();
       else $clearBtn.hide();
     });
@@ -5865,7 +5860,7 @@
   };
 
   // 初始化行位置映射表
-  const initializeRowMapping = (tableName) => {
+  const initializeRowMapping = tableName => {
     const rawData = getTableData();
     const tables = processJsonData(rawData);
 
@@ -5934,7 +5929,7 @@
   };
 
   // 加载行位置映射关系
-  const loadRowMapping = (tableName) => {
+  const loadRowMapping = tableName => {
     try {
       const saved = localStorage.getItem(`acu_row_position_mapping_${tableName}`);
       if (saved) {
@@ -5968,7 +5963,9 @@
         const row = tableData.rows[originalIndex];
         return row.some((cell, idx) => {
           if (idx === 0) return false; // 跳过隐藏列
-          return String(cell || '').toLowerCase().includes(term);
+          return String(cell || '')
+            .toLowerCase()
+            .includes(term);
         });
       });
     }
@@ -6024,10 +6021,13 @@
               const term = currentSearchTerm.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
               const regex = new RegExp(`(${term})`, 'gi');
               // 仅对文本内容进行高亮，避免破坏可能存在的换行符 <br>
-              formattedContent = formattedContent.split(/(<br>)/gi).map(part => {
-                if (part.toLowerCase() === '<br>') return part;
-                return part.replace(regex, '<mark class="acu-search-match-text">$1</mark>');
-              }).join('');
+              formattedContent = formattedContent
+                .split(/(<br>)/gi)
+                .map(part => {
+                  if (part.toLowerCase() === '<br>') return part;
+                  return part.replace(regex, '<mark class="acu-search-match-text">$1</mark>');
+                })
+                .join('');
             } catch (reErr) {
               console.warn('[ACU] 高亮正则生成失败:', reErr);
             }
@@ -6070,7 +6070,7 @@
     $section.find('.data-table').addClass('is-sorting-rows');
     $rows.attr('draggable', 'true').off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
 
-    $rows.on('dragstart.acu', function(e) {
+    $rows.on('dragstart.acu', function (e) {
       if (!isEditingRowOrder) return;
       isDragging = true;
       dragStartIndex = $(this).index();
@@ -6081,7 +6081,7 @@
       e.originalEvent.dataTransfer.setData('text/plain', dragStartIndex.toString());
     });
 
-    $rows.on('dragend.acu', function() {
+    $rows.on('dragend.acu', function () {
       isDragging = false;
       dragStartIndex = -1;
       dragEndIndex = -1;
@@ -6089,7 +6089,7 @@
       $section.find('.drag-over').removeClass('drag-over');
     });
 
-    $rows.on('dragover.acu', function(e) {
+    $rows.on('dragover.acu', function (e) {
       if (!isDragging || !isEditingRowOrder) return;
 
       e.preventDefault();
@@ -6105,18 +6105,18 @@
       }
     });
 
-    $rows.on('dragenter.acu', function(e) {
+    $rows.on('dragenter.acu', function (e) {
       e.preventDefault();
     });
 
-    $rows.on('dragleave.acu', function(e) {
+    $rows.on('dragleave.acu', function (e) {
       if (e.target === this || $(e.target).closest('tr')[0] === this) {
         $(this).removeClass('drag-over');
         dragEndIndex = -1;
       }
     });
 
-    $rows.on('drop.acu', function(e) {
+    $rows.on('drop.acu', function (e) {
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
@@ -6133,11 +6133,7 @@
           const $tableSection = $(`#acu-table-${getSafeTableId(tableName)}`);
           if ($tableSection.length) {
             const currentPage = getCurrentPageForTable(tableName);
-            const paginationHtml = generatePaginationHTML(
-              tableName,
-              tables[tableName].rows.length,
-              currentPage
-            );
+            const paginationHtml = generatePaginationHTML(tableName, tables[tableName].rows.length, currentPage);
             const newTableHtml = renderDataTable(tables[tableName], tableName);
 
             $tableSection.find('.acu-pagination-container').remove();
@@ -6170,7 +6166,7 @@
 
     // 记录初始顺序用于取消
     $tabs.each(function () {
-      originalOrder.push($(this).clone(true));
+    consoriginalOrder.push($(this).clone(true));
     });
 
     $tabs.attr('draggable', 'true');
@@ -6229,7 +6225,7 @@
   };
 
   // 新增：顺序管理菜单弹出
-  const showOrderMenu = (event) => {
+  const showOrderMenu = event => {
     const { $ } = getCore();
 
     const $existingMenu = $('.acu-order-menu');
@@ -6247,7 +6243,7 @@
       <div class="acu-cell-menu acu-order-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
           <div class="acu-cell-menu-item" data-action="tab-order">📑 编辑标签顺序 ${isEditingOrder ? ' (开启中)' : ''}</div>
           <div class="acu-cell-menu-item" data-action="row-order">☰ 编辑行内容顺序 ${isEditingRowOrder ? ' (开启中)' : ''}</div>
-          <div class="acu-cell-menu-item close" data-action="close">❌ 关闭菜单</div>
+    cons    <div class="acu-cell-menu-item close" data-action="close">❌ 关闭菜单</div>
       </div>`;
 
     const $menu = $(menuHtml);
@@ -6283,7 +6279,7 @@
     });
 
     // 【修复】改进的点击外部关闭逻辑，支持父窗口监听
-    const closeOrderMenu = (e) => {
+    const closeOrderMenu = e => {
       if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
         $menu.remove();
         document.removeEventListener('click', closeOrderMenu);
@@ -6445,23 +6441,23 @@
         const rawData = getTableData();
         const tables = processJsonData(rawData);
         if (tables && tables[tableName]) {
-           const $section = $(`#acu-table-${tableId}`);
-           const currentPage = getCurrentPageForTable(tableName);
-           const paginationHtml = generatePaginationHTML(
-             tableName,
-             tables[tableName].rows ? tables[tableName].rows.length : 0,
-             currentPage,
-           );
-           const newTableHtml = renderDataTable(tables[tableName], tableName);
+          const $section = $(`#acu-table-${tableId}`);
+          const currentPage = getCurrentPageForTable(tableName);
+          const paginationHtml = generatePaginationHTML(
+            tableName,
+            tables[tableName].rows ? tables[tableName].rows.length : 0,
+            currentPage,
+          );
+          const newTableHtml = renderDataTable(tables[tableName], tableName);
 
-           $section.find('.acu-pagination-container').remove();
-           $section.find('.section-title').after(paginationHtml);
-           $section.find('.data-table-wrapper').replaceWith(newTableHtml);
+          $section.find('.acu-pagination-container').remove();
+          $section.find('.section-title').after(paginationHtml);
+          $section.find('.data-table-wrapper').replaceWith(newTableHtml);
 
-           bindCellEventsForSection($section);
-           bindPaginationEvents($section, tableName, tables[tableName]);
-           bindRowDragEvents($section, tableName);
-         }
+          bindCellEventsForSection($section);
+          bindPaginationEvents($section, tableName, tables[tableName]);
+          bindRowDragEvents($section, tableName);
+        }
 
         // 添加这行：检查是否需要跳转到最后一页
         setTimeout(() => checkAndJumpToLastPageForSummary(), 100);
@@ -6485,13 +6481,15 @@
 
     // 2. 核心：月相/太阳切换按钮交互
     // 改用 button 并执行 preventDefault，这是拦截 summary 默认行为最稳固的手段
-    $('.acu-mode-toggle').off('click.acu').on('click.acu', function (e) {
+    $('.acu-mode-toggle')
+      .off('click.acu')
+      .on('click.acu', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
         toggleNightMode();
         return false;
-    });
+      });
   };
 
   const showCellMenu = (event, cell) => {
@@ -6525,7 +6523,7 @@
 
     let menuHtml = isPendingDelete
       ? `
-      <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
+    cons<div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
           <div class="acu-cell-menu-item restore" data-action="restore">🔄 恢复整行</div>
           <div class="acu-cell-menu-item close" data-action="close">✕ 关闭菜单</div>
       </div>
@@ -6805,7 +6803,7 @@
             tableName,
             rowIndex,
             colIndex,
-            newValue: newContent
+            newValue: newContent,
           });
           if (saveSuccess) {
             // 标记为高亮
@@ -6838,101 +6836,103 @@
 
         // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
         let editMouseDownOnBg = false;
-        $editOverlay.on('mousedown', function (e) {
-          editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
-        }).on('mouseup', function (e) {
-          if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
-          editMouseDownOnBg = false;
-        });
+        $editOverlay
+          .on('mousedown', function (e) {
+            editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
+          })
+          .on('mouseup', function (e) {
+            if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
+            editMouseDownOnBg = false;
+          });
         break;
 
       case 'insert-above':
-         // 在上方插入新行
-         try {
-           const rawData = getTableData();
-           if (!rawData?.[tableKey]) {
-             alert('无法获取表格数据');
-             return;
-           }
+        // 在上方插入新行
+        try {
+          const rawData = getTableData();
+          if (!rawData?.[tableKey]) {
+            alert('无法获取表格数据');
+            return;
+          }
 
-           // 获取当前表格的列数
-           const headers = rawData[tableKey].content[0] || [];
-           const colCount = headers.length;
+          // 获取当前表格的列数
+          const headers = rawData[tableKey].content[0] || [];
+          const colCount = headers.length;
 
-           // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
-           const newRow = [];
-           for (let i = 0; i < colCount; i++) {
-             if (i === 1) {
-               // 第一列数据单元格（跳过表头列）填入"1"作为占位符
-               newRow.push('1');
-             } else {
-               newRow.push(''); // 其他单元格保持空白
-             }
-           }
+          // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
+          const newRow = [];
+          for (let i = 0; i < colCount; i++) {
+            if (i === 1) {
+              // 第一列数据单元格（跳过表头列）填入"1"作为占位符
+              newRow.push('1');
+            } else {
+              newRow.push(''); // 其他单元格保持空白
+            }
+          }
 
-           // 在指定行上方插入新行
-           const insertIndex = rowIndex + 1; // +1: 因为第一行是表头
-           rawData[tableKey].content.splice(insertIndex, 0, newRow);
+          // 在指定行上方插入新行
+          const insertIndex = rowIndex + 1; // +1: 因为第一行是表头
+          rawData[tableKey].content.splice(insertIndex, 0, newRow);
 
-           // 标记为已编辑（标记第一列数据单元格）
-           currentUserEditMap.add(`${tableName}-${rowIndex}-1`); // 标记第一个数据单元格为用户编辑
+          // 标记为已编辑（标记第一列数据单元格）
+          currentUserEditMap.add(`${tableName}-${rowIndex}-1`); // 标记第一个数据单元格为用户编辑
 
-           // 保存数据
-           const saveSuccess = await saveDataToDatabase(rawData);
-           if (saveSuccess) {
-             showNotification('已成功在上方添加新行（第一列已填入占位符"1"）', 'success');
-             // 重新渲染表格
-             smartUpdateTable(true);
-           }
-         } catch (e) {
-           console.error('添加新行失败:', e);
-           alert('添加新行失败：' + e.message);
-         }
-         break;
+          // 保存数据
+          const saveSuccess = await saveDataToDatabase(rawData);
+          if (saveSuccess) {
+            showNotification('已成功在上方添加新行（第一列已填入占位符"1"）', 'success');
+            // 重新渲染表格
+            smartUpdateTable(true);
+          }
+        } catch (e) {
+          console.error('添加新行失败:', e);
+          alert('添加新行失败：' + e.message);
+        }
+        break;
 
       case 'insert':
-         // 在下方插入新行
-         try {
-           const rawData = getTableData();
-           if (!rawData?.[tableKey]) {
-             alert('无法获取表格数据');
-             return;
-           }
+        // 在下方插入新行
+        try {
+          const rawData = getTableData();
+          if (!rawData?.[tableKey]) {
+            alert('无法获取表格数据');
+            return;
+          }
 
-           // 获取当前表格的列数
-           const headers = rawData[tableKey].content[0] || [];
-           const colCount = headers.length;
+          // 获取当前表格的列数
+          const headers = rawData[tableKey].content[0] || [];
+          const colCount = headers.length;
 
-           // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
-           const newRow = [];
-           for (let i = 0; i < colCount; i++) {
-             if (i === 1) {
-               // 第一列数据单元格（跳过表头列）填入"1"作为占位符
-               newRow.push('1');
-             } else {
-               newRow.push(''); // 其他单元格保持空白
-             }
-           }
+          // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
+          const newRow = [];
+          for (let i = 0; i < colCount; i++) {
+            if (i === 1) {
+              // 第一列数据单元格（跳过表头列）填入"1"作为占位符
+              newRow.push('1');
+            } else {
+              newRow.push(''); // 其他单元格保持空白
+            }
+          }
 
-           // 在指定行下方插入新行
-           const insertIndex = rowIndex + 2; // +2: +1因为第一行是表头，+1因为要插入在下方
-           rawData[tableKey].content.splice(insertIndex, 0, newRow);
+          // 在指定行下方插入新行
+          const insertIndex = rowIndex + 2; // +2: +1因为第一行是表头，+1因为要插入在下方
+          rawData[tableKey].content.splice(insertIndex, 0, newRow);
 
-           // 标记为已编辑（标记第一列数据单元格）
-           currentUserEditMap.add(`${tableName}-${rowIndex + 1}-1`); // 标记第一个数据单元格为用户编辑
+          // 标记为已编辑（标记第一列数据单元格）
+          currentUserEditMap.add(`${tableName}-${rowIndex + 1}-1`); // 标记第一个数据单元格为用户编辑
 
-           // 保存数据
-           const saveSuccess = await saveDataToDatabase(rawData);
-           if (saveSuccess) {
-             showNotification('已成功在下方添加新行（第一列已填入占位符"1"）', 'success');
-             // 重新渲染表格
-             smartUpdateTable(true);
-           }
-         } catch (e) {
-           console.error('添加新行失败:', e);
-           alert('添加新行失败：' + e.message);
-         }
-         break;
+          // 保存数据
+          const saveSuccess = await saveDataToDatabase(rawData);
+          if (saveSuccess) {
+            showNotification('已成功在下方添加新行（第一列已填入占位符"1"）', 'success');
+            // 重新渲染表格
+            smartUpdateTable(true);
+          }
+        } catch (e) {
+          console.error('添加新行失败:', e);
+          alert('添加新行失败：' + e.message);
+        }
+        break;
 
       case 'delete':
         // 标记删除，不实际删除
@@ -6987,7 +6987,7 @@
     const tableHtml = generateTableHTML();
     $('.acu-table-container').remove();
 
-    let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
+    const $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
     if ($latestAIMessage.length === 0) {
       const $chatContainer = $('#chat, .chat-container').first();
@@ -7061,9 +7061,6 @@
 
           if (!saveSuccess) {
             showNotification('保存失败，请检查数据库连接！', 'error');
-            if (false) {
-              alert('保存失败，请检查数据库连接！');
-            }
           }
         } else {
           $(this).prop('disabled', false).text('💾 保存到数据库');
@@ -7085,11 +7082,16 @@
       });
 
     // --- 新增：为每个表格分区绑定搜索功能 ---
-    $('.acu-table-section').each(function() {
+    $('.acu-table-section').each(function () {
       const $section = $(this);
-      const tableName = $section.find('.section-title').contents().filter(function() {
-        return this.nodeType === 3; // 获取文本节点（表格名）
-      }).text().trim();
+      const tableName = $section
+        .find('.section-title')
+        .contents()
+        .filter(function () {
+          return this.nodeType === 3; // 获取文本节点（表格名）
+        })
+        .text()
+        .trim();
       if (tableName) {
         bindCellEventsForSection($section, tableName);
       }
@@ -7164,7 +7166,6 @@
       if (!loadSnapshot()) {
         const current = api.exportTableAsJson();
         if (current) {
-
           saveSnapshot(current);
           lastTableDataHash = generateDataHash(current);
         }
@@ -7186,7 +7187,7 @@
       }
 
       // 监听AI消息变化
-      const observeAIMessages = () => {
+      const observeconsMessages = () => {
         const observer = new MutationObserver(mutations => {
           mutations.forEach(mutation => {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {

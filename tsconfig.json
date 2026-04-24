@@ -38,7 +38,7 @@
   "include": [
     "@types",
     "src",
-    "*.d.ts",
+    "*.d.ts", "dist/兼容性可视化表格",
   ],
   "exclude": [
     "**/dist/**",
