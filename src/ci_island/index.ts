@@ -1,14 +1,8 @@
-import 'pinia';
 import { teleportStyle } from '../../util/script';
 import './style.scss';
 
 if (typeof (window as any).global === 'undefined') {
   (window as any).global = window;
-}
-
-// 注入 getScriptId 垫片，防止在独立加载时报错
-if (typeof (window as any).getScriptId !== 'function') {
-  (window as any).getScriptId = () => 'ci_island_standalone';
 }
 
 declare global {
@@ -10916,7 +10910,7 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
       updates.forEach(update => {
         const { table, col, value } = update;
         let targetTable = null;
-        const currentRefTable = table === 'outline' ? outlineTable : summaryTable;
+        let currentRefTable = table === 'outline' ? outlineTable : summaryTable;
 
         if (currentRefTable) {
           // 通过表名找到对应的表对象
