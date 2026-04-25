@@ -1,8 +1,4 @@
 import iframe_srcdoc from './iframe_srcdoc.html';
-// 安全回退：如果全局没有 getScriptId，则挂载一个到 window 上
-if (typeof window !== 'undefined' && !window.getScriptId) {
-  window.getScriptId = () => 'ci_island';
-}
 
 export async function loadReadme(url: string): Promise<boolean> {
   const readme = await fetch(url);

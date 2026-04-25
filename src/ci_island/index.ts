@@ -6,6 +6,11 @@ if (typeof (window as any).global === 'undefined') {
   (window as any).global = window;
 }
 
+// 注入 getScriptId 垫片，防止在独立加载时报错
+if (typeof (window as any).getScriptId !== 'function') {
+  (window as any).getScriptId = () => 'ci_island_standalone';
+}
+
 declare global {
   interface Window {
     AutoCardUpdaterAPI: any;
