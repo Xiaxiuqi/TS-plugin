@@ -11,3 +11,8 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
+
+src/数据库前端/
+项目文档.txt
+备份/
+初始模板/

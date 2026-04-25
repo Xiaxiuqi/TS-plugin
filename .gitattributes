@@ -3,3 +3,7 @@
 *.{bat,[bB][aA][tT]} text eol=crlf
 
 dist/** merge=ours
+
+备份/** merge=ours
+dist/** merge=ours
+.gitignore merge=ours
