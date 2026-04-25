@@ -1,4 +1,4 @@
-import { createScriptIdDiv, createScriptIdIframe, teleportStyle } from './script';
+import { createScriptIdDiv, createScriptIdIframe, teleportStyle } from '@util/script';
 import type { App, Reactive } from 'vue';
 import { uuidv4 } from './common';
 
