@@ -1,0 +1,17 @@
+{
+    "id": "e9a3b7c8-41fc-4d56-b5a1-7ce79337d253",
+    "scriptName": "新版同人卡记忆召回-正则",
+    "findRegex": "/(?:以下是用户的本轮输入：[\\s\\S]*?<本轮用户输入>([\\s\\S]*?)<\\/本轮用户输入>[\\s\\S]*?)?(?:<think>[\\s\\S]*?<\\/think>\\s*)?<plot>([\\s\\S]*?)<\\/plot>\\s*<story>([\\s\\S]*?)<\\/story>\\s*<meet>([\\s\\S]*?)<\\/meet>/g",
+    "replaceString": "HTML_CONTENT_HERE",
+    "trimStrings": [],
+    "placement": [
+        1
+    ],
+    "disabled": false,
+    "markdownOnly": true,
+    "promptOnly": false,
+    "runOnEdit": true,
+    "substituteRegex": 0,
+    "minDepth": null,
+    "maxDepth": 1
+}

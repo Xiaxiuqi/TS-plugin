@@ -11,11 +11,3 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
-
-src/数据库前端/
-项目文档.txt
-备份/
-初始模板/
-restore_stable.js
-restore_prompt_v2.js
-restore_prompt_v3.js

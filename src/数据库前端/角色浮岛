@@ -1,0 +1,1087 @@
+// ==UserScript==
+// @name         角色浮岛 (Character Island) v4.1 [Log Flood & Height Fix]
+// @namespace    http://tampermonkey.net/
+// @version      4.1.0
+// @description  修复灵动岛无法二次展开 + 选项弹窗坐标日志 + 尺寸变化追踪
+// @author       Gemini (Based on Cline)
+// @match        *://*/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const SCRIPT_ID = 'char_island_v4_1_log_fix';
+    const STORAGE_POS_KEY = 'ci_island_pos_v5';
+    const STORAGE_PANEL_SIZE_KEY = 'ci_panel_size_v5';
+    const STORAGE_AVATAR_PREFIX = 'ci_avatar_img_';
+    const STORAGE_CUSTOM_CATEGORIES_KEY = 'ci_custom_cats_v1';
+
+    // 【DEBUG 核心 - 绝对开启】
+    const dbg = (msg, data) => {
+        const time = new Date().toLocaleTimeString();
+        // 格式化数据以便阅读
+        let dataStr = '';
+        if (data !== undefined) {
+            try {
+                dataStr = typeof data === 'object' ? JSON.stringify(data) : String(data);
+            } catch(e) { dataStr = '[Object]'; }
+        }
+        console.log(`%c[浮岛DEBUG ${time}] ${msg}`, 'background: #d32f2f; color: #fff; padding: 2px 5px; border-radius: 3px; font-weight: bold;', data !== undefined ? data : '');
+    };
+
+    // ----------------- 图标库 -----------------
+    const ICONS = {
+        grip: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm8-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg>`,
+        user: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
+        star: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`,
+        group: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
+        ghost: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12v6c0 1.1.9 2 2 2h2v2h2v-2h4v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-6c0-5.52-4.48-10-10-10zm-3 8c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/></svg>`,
+        close: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+        resize: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 22H2v-2h20v2zM22 18H6v-2h16v2zM22 14h-8v-2h8v2z"/></svg>`,
+        back: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`,
+        bag: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 14H6V8h12v10z"/></svg>`,
+        upload: `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>`,
+        dots: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`,
+        expand_box: `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>`,
+        edit: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+        save: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`,
+        chat: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>`,
+
+        slot_head: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" opacity="0.4"><path d="M12 2c-4.42 0-8 3.58-8 8v4h2v-4c0-3.31 2.69-6 6-6s6 2.69 6 6v4h2v-4c0-4.42-3.58-8-8-8z"/></svg>`,
+        slot_body: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" opacity="0.4"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>`,
+        slot_weapon: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" opacity="0.4"><path d="M7 2v11h3v9l7-12h-3V2z"/></svg>`,
+        slot_acc: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" opacity="0.4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`,
+        stickman: `<svg viewBox="0 0 24 48" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.2"><circle cx="12" cy="12" r="4" /><line x1="12" y1="16" x2="12" y2="34" /><line x1="12" y1="20" x2="4" y2="28" /><line x1="12" y1="20" x2="20" y2="28" /><line x1="12" y1="34" x2="6" y2="44" /><line x1="12" y1="34" x2="18" y2="44" /></svg>`
+    };
+
+    const CONFIG = {
+        keywords: ['恋人', '情人', '爱人', '挚友', '宿敌', '夫妻', '搭档', '死党', '亲人', '兄妹', '姐弟', '父母', '核心', '正派', '反派', 'BOSS', '伴侣', '未婚', '婚配', '主角', '重要'],
+        genericNames: ['妈', '婶', '伯', '叔', '姨', '爷', '奶', '混混', '路人', '老板', '小二', '侍卫', '丫鬟', '管家', '士兵', '司机', '路人'],
+        tables: { protagonist: '主角信息', important: '重要人物表', items: ['物品', '道具', '背包', '装备', '库存'] }
+    };
+
+    let state = {
+        isExpanded: false,
+        activeCategory: null,
+        isOptionsOpen: false,
+        cachedData: { main: [], side: [], retired: [] },
+        optionsData: [],
+        customCategories: JSON.parse(localStorage.getItem(STORAGE_CUSTOM_CATEGORIES_KEY) || '{}'),
+        drag: { active: false, startX: 0, startY: 0, initialLeft: 0, initialTop: 0, rafId: null },
+        resize: { active: false, mode: null, startX: 0, startY: 0, startW: 0, startH: 0, startLeft: 0 },
+        currentUploadChar: null,
+        isEditing: false
+    };
+
+    let $ = null;
+
+    const addStyles = () => {
+        dbg("注入样式...");
+        $(`#${SCRIPT_ID}-styles`).remove();
+        const styles = `
+            <style id="${SCRIPT_ID}-styles">
+                :root {
+                    --ci-bg: rgba(255, 255, 255, 0.96);
+                    --ci-glass: blur(20px);
+                    --ci-border: 1px solid rgba(0,0,0,0.08);
+                    --ci-shadow: 0 12px 40px rgba(0,0,0,0.15);
+                    --ci-card-shadow: 0 3px 8px rgba(0,0,0,0.08);
+                    --ci-card-shadow-hover: 0 8px 20px rgba(0,0,0,0.12);
+                    --ci-text: #333;
+                    --ci-accent: #1a73e8;
+                    --ci-edit-highlight: rgba(76, 175, 80, 0.15);
+                    --ci-edit-border: #4caf50;
+                }
+
+                /* [Fix #1 & #3] 灵动岛布局 & 高度 */
+                #ci-island-container {
+                    position: fixed; top: 150px; right: 80px; width: 44px;
+                    background: var(--ci-bg); backdrop-filter: var(--ci-glass); -webkit-backdrop-filter: var(--ci-glass);
+                    border: var(--ci-border); border-radius: 22px; box-shadow: var(--ci-shadow);
+                    z-index: 2000;
+                    display: flex; flex-direction: column; align-items: center; padding: 6px 0;
+                    transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    height: 135px; /* 收起高度：容纳Grip+User+Option */
+                    overflow: hidden; user-select: none;
+                    gap: 6px;
+                }
+                #ci-island-container.expanded { height: 260px; } /* 展开高度 */
+
+                .ci-drag-grip { width: 100%; height: 24px; display: flex; align-items: center; justify-content: center; cursor: grab; color: #9aa0a6; flex-shrink: 0; }
+                .ci-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: #666; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; position: relative; flex-shrink: 0; }
+                .ci-btn:hover { background: rgba(0,0,0,0.06); color: #333; transform: scale(1.1); }
+                .ci-btn.active { background: #333; color: #fff; }
+
+                /* 布局顺序 */
+                #ci-main-trigger { order: 1; }
+                .ci-sub-buttons { order: 2; height: 0; opacity: 0; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; overflow: hidden; }
+                #ci-island-container.expanded .ci-sub-buttons { height: 120px; opacity: 1; pointer-events: auto; }
+                #ci-options-btn { order: 3; display: none; /* 有数据显示 */ }
+
+                .ci-options-container {
+                    position: fixed; display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+                    pointer-events: none; opacity: 0; transition: 0.3s; transform: translateX(10px);
+                    z-index: 2002;
+                }
+                .ci-options-container.visible { opacity: 1; pointer-events: auto; transform: translateX(0); }
+                .ci-option-bubble {
+                    background: var(--ci-bg); border: 1px solid var(--ci-border);
+                    padding: 8px 12px; border-radius: 12px 12px 2px 12px;
+                    box-shadow: var(--ci-shadow); color: var(--ci-text); font-size: 12px;
+                    max-width: 200px; cursor: pointer; backdrop-filter: blur(5px);
+                    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+                }
+                .ci-option-bubble:hover { background: #fff; transform: scale(1.05); }
+                @keyframes popIn { from { opacity: 0; transform: scale(0.8) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+                .ci-tooltip { display: none; position: absolute; right: 42px; background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; pointer-events: none; z-index: 99; }
+                .ci-btn:hover .ci-tooltip { display: block; }
+
+                #ci-panel { position: fixed; width: 400px; height: 600px; background: var(--ci-bg); backdrop-filter: var(--ci-glass); -webkit-backdrop-filter: var(--ci-glass); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); z-index: 2001; display: none; flex-direction: column; border: var(--ci-border); opacity: 0; transform: scale(0.95); transition: opacity 0.25s, transform 0.25s, left 0.3s cubic-bezier(0.2, 0, 0, 1); }
+                #ci-panel.visible { display: flex !important; opacity: 1 !important; transform: scale(1) !important; }
+                #ci-panel.no-transition { transition: none !important; }
+                .ci-panel-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.06); font-weight: bold; color: #333; font-size: 14px; user-select: none; flex-shrink: 0; }
+                .ci-close-btn, .ci-edit-btn { cursor: pointer; padding: 4px; border-radius: 50%; opacity: 0.6; transition: 0.2s; width: 24px; height: 24px; display:flex; align-items:center; justify-content:center; }
+                .ci-close-btn:hover, .ci-edit-btn:hover { opacity: 1; background: rgba(0,0,0,0.05); }
+                .ci-edit-btn.active { color: #4caf50; opacity: 1; background: rgba(76, 175, 80, 0.1); }
+                .ci-panel-content { flex: 1; overflow-y: auto; padding: 12px; position: relative; background: rgba(245,245,247,0.5); }
+
+                .ci-grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); grid-auto-rows: min-content; gap: 16px; width: 100%; padding-bottom: 40px; }
+                .ci-card { background: #fff; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: var(--ci-card-shadow); border: 1px solid rgba(0,0,0,0.04); position: relative; cursor: pointer; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s; height: 200px; }
+                .ci-card:hover { transform: translateY(-2px); box-shadow: var(--ci-card-shadow-hover); z-index: 2; border-color: rgba(0,0,0,0.1); }
+
+                .ci-card.is-expanded { grid-column: span 2; grid-row: span 3; width: 100%; height: 100%; cursor: default; padding: 0; margin: 0; background: transparent; box-shadow: none; border: none; z-index: 10; overflow: visible !important; }
+                .ci-expanded-box { width: 410px !important; min-width: 410px !important; height: 450px !important; min-height: 450px !important; position: relative; background: #fff; border-radius: 16px; box-shadow: var(--ci-card-shadow) !important; border: 1px solid rgba(0,0,0,0.1); display: flex; overflow: hidden; animation: expandAnim 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 101; }
+                @keyframes expandAnim { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+                .ci-card-compact { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; }
+                .ci-card.is-expanded .ci-card-compact { display: none; }
+
+                .ci-card-avatar { width: 64px; height: 64px; border-radius: 16px; background: #f0f0f0; margin-bottom: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #aaa; box-shadow: inset 0 0 10px rgba(0,0,0,0.03); }
+                .ci-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+                .ci-card-name { font-weight: 700; font-size: 15px; color: #333; text-align: center; width: 100%; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .ci-card-role { font-size: 10px; color: #666; background: #f5f5f7; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px; max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .ci-card-info { font-size: 11px; color: #999; text-align: center; margin-bottom: auto; }
+                .ci-card-goal { font-size: 11px; color: #555; font-style: italic; text-align: center; padding-top: 8px; border-top: 1px dashed #eee; width: 100%; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .ci-menu-trigger { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ddd; cursor: pointer; transition: 0.2s; z-index: 20; }
+                .ci-menu-trigger:hover, .ci-menu-trigger.active { background: rgba(0,0,0,0.05); color: #333; }
+                .ci-card-menu-popover { position: absolute; top: 36px; right: 8px; background: #333; border-radius: 8px; padding: 6px; display: none; flex-direction: column; gap: 4px; z-index: 30; box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+                .ci-menu-trigger.active + .ci-card-menu-popover { display: flex; }
+                .ci-menu-item { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 11px; padding: 8px 12px; cursor: pointer; border-radius: 6px; white-space: nowrap; }
+                .ci-menu-item:hover { background: rgba(255,255,255,0.2); }
+
+                .ci-nb-left { width: 40%; background: #fff; border-right: 1px solid #f0f0f0; padding: 16px; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: all 0.2s; }
+                .ci-editing .ci-nb-left { box-shadow: inset 0 0 0 2px var(--ci-edit-border); background-color: var(--ci-edit-highlight); cursor: pointer; }
+                .ci-nb-right { width: 60%; background: #fafafa; padding: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+
+                .ci-big-avatar-box { width: 80px; height: 80px; margin: 0 auto 10px; border-radius: 16px; background: #eee; overflow: hidden; position: relative; cursor: pointer; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-size: 30px; color: #ccc; z-index: 2; }
+                .ci-big-avatar-box img { width: 100%; height: 100%; object-fit: cover; }
+                .ci-upload-hint { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.6); color: white; font-size: 10px; text-align: center; opacity: 0; transition: 0.2s; padding: 2px 0; }
+                .ci-big-avatar-box:hover .ci-upload-hint { opacity: 1; }
+                .ci-info-scroll { flex: 1; overflow-y: auto; padding-right: 2px; display: flex; flex-direction: column; }
+                .ci-detail-row { display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px dashed #eee; padding-bottom: 2px; margin-bottom: 12px; align-items: center; flex-shrink: 0; }
+                .ci-label { color: #888; white-space: nowrap; }
+                .ci-val { font-weight: 600; color: #444; text-align: right; overflow: hidden; text-overflow: ellipsis; }
+                .ci-long-goal { background: #fff8e1; border-left: 3px solid #ffc107; border-radius: 4px; padding: 8px; font-size: 11px; line-height: 1.4; color: #5d4037; margin-top: 4px; flex-shrink: 0; }
+                .ci-equip-ui { flex: 0 0 65%; display: flex; flex-direction: column; align-items: center; border-bottom: 2px solid #eee; position: relative; padding-bottom: 10px; }
+                .ci-equip-bg-icon { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 80%; display: flex; align-items: center; justify-content: center; opacity: 0.8; z-index: 0; pointer-events: none; }
+                .ci-slots-container { position: absolute; bottom: 10px; left: 0; width: 100%; display: flex; gap: 4px; z-index: 5; padding: 0 10px; box-sizing: border-box; justify-content: space-evenly; }
+                .ci-slot { width: 36px; height: 36px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #ddd; transition: 0.2s; cursor: help; box-shadow: none; }
+                .ci-slot:hover { border-color: #bbb; transform: scale(1.1); color: #999; }
+                .ci-bag-section { flex: 1; height: 35%; background: #fff; border-top: 1px solid #eee; padding: 10px; display: flex; flex-direction: column; overflow: hidden; }
+                .ci-bag-section.expanded { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; padding: 20px; box-sizing: border-box; }
+                .ci-bag-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
+                .ci-bag-title { font-size: 10px; font-weight: bold; color: #bbb; text-transform: uppercase; }
+                .ci-bag-expand-btn { cursor: pointer; color: #999; transition: 0.2s; padding: 8px; margin: -8px; }
+                .ci-bag-expand-btn:hover { color: #333; transform: scale(1.2); }
+                .ci-bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; overflow-y: auto; padding: 10px; flex: 1; min-height: 50px; }
+                .ci-bag-item { aspect-ratio: 1; background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; position: relative; cursor: pointer; color: #555; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 4px; text-align: center; line-height: 1.2; word-break: break-all; }
+                .ci-bag-item:hover { border-color: #999; transform: scale(1.05); background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 2; }
+                .ci-item-count { position: absolute; bottom: 1px; right: 1px; font-size: 8px; background: #666; color: white; padding: 0 3px; border-radius: 4px; }
+                .ci-item-popup-overlay, .ci-edit-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; animation: fadeIn 0.2s forwards; }
+                .ci-item-popup-card, .ci-edit-card { width: 280px; background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 16px; position: relative; transform: scale(0.9); animation: popUp 0.2s forwards; display: flex; flex-direction: column; gap: 10px; }
+                .ci-item-popup-title, .ci-edit-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; display: flex; align-items: center; }
+                .ci-item-tag-inline { font-size: 10px; background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 8px; margin-left: 8px; font-weight: normal; vertical-align: middle; }
+                .ci-item-row { font-size: 12px; color: #555; display: flex; justify-content: space-between; border-bottom: 1px dashed #f5f5f5; padding: 4px 0; }
+                .ci-item-label { font-weight: bold; color: #999; margin-right: 8px; }
+                .ci-item-close, .ci-edit-close { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #f0f0f0; color: #666; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+                .ci-item-close:hover, .ci-edit-close:hover { background: #e0e0e0; color: #333; }
+                .ci-input-group { margin-bottom: 8px; }
+                .ci-input-label { display: block; font-size: 10px; color: #888; margin-bottom: 2px; }
+                .ci-input-field { width: 100%; padding: 4px 8px; border: 1px solid #eee; border-radius: 4px; font-size: 12px; box-sizing: border-box; }
+                .ci-input-field:focus { border-color: #4caf50; outline: none; }
+                .ci-edit-save-btn { width: 100%; padding: 8px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 10px; }
+                .ci-edit-save-btn:hover { background: #43a047; }
+                #ci-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 2147483647; pointer-events: none; opacity: 0; transition: opacity 0.5s; }
+                #ci-toast.show { opacity: 1; }
+                .ci-resize-handle { position: absolute; width: 24px; height: 24px; opacity: 0; z-index: 10; }
+                .ci-resize-handle:hover { opacity: 1; background: rgba(0,0,0,0.1); border-radius: 50%; }
+                .ci-resize-br { bottom: 0; right: 0; cursor: nwse-resize; }
+                .ci-resize-bl { bottom: 0; left: 0; cursor: nesw-resize; }
+                body.dark-mode { --ci-bg: rgba(30, 30, 30, 0.95); --ci-text: #ddd; }
+                body.dark-mode .ci-card, body.dark-mode .ci-nb-left, body.dark-mode .ci-expanded-box, body.dark-mode .ci-item-popup-card, body.dark-mode .ci-edit-card { background: #333; border-color: #444; }
+                body.dark-mode .ci-nb-right, body.dark-mode .ci-card-role { background: #3a3a3a; color: #ccc; }
+                body.dark-mode .ci-card-name, body.dark-mode .ci-val, body.dark-mode .ci-item-popup-title, body.dark-mode .ci-item-row, body.dark-mode .ci-edit-title { color: #eee; }
+                body.dark-mode .ci-slot, body.dark-mode .ci-bag-item, body.dark-mode .ci-input-field { background: #444; border-color: #555; color: #eee; }
+                body.dark-mode .ci-bag-section { background: #333; border-top-color: #444; }
+                body.dark-mode .ci-long-goal { background: #4a4a3a; color: #ffd54f; border-left-color: #ffd54f; }
+                body.dark-mode .ci-card-avatar { background: #444; color: #666; }
+                body.dark-mode .ci-option-bubble { background: #333; border-color: #555; color: #eee; }
+            </style>
+        `;
+        $('head').append(styles);
+    };
+
+    const processData = (rawData) => {
+        dbg("处理数据...");
+        const result = { main: [], side: [], retired: [] };
+        const allItems = [];
+        if (!rawData) return result;
+
+        const getCol = (h, ns) => h.findIndex(x => x && ns.some(n => x.toLowerCase().includes(n.toLowerCase())));
+
+        try {
+            // 提取选项数据
+            state.optionsData = [];
+            for (const k in rawData) {
+                const s = rawData[k];
+                if (CONFIG.tables.protagonist === s.name) {
+                    const h = s.content[0] || [];
+                    const op1 = getCol(h, ['选项一', 'Option1']);
+                    const op2 = getCol(h, ['选项二', 'Option2']);
+                    const op3 = getCol(h, ['选项三', 'Option3']);
+                    const op4 = getCol(h, ['选项四', 'Option4']);
+
+                    if (op1 > -1 && s.content[1]) {
+                        if (s.content[1][op1]) state.optionsData.push(s.content[1][op1]);
+                        if (s.content[1][op2]) state.optionsData.push(s.content[1][op2]);
+                        if (s.content[1][op3]) state.optionsData.push(s.content[1][op3]);
+                        if (s.content[1][op4]) state.optionsData.push(s.content[1][op4]);
+                    }
+                }
+            }
+            if (state.optionsData.length > 0) {
+                $('#ci-options-btn').show();
+            } else {
+                $('#ci-options-btn').hide();
+            }
+            dbg(`[数据] 选项提取结果:`, state.optionsData);
+
+            // 1. 扫描物品
+            for (const k in rawData) {
+                const s = rawData[k];
+                if (!s || !s.name) continue;
+
+                const hasItemCol = s.content[0] && getCol(s.content[0], ['物品', '道具', '背包']) > -1;
+                const isItemTable = CONFIG.tables.items.some(key => s.name.includes(key));
+
+                if (isItemTable || hasItemCol) {
+                    const h = s.content[0] || [];
+                    const nameIdx = getCol(h, ['名称', '名字', '物品']);
+                    const ownerIdx = getCol(h, ['拥有者', '拥有人', '持有者', '持有人', '角色', '归属', '姓名', 'Owner', 'User', 'Belongs']);
+                    const descIdx = getCol(h, ['描述', '效果']);
+                    const countIdx = getCol(h, ['数量', '个数']);
+                    const typeIdx = getCol(h, ['类型', '种类', 'Type', 'Category']);
+
+                    if (nameIdx > -1) {
+                        s.content.slice(1).forEach((r, i) => {
+                            if (!r[nameIdx]) return;
+                            const details = {};
+                            h.forEach((header, i) => {
+                                if (i !== ownerIdx && r[i]) {
+                                    details[header] = r[i];
+                                }
+                            });
+                            const item = {
+                                name: r[nameIdx],
+                                owner: r[ownerIdx],
+                                desc: descIdx > -1 ? r[descIdx] : '',
+                                count: countIdx > -1 ? (r[countIdx] || 1) : 1,
+                                type: typeIdx > -1 ? r[typeIdx] : '物品',
+                                details: details
+                            };
+                            allItems.push(item);
+                        });
+                    }
+                }
+            }
+            dbg(`[数据] 物品总数: ${allItems.length}`);
+
+            // 2. 扫描角色
+            for (const k in rawData) {
+                const s = rawData[k];
+                if (!s || !s.name) continue;
+                const h = s.content[0] || [];
+                const rows = s.content.slice(1);
+
+                const idx = {
+                    name: getCol(h, ['姓名', '名字', '名称']),
+                    age: getCol(h, ['年龄', '岁数']),
+                    sex: getCol(h, ['性别']),
+                    loc: getCol(h, ['地点', '位置', '所在地']),
+                    job: getCol(h, ['职业']),
+                    identity: getCol(h, ['身份']),
+                    desc: getCol(h, ['关系', '描述', '简介']),
+                    shortGoal: getCol(h, ['短期目标', '心声', '当前']),
+                    longGoal: getCol(h, ['长期目标', '终极目标', '愿望']),
+                    ret: getCol(h, ['离场', '死亡', '退场']),
+                    item: getCol(h, ['物品', '道具', '背包'])
+                };
+
+                if (idx.name === -1) continue;
+
+                const isProtagTable = s.name === CONFIG.tables.protagonist;
+                const isImportantTable = s.name === CONFIG.tables.important;
+
+                if (isProtagTable || isImportantTable) {
+                    rows.forEach((r, rowIdx) => {
+                        const name = r[idx.name];
+                        if (!name) return;
+
+                        const job = idx.job > -1 ? r[idx.job] : '';
+                        const identity = idx.identity > -1 ? r[idx.identity] : '';
+                        const desc = idx.desc > -1 ? r[idx.desc] : '';
+
+                        let loc = '未知';
+                        if (idx.loc > -1 && r[idx.loc]) loc = r[idx.loc];
+
+                        const charObj = {
+                            name: name,
+                            age: idx.age > -1 ? r[idx.age] : '?',
+                            sex: idx.sex > -1 ? r[idx.sex] : '?',
+                            loc: loc,
+                            job: job,
+                            identity: identity,
+                            desc: desc,
+                            shortGoal: idx.shortGoal > -1 ? r[idx.shortGoal] : '',
+                            longGoal: idx.longGoal > -1 ? r[idx.longGoal] : '',
+                            items: [],
+                            _src: {
+                                table: s.name,
+                                row: rowIdx + 1,
+                                cols: {
+                                    name: idx.name,
+                                    sex: idx.sex,
+                                    age: idx.age,
+                                    job: idx.job,
+                                    identity: idx.identity,
+                                    loc: idx.loc,
+                                    longGoal: idx.longGoal
+                                }
+                            }
+                        };
+
+                        if (idx.item > -1 && r[idx.item]) {
+                            charObj.items.push(...r[idx.item].split(/[,，]/).map(x => ({
+                                name: x.trim(),
+                                count: 1,
+                                desc: '表格记录',
+                                details: { '来源': '表格直接记录' },
+                                type: '未知'
+                            })));
+                        }
+
+                        const globalItems = allItems.filter(i => {
+                            if (!i.owner) return false;
+                            const owner = String(i.owner).replace(/\s/g, '').toLowerCase();
+                            const charName = String(name).replace(/\s/g, '').toLowerCase();
+                            return owner.includes(charName) || charName.includes(owner);
+                        });
+
+                        charObj.items = [...charObj.items, ...globalItems];
+
+                        let type = 'side';
+                        const customCat = state.customCategories[name];
+                        if (customCat) type = customCat;
+                        else {
+                            const isRet = idx.ret > -1 && ['是', 'Yes', '1', '已离场'].some(x => String(r[idx.ret]).includes(x));
+                            const descText = (job + identity + desc);
+                            if (isRet) type = 'retired';
+                            else if (isProtagTable) type = 'main';
+                            else if (CONFIG.keywords.some(kw => descText.includes(kw))) type = 'main';
+                            else if (CONFIG.genericNames.some(gn => name.includes(gn)) && name.length < 4) type = 'side';
+                        }
+
+                        if (type === 'main') result.main.push(charObj);
+                        else if (type === 'retired') result.retired.push(charObj);
+                        else result.side.push(charObj);
+                    });
+                }
+            }
+        } catch(e) { dbg("解析错误", e); }
+        return result;
+    };
+
+    const updateCategory = (name, newCat) => {
+        state.customCategories[name] = newCat;
+        localStorage.setItem(STORAGE_CUSTOM_CATEGORIES_KEY, JSON.stringify(state.customCategories));
+        const $pan = $('#ci-panel');
+        state.cachedData = processData((window.AutoCardUpdaterAPI || window.parent.AutoCardUpdaterAPI).exportTableAsJson());
+        renderGrid(state.activeCategory, $pan);
+    };
+
+    const saveCharData = (src, newData) => {
+        const api = window.AutoCardUpdaterAPI || window.parent.AutoCardUpdaterAPI;
+        if (!api || !api.exportTableAsJson || !api.importTableAsJson) {
+            alert('无法连接到数据库API');
+            return;
+        }
+
+        const fullData = api.exportTableAsJson();
+        const table = fullData[src.table];
+
+        if (!table || !table.content || !table.content[src.row]) {
+            alert('原数据结构已变更，请刷新后重试');
+            return;
+        }
+
+        const row = table.content[src.row];
+
+        if (src.cols.name > -1) row[src.cols.name] = newData.name;
+        if (src.cols.sex > -1) row[src.cols.sex] = newData.sex;
+        if (src.cols.age > -1) row[src.cols.age] = newData.age;
+        if (src.cols.job > -1) row[src.cols.job] = newData.job;
+        if (src.cols.identity > -1) row[src.cols.identity] = newData.identity;
+        if (src.cols.loc > -1) row[src.cols.loc] = newData.loc;
+        if (src.cols.longGoal > -1) row[src.cols.longGoal] = newData.longGoal;
+
+        api.importTableAsJson(JSON.stringify(fullData));
+
+        state.cachedData = processData(fullData);
+        renderGrid(state.activeCategory, $('#ci-panel'));
+        $('.ci-edit-overlay').remove();
+    };
+
+    const constrainElement = ($el) => {
+        const win = window.top || window;
+        let winW = win.innerWidth || 1024;
+        let winH = win.innerHeight || 768;
+        if (winW < 100) winW = 1024;
+        if (winH < 100) winH = 768;
+
+        const rect = $el[0].getBoundingClientRect();
+        let newLeft = rect.left;
+        let newTop = rect.top;
+        let updated = false;
+
+        if (newLeft < 0) { newLeft = 10; updated = true; }
+        if (newLeft + rect.width > winW) { newLeft = winW - rect.width - 10; updated = true; }
+        if (newTop < 0) { newTop = 10; updated = true; }
+        if (newTop + rect.height > winH) { newTop = winH - rect.height - 10; updated = true; }
+
+        if (updated) {
+            $el.css({ top: newTop, left: newLeft });
+            return { top: newTop, left: newLeft };
+        }
+        return { top: newTop, left: newLeft };
+    };
+
+    const createUI = () => {
+        dbg("创建UI...");
+        $('#ci-island-container, #ci-panel, #ci-hidden-input, #ci-toast, .ci-options-container').remove();
+        $('body').append('<input type="file" id="ci-hidden-input" accept="image/*" style="display:none">');
+        $('body').append('<div id="ci-toast">角色浮岛载入成功</div>');
+
+        const $con = $(`
+            <div id="ci-island-container">
+                <div class="ci-drag-grip">${ICONS.grip}</div>
+                <button class="ci-btn" id="ci-main-trigger">${ICONS.user}<span class="ci-tooltip">角色列表</span></button>
+
+                <div class="ci-sub-buttons">
+                    <button class="ci-btn" data-type="main">${ICONS.star}<span class="ci-tooltip">主要角色</span></button>
+                    <button class="ci-btn" data-type="side">${ICONS.group}<span class="ci-tooltip">次要角色</span></button>
+                    <button class="ci-btn" data-type="retired">${ICONS.ghost}<span class="ci-tooltip">已离场</span></button>
+                </div>
+
+                <button class="ci-btn" id="ci-options-btn" style="display:none">${ICONS.chat}<span class="ci-tooltip">选项</span></button>
+            </div>
+        `);
+
+        const $ops = $(`<div class="ci-options-container"></div>`);
+        $('body').append($ops);
+
+        const $pan = $(`
+            <div id="ci-panel">
+                <div class="ci-panel-header">
+                    <span id="ci-panel-title">角色列表</span>
+                    <div style="display:flex;gap:10px;">
+                        <span class="ci-edit-btn" title="编辑模式">${ICONS.edit}</span>
+                        <span class="ci-close-btn">${ICONS.close}</span>
+                    </div>
+                </div>
+                <div class="ci-panel-content">
+                    <div class="ci-grid-view"></div>
+                </div>
+                <div class="ci-resize-handle ci-resize-br" data-mode="br">${ICONS.resize}</div>
+                <div class="ci-resize-handle ci-resize-bl" data-mode="bl">${ICONS.resize}</div>
+            </div>
+        `);
+
+        $('body').append($con).append($pan);
+
+        setTimeout(() => { $('#ci-toast').addClass('show'); setTimeout(() => $('#ci-toast').removeClass('show'), 3000); }, 500);
+
+        try {
+            const pos = JSON.parse(localStorage.getItem(STORAGE_POS_KEY));
+            if (pos) $con.css({ top: pos.top, left: pos.left, right: 'auto' });
+            const size = JSON.parse(localStorage.getItem(STORAGE_PANEL_SIZE_KEY));
+            if (size) $pan.css({ width: size.width, height: size.height });
+        } catch (e) { }
+
+        setTimeout(() => constrainElement($con), 500);
+        bindEvents($con, $pan, $ops);
+    };
+
+    const bindEvents = ($con, $pan, $ops) => {
+        dbg("绑定事件...");
+        const $grip = $con.find('.ci-drag-grip');
+
+        $grip.on('mousedown', (e) => {
+            e.preventDefault();
+            state.drag.active = true;
+            state.drag.startX = e.clientX;
+            state.drag.startY = e.clientY;
+            const offset = $con.offset();
+            state.drag.initialLeft = offset.left;
+            state.drag.initialTop = offset.top;
+            $pan.addClass('no-transition');
+
+            const onMouseMove = (ev) => {
+                if (!state.drag.active) return;
+                const cx = ev.clientX || ev.originalEvent.clientX;
+                const cy = ev.clientY || ev.originalEvent.clientY;
+                if (state.drag.rafId) cancelAnimationFrame(state.drag.rafId);
+                state.drag.rafId = requestAnimationFrame(() => {
+                    const deltaX = cx - state.drag.startX;
+                    const deltaY = cy - state.drag.startY;
+                    const newLeft = state.drag.initialLeft + deltaX;
+                    const newTop = state.drag.initialTop + deltaY;
+                    $con.css({ left: newLeft, top: newTop, right: 'auto' });
+                    syncPanelPosition($con, $pan, newLeft, newTop);
+
+                    const opLeft = newLeft > window.innerWidth / 2 ? newLeft - 210 : newLeft + 50;
+                    $ops.css({ left: opLeft, top: newTop + 80 });
+                });
+            };
+
+            const onMouseUp = () => {
+                state.drag.active = false;
+                if (state.drag.rafId) cancelAnimationFrame(state.drag.rafId);
+                $pan.removeClass('no-transition');
+                $(document).off('mousemove', onMouseMove).off('mouseup', onMouseUp);
+                try { $(window.parent.document).off('mousemove', onMouseMove).off('mouseup', onMouseUp); } catch (e) { }
+                const safePos = constrainElement($con);
+                syncPanelPosition($con, $pan, safePos.left, safePos.top);
+                localStorage.setItem(STORAGE_POS_KEY, JSON.stringify({ top: safePos.top, left: safePos.left }));
+            };
+
+            $(document).on('mousemove', onMouseMove).on('mouseup', onMouseUp);
+            try { $(window.parent.document).on('mousemove', onMouseMove).on('mouseup', onMouseUp); } catch (e) { }
+        });
+
+        $(window).on('resize', () => {
+            if ($con.length && $pan.length) {
+                const safePos = constrainElement($con);
+                syncPanelPosition($con, $pan, safePos.left, safePos.top);
+            }
+        });
+
+        const handleGlobalClick = (e) => {
+            const $target = $(e.target);
+
+            if (!$target.closest('.ci-card').length) $('.ci-menu-trigger').removeClass('active');
+
+            if (state.isOptionsOpen && !$target.closest('#ci-options-btn').length) {
+                 state.isOptionsOpen = false;
+                 $ops.removeClass('visible');
+            }
+
+            if ($('.ci-item-popup-overlay, .ci-edit-overlay').length > 0) {
+                 const isOverlay = $target.hasClass('ci-item-popup-overlay') || $target.hasClass('ci-edit-overlay');
+                 const isCloseBtn = $target.hasClass('ci-item-close') || $target.hasClass('ci-edit-close');
+                 const isInsidePanel = $target.closest('#ci-panel').length > 0;
+                 const isInsideCard = $target.closest('.ci-item-popup-card, .ci-edit-card').length > 0;
+
+                 if (isOverlay || isCloseBtn || (isInsidePanel && !isInsideCard)) {
+                     if (!$target.closest('.ci-bag-item, .ci-nb-left').length) {
+                         $('.ci-item-popup-overlay, .ci-edit-overlay').remove();
+                         return;
+                     }
+                 }
+            }
+
+            const insideContainer = $target.closest('#ci-island-container').length > 0;
+            const insidePanel = $target.closest('#ci-panel').length > 0;
+
+            if (state.isExpanded && !insideContainer && !insidePanel) {
+                if ($('.ci-item-popup-overlay, .ci-edit-overlay').length === 0) {
+                    closeAll($con, $pan);
+                }
+            }
+        };
+
+        $(document).on('click', handleGlobalClick);
+        try { if (window.parent && window.parent.document) window.parent.document.addEventListener('click', handleGlobalClick); } catch (e) { }
+
+        $pan.find('.ci-edit-btn').on('click', function() {
+            state.isEditing = !state.isEditing;
+            $(this).toggleClass('active');
+            $pan.toggleClass('ci-editing', state.isEditing);
+        });
+
+        // [Fix #1] 灵动岛收起/展开逻辑修复
+        $('#ci-main-trigger').on('click', () => {
+            dbg(`[MainTrigger] Clicked. Current Expanded: ${state.isExpanded}`);
+            if (state.isExpanded) {
+                 closeAll($con, $pan);
+            } else {
+                 $con.addClass('expanded');
+                 $pan.addClass('visible');
+                 state.isExpanded = true;
+                 // 如果没有激活的Tab，默认选中main
+                 if (!$('.acu-tab-btn.active').length) {
+                    $con.find('.ci-btn[data-type="main"]').trigger('click');
+                 }
+            }
+             dbg(`[MainTrigger] New State: ${state.isExpanded}`);
+        });
+
+        // [Fix #4] 选项按钮点击日志 + 坐标计算
+        $('#ci-options-btn').on('click', function(e) {
+            e.stopPropagation();
+            dbg("[选项按钮] 点击触发");
+
+            state.isOptionsOpen = !state.isOptionsOpen;
+
+            if (state.isOptionsOpen) {
+                $ops.empty();
+                if (state.optionsData && state.optionsData.length) {
+                    state.optionsData.forEach(opt => {
+                        $ops.append(`<div class="ci-option-bubble">${opt}</div>`);
+                    });
+
+                    const islandRect = $con[0].getBoundingClientRect();
+                    const winW = window.innerWidth;
+                    dbg(`[坐标计算] 灵动岛 Rect: Top=${islandRect.top}, Left=${islandRect.left}, Width=${islandRect.width}`);
+                    dbg(`[坐标计算] 窗口宽度 WinW=${winW}`);
+
+                    let opLeft, opTop;
+                    if (islandRect.left > winW / 2) {
+                        // 在左侧显示
+                         opLeft = 'auto';
+                         const right = winW - islandRect.left + 10;
+                         $ops.css({ left: 'auto', right: right + 'px', top: (islandRect.bottom - 120) + 'px' });
+                         dbg(`[坐标计算] 最终应用位置: Right=${right}`);
+                    } else {
+                        // 在右侧显示
+                        opLeft = islandRect.right + 10;
+                        $ops.css({ left: opLeft + 'px', right: 'auto', top: (islandRect.bottom - 120) + 'px' });
+                         dbg(`[坐标计算] 最终应用位置: Left=${opLeft}`);
+                    }
+                    $ops.addClass('visible');
+                } else {
+                    dbg("[选项按钮] 无数据");
+                }
+            } else {
+                $ops.removeClass('visible');
+            }
+        });
+
+        $con.find('.ci-sub-buttons .ci-btn').on('click', function (e) {
+            e.stopPropagation();
+            const type = $(this).data('type');
+            if (state.activeCategory === type) {
+                $pan.removeClass('visible');
+                $('.ci-btn').removeClass('active');
+                state.activeCategory = null;
+            } else {
+                $('.ci-btn').removeClass('active');
+                $(this).addClass('active');
+                state.activeCategory = type;
+                renderGrid(type, $pan);
+                const offset = $con.offset();
+                syncPanelPosition($con, $pan, offset.left, offset.top);
+                $pan.addClass('visible');
+            }
+        });
+
+        $pan.find('.ci-close-btn').on('click', () => closeAll($con, $pan));
+
+        $pan.find('.ci-resize-handle').on('mousedown', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            const mode = $(this).data('mode');
+            state.resize.active = true;
+            state.resize.mode = mode;
+            state.resize.startX = e.clientX;
+            state.resize.startY = e.clientY;
+            state.resize.startW = $pan.outerWidth();
+            state.resize.startH = $pan.outerHeight();
+            state.resize.startLeft = $pan.offset().left;
+            $pan.addClass('no-transition');
+
+            const onResizeMove = (ev) => {
+                if (!state.resize.active) return;
+                const cx = ev.clientX || ev.originalEvent.clientX;
+                const cy = ev.clientY || ev.originalEvent.clientY;
+                requestAnimationFrame(() => {
+                    const deltaY = cy - state.resize.startY;
+                    const newH = Math.max(300, state.resize.startH + deltaY);
+                    let newW = state.resize.startW;
+                    if (mode === 'br') {
+                        newW = Math.max(300, state.resize.startW + (cx - state.resize.startX));
+                        $pan.css({ width: newW, height: newH });
+                    } else {
+                        const deltaX = cx - state.resize.startX;
+                        newW = Math.max(300, state.resize.startW - deltaX);
+                        if (newW !== state.resize.startW) $pan.css({ width: newW, height: newH, left: state.resize.startLeft + deltaX });
+                    }
+                });
+            };
+
+            const onResizeUp = () => {
+                state.resize.active = false;
+                $pan.removeClass('no-transition');
+                $(document).off('mousemove', onResizeMove).off('mouseup', onResizeUp);
+                try { $(window.parent.document).off('mousemove', onResizeMove).off('mouseup', onResizeUp); } catch (e) { }
+                localStorage.setItem(STORAGE_PANEL_SIZE_KEY, JSON.stringify({ width: $pan.css('width'), height: $pan.css('height') }));
+                const offset = $con.offset();
+                syncPanelPosition($con, $pan, offset.left, offset.top);
+            };
+
+            $(document).on('mousemove', onResizeMove).on('mouseup', onResizeUp);
+            try { $(window.parent.document).on('mousemove', onResizeMove).on('mouseup', onResizeUp); } catch (e) { }
+        });
+
+        $('#ci-hidden-input').on('change', function(e) {
+            const file = e.target.files[0];
+            if (!file || !state.currentUploadChar) return;
+            const reader = new FileReader();
+            const charName = state.currentUploadChar.name;
+
+            reader.onload = (e) => {
+                try {
+                    localStorage.setItem(STORAGE_AVATAR_PREFIX + charName, e.target.result);
+                    const $pan = $('#ci-panel');
+                    renderGrid(state.activeCategory, $pan);
+                } catch (err) { alert('图片太大'); }
+            };
+            reader.readAsDataURL(file);
+            $(this).val('');
+        });
+    };
+
+    const syncPanelPosition = ($con, $pan, islandLeft, islandTop) => {
+        const win = window.top || window;
+        let winW = win.innerWidth || win.document.documentElement.clientWidth || win.document.body.clientWidth;
+        if (!winW || winW === 0) winW = win.document.documentElement.scrollWidth || win.document.body.scrollWidth || 1024;
+        winW = Math.max(winW, 300);
+
+        const gap = 15;
+        let panW = $pan.outerWidth();
+        if (panW < 50) {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_PANEL_SIZE_KEY));
+            panW = saved ? parseInt(saved.width) : 340;
+        }
+
+        let targetLeft, side;
+        if (islandLeft < winW / 2) {
+            targetLeft = islandLeft + 44 + gap;
+            side = 'right';
+            if (targetLeft + panW > winW) targetLeft = winW - panW - gap;
+        } else {
+            targetLeft = islandLeft - panW - gap;
+            side = 'left';
+            if (targetLeft < 0) targetLeft = gap;
+        }
+
+        const winH = window.innerHeight || 768;
+        let panH = $pan.outerHeight();
+        if (islandTop + panH > winH) islandTop = winH - panH - gap;
+        if (islandTop < 10) islandTop = 10;
+
+        $pan.css({ top: islandTop, left: targetLeft });
+        $pan.find('.ci-resize-handle').removeClass('active');
+        $pan.find(side === 'right' ? '.ci-resize-br' : '.ci-resize-bl').addClass('active');
+    };
+
+    const renderGrid = (type, $pan) => {
+        const data = state.cachedData[type] || [];
+        const titles = { main: '主要角色', side: '次要角色', retired: '已离场人员' };
+        $pan.find('#ci-panel-title').text(titles[type] + ` (${data.length})`);
+
+        const $grid = $pan.find('.ci-grid-view').empty();
+
+        if (data.length === 0) {
+            $grid.html('<div style="color:#999;width:100%;text-align:center;padding:20px;">暂无数据</div>');
+            return;
+        }
+
+        data.forEach(d => {
+            const localImg = localStorage.getItem(STORAGE_AVATAR_PREFIX + d.name);
+            const avatarHtml = localImg ? `<img src="${localImg}">` : d.name.charAt(0);
+
+            let inventoryHtml = '';
+            if (d.items.length > 0) {
+                inventoryHtml = d.items.map((item, idx) => `
+                    <div class="ci-bag-item" data-idx="${idx}">
+                        <span>${item.name}</span>
+                        ${item.count > 1 ? `<div class="ci-item-count">${item.count}</div>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                inventoryHtml = '<div style="color:#aaa;font-size:10px;text-align:center;width:100%;padding:10px;">背包空空</div>';
+            }
+
+            const $card = $(`
+                <div class="ci-card">
+                    <div class="ci-card-compact">
+                        <div class="ci-card-avatar">${avatarHtml}</div>
+                        <div class="ci-card-name">${d.name}</div>
+                        <div class="ci-card-role">${d.job || d.desc || '角色'}</div>
+                        <div class="ci-card-info">${d.sex} · ${d.age} · ${d.loc}</div>
+                        ${d.shortGoal ? `<div class="ci-card-goal">" ${d.shortGoal.substring(0,12)}${d.shortGoal.length>12?'...':''} "</div>` : ''}
+                    </div>
+
+                    <div class="ci-expanded-box" style="display:none;">
+                        <div class="ci-nb-left">
+                            <div class="ci-big-avatar-box">
+                                ${avatarHtml}
+                                <div class="ci-upload-hint">点击上传</div>
+                            </div>
+                            <div class="ci-info-scroll">
+                                <div class="ci-detail-row"><span class="ci-label">姓名</span><span class="ci-val">${d.name}</span></div>
+                                <div class="ci-detail-row"><span class="ci-label">性别</span><span class="ci-val">${d.sex}</span></div>
+                                <div class="ci-detail-row"><span class="ci-label">年龄</span><span class="ci-val">${d.age}</span></div>
+                                <div class="ci-detail-row"><span class="ci-label">职业</span><span class="ci-val">${d.job || '-'}</span></div>
+                                <div class="ci-detail-row"><span class="ci-label">身份</span><span class="ci-val">${d.identity || '-'}</span></div>
+                                <div class="ci-detail-row"><span class="ci-label">位置</span><span class="ci-val">${d.loc}</span></div>
+                                ${d.longGoal ? `<div class="ci-long-goal"><strong>长期愿望:</strong><br>${d.longGoal}</div>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="ci-nb-right">
+                            <div class="ci-equip-ui">
+                                <div class="ci-equip-bg-icon">${ICONS.stickman}</div>
+                                <div class="ci-slots-container">
+                                    <div class="ci-slot" title="头部">${ICONS.slot_head}</div>
+                                    <div class="ci-slot" title="护甲">${ICONS.slot_body}</div>
+                                    <div class="ci-slot" title="武器">${ICONS.slot_weapon}</div>
+                                    <div class="ci-slot" title="副手">${ICONS.slot_weapon}</div>
+                                    <div class="ci-slot" title="饰品">${ICONS.slot_acc}</div>
+                                </div>
+                            </div>
+                            <div class="ci-bag-section">
+                                <div class="ci-bag-header">
+                                    <div class="ci-bag-title">物品清单</div>
+                                    <div class="ci-bag-expand-btn" title="展开/收起">${ICONS.expand_box}</div>
+                                </div>
+                                <div class="ci-bag-grid">
+                                    ${inventoryHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ci-menu-trigger">${ICONS.dots}</div>
+                    <div class="ci-card-menu-popover">
+                        <div class="ci-menu-item" data-move="main">${ICONS.star} 设为主要</div>
+                        <div class="ci-menu-item" data-move="side">${ICONS.group} 设为次要</div>
+                        <div class="ci-menu-item" data-move="retired">${ICONS.ghost} 设为离场</div>
+                    </div>
+                </div>
+            `);
+
+            // [Fix #1] 面板空白处收起
+            $pan.find('.ci-panel-content').on('click', function(e) {
+                if (state.isExpanded && !$(e.target).closest('.ci-card').length) {
+                    const $expandedCard = $pan.find('.ci-card.is-expanded');
+                    if ($expandedCard.length) {
+                        $expandedCard.click();
+                        dbg("[面板点击] 空白处点击 -> 收起卡片");
+                    }
+                }
+            });
+
+            const toggleExpand = (expand) => {
+                const $compact = $card.find('.ci-card-compact');
+                const $box = $card.find('.ci-expanded-box');
+
+                if (expand) {
+                    $grid.find('.ci-card.is-expanded').removeClass('is-expanded').find('.ci-expanded-box').hide();
+                    $grid.find('.ci-card-compact').show();
+
+                    $card.addClass('is-expanded');
+                    $compact.hide();
+                    $box.css('display', 'flex');
+                    setTimeout(() => $card[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+                    dbg(`[UI状态] 卡片展开: ${d.name}`);
+                } else {
+                    $card.removeClass('is-expanded');
+                    $box.hide();
+                    $compact.show();
+                    dbg(`[UI状态] 卡片收起: ${d.name}`);
+                }
+            };
+
+            $card.on('click', (e) => {
+                if ($(e.target).closest('.ci-menu-trigger, .ci-card-menu-popover, .ci-big-avatar-box, .ci-bag-expand-btn, .ci-bag-item, .ci-item-popup-card').length) return;
+                // 如果处于编辑模式且点击了左侧栏，不进行收起操作
+                if (state.isEditing && $(e.target).closest('.ci-nb-left').length) return;
+
+                if ($card.hasClass('is-expanded')) {
+                    if ($(e.target).closest('.ci-nb-right').length) return;
+                    toggleExpand(false);
+                } else {
+                    toggleExpand(true);
+                }
+            });
+
+            // 物品点击
+            $card.find('.ci-bag-item').on('click', function(e) {
+                e.stopPropagation();
+                const idx = $(this).data('idx');
+                const item = d.items[idx];
+
+                let rowsHtml = '';
+                for (const [key, val] of Object.entries(item.details || {})) {
+                    rowsHtml += `<div class="ci-item-row"><span class="ci-item-label">${key}</span><span>${val}</span></div>`;
+                }
+
+                const $popup = $(`
+                    <div class="ci-item-popup-overlay">
+                        <div class="ci-item-popup-card">
+                            <div class="ci-item-close">${ICONS.close}</div>
+                            <div class="ci-item-popup-title">
+                                ${item.name}
+                                <span class="ci-item-tag-inline">${item.type}</span>
+                            </div>
+                            <div style="margin-bottom:10px;font-size:12px;color:#666;">${item.desc || '无描述'}</div>
+                            ${rowsHtml}
+                        </div>
+                    </div>
+                `);
+
+                $popup.find('.ci-item-close').on('click', function() {
+                    $(this).closest('.ci-item-popup-overlay').remove();
+                });
+
+                $pan.append($popup);
+            });
+
+            $card.find('.ci-bag-expand-btn').on('click', function(e) {
+                e.stopPropagation();
+                const $bag = $(this).closest('.ci-bag-section');
+                const $equip = $bag.prev('.ci-equip-ui');
+                if ($bag.hasClass('expanded')) {
+                    $bag.removeClass('expanded');
+                    $equip.show();
+                } else {
+                    $bag.addClass('expanded');
+                    $equip.hide();
+                }
+            });
+
+            $card.find('.ci-menu-trigger').on('click', function(e) {
+                e.stopPropagation();
+                const $btn = $(this);
+                const isActive = $btn.hasClass('active');
+                $('.ci-menu-trigger').removeClass('active');
+                if (!isActive) $btn.addClass('active');
+            });
+
+            $card.find('.ci-menu-item').on('click', function(e) {
+                e.stopPropagation();
+                updateCategory(d.name, $(this).data('move'));
+            });
+
+            // 点击左侧栏 -> 进入编辑模式
+            $card.find('.ci-nb-left').on('click', function(e) {
+                if (!state.isEditing) return;
+                e.stopPropagation();
+
+                const $edit = $(`
+                    <div class="ci-edit-overlay">
+                        <div class="ci-edit-card">
+                            <div class="ci-edit-close">${ICONS.close}</div>
+                            <div class="ci-edit-title">编辑角色档案</div>
+                            <div class="ci-info-scroll">
+                                <div class="ci-input-group"><span class="ci-input-label">姓名</span><input class="ci-input-field" data-field="name" value="${d.name}"></div>
+                                <div class="ci-input-group"><span class="ci-input-label">性别</span><input class="ci-input-field" data-field="sex" value="${d.sex}"></div>
+                                <div class="ci-input-group"><span class="ci-input-label">年龄</span><input class="ci-input-field" data-field="age" value="${d.age}"></div>
+                                <div class="ci-input-group"><span class="ci-input-label">职业</span><input class="ci-input-field" data-field="job" value="${d.job}"></div>
+                                <div class="ci-input-group"><span class="ci-input-label">身份</span><input class="ci-input-field" data-field="identity" value="${d.identity}"></div>
+                                <div class="ci-input-group"><span class="ci-input-label">位置</span><input class="ci-input-field" data-field="loc" value="${d.loc}"></div>
+                                <div class="ci-input-group"><span class="ci-input-label">长期愿望</span><textarea class="ci-input-field" data-field="longGoal" rows="3">${d.longGoal}</textarea></div>
+                            </div>
+                            <button class="ci-edit-save-btn">${ICONS.save} 保存修改</button>
+                        </div>
+                    </div>
+                `);
+
+                $edit.find('.ci-edit-close').click(() => $edit.remove());
+                $edit.find('.ci-edit-save-btn').click(() => {
+                    const newData = {
+                        name: $edit.find('[data-field="name"]').val(),
+                        sex: $edit.find('[data-field="sex"]').val(),
+                        age: $edit.find('[data-field="age"]').val(),
+                        job: $edit.find('[data-field="job"]').val(),
+                        identity: $edit.find('[data-field="identity"]').val(),
+                        loc: $edit.find('[data-field="loc"]').val(),
+                        longGoal: $edit.find('[data-field="longGoal"]').val(),
+                    };
+                    saveCharData(d._src, newData);
+                });
+
+                $pan.append($edit);
+            });
+
+            $card.find('.ci-big-avatar-box').on('click', function(e) {
+                e.stopPropagation();
+                state.currentUploadChar = d;
+                $('#ci-hidden-input').click();
+            });
+
+            $grid.append($card);
+        });
+
+        $(document).on('click.ci-menu', (e) => {
+            if (!$(e.target).closest('.ci-card').length) {
+                $('.ci-menu-trigger').removeClass('active');
+            }
+        });
+    };
+
+    const closeAll = ($con, $pan) => {
+        dbg("[Panel] Closing...");
+        $pan.removeClass('visible');
+        $con.removeClass('expanded');
+        // [Fix #1] 强制清除内联高度，防止样式卡死
+        $con.css('height', '');
+
+        state.isExpanded = false;
+        state.activeCategory = null;
+        state.isEditing = false;
+        $pan.removeClass('ci-editing');
+        $('.ci-edit-btn').removeClass('active');
+        $('.ci-btn').removeClass('active');
+    };
+
+    const init = () => {
+        dbg("Script Initializing...");
+        const check = setInterval(() => {
+            const w = window.parent || window;
+            if (w.jQuery) {
+                clearInterval(check);
+                $ = w.jQuery;
+                dbg("jQuery found. Building UI...");
+                addStyles();
+                createUI();
+                const api = w.AutoCardUpdaterAPI || window.AutoCardUpdaterAPI;
+                const load = () => { if(api?.exportTableAsJson) state.cachedData = processData(api.exportTableAsJson()); };
+                setTimeout(load, 1500);
+                if(api?.registerTableUpdateCallback) api.registerTableUpdateCallback(load);
+            }
+        }, 200);
+    };
+    init();
+})();

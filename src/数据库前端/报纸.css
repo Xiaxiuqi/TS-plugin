@@ -1,0 +1,773 @@
+/* --------------- Elegant Manuscript/Newspaper --------------- */
+/* --- DC@ethic_b4by10n --- */
+
+
+/* 字体导入 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=EB+Garamond:wght@400;500&display=swap');
+@import url("https://fontsapi.zeoseven.com/467/main/result.css");
+
+/* 变量 */
+:root {
+    --paper-color: #EBE7D8;
+    --ink-color: #5a524c;
+    --accent-color: #8c7d6e;
+    --border-color: #BDB7AA;
+    --title-font: 'NanoOldSong-A', serif;
+    --body-font: 'EB Garamond', 'Noto Serif SC', serif;
+    --main-font: 'NanoOldSong-A';
+}
+/* 消息框（mes）核心布局 */
+.mes {
+    position: relative;
+    z-index: 1;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 97%;
+    padding: 10px 15px;
+    margin: 10px auto;
+    /* 微调：向右平移 5px 以补偿滚动条导致的视觉左偏 */
+    left: 5px;
+}
+/* ::before 伪元素 -> 底层：纸张 + 撕边效果 */
+.mes::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -2;
+    background-color: var(--paper-color);
+    border: 1px solid var(--border-color);
+    box-shadow: inset 0 0 200px #f3e4c7;
+    filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="wavy5"><feTurbulence baseFrequency="0.02" numOctaves="5" seed="1" /><feDisplacementMap in="SourceGraphic" scale="5" /><feGaussianBlur stdDeviation="0.4" /></filter></svg>#wavy5');
+}
+/* ::after 伪元素 -> 中层：纹理 + 同步撕边 */
+.mes::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    background-image: url('https://www.transparenttextures.com/patterns/black-orchid.png');
+    filter:
+        opacity(20%) grayscale(50%) brightness(4)
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="wavy5"><feTurbulence baseFrequency="0.02" numOctaves="5" seed="1" /><feDisplacementMap in="SourceGraphic" scale="5" /><feGaussianBlur stdDeviation="0.4" /></filter></svg>#wavy5');
+    pointer-events: none;
+    border-radius: inherit;
+}
+/* 头像与元信息区域 */
+.mes .mesAvatarWrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    gap: 10px 10px;
+    padding: 10px 0px 20px;
+}
+.mes .mesAvatarWrapper .avatar {
+    flex-basis: 100%;
+    display: flex;
+    justify-content: center;
+}
+.mes .avatar {
+    pointer-events: none;
+}
+.mes .avatar img {
+    pointer-events: auto;
+    cursor: pointer;
+    box-shadow:none;
+}
+body.big-avatars .avatar img {
+    border-radius: 50%;
+}
+
+/* --- 经典双线边框 --- */
+body.big-avatars .avatar img {
+    border: 3px double #683810;
+    padding: 3px;
+    background-color: #B3B3B3;   /* 填充背景色 */
+    border-radius: 50%;
+    /* 强制固定宽高以确保正圆，覆盖默认的长方形比例 */
+    width: 80px !important;
+    height: 80px !important;
+    object-fit: cover !important;
+}
+
+/* 统一头像容器尺寸，防止头像被截断 */
+body.big-avatars .avatar {
+    width: 80px !important;
+    height: 80px !important;
+    min-width: 80px !important; /* 确保不被压缩 */
+}
+
+/* 确保选中状态的容器也跟随头像尺寸 */
+body.big-avatars .avatar-container .character_select_container {
+    width: 80px !important;
+    height: 80px !important;
+    min-width: 80px !important;
+    border-radius: 50%;
+}
+
+/* 恢复附加信息为行内或跟随布局，不强制换行，以免破坏左右结构 */
+.avatar-container .ch_additional_info,
+.character_name_block .character_version {
+    margin-top: 0;
+    margin-left: auto; /* 右对齐 */
+    white-space: nowrap; /* 不换行 */
+    flex-shrink: 0; /* 保证全量显示 */
+    padding-left: 10px; /* 适当的左侧间距 */
+}
+
+/* 恢复 .character_name_block 为左右布局，并限制高度 */
+.character_name_block {
+    /* height: 80px !important;  移除强制高度，让其高度跟随内容 */
+    display: flex;
+    flex-direction: row; /* 左右排列 */
+    align-items: center; /* 垂直居中 */
+    justify-content: space-between; /* 两端对齐，配合 margin-left: auto 实现右对齐 */
+    width: 100%;
+    /* overflow: hidden; 移除溢出隐藏 */
+}
+
+
+.mes .mesIDDisplay,
+.mes .tokenCounterDisplay,
+.mes .mes_timer {
+    display: inline-block;
+    font-size: 11px;
+    color: #475569;
+    margin: 0 5px;
+    font-family: var(--body-font);
+    font-variant: small-caps;
+    letter-spacing: 0.5px;
+}
+.mes .mesIDDisplay::before {
+    content: 'Dispatch ';
+}
+.mes .tokenCounterDisplay::before {
+    content: '| ';
+}
+.mes .mes_timer::before {
+    content: '| Gen. Time: ';
+    padding-right: 4px;
+}
+
+/* 消息主体（mes_block） */
+.mes_block {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 消息标题（ch_name） */
+.ch_name {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    position: relative;
+    /* border-bottom: 1px solid var(--border-color);  Removed to avoid double lines */
+}
+.ch_name::after {
+    display: none; /* 隐藏原有的下划线 */
+}
+
+/* 将下划线样式应用到 .ch_description 上方 */
+body.big-avatars .ch_description,
+body.big-avatars .avatar-container .ch_description {
+    position: relative;
+    display: block; /* 确保占据一行 */
+    padding-top: 2px; /* 为上方下划线留出空间 */
+    white-space: nowrap; /* 强制单行显示 */
+    overflow: hidden; /* 超出部分隐藏 */
+    text-overflow: ellipsis; /* 超出部分显示省略号 */
+    width: 100%; /* 容器宽度跟随父容器 */
+}
+
+body.big-avatars .ch_description::before,
+body.big-avatars .avatar-container .ch_description::before {
+    content: '';
+    position: absolute;
+    top: 0; /* 放置在顶部 */
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: #5b544e;
+    /* 使用复合滤镜：DisplacementMap制造边缘不规则，Composite+ColorMatrix制造内部颗粒腐蚀感 */
+    filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="grainy"><feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise" /><feDisplacementMap in="SourceGraphic" in2="noise" scale="0.5" result="distorted" /><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 4 -1" in="noise" result="mask" /><feComposite operator="in" in="distorted" in2="mask" /></filter></svg>#grainy');
+    mix-blend-mode: multiply;
+    opacity: 0.9;
+}
+.ch_name .name_text {
+    font-family: var(--title-font);
+    font-size: 2.2em;
+    font-weight: 500;
+    color: var(--ink-color);
+}
+.ch_name .timestamp {
+    font-family: var(--main-font), monospace;
+    font-style: italic;
+    font-size: 0.85em;
+    color: #475569;;
+    margin-left: 15px;
+}
+.mes_buttons {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85em;
+    color: #475569;
+}
+.mes .ch_name .mes_buttons .mes_button {
+    filter: none !important;
+    opacity: 0.6 !important;
+    transition: opacity 0.2s ease;
+}
+
+/* 消息正文（mes_text） */
+.mes_text {
+    font-family: var(--main-font);
+    color: var(--ink-color);
+    width: 100%;
+    line-height: 1.6;
+    text-align: justify;
+    padding: 0 15px 5px;
+}
+.mes_text p {
+    margin-bottom: 1.2em;
+    margin-top: 0;
+}
+.mes_text p:last-child {
+    margin-bottom: 0;
+}
+
+/* 用户消息的特定样式调整 */
+.mes[is_user="true"] .mes_timer {
+    display: none;
+}
+
+/* --------------- Reasoning/Thought Block Styling (v2 - Corrected) --------------- */
+/* 标题容器 (mes_reasoning_header) */
+.mes_reasoning_header {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--ink-color) !important;
+    color: var(--paper-color) !important;
+    padding: 6px 16px !important;
+    border-radius: 2px !important;
+    border: none !important;
+}
+
+/* 隐藏原始文本并用伪元素生成新文本 */
+.mes_reasoning_arrow { display: none !important; }
+.mes_reasoning_header_title {
+    font-size: 0px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.mes_reasoning_header_title::after {
+    font-size: 13px;
+    font-family: var(--body-font);
+    font-variant: small-caps; /* 保持小型大写字母风格 */
+    letter-spacing: 1px;
+    color: var(--paper-color);
+    white-space: nowrap;
+}
+/* 根据展开/折叠状态切换伪元素的内容 */
+.mes_reasoning_details:not([open]) .mes_reasoning_header_title::after {
+    content: "▼ View Editor's Note ▼";
+}
+.mes_reasoning_details[open] .mes_reasoning_header_title::after {
+    content: "▲ Hide Editor's Note ▲";
+}
+/* 展开后的内容区域 (.mes_reasoning) */
+.mes_reasoning {
+    margin-top: 10px;
+    padding: 15px;
+    background-color: rgba(253, 246, 227, 0.4);
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--accent-color);
+    text-align: left;
+}
+
+/* --- 悬浮顶栏与底栏样式 --- */
+/* 1. 选中所有目标图标并应用基础样式 */
+#top-settings-holder .drawer-icon,
+#send_form .interactable[class*="fa-"] {
+    font-size: 18px;
+    color: #8c7d6e;
+    opacity: 0.6;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    top: 2px; /* 整体微调向下移动 2px */
+}
+
+/* 2. 为图标添加鼠标悬停效果 */
+#top-settings-holder .drawer-icon:hover,
+#send_form .interactable[class*="fa-"]:hover {
+    opacity: 1;
+    color: #5a524c;
+    transform: scale(1.1);
+}
+/* 顶栏样式 */
+#top-bar {
+    width: 58%;
+    margin: 0 auto;
+    background-color: #E6E0D3;
+    background-image: url('https://www.transparenttextures.com/patterns/climpek.png');
+    border-radius: 0 0 12px 12px;
+    border: 1px solid #C1BBAA;
+    border-top: 1px solid #D4CFC1;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 253, 250, 0.6),
+        0 4px 12px rgba(90, 82, 76, 0.35);
+}
+/* 底栏容器悬浮定位 */
+#form_sheld {
+    position: absolute;
+    bottom: 20px;
+}
+/* 聊天输入框和表单样式 */
+#send_form, body.no-blur #send_form {
+    width: 100%;
+    margin: 0 auto;
+    background-color: #E6E0D3;
+    background-image: url('https://www.transparenttextures.com/patterns/climpek.png');
+    border-radius: 15px;
+    padding: 10px 15px;
+    border: 1px solid #C1BBAA;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.1),
+        0 5px 18px rgba(90, 82, 76, 0.4);
+    transition: all 0.3s ease-in-out;
+}
+/* 鼠标悬停时的交互效果 */
+#send_form:hover, body.no-blur #send_form:hover {
+    transform: translateY(-4px);
+    border-color: #8c7d6e;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.1),
+        0 8px 25px rgba(90, 82, 76, 0.5);
+}
+.last_mes {
+  margin-bottom: 150px !important;
+}
+
+#qr--bar {
+    height: 0.1px;
+}
+#send_form:hover #qr--bar {
+    height: Auto;
+    transition: all 0.5s ease;
+}
+
+/* --- 报纸/手稿风格的抽屉标题 (Drawer Headers) --- */
+/* 统一为目标抽屉标题应用核心样式 */
+#extensions_settings .inline-drawer-toggle.inline-drawer-header,
+#extensions_settings2 .inline-drawer-toggle.inline-drawer-header,
+#user-settings-block h4,
+.standoutHeader,
+.inline-drawer-toggle.inline-drawer-header,
+.inline-drawer-toggle.inline-drawer-header.userSettingsInnerExpandable {
+    /* 1. 背景与纹理 */
+    background-color: #E6E0D3;
+    background-image: url('https://www.transparenttextures.com/patterns/climpek.png');
+    /* 2. 边框与阴影 */
+    border: 1px solid #D4CFC1;
+    border-bottom: 2px solid #C1BBAA;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border-radius: 2px;
+    /* 3. 文字与字体 */
+    color: #5a524c !important;
+    font-family: 'NanoOldSong-A', 'EB Garamond', 'Noto Serif SC', serif;
+    text-shadow: none;
+    /* 4. 布局与间距 */
+    padding: 12px;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    /* 5. 过渡效果 */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 鼠标悬停效果 */
+#extensions_settings .inline-drawer-toggle.inline-drawer-header:hover,
+#extensions_settings2 .inline-drawer-toggle.inline-drawer-header:hover,
+#user-settings-block h4:hover,
+.standoutHeader:hover,
+.inline-drawer-toggle.inline-drawer-header:hover,
+.inline-drawer-toggle.inline-drawer-header.userSettingsInnerExpandable:hover {
+    background-color: #EDE6D8;
+    border-color: #B5AE9A;
+    filter: none !important;
+}
+/* 调整抽屉内的图标（如下拉箭头）颜色，使其在浅色背景下可见 */
+.inline-drawer-toggle.inline-drawer-header .inline-drawer-icon {
+    color: #8c7d6e;
+}
+#user-settings-block h4 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.drawer-content {
+    padding: 12px !important;
+}
+
+/* --- 输入框、文本域和选择框统一样式 --- */
+.text_pole,
+.range-block-counter input,
+.drawer-content select,
+textarea:not(#send_textarea) {
+    background-color: #E6E0D3 !important;
+    border: 1px solid #C1BBAA !important;
+    color: #5a524c !important;
+    border-radius: 2px;
+}
+.text_pole:focus,
+.range-block-counter input:focus,
+.drawer-content select:focus,
+textarea:not(#send_textarea) {
+    border-color: #8c7d6e !important;
+    box-shadow: 0 0 3px rgba(140, 125, 110, 0.5);
+    outline: none;
+filter: none !important;
+}
+/* 为“世界书”的整个容器应用样式 */
+#WorldInfo .select2-selection--multiple {
+    background-color: #E6E0D3 !important;
+    border: 1px solid #9A9386 !important;
+    border-radius: 6px;
+    padding: 3px;
+}
+/* 为“世界书”中已选的项目标签（Pill）应用深色背景 */
+.select2-selection__choice {
+    background-color: #6B645D !important;
+    border: 1px solid #5a524c !important;
+    border-radius: 4px;
+    padding: 2px 5px !important;
+}
+/* 设置标签内文字的颜色为浅色，以确保可读性 */
+.select2-selection__choice__display {
+    color: #F8F5EC !important;
+}
+/* 设置标签内“删除”按钮(×)的样式 */
+.select2-selection__choice__remove {
+    color: #D4CFC1 !important;
+    margin-right: 4px;
+}
+.select2-selection__choice__remove:hover {
+    color: #FFFFFF !important;
+}
+#WorldInfo .select2-search__field {
+    background-color: transparent !important;
+    border: none !important;
+}
+.standoutHeader~.inline-drawer-content {
+    background: none !important;
+}
+/* 通用按钮和选择框样式 */
+input {
+    background-color: #BDB19F !important;
+    border: 1px solid #9A9386 !important;
+    border-radius: 3px;
+}
+
+/* --- Markdown 元素样式 (引用、代码块) --- */
+/* 引用样式 (Blockquote) */
+.mes blockquote {
+    background-color: #CCC2A9;
+    border-left: 5px solid #747e67;
+    padding: 10px 15px;
+    margin: 20px 0;
+    color: #6a625c;
+}
+blockquote p {
+    margin: 0;
+}
+/* 单行代码 (Inline Code) 样式 */
+.mes_text code:not(pre > code) {
+    background-color: transparent !important;
+    color: #877b61;
+    border-bottom: 1px dashed #A59C8C;
+    border-radius: 0;
+    font-family: var(--main-font), monospace;
+}
+/* 代码块 (Code Block) 样式 */
+.mes_text pre {
+    background-color: #E6E0D3;
+    border: 1px solid #C1BBAA;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 1em 0;
+    overflow-x: auto;
+}
+/* 针对代码块内部的 <code> 元素 */
+.mes_text pre code {
+    background: none;
+    color: #5a524c;
+    font-family: var(--main-font), monospace;
+    font-size: 0.9em;
+    padding: 0;
+}
+/* (可选) 优化代码块中的 diff (差异对比) 颜色，使其不那么刺眼 */
+.mes_text pre code .hljs-addition {
+    color: #506D53; /* 一个更复古的绿色 */
+}
+.mes_text pre code .hljs-deletion {
+    color: #A54F4F; /* 一个更复古的红色 */
+}
+
+/* 恢复默认 overflow-y 设置，仅隐藏滚动条样式 */
+html {
+  /* overflow-y: scroll;  移除强制滚动，避免双重滚动条或底部空白 */
+  scrollbar-width: none; /* Firefox: 隐藏滚动条 */
+  -ms-overflow-style: none; /* IE/Edge: 隐藏滚动条 */
+}
+
+/* Webkit: 隐藏滚动条但保持可滚动 */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* 针对可能出现滚动条的特定容器，也应用同样的策略 */
+.drawer-content, #mes_all {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.drawer-content::-webkit-scrollbar,
+#mes_all::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* 恢复 #chat, #left-nav-panel, #right-nav-panel 的滚动条显示，并应用自定义样式（轨道透明） */
+#chat,
+#left-nav-panel,
+#right-nav-panel {
+    scrollbar-width: thin;
+    scrollbar-color: #8c7d6e transparent; /* Firefox: 轨道透明 */
+}
+#chat::-webkit-scrollbar,
+#left-nav-panel::-webkit-scrollbar,
+#right-nav-panel::-webkit-scrollbar {
+    width: 8px; /* 设置一个合理的宽度 */
+    background: transparent; /* Webkit: 轨道背景透明 */
+}
+#chat::-webkit-scrollbar-thumb,
+#left-nav-panel::-webkit-scrollbar-thumb,
+#right-nav-panel::-webkit-scrollbar-thumb {
+    background-color: #8c7d6e;
+    border-radius: 4px;
+    border: 1px solid transparent; /* 边框改为透明，或者根据需要调整 */
+}
+#chat::-webkit-scrollbar-track,
+#left-nav-panel::-webkit-scrollbar-track,
+#right-nav-panel::-webkit-scrollbar-track {
+    background: transparent; /* Webkit: 轨道透明 */
+}
+#HotSwapWrapper .hotswap {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+}
+/* --- 提示词列表 --- */
+.completion_prompt_manager_prompt:not(.completion_prompt_manager_prompt_disabled) {
+    background-color: #F8F5EC;
+    border: 1px solid #C1BBAA;
+    color: #5a524c;
+}
+#completion_prompt_manager #completion_prompt_manager_list .completion_prompt_manager_prompt_disabled .completion_prompt_manager_prompt_name .prompt-manager-inspect-action {
+color: #9A9386
+}
+.completion_prompt_manager_prompt:not(.completion_prompt_manager_prompt_disabled):hover {
+    background-color: #FFFBF2;
+    border-color: #B5AE9A;
+}
+#completion_prompt_manager .completion_prompt_manager_header_advanced span {
+color: #5A524C;
+filter: none;
+}
+.completion_prompt_manager_header {
+    color: #5A524C !important;
+}
+
+/* --- 弹出式对话框 (Popup) --- */
+dialog.popup {
+    background-color: #E6E0D3 !important;
+    background-image: url('https://www.transparenttextures.com/patterns/climpek.png') !important;
+    border: 1px solid #D4CFC1 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 5px 25px rgba(90, 82, 76, 0.4) !important;
+    padding: 15px;
+    overflow: hidden;
+}
+/* --- 反向代理警告 --- */
+.reverse_proxy_warning {
+    background-color: #E6E0D3 !important;
+    border: 1px solid #C1BBAA !important;
+    padding: 10px;
+    margin-top: 10px;
+}
+.reverse_proxy_warning hr {
+    border-top: 1px solid #C1BBAA !important;
+}
+.reverse_proxy_warning b,
+.reverse_proxy_warning i {
+    color: #995142 !important;
+}
+
+
+/* --- 移动端 --- */
+@media (max-width: 768px) {
+#saved_regex_scripts {
+  padding-right: 60px;
+}
+#saved_scoped_scripts {
+padding-right: 60px;
+}
+.regex-script-label {
+    flex-wrap: wrap;
+}
+.regex-script-label .regex_script_name {
+    flex-basis: 100%;
+}
+    .ch_name .flex-container.alignItemsBaseline {
+        flex-wrap: wrap;
+    }
+    .ch_name .name_text {
+        flex-basis: 100%;
+        margin-bottom: 5px;
+    }
+    .mes .ch_name .timestamp {
+        margin-left: 0;
+    }
+    .mes_buttons {
+        position: absolute;
+        top: 50%;
+        transform: translateY(50%);
+    }
+#form_sheld {
+    bottom: 10px;
+    }
+}
+#mes_all {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.last_mes {
+    margin-bottom: 8px !important;
+    flex: 1 0 auto;
+}
+
+#form_sheld {
+    position: relative !important; /* 改为相对定位 /
+    bottom: auto;
+    margin-top: auto; / 弹性容器中自动上推 */
+    width: 100%;
+    margin-bottom: -20px;
+}
+
+/* --------------- Welcome Panel (COAT Fix) --------------- */
+/* 修复欢迎面板：使其透明并应用报纸/撕边效果 */
+.welcomePanel {
+    position: relative;
+    z-index: 1;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 20px 15px; /* 保持与 .mes 一致的内边距 */
+    color: var(--ink-color);
+    width: 97%;
+    margin: 10px auto;
+    left: 8px;
+    font-family: var(--main-font); /* 应用主字体 NanoOldSong-A */
+}
+
+/* 复刻 .mes::before - 底纸与撕边 */
+.welcomePanel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -2;
+    background-color: var(--paper-color);
+    border: 1px solid var(--border-color);
+    box-shadow: inset 0 0 200px #f3e4c7;
+    filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="wavy5"><feTurbulence baseFrequency="0.02" numOctaves="5" seed="1" /><feDisplacementMap in="SourceGraphic" scale="5" /><feGaussianBlur stdDeviation="0.4" /></filter></svg>#wavy5');
+}
+
+/* 复刻 .mes::after - 纹理叠加 */
+.welcomePanel::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    background-image: url('https://www.transparenttextures.com/patterns/black-orchid.png');
+    filter: opacity(20%) grayscale(50%) brightness(4) url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="wavy5"><feTurbulence baseFrequency="0.02" numOctaves="5" seed="1" /><feDisplacementMap in="SourceGraphic" scale="5" /><feGaussianBlur stdDeviation="0.4" /></filter></svg>#wavy5');
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+/* 修复滚动条被输入框遮挡问题 */
+#chat {
+    /* margin-bottom: 20px !important; 已删除 */
+    overflow-y: scroll !important; /* 强制显示垂直滚动条轨道，防止内容溢出时布局跳动 */
+    overflow-x: hidden !important; /* 隐藏水平滚动条 */
+}
+
+.welcomeRecent .recentChatList .recentChat .recentChatInfo {
+    position: relative;
+    padding-left: 10px;
+    line-height: 1.5; /* 增加行距，解决密集问题 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px; /* 增加元素间距 */
+}
+
+/* 在角色名下方添加横线（即角色名与消息预览之间） */
+.welcomeRecent .recentChatList .recentChat .chatNameContainer .chatName {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    padding-bottom: 5px; /* 为横线留出空间 */
+}
+
+.welcomeRecent .recentChatList .recentChat .chatNameContainer .chatName::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    /* 修改背景色为线性渐变，实现渐变消失 */
+    background: linear-gradient(to right, #5b544e 60%, transparent 100%);
+    /* 复用 .ch_name::after 的印刷颗粒感滤镜 */
+    filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="grainy"><feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise" /><feDisplacementMap in="SourceGraphic" in2="noise" scale="0.5" result="distorted" /><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 4 -1" in="noise" result="mask" /><feComposite operator="in" in="distorted" in2="mask" /></filter></svg>#grainy');
+    mix-blend-mode: multiply;
+    opacity: 0.9;
+}

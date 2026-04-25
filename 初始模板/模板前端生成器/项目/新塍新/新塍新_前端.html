@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新塍新·驯养记录仪</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-core: #0f0f0f;
+            --bg-panel: rgba(30, 30, 30, 0.95);
+            --text-pri: #d4af37; /* 香槟金 */
+            --text-sec: #888;
+            --accent-err: #ff3366; /* 堕落红 */
+            --border: 1px solid rgba(212, 175, 55, 0.3);
+            --font-main: "Microsoft YaHei", sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg-core);
+            color: var(--text-pri);
+            font-family: var(--font-main);
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+            font-size: 14px;
+            min-height: 100vh;
+        }
+
+        /* 调试/空状态提示 */
+        #empty-state {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-sec);
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border: var(--border);
+            border-radius: 8px;
+            z-index: 9999;
+            display: none; /* 默认隐藏 */
+        }
+
+        /* 布局容器 */
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+            padding-bottom: 20px;
+        }
+
+        /* 通用面板 */
+        .panel {
+            background: var(--bg-panel);
+            border: var(--border);
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            position: relative;
+        }
+        .panel::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--text-pri), transparent);
+            opacity: 0.5;
+        }
+
+        /* 1. 顶部栏 */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: var(--text-sec);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .info-group { display: flex; gap: 15px; }
+        .info-val { color: var(--text-pri); font-weight: bold; margin-left: 5px; }
+
+        /* 2. 主角卡片 */
+        .char-card {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 20px;
+            align-items: center;
+        }
+        .avatar-container {
+            width: 80px; height: 80px;
+            position: relative;
+        }
+        .avatar-box {
+            width: 100%; height: 100%;
+            border: 2px solid var(--text-pri);
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+            background: #000;
+        }
+        .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-glitch {
+            position: absolute; inset: 0; 
+            background: rgba(255, 51, 102, 0.4);
+            mix-blend-mode: hard-light;
+            opacity: 0; transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .avatar-container.broken .avatar-glitch { opacity: 1; animation: glitch 2s infinite; }
+        
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        /* 进度条系统 */
+        .bars { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .bar-row { display: flex; align-items: center; gap: 10px; font-size: 0.85em; }
+        .bar-label { width: 50px; text-align: right; color: var(--text-sec); }
+        .track { 
+            flex: 1; height: 6px; 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 3px; overflow: hidden; 
+        }
+        .fill { height: 100%; width: 0%; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+        .fill-dignity { background: #e0e0e0; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+        .fill-depravity { background: var(--accent-err); box-shadow: 0 0 8px var(--accent-err); }
+        
+        .status-text {
+            text-align: right; font-size: 0.8em; color: var(--text-sec); font-style: italic;
+            margin-top: 5px;
+        }
+
+        /* 3. 区域导航 */
+        .map-section-title {
+            margin-bottom: 10px; font-size: 0.9em; opacity: 0.8;
+            border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;
+        }
+        .map-grid {
+            display: flex; flex-wrap: wrap; gap: 8px;
+        }
+        .node {
+            flex: 1 0 calc(33.333% - 10px);
+            min-width: 100px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+            color: var(--text-sec);
+            border-radius: 2px;
+        }
+        .node:hover { border-color: var(--text-pri); color: var(--text-pri); background: rgba(212, 175, 55, 0.05); }
+        .node.active { 
+            border-color: var(--text-pri); 
+            background: rgba(212, 175, 55, 0.15); 
+            color: #fff; 
+            box-shadow: inset 0 0 8px rgba(212, 175, 55, 0.2);
+        }
+
+        /* 4. 选项区域 */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .opt-btn {
+            background: linear-gradient(145deg, rgba(30,30,30,1) 0%, rgba(20,20,20,1) 100%);
+            border: 1px solid #444;
+            color: var(--text-pri);
+            padding: 15px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.95em;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .opt-btn:hover { border-color: var(--text-pri); transform: translateY(-2px); }
+        .opt-btn:active { transform: translateY(0); opacity: 0.8; }
+        .opt-label { 
+            font-size: 0.7em; color: #666; margin-bottom: 4px; letter-spacing: 1px;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 500px) {
+            .char-card { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+            .bars { width: 100%; }
+            .bar-label { text-align: left; }
+            .options-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="empty-state">
+    <h3><i class="fas fa-satellite-dish"></i> 系统待机中</h3>
+    <p>正在尝试连接数据流...</p>
+    <p style="font-size:0.8em; opacity:0.7;">如果是首次使用，请先在酒馆导入<br>《新塍新_模板.json》</p>
+</div>
+
+<div class="container" id="main-interface">
+    <!-- 1. 顶部状态 -->
+    <div class="panel">
+        <div class="top-bar">
+            <div class="info-group">
+                <span>TIME <span id="val-time" class="info-val">--:--</span></span>
+                <span>LOC <span id="val-loc" class="info-val">...</span></span>
+            </div>
+            <span>TURN <span id="val-turn" class="info-val">0</span></span>
+        </div>
+    </div>
+
+    <!-- 2. 角色监控 -->
+    <div class="panel">
+        <div class="char-card">
+            <div class="avatar-container" id="avatar-container">
+                <div class="avatar-box">
+                    <img id="avatar-img" class="avatar-img" src="" alt="AVATAR">
+                </div>
+                <div class="avatar-glitch"></div>
+            </div>
+            <div class="bars">
+                <div class="bar-row">
+                    <span class="bar-label">矜持</span>
+                    <div class="track"><div id="bar-dig" class="fill fill-dignity"></div></div>
+                    <span id="val-dig" style="width:30px; font-size:0.8em">0%</span>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label" style="color:var(--accent-err)">堕落</span>
+                    <div class="track"><div id="bar-dep" class="fill fill-depravity"></div></div>
+                    <span id="val-dep" style="width:30px; font-size:0.8em">0%</span>
+                </div>
+                <div id="val-status" class="status-text">ANALYZING...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 区域导航 -->
+    <div class="panel">
+        <div class="map-section-title">
+            <i class="fas fa-map-marker-alt"></i> 区域导航 / NAVIGATION
+        </div>
+        <div id="loc-container" class="map-grid">
+            <!-- 动态生成 -->
+        </div>
+    </div>
+
+    <!-- 4. 交互选项 -->
+    <div class="options-grid" id="opt-container">
+        <!-- 动态生成 -->
+    </div>
+</div>
+
+<script>
+    // === 核心 API 封装 ===
+    // 兼容 iframe 环境
+    const api = (typeof parent !== 'undefined' && parent.AutoCardUpdaterAPI) ? parent.AutoCardUpdaterAPI : {
+        exportTableAsJson: () => null,
+        registerTableUpdateCallback: () => console.log("模拟模式: 无回调")
+    };
+
+    function sendCmd(msg) {
+        if (!msg) return;
+        console.log("发送指令:", msg);
+        if (typeof parent.triggerSlash === 'function') {
+            try {
+                parent.triggerSlash('/setinput ' + msg);
+            } catch(e) {
+                console.error("发送失败:", e);
+            }
+        } else {
+            // 回退尝试寻找输入框
+            const input = parent.document.getElementById('send_textarea');
+            if (input) { 
+                input.value = msg;
+                // 尝试触发 input 事件以通知酒馆
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                alert("模拟发送: " + msg);
+            }
+        }
+    }
+
+    // === 数据处理 ===
+    function safeParse(json) {
+        if (!json) return null;
+        if (typeof json === 'object') return json; // 已经是对象
+        try {
+            return JSON.parse(json);
+        } catch (e) {
+            console.error("JSON解析失败:", e);
+            return null;
+        }
+    }
+
+    function parseData(json) {
+        const raw = safeParse(json);
+        if (!raw) return null;
+
+        const tables = {};
+        for (const key in raw) {
+            const sheet = raw[key];
+            if (sheet && sheet.name) {
+                // 确保有 content 且至少有表头
+                if (sheet.content && sheet.content.length > 0) {
+                    tables[sheet.name] = {
+                        headers: sheet.content[0] || [], // 第一行是表头
+                        rows: sheet.content.slice(1)     // 后续是数据
+                    };
+                }
+            }
+        }
+        return tables;
+    }
+
+    const getVal = (table, rowIdx, colName) => {
+        if (!table || !table.rows || !table.rows[rowIdx]) return "";
+        const idx = table.headers.indexOf(colName);
+        return idx !== -1 ? table.rows[rowIdx][idx] : "";
+    };
+
+    // === 渲染逻辑 ===
+    function render(tables) {
+        const emptyState = document.getElementById('empty-state');
+        
+        if (!tables || Object.keys(tables).length === 0) {
+            emptyState.style.display = 'block';
+            return;
+        }
+        emptyState.style.display = 'none';
+
+        // 1. 全局状态
+        const tGlobal = tables["全局状态"];
+        if (tGlobal) {
+            document.getElementById('val-time').textContent = getVal(tGlobal, 0, "时间") || "--:--";
+            document.getElementById('val-loc').textContent = getVal(tGlobal, 0, "当前地点") || "未知";
+            document.getElementById('val-turn').textContent = getVal(tGlobal, 0, "轮次计数") || "0";
+        }
+
+        // 2. 心理监控
+        const tPsy = tables["心理监测"];
+        if (tPsy) {
+            const dig = parseInt(getVal(tPsy, 0, "矜持值")) || 0;
+            const dep = parseInt(getVal(tPsy, 0, "堕落值")) || 0;
+            const state = getVal(tPsy, 0, "当前状态");
+            const avatarState = getVal(tPsy, 0, "立绘差分");
+
+            document.getElementById('bar-dig').style.width = dig + "%";
+            document.getElementById('val-dig').textContent = dig + "%";
+            
+            document.getElementById('bar-dep').style.width = dep + "%";
+            document.getElementById('val-dep').textContent = dep + "%";
+            
+            document.getElementById('val-status').textContent = state ? `“${state}”` : "MONITORING...";
+
+            // 头像特效
+            const box = document.getElementById('avatar-container');
+            if (avatarState === "Broken" || dep > dig) {
+                box.classList.add('broken');
+            } else {
+                box.classList.remove('broken');
+            }
+        }
+
+        // 3. 地点
+        const tLoc = tables["区域节点"];
+        const locContainer = document.getElementById('loc-container');
+        locContainer.innerHTML = '';
+        if (tLoc && tLoc.rows.length) {
+            const curLoc = document.getElementById('val-loc').textContent;
+            tLoc.rows.forEach(row => {
+                // 构造临时对象以复用 getVal
+                const tempT = { headers: tLoc.headers, rows: [row] };
+                const name = getVal(tempT, 0, "地点名");
+                const desc = getVal(tempT, 0, "环境描述");
+                
+                if (name) {
+                    const div = document.createElement('div');
+                    div.className = `node ${name === curLoc ? 'active' : ''}`;
+                    div.textContent = name;
+                    div.title = desc || "";
+                    div.onclick = () => sendCmd("前往 " + name);
+                    locContainer.appendChild(div);
+                }
+            });
+        } else {
+            locContainer.innerHTML = '<div style="color:#555; padding:10px;">暂无地点数据</div>';
+        }
+
+        // 4. 选项
+        const tOpt = tables["交互选项"];
+        const optContainer = document.getElementById('opt-container');
+        optContainer.innerHTML = '';
+        if (tOpt && tOpt.rows.length) {
+            const labels = ['A', 'B', 'C', 'D'];
+            labels.forEach(l => {
+                const txt = getVal(tOpt, 0, `选项${l}`);
+                const cmd = getVal(tOpt, 0, `指令${l}`);
+                if (txt && txt !== "") {
+                    const btn = document.createElement('div');
+                    btn.className = 'opt-btn';
+                    btn.innerHTML = `<span class="opt-label">OPTION ${l}</span>${txt}`;
+                    btn.onclick = () => sendCmd(cmd || txt);
+                    optContainer.appendChild(btn);
+                }
+            });
+        }
+    }
+
+    // === 初始化 ===
+    window.onload = function() {
+        // 默认头像
+        const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23111'/%3E%3Ctext x='50' y='50' fill='%23d4af37' font-size='40' text-anchor='middle' dy='.3em'%3E👤%3C/text%3E%3C/svg%3E";
+        const imgEl = document.getElementById('avatar-img');
+        if (imgEl) imgEl.src = defaultAvatar;
+
+        // 首次加载尝试
+        try {
+            const raw = api.exportTableAsJson();
+            render(parseData(raw));
+        } catch(e) {
+            console.error("初始化渲染错误:", e);
+        }
+        
+        // 注册更新
+        api.registerTableUpdateCallback(data => {
+            console.log("收到数据更新");
+            render(parseData(data));
+        });
+    };
+</script>
+</body>
+</html>

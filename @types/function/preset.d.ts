@@ -63,7 +63,14 @@ type Preset = {
   prompts_unused: PresetPrompt[];
 
   /** 额外字段, 用于为预设绑定额外数据 */
-  extensions: Record<string, any>;
+  extensions: {
+    regex_scripts?: TavernRegex[];
+    tavern_helper?: {
+      scripts: Record<string, any>[];
+      variales: Record<string, any>;
+    };
+    [other: string]: any;
+  };
 };
 
 type PresetPrompt = {
@@ -162,6 +169,17 @@ declare function getLoadedPresetName(): string;
 declare function loadPreset(preset_name: Exclude<string, 'in_use'>): boolean;
 
 /**
+ * 获取 `preset_name` 预设的内容
+ *
+ * @param preset_name 预设名称
+ *
+ * @returns 预设内容
+ *
+ * @throws 如果预设不存在, 将会抛出异常
+ */
+declare function getPreset(preset_name: LiteralUnion<'in_use', string>): Preset;
+
+/**
  * 新建 `preset_name` 预设, 内容为 `preset`
  *
  * @param preset_name 预设名称
@@ -208,20 +226,9 @@ declare function deletePreset(preset_name: Exclude<string, 'in_use'>): Promise<b
  */
 declare function renamePreset(preset_name: Exclude<string, 'in_use'>, new_name: string): Promise<boolean>;
 
-/**
- * 获取 `preset_name` 预设的内容
- *
- * @param preset_name 预设名称
- *
- * @returns 预设内容
- *
- * @throws 如果预设不存在, 将会抛出异常
- */
-declare function getPreset(preset_name: LiteralUnion<'in_use', string>): Preset;
-
 type ReplacePresetOptions = {
-  /** 如果对 `'in_use'` 预设进行操作, 应该防抖渲染 (debounced) 还是立即渲染 (immediate)? 默认为性能更好的防抖渲染 */
-  render?: 'debounced' | 'immediate';
+  /** 如果对 `'in_use'` 预设进行操作, 应该防抖渲染 (debounced)、立即渲染 (immediate) 还是不刷新前端显示 (none)? 默认为性能更好的防抖渲染 */
+  render?: 'debounced' | 'immediate' | 'none';
 };
 /**
  * 完全替换 `preset_name` 预设的内容为 `preset`
@@ -238,6 +245,12 @@ type ReplacePresetOptions = {
  * // 为酒馆正在使用的预设开启流式传输
  * const preset = getPreset('in_use');
  * preset.settings.should_stream = true;
+ * await replacePreset('in_use', preset);
+ *
+ * @example
+ * // 关闭酒馆正在使用的预设中名字包含 "COT" 的条目
+ * const preset = getPreset('in_use');
+ * preset.prompts.filter(prompt => prompt.name.includes('COT')).forEach(prompt => prompt.enabled = false);
  * await replacePreset('in_use', preset);
  *
  * @example
@@ -284,6 +297,13 @@ type PresetUpdater = ((preset: Preset) => Preset) | ((preset: Preset) => Promise
  * // 为酒馆正在使用的预设开启流式传输
  * await updatePresetWith('in_use', preset => {
  *   preset.settings.should_stream = true;
+ *   return preset;
+ * });
+ *
+ * @example
+ * // 关闭酒馆正在使用的预设中名字包含 "COT" 的条目
+ * await updatePresetWith('in_use', preset => {
+ *   preset.prompts.filter(prompt => prompt.name.includes('COT')).forEach(prompt => prompt.enabled = false);
  *   return preset;
  * });
  *
