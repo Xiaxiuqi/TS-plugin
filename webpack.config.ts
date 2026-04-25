@@ -486,7 +486,6 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         yaml: 'YAML',
         zod: 'z',
         'pixi.js': 'PIXI',
-        getScriptId: 'getScriptId',
       };
       if (request in global) {
         return callback(null, 'var ' + global[request as keyof typeof global]);

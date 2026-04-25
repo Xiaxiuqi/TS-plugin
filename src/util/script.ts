@@ -1,4 +1,4 @@
-declare function getScriptId(): string;
+const getScriptId = () => window.getScriptId();
 export async function loadReadme(url: string): Promise<boolean> {
   const readme = await fetch(url);
   if (!readme.ok) {
