@@ -1,4 +1,4 @@
-import { teleportStyle } from '../util/script';
+import { teleportStyle } from '../../util/script';
 import './style.scss';
 
 if (typeof (window as any).global === 'undefined') {
