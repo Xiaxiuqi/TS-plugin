@@ -5,5 +5,4 @@
 dist/** merge=ours
 
 备份/** merge=ours
-dist/** merge=ours
 .gitignore merge=ours

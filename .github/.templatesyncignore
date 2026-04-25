@@ -4,3 +4,9 @@ dist
 README.md
 .gitignore
 .gitattributes
+src/ci_island/
+src\ci_island_map
+src\ci_island_test
+src\数据库前端
+src\数据库前端\acu_visualizer
+dist\acu_visualizer
