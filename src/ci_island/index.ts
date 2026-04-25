@@ -1,3 +1,4 @@
+const getScriptId = (window as any).getScriptId;
 import { teleportStyle } from '../../util/script';
 import './style.scss';
 
@@ -10910,7 +10911,7 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
       updates.forEach(update => {
         const { table, col, value } = update;
         let targetTable = null;
-        let currentRefTable = table === 'outline' ? outlineTable : summaryTable;
+        const currentRefTable = table === 'outline' ? outlineTable : summaryTable;
 
         if (currentRefTable) {
           // 通过表名找到对应的表对象
