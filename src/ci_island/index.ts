@@ -1,3 +1,4 @@
+import 'pinia';
 import { teleportStyle } from '../../util/script';
 import './style.scss';
 
