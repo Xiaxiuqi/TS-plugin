@@ -1,4 +1,3 @@
-const getScriptId = (window as any).getScriptId;
 import { teleportStyle } from '../../util/script';
 import './style.scss';
 
