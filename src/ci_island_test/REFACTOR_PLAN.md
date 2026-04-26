@@ -603,3 +603,270 @@ src/ci_island_test/
 | 91 个原始函数全部核查 | ✅ |
 
 **🎉 浮岛模块化重构经全量比对验证后圆满完成！**
+
+
+
+---
+
+## 📌 v1.5 后期 Bug 修复与优化（2026-04-27）
+
+> 本节记录浮岛 v1.5 模块化重构完成后的 8 项后期修复与新功能。
+
+### Bug 1：浮岛按钮首次加载不自动显示 ✅
+
+**问题**：浮岛主体的地图按钮、选项按钮在数据库首次加载时不会自动显示，需要点击一次角色按钮展开浮岛后才能出现。
+
+**根源**：原代码 `processData` 在选项数据/地图数据提取完成后会调用 `updateHeightClass($('#ci-island-container'))` 触发按钮的 `has-options` / `has-map` CSS 类切换。模块化版本的 [`data/processor.ts`](src/ci_island_test/data/processor.ts:1) 遗漏了这个调用。
+
+**修复**：在 [`data/processor.ts`](src/ci_island_test/data/processor.ts:8) 添加 import 并在选项数据提取完成后调用 `updateHeightClass`。
+
+---
+
+### Bug 2：row_id 系统列在 UI 层暴露 ✅
+
+**问题**：选项气泡和编辑往期报道弹窗中出现了 `row_id` 系统列内容。
+
+**修复策略（按用户建议：统一过滤工具）**：
+
+新增工具到 [`core/utils.ts`](src/ci_island_test/core/utils.ts:36)：
+
+```typescript
+/** 过滤系统列，返回 [可见列名, 原始索引] */
+export function filterSystemColumns(headers: any[]): {
+  visibleHeaders: string[];
+  indexMap: number[];
+}
+
+/** 遍历某行可见列（自动跳过 row_id） */
+export function forEachVisibleCell(
+  row: any[],
+  headers: any[],
+  callback: (colName: string, cellValue: any, originalIdx: number) => void,
+): void
+```
+
+**应用点**：
+- [`data/processor.ts:178`](src/ci_island_test/data/processor.ts:178) 选项气泡数据提取
+- [`dialogs/history-edit.ts:101`](src/ci_island_test/dialogs/history-edit.ts:101) 大纲表编辑
+- [`dialogs/history-edit.ts:120`](src/ci_island_test/dialogs/history-edit.ts:120) 总结/纪要表编辑
+
+**优势**：未来任何 UI 位置遇到表数据遍历时，直接调用 `forEachVisibleCell` / `filterSystemColumns` 即可统一过滤系统列。
+
+---
+
+### Bug 3：加载通知文字优化 ✅
+
+[`ui/skeleton.ts:34`](src/ci_island_test/ui/skeleton.ts:34)：
+
+```diff
+- $('body').append('<div id="ci-toast">角色浮岛载入成功</div>');
++ $('body').append('<div id="ci-toast">浮岛 v1.5 载入成功</div>');
+```
+
+---
+
+### Bug 4：删除拖拽 dbg 通知 ✅
+
+删除 [`core/utils.ts`](src/ci_island_test/core/utils.ts:1) 中 `handleDrag` 内的：
+
+```diff
+- dbg('[拖拽] 检测到按钮或禁止拖拽元素点击，不启动拖拽');
+```
+
+控制台不再频繁输出该提示。
+
+---
+
+### Bug 5：开关样式微调（圆点过于靠右）✅
+
+**问题分析**：
+- 开关 inline 宽度 `width: 44px`
+- 圆点宽度 `18px`、左右 padding `3px`
+- 原 transform `translateX(24px)` → 圆点开启位置 = 3 + 24 + 18 = **45px**（超出 1px）
+
+**修复**：[`styles/_dialogs.scss:1113`](src/ci_island_test/styles/_dialogs.scss:1113)
+
+```diff
+- transform: translateX(24px);
++ transform: translateX(20px);
+```
+
+修改后圆点位置 = 3 + 20 + 18 = 41px，距离右边缘 3px，与左侧对称。
+
+---
+
+### 新功能 6：静默调试模式开关 ✅
+
+**目标**：用户可控制控制台 dbg 日志输出，不影响 toast 通知。
+
+**改动**：
+1. [`core/state.ts:64`](src/ci_island_test/core/state.ts:64) 新增 `silentDebug` 状态：
+   ```typescript
+   silentDebug: safeGetItem('ci_silent_debug', 'false') === 'true',
+   ```
+
+2. [`core/utils.ts:dbg()`](src/ci_island_test/core/utils.ts:8) 增加静默过滤：
+   ```typescript
+   export function dbg(msg: string, data?: any): void {
+     const silent = (globalThis as any).__ciSilentDebug === true;
+     if (silent) {
+       const isKeyLog = /\[Error\]|\[关键\]|\[核心\]|❌|⚠️/.test(msg);
+       if (!isKeyLog) return;
+     }
+     console.log(...);
+   }
+   ```
+
+3. [`app.ts:209`](src/ci_island_test/app.ts:209) 启动时同步状态到全局：
+   ```typescript
+   (globalThis as any).__ciSilentDebug = state.silentDebug;
+   ```
+
+4. [`ui/settings.ts:170`](src/ci_island_test/ui/settings.ts:170) 在性能设置中添加调试通知开关。
+
+**关键设计**：
+- `dbg(msg)` ← 受静默开关控制（控制台日志）
+- `showToast(msg)` ← **不受影响**（用户提示，始终显示）
+- 静默模式仅过滤普通调试日志，含 `[Error]` / `[关键]` / `[核心]` / `❌` / `⚠️` 的关键日志仍会输出
+
+---
+
+### Bug 7：getScriptId is not defined（外部 import 浮岛失败）✅
+
+**问题**：用户通过 `import('https://...../ci_island/index.js')` 在外部页面动态加载浮岛时报错：
+```
+ReferenceError: getScriptId is not defined
+    at script.ts:16:18 (util/script.ts:teleportStyle 内部)
+```
+
+**根源**：
+- `getScriptId()` 是酒馆运行时全局函数（仅在酒馆扩展环境下可用）
+- [`util/script.ts:teleportStyle()`](util/script.ts:16) 函数体内调用了 `getScriptId()`
+- 用户在外部页面加载时无该全局函数 → 报错
+
+**关键洞察**：与是否使用 Vue **完全无关**。即使转 Vue，只要还调用 `teleportStyle()` 同样会报错。
+
+**COAT 工作流分析**：
+
+| 方案 | 评分 | 说明 |
+|------|------|------|
+| 方案 1：删除 `teleportStyle()` 调用 | **40/40** ✅ | 5 分钟改动，零风险 |
+| 方案 2：内置 `teleportStyle` 副本 | 37/40 | 10 分钟，需新文件 |
+| 方案 3：完整 Vue 化 | 19/40 | 3-4 周，推翻 11569 行重构 |
+
+**修复（采纳方案 1）**：
+
+[`app.ts`](src/ci_island_test/app.ts:1) 仅删除 2 行：
+
+```diff
+- import { teleportStyle } from '@util/script';
+
+  dbg('Script Initializing (modular version)...');
+- teleportStyle();
+```
+
+**验证**：
+- ✅ webpack 构建成功
+- ✅ 产物 [`dist/ci_island_test/index.js`](dist/ci_island_test/index.js) 中**无** `getScriptId` 字符串
+- ✅ 用户实测：浮岛 v1.5 通过 `import('...')` 在外部加载成功
+
+**附带说明（用户写法纠正）**：
+- ❌ `import 'xxx'` （静态 import）→ 仅 `<script type="module">` 可用
+- ✅ `import('xxx').then(...)`（动态 import）→ 任何环境
+
+---
+
+### Bug 8：物品菜单（仓库/技能气泡）定位错误 ✅
+
+**问题**：点击物品仓库按钮后，"物品仓库 / 技能面板"两个气泡按钮出现在浮岛**顶部**而非**按钮旁边**，且视觉上"投影变得很重"（实际是位置错位重叠造成）。
+
+**根源**：模块化版本的 [`ui/events.ts:syncInventoryMenuPosition()`](src/ci_island_test/ui/events.ts:151) 简化了原版逻辑，只用 `targetTop = islandTop`，没有考虑按钮在浮岛中的相对位置。
+
+**修复**：完整迁移自原 [`备份/角色浮岛_重构前原始单体版本_20260427/index.original.ts:11503`](备份/角色浮岛_重构前原始单体版本_20260427/index.original.ts:11503) 的逻辑：
+
+```typescript
+function syncInventoryMenuPosition(islandLeft: number, islandTop: number): void {
+  const $con = $('#ci-island-container');
+  const $invBtn = $('.ci-btn[data-type="inventory"]');
+
+  // 基于实际 DOM 矩形计算按钮位置
+  const conRect = $con[0].getBoundingClientRect();
+  const btnRect = $invBtn[0].getBoundingClientRect();
+  const relativeY = btnRect.top - conRect.top;
+  const btnH = btnRect.height;
+
+  // 让菜单中心对齐按钮中心
+  const btnCenterY = islandTop + relativeY + btnH / 2;
+  let targetTop = btnCenterY - menuH / 2;
+
+  // 根据浮岛位置设置对齐方向
+  let align = 'flex-end';
+  if (islandLeft < winW / 2) {
+    align = 'flex-start';  // 浮岛在左：菜单右侧展开
+    isFlipped = true;
+  }
+
+  $menu.css({ ..., alignItems: align, ... });
+}
+```
+
+修复后菜单精确出现在物品仓库按钮**右侧**（或浮岛靠右时显示在**左侧**），与按钮中心垂直对齐。
+
+---
+
+## 🔬 综合验证（所有 Bug 修复后）
+
+| 验证项 | 结果 |
+|--------|------|
+| webpack production 构建 | ✅ `compiled successfully` |
+| 错误数 | ✅ 0 |
+| 警告数 | ⚠️ 3（仅 size warnings，与代码逻辑无关） |
+| 产物大小 | 730 KB（与之前一致） |
+| jsdelivr CDN 同步产物与本地 dist | ✅ 完全一致 |
+| 浮岛 v1.5 在外部页面 import 加载 | ✅ 成功（无 `getScriptId` 报错） |
+| 物品菜单气泡定位 | ✅ 与按钮对齐 |
+
+---
+
+## 📦 用户使用指南
+
+### 推荐外部加载方式
+
+```javascript
+import('https://testingcf.jsdelivr.net/gh/Xiaxiuqi/TS-plugin/dist/ci_island_test/index.js')
+  .then(() => console.log('✅ 浮岛 v1.5 加载成功'))
+  .catch(err => console.error('❌ 加载失败', err));
+```
+
+### CDN 缓存清除（如需立即生效）
+
+访问以下 URL 触发 jsdelivr Purge：
+
+```
+https://purge.jsdelivr.net/gh/Xiaxiuqi/TS-plugin/dist/ci_island_test/index.js
+```
+
+### 浮岛设置面板新功能
+
+打开浮岛设置 → 性能设置 → 调试通知 → "静默调试模式"开关：
+- ✅ 开启后控制台仅显示关键日志（[Error] / [关键] / [核心] / ❌ / ⚠️）
+- ✅ 不影响 toast 通知（用户提示永远显示）
+- ✅ 状态自动持久化到 localStorage（`ci_silent_debug`）
+
+---
+
+## 📝 改动文件清单
+
+| 文件 | 改动内容 |
+|------|----------|
+| [`core/utils.ts`](src/ci_island_test/core/utils.ts:1) | 新增 `filterSystemColumns()` + `forEachVisibleCell()` + 增强 `dbg()` 静默过滤 + 移除拖拽 dbg |
+| [`core/state.ts`](src/ci_island_test/core/state.ts:1) | 新增 `silentDebug` 状态 |
+| [`data/processor.ts`](src/ci_island_test/data/processor.ts:1) | 调用 `updateHeightClass` + 改用 `forEachVisibleCell` |
+| [`dialogs/history-edit.ts`](src/ci_island_test/dialogs/history-edit.ts:1) | 改用 `filterSystemColumns` |
+| [`ui/skeleton.ts`](src/ci_island_test/ui/skeleton.ts:1) | 通知文字改为"浮岛 v1.5 载入成功" |
+| [`ui/settings.ts`](src/ci_island_test/ui/settings.ts:1) | 新增"静默调试模式"开关 |
+| [`ui/events.ts`](src/ci_island_test/ui/events.ts:1) | `syncInventoryMenuPosition` 完整迁移 |
+| [`styles/_dialogs.scss`](src/ci_island_test/styles/_dialogs.scss:1) | 开关 transform 24px → 20px |
+| [`app.ts`](src/ci_island_test/app.ts:1) | 删除 `teleportStyle` import + 调用、添加 `__ciSilentDebug` 全局同步 |
+
+**🎉 浮岛 v1.5 后期 Bug 修复全部完成！**
