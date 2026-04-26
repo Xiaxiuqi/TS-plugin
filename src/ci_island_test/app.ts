@@ -4,6 +4,7 @@
  *
  * 完整初始化逻辑见原 src/ci_island_test/index.ts:10733 initApp
  */
+import { teleportStyle } from '@util/script';
 import { state } from './core/state';
 import { dbg } from './core/utils';
 import { safeSetItem } from './core/storage';
@@ -114,6 +115,16 @@ export function initApp(jQueryInstance: any): void {
   (window as any).jQuery = jQueryInstance;
 
   dbg('Script Initializing (modular version)...');
+
+  // 关键修复：将 webpack 注入到 head 的 <style> 传送到当前 iframe/document 内
+  // 解决酒馆助手脚本导入时 CSS 缺失问题（与原版 index.original.ts:10738 一致）
+  // 使用控制台 import 时 CSS 已注入到顶层 head，但作为脚本导入时需要 teleport
+  try {
+    teleportStyle();
+    dbg('[CSS注入] teleportStyle 完成');
+  } catch (e) {
+    console.warn('[浮岛] teleportStyle 失败（可能在非 iframe 环境）:', e);
+  }
 
   // 创建 UI 骨架
   const { $con, $pan, $ops, $mapPan } = createUI();

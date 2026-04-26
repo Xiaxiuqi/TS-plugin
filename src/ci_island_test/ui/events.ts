@@ -543,10 +543,17 @@ export function bindEvents(
       const $menu = $('.ci-inventory-menu');
 
       if (state.isInventoryMenuOpen) {
-        $menu.addClass('visible');
-        $(this).addClass('active');
+        // 关键修复：先定位再显示
+        // 否则菜单 outerHeight() 在 opacity:0 状态下可能不准确
+        // 同时避免菜单在没有 left/top 时短暂出现在浮岛顶部（DOM 流默认位置）
         const offset = $con.offset();
+        // 先让菜单可被测量但保持隐藏（visibility hidden 而非 opacity）
+        $menu.css({ visibility: 'hidden' }).addClass('visible');
+        // 立即定位（此时 outerHeight 能拿到正确值）
         syncInventoryMenuPosition(offset.left, offset.top);
+        // 恢复可见
+        $menu.css({ visibility: '' });
+        $(this).addClass('active');
       } else {
         $menu.removeClass('visible');
         if (!state.isInventoryOpen && !state.isSkillsOpen) {
