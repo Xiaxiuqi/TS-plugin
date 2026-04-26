@@ -4,7 +4,7 @@
  *
  * 完整初始化逻辑见原 src/ci_island_test/index.ts:10733 initApp
  */
-import { teleportStyle } from '@util/script';
+import { TELEPORT_ATTR, stopWatchingStyles } from './pre-style-snapshot';
 import { state } from './core/state';
 import { dbg } from './core/utils';
 import { safeSetItem } from './core/storage';
@@ -110,23 +110,62 @@ export function updateOpenPanels(): void {
  * 应用初始化
  * @param jQueryInstance jQuery 实例
  */
+/**
+ * 把脚本 iframe head 中带 TELEPORT_ATTR 标记的 <style> 传送到顶层 document.head
+ *
+ * - 控制台 import 模式：window.top.document === document，函数直接返回，零开销
+ * - 酒馆助手脚本模式：脚本运行在 TH-script-* iframe 中，CSS 注入到 iframe head，
+ *   但 DOM 添加在顶层 body（jQuery 取自 window.parent），需要把 CSS 一起传送
+ *
+ * 资源占用：仅 1 个 <style> 节点克隆到顶层（约 635KB CSS 文本，所有方案都需要）
+ */
+function teleportOwnStyles(): () => void {
+  // 停止 observer，释放监听资源
+  stopWatchingStyles();
+
+  let topDoc: Document;
+  try {
+    topDoc = (window.top && window.top.document) || document;
+  } catch (e) {
+    topDoc = document; // cross-origin fallback
+  }
+  if (topDoc === document) {
+    dbg('[CSS Teleport] 已在顶层 document，无需传送');
+    return () => {};
+  }
+
+  // 启动清理：移除可能残留的旧版本（多次重载脚本时）
+  topDoc.querySelectorAll(`style[${TELEPORT_ATTR}]`).forEach(s => s.remove());
+
+  // 克隆带标记的 style 到顶层
+  const ownStyles = Array.from(document.head.querySelectorAll(`style[${TELEPORT_ATTR}]`));
+  const cloned: HTMLElement[] = [];
+  ownStyles.forEach(s => {
+    const clone = s.cloneNode(true) as HTMLElement;
+    topDoc.head.appendChild(clone);
+    cloned.push(clone);
+  });
+  dbg(`[CSS Teleport] 已传送 ${cloned.length} 个 style 到顶层 head`);
+
+  return () => {
+    cloned.forEach(c => c.remove());
+  };
+}
+
 export function initApp(jQueryInstance: any): void {
   (window as any).$ = jQueryInstance;
   (window as any).jQuery = jQueryInstance;
 
   dbg('Script Initializing (modular version)...');
 
-  // 关键修复：将 webpack style-loader 注入到 head 的 <style> 传送到当前脚本环境的 head 内
-  // - 控制台 import 时：document 已是顶层，teleportStyle 等于复制一份到自己
-  // - 酒馆助手脚本模式：style 被注入到脚本 iframe 的 head，需要 teleport 才能让 DOM 拿到样式
-  // 参考 示例/脚本示例/设置界面.ts 的最佳实践：保留 destroy 用于卸载清理
+  // 关键修复：把脚本 iframe head 中的浮岛 CSS 传送到顶层 document.head
+  // - 控制台 import 时：document 已是顶层，函数直接 return，零开销
+  // - 酒馆助手脚本模式：必须传送，否则 CSS 在 iframe head 而 DOM 在顶层 body，错位失效
   let teleportDestroy: (() => void) | null = null;
   try {
-    const result = teleportStyle();
-    teleportDestroy = result.destroy;
-    dbg('[CSS注入] teleportStyle 完成');
+    teleportDestroy = teleportOwnStyles();
   } catch (e) {
-    console.warn('[浮岛] teleportStyle 失败（可能在非 iframe 环境）:', e);
+    console.warn('[浮岛] CSS 传送失败:', e);
   }
 
   // 卸载脚本时清理传送的 style，避免重复加载时样式叠加
