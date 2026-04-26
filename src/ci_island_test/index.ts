@@ -1,4 +1,4 @@
-import { teleportStyle } from '../../util/script';
+import { teleportStyle } from '@util/script';
 import './style.scss';
 
 if (typeof (window as any).global === 'undefined') {
@@ -31,6 +31,15 @@ const STORAGE_RECYCLE_ACTIVE_KEY = 'ci_recycle_active_v1';
 
 function dbg(msg: string, data?: any) {
   console.log(`%c[浮岛DEBUG] ${msg}`, 'background: #d32f2f; color: #fff', data || '');
+}
+
+/**
+ * 判断列名是否为系统列（如 row_id），系统列应在显示和编辑时隐藏
+ */
+function isSystemColumn(colName: any): boolean {
+  if (!colName) return false;
+  const name = String(colName).trim().toLowerCase();
+  return name === 'row_id' || name === 'rowid' || name === 'row id' || name === 'id';
 }
 
 // 安全的localStorage封装，解决iframe/沙箱环境下localStorage不可用的问题
@@ -1188,7 +1197,7 @@ function processData(rawData: any) {
             if (!r[nameIdx]) return;
             const details: any = {};
             h.forEach((header: string, i: number) => {
-              if (i !== ownerIdx && r[i]) details[header] = r[i];
+              if (i !== ownerIdx && r[i] && !isSystemColumn(header)) details[header] = r[i];
             });
 
             result.allSkills.push({
@@ -1224,8 +1233,8 @@ function processData(rawData: any) {
           s.content.slice(1).forEach((r: any, relativeIdx: number) => {
             if (!r[nameIdx]) return;
             const details: any = {};
-            h.forEach((header, i) => {
-              if (i !== ownerIdx && r[i]) details[header] = r[i];
+            h.forEach((header: any, i: number) => {
+              if (i !== ownerIdx && r[i] && !isSystemColumn(header)) details[header] = r[i];
             });
 
             // 提取原始类型字符串
@@ -1297,6 +1306,8 @@ function processData(rawData: any) {
 
       h.forEach((colName: string, colIdx: number) => {
         if (!colName || colIdx === nameIdx) return;
+        // 跳过系统列 (row_id 等)
+        if (isSystemColumn(colName)) return;
         const col = String(colName);
 
         // 身体特征/部位列
@@ -1345,13 +1356,15 @@ function processData(rawData: any) {
 
         if (!charExtraInfo[charName]) {
           charExtraInfo[charName] = {
-            bodyInfo: [], // 身体信息 {key, value}[]
+            bodyInfo: [], // [兼容] 身体信息（扁平，已废弃，仅供兼容）
+            bodyInfoGroups: [], // 身体信息分组（按列分组：[{tableName, colName, items, notes}]）
             bodyStatus: [], // 身体状态 {label, value}[]
-            clothing: [], // 衣着信息 {key, value}[]
+            clothing: [], // [兼容] 衣着信息（扁平，已废弃）
+            clothingGroups: [], // 衣着信息分组（按列分组）
             otherInfo: [], // 其他信息 {tableName, items: {label, value}[]}
             stats: [], // 属性信息 {label, value}[]
-            bodyNotes: '', // 身体信息备注
-            clothingNotes: '', // 衣着备注
+            bodyNotes: '', // [兼容] 身体信息备注（已被 bodyInfoGroups[].notes 取代）
+            clothingNotes: '', // [兼容] 衣着备注（已被 clothingGroups[].notes 取代）
           };
         }
 
@@ -1364,7 +1377,9 @@ function processData(rawData: any) {
         const statsCols = h
           .map((col, i) => ({ col, i }))
           .filter(
-            ({ col }) => col && (statsKeywords.some(kw => col.includes(kw)) || individualStats.some(kw => col === kw)), // 必须完全匹配独立列名
+            ({ col }) =>
+              col &&
+              (statsKeywords.some(kw => col.includes(kw)) || individualStats.some(kw => col === kw)), // 必须完全匹配独立列名
           );
 
         if (statsCols.length > 0) {
@@ -1429,19 +1444,24 @@ function processData(rawData: any) {
           dbg(`[属性提取] 角色 ${charName} 提取到属性:`, info.stats);
         }
 
-        // 提取身体信息
+        // 提取身体信息（按列分组）：保留原始内容用于显示和编辑，items 仅供旧版兼容显示
         bodyInfoCols.forEach(colIdx => {
           const content = r[colIdx];
           const colName = h[colIdx];
           if (content) {
             const parsed = parseFormattedContent(String(content));
-            // 为每个提取出的条目添加来源信息
             const itemsWithSrc = parsed.labels.map(l => ({
               ...l,
               _src: { table: tableName, col: colName },
             }));
-            info.bodyInfo.push(...itemsWithSrc);
-            if (parsed.notes) info.bodyNotes += (info.bodyNotes ? ' ' : '') + parsed.notes;
+            // 关键：rawValue 存储整列原始内容，作为编辑/保存的唯一依据
+            info.bodyInfoGroups.push({
+              tableName: tableName,
+              colName: colName,
+              rawValue: String(content), // 完整原始内容，编辑时直接显示
+              items: itemsWithSrc, // 仅用于兼容性显示拆分内容
+              notes: parsed.notes || '', // 仅用于显示
+            });
           }
         });
 
@@ -1458,7 +1478,7 @@ function processData(rawData: any) {
           }
         });
 
-        // 提取衣着信息
+        // 提取衣着信息（按列分组）：保留原始内容
         clothingCols.forEach(colIdx => {
           const content = r[colIdx];
           const colName = h[colIdx];
@@ -1468,8 +1488,13 @@ function processData(rawData: any) {
               ...l,
               _src: { table: tableName, col: colName },
             }));
-            info.clothing.push(...itemsWithSrc);
-            if (parsed.notes) info.clothingNotes += (info.clothingNotes ? ' ' : '') + parsed.notes;
+            info.clothingGroups.push({
+              tableName: tableName,
+              colName: colName,
+              rawValue: String(content), // 完整原始内容
+              items: itemsWithSrc,
+              notes: parsed.notes || '',
+            });
           }
         });
 
@@ -1775,19 +1800,134 @@ function processData(rawData: any) {
   return result;
 }
 
+/**
+ * 增量保存辅助函数：尝试使用 updateRow API 进行增量更新，失败时回退到 importTableAsJson 全量保存
+ * @param api 数据库 API
+ * @param updates 需要更新的行数据数组：[{ tableName, rowIndex, data: { 列名: 值 } }]
+ * @param fullDataForFallback 失败时回退使用的完整数据
+ * @returns 是否成功
+ */
+async function saveTableUpdates(
+  api: any,
+  updates: Array<{ tableName: string; rowIndex: number; data: Record<string, any> }>,
+  fullDataForFallback: any,
+): Promise<boolean> {
+  // 优先尝试增量更新
+  if (api && typeof api.updateRow === 'function' && updates.length > 0) {
+    try {
+      let allOk = true;
+      for (const upd of updates) {
+        const ok = await api.updateRow(upd.tableName, upd.rowIndex, upd.data);
+        if (ok === false) {
+          allOk = false;
+          break;
+        }
+      }
+      if (allOk) {
+        dbg('[增量保存] 成功更新行数据: ' + updates.length);
+        // 触发世界书刷新（如果API支持）
+        if (typeof api.refreshDataAndWorldbook === 'function') {
+          try {
+            await api.refreshDataAndWorldbook();
+          } catch (e) {
+            dbg('[增量保存] refreshDataAndWorldbook 失败（非致命）:', e);
+          }
+        }
+        return true;
+      }
+    } catch (e) {
+      dbg('[增量保存] 异常，回退到全量保存:', e);
+    }
+  }
+
+  // 回退：全量保存
+  dbg('[全量保存] 回退使用 importTableAsJson');
+  await performDirectInjection(fullDataForFallback);
+  if (api && typeof api.importTableAsJson === 'function') {
+    const result = await api.importTableAsJson(JSON.stringify(fullDataForFallback));
+    return result !== false;
+  }
+  return false;
+}
+
+/**
+ * 增量插入行：尝试使用 insertRow，失败回退全量
+ */
+async function saveTableInsert(
+  api: any,
+  tableName: string,
+  data: Record<string, any>,
+  fullDataForFallback: any,
+): Promise<boolean> {
+  if (api && typeof api.insertRow === 'function') {
+    try {
+      const idx = await api.insertRow(tableName, data);
+      if (idx !== -1 && idx !== false) {
+        dbg('[增量插入] 成功，新行索引: ' + idx);
+        if (typeof api.refreshDataAndWorldbook === 'function') {
+          try {
+            await api.refreshDataAndWorldbook();
+          } catch (e) {}
+        }
+        return true;
+      }
+    } catch (e) {
+      dbg('[增量插入] 异常，回退到全量保存:', e);
+    }
+  }
+  await performDirectInjection(fullDataForFallback);
+  if (api && typeof api.importTableAsJson === 'function') {
+    const result = await api.importTableAsJson(JSON.stringify(fullDataForFallback));
+    return result !== false;
+  }
+  return false;
+}
+
+/**
+ * 增量删除行：尝试使用 deleteRow，失败回退全量
+ */
+async function saveTableDelete(
+  api: any,
+  tableName: string,
+  rowIndex: number,
+  fullDataForFallback: any,
+): Promise<boolean> {
+  if (api && typeof api.deleteRow === 'function') {
+    try {
+      const ok = await api.deleteRow(tableName, rowIndex);
+      if (ok !== false) {
+        dbg('[增量删除] 成功');
+        if (typeof api.refreshDataAndWorldbook === 'function') {
+          try {
+            await api.refreshDataAndWorldbook();
+          } catch (e) {}
+        }
+        return true;
+      }
+    } catch (e) {
+      dbg('[增量删除] 异常，回退到全量保存:', e);
+    }
+  }
+  await performDirectInjection(fullDataForFallback);
+  if (api && typeof api.importTableAsJson === 'function') {
+    const result = await api.importTableAsJson(JSON.stringify(fullDataForFallback));
+    return result !== false;
+  }
+  return false;
+}
+
 async function saveCharData(src: any, newData: any) {
   const api = (window as any).AutoCardUpdaterAPI || (window.parent as any).AutoCardUpdaterAPI;
   if (!api || !api.exportTableAsJson) {
     showToast('无法连接到数据库API', 'error');
     return;
   }
-  dbg('Saving char data...', { src, newData });
+  dbg('Saving char data...');
   const fullData = api.exportTableAsJson();
   if (!fullData) {
     showToast('数据库返回为空', 'error');
     return;
   }
-  // 修复导入报错：确保 mate 结构存在
   if (!fullData.mate) {
     fullData.mate = { type: 'chatSheets', version: 1 };
   }
@@ -1818,99 +1958,140 @@ async function saveCharData(src: any, newData: any) {
     showToast('找不到姓名列', 'error');
     return;
   }
-  let targetRow = null;
+
+  // 定位主表中的目标行索引
+  let targetRowIdx = -1;
   for (let i = 1; i < table.content.length; i++) {
     const row = table.content[i];
     if (row && row[currentCols.name] === src.originName) {
-      targetRow = row;
+      targetRowIdx = i;
       break;
     }
   }
-  if (!targetRow) {
+  if (targetRowIdx === -1) {
     showToast('找不到该角色: ' + src.originName, 'error');
     return;
   }
-  if (currentCols.name > -1) targetRow[currentCols.name] = newData.name;
-  if (currentCols.sex > -1) targetRow[currentCols.sex] = newData.sex;
-  if (currentCols.age > -1) targetRow[currentCols.age] = newData.age;
-  if (currentCols.job > -1) targetRow[currentCols.job] = newData.job;
-  if (currentCols.identity > -1) targetRow[currentCols.identity] = newData.identity;
-  if (currentCols.loc > -1) targetRow[currentCols.loc] = newData.loc;
-  if (currentCols.longGoal > -1) targetRow[currentCols.longGoal] = newData.longGoal;
+  const targetRow = table.content[targetRowIdx];
 
-  // 修复：当修改姓名时，同步更新所有其他表中的姓名对应关系
+  // 收集所有需要的增量更新
+  const updates: Array<{ tableName: string; rowIndex: number; data: Record<string, any> }> = [];
+
+  // 1) 主表更新数据
+  const mainData: Record<string, any> = {};
+  if (currentCols.name > -1) {
+    mainData[h[currentCols.name]] = newData.name;
+    targetRow[currentCols.name] = newData.name;
+  }
+  if (currentCols.sex > -1) {
+    mainData[h[currentCols.sex]] = newData.sex;
+    targetRow[currentCols.sex] = newData.sex;
+  }
+  if (currentCols.age > -1) {
+    mainData[h[currentCols.age]] = newData.age;
+    targetRow[currentCols.age] = newData.age;
+  }
+  if (currentCols.job > -1) {
+    mainData[h[currentCols.job]] = newData.job;
+    targetRow[currentCols.job] = newData.job;
+  }
+  if (currentCols.identity > -1) {
+    mainData[h[currentCols.identity]] = newData.identity;
+    targetRow[currentCols.identity] = newData.identity;
+  }
+  if (currentCols.loc > -1) {
+    mainData[h[currentCols.loc]] = newData.loc;
+    targetRow[currentCols.loc] = newData.loc;
+  }
+  if (currentCols.longGoal > -1) {
+    mainData[h[currentCols.longGoal]] = newData.longGoal;
+    targetRow[currentCols.longGoal] = newData.longGoal;
+  }
+  if (Object.keys(mainData).length > 0) {
+    updates.push({ tableName: src.table, rowIndex: targetRowIdx, data: mainData });
+  }
+
+  // 2) 姓名同步：当修改姓名时，扫描所有表更新匹配的行
   if (newData.name !== src.originName) {
     Object.keys(fullData).forEach(sheetKey => {
       if (!sheetKey.startsWith('sheet_')) return;
       const sheet = fullData[sheetKey];
       if (!sheet || !sheet.content || !Array.isArray(sheet.content) || sheet.content.length < 2) return;
+      if (sheet.name === src.table) return; // 主表已处理
 
       const headers = sheet.content[0] || [];
       const nameColIdx = headers.findIndex(
-        (h: string) => h && ['角色', '姓名', '名字', '名称'].some(n => String(h).includes(n)),
+        (h: any) => h && ['角色', '姓名', '名字', '名称'].some(n => String(h).includes(n)),
       );
       if (nameColIdx === -1) return;
 
-      // 遍历内容行，更新所有匹配的姓名
       for (let i = 1; i < sheet.content.length; i++) {
         const row = sheet.content[i];
         if (!row) continue;
-
         const rowName = String(row[nameColIdx] || '').trim();
         if (rowName === src.originName) {
           row[nameColIdx] = newData.name;
-          dbg(`[姓名同步] 更新表 ${sheet.name} 第 ${i} 行姓名: ${src.originName} -> ${newData.name}`);
+          updates.push({
+            tableName: sheet.name,
+            rowIndex: i,
+            data: { [headers[nameColIdx]]: newData.name },
+          });
+          dbg(`[姓名同步] 表 ${sheet.name} 第 ${i} 行: ${src.originName} -> ${newData.name}`);
         }
       }
     });
   }
 
-  // 修复：同时保存身体状态（使用和档案编辑弹窗相同的逻辑）
+  // 3) 身体状态：扫描所有表，更新匹配角色行的身体状态列
   if (newData.bodyStatus && newData.bodyStatus.length > 0) {
-    // 遍历所有表，找到包含该角色的所有行，更新身体状态
     Object.keys(fullData).forEach(sheetKey => {
       if (!sheetKey.startsWith('sheet_')) return;
       const sheet = fullData[sheetKey];
       if (!sheet || !sheet.content || !Array.isArray(sheet.content) || sheet.content.length < 2) return;
 
-      const tableName = sheet.name || '';
       const headers = sheet.content[0] || [];
-
-      // 检查是否是角色相关的表（包含角色名列）
       const nameColIdx = headers.findIndex(
-        (h: string) => h && ['角色', '姓名', '名字', '名称'].some(n => String(h).includes(n)),
+        (h: any) => h && ['角色', '姓名', '名字', '名称'].some(n => String(h).includes(n)),
       );
       if (nameColIdx === -1) return;
 
-      // 遍历内容行，找到该角色的所有行
       for (let i = 1; i < sheet.content.length; i++) {
         const row = sheet.content[i];
         if (!row) continue;
-
         const rowName = String(row[nameColIdx] || '').trim();
         if (rowName !== newData.name) continue;
 
-        dbg('[角色保存] 在表', tableName, '第', i, '行找到角色，更新身体状态');
-
-        // 更新身体状态
+        const statusUpdate: Record<string, any> = {};
         newData.bodyStatus.forEach((item: any) => {
           if (updateCellOrComposite(row, headers, item.label, item.value)) {
-            dbg('[角色保存] 更新身体状态:', item.label, '->', item.value);
+            // 找到列直接匹配的，列名作为 key
+            const colIdx = headers.findIndex((hh: any) => hh && (String(hh) === item.label || String(hh).includes(item.label)));
+            if (colIdx !== -1) {
+              statusUpdate[headers[colIdx]] = row[colIdx];
+            }
           }
         });
+        if (Object.keys(statusUpdate).length > 0) {
+          // 合并到已有的 update 或新增
+          const existing = updates.find(u => u.tableName === sheet.name && u.rowIndex === i);
+          if (existing) {
+            Object.assign(existing.data, statusUpdate);
+          } else {
+            updates.push({ tableName: sheet.name, rowIndex: i, data: statusUpdate });
+          }
+        }
       }
     });
   }
 
-  await performDirectInjection(fullData);
-  try {
-    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
+  const ok = await saveTableUpdates(api, updates, fullData);
+  if (ok) {
     showToast('保存成功');
-    state.cachedData = processData(fullData);
+    state.cachedData = processData(api.exportTableAsJson());
     updateOpenPanels();
     $('.ci-edit-overlay').remove();
-  } catch (e: any) {
-    showToast('保存失败: ' + e.message, 'error');
+  } else {
+    showToast('保存失败', 'error');
   }
 }
 
@@ -1987,6 +2168,9 @@ async function deleteCharData(src: any) {
   const api = (window as any).AutoCardUpdaterAPI || (window.parent as any).AutoCardUpdaterAPI;
   if (!api) return;
   const fullData = api.exportTableAsJson();
+  if (!fullData) return;
+  if (!fullData.mate) fullData.mate = { type: 'chatSheets', version: 1 };
+
   let table: any = null;
   for (const key in fullData) {
     if (fullData[key] && fullData[key].name === src.table) {
@@ -2005,13 +2189,17 @@ async function deleteCharData(src: any) {
     }
   }
   if (delIdx !== -1) {
+    // 同步更新 fullData 副本（用于回退）
     table.content.splice(delIdx, 1);
-    await performDirectInjection(fullData);
-    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    showToast('删除成功');
-    state.cachedData = processData(fullData);
-    updateOpenPanels();
-    $('.ci-edit-overlay').remove();
+    const ok = await saveTableDelete(api, src.table, delIdx, fullData);
+    if (ok) {
+      showToast('删除成功');
+      state.cachedData = processData(api.exportTableAsJson());
+      updateOpenPanels();
+      $('.ci-edit-overlay').remove();
+    } else {
+      showToast('删除失败', 'error');
+    }
   }
 }
 
@@ -2317,75 +2505,93 @@ async function saveForceData(originalForce: any, newData: any) {
     desc: getCol(h, ['描述', '介绍', '简介', '详情', 'Description']),
   };
 
-  // 更新基础字段
-  if (cols.name > -1 && newData.name !== undefined) targetRow[cols.name] = newData.name;
-  if (cols.leader > -1 && newData.leader !== undefined) targetRow[cols.leader] = newData.leader;
-  if (cols.purpose > -1 && newData.purpose !== undefined) targetRow[cols.purpose] = newData.purpose;
-  if (cols.desc > -1 && newData.desc !== undefined) targetRow[cols.desc] = newData.desc;
+  // 收集主表的更新数据
+  const updates: Array<{ tableName: string; rowIndex: number; data: Record<string, any> }> = [];
+  const mainData: Record<string, any> = {};
+  if (cols.name > -1 && newData.name !== undefined) {
+    mainData[h[cols.name]] = newData.name;
+    targetRow[cols.name] = newData.name;
+  }
+  if (cols.leader > -1 && newData.leader !== undefined) {
+    mainData[h[cols.leader]] = newData.leader;
+    targetRow[cols.leader] = newData.leader;
+  }
+  if (cols.purpose > -1 && newData.purpose !== undefined) {
+    mainData[h[cols.purpose]] = newData.purpose;
+    targetRow[cols.purpose] = newData.purpose;
+  }
+  if (cols.desc > -1 && newData.desc !== undefined) {
+    mainData[h[cols.desc]] = newData.desc;
+    targetRow[cols.desc] = newData.desc;
+  }
 
-  // 更新详细信息字段
+  // 详情字段
   if (newData.details) {
     Object.entries(newData.details).forEach(([key, value]) => {
-      const detailIdx = h.findIndex((header: string) => header && header.toLowerCase().includes(key.toLowerCase()));
+      const detailIdx = h.findIndex((header: any) => header && String(header).toLowerCase().includes(key.toLowerCase()));
       if (detailIdx > -1) {
         targetRow[detailIdx] = value;
+        mainData[h[detailIdx]] = value;
       }
     });
   }
 
-  // 如果名称改变，需要同步更新所有其他表中相关的势力名称
+  if (Object.keys(mainData).length > 0) {
+    updates.push({ tableName: targetTable.name, rowIndex: targetRowIndex, data: mainData });
+  }
+
+  // 同步势力名称到其他表
   if (newData.name !== originalForce.name) {
     Object.keys(fullData).forEach(sheetKey => {
       if (!sheetKey.startsWith('sheet_')) return;
       const sheet = fullData[sheetKey];
       if (!sheet || !sheet.content || !Array.isArray(sheet.content) || sheet.content.length < 2) return;
+      if (sheet.name === targetTable.name) return;
 
       const headers = sheet.content[0] || [];
-      // 查找所有可能包含势力名称的列
-      const forceNameCols = headers
-        .map((header, idx) => ({ header, idx }))
-        .filter(
-          ({ header }) =>
-            header &&
-            (header.includes('势力') ||
-              header.includes('组织') ||
-              header.includes('Faction') ||
-              header.includes('Group') ||
-              header.includes('阵营') ||
-              header.includes('团体')),
-        );
+      const forceNameColIdxs: number[] = [];
+      headers.forEach((header: any, idx: number) => {
+        if (
+          header &&
+          (String(header).includes('势力') ||
+            String(header).includes('组织') ||
+            String(header).includes('Faction') ||
+            String(header).includes('Group') ||
+            String(header).includes('阵营') ||
+            String(header).includes('团体'))
+        ) {
+          forceNameColIdxs.push(idx);
+        }
+      });
+      if (forceNameColIdxs.length === 0) return;
 
-      if (forceNameCols.length === 0) return;
-
-      // 遍历内容行，更新所有匹配的势力名称
       for (let i = 1; i < sheet.content.length; i++) {
         const row = sheet.content[i];
         if (!row) continue;
-
-        forceNameCols.forEach(({ header, idx }) => {
+        const rowUpdate: Record<string, any> = {};
+        forceNameColIdxs.forEach(idx => {
           const rowValue = String(row[idx] || '').trim();
           if (rowValue === originalForce.name) {
             row[idx] = newData.name;
-            dbg(`[势力名称同步] 更新表 ${sheet.name} 第 ${i} 行 ${header}: ${originalForce.name} -> ${newData.name}`);
+            rowUpdate[headers[idx]] = newData.name;
+            dbg(`[势力名称同步] ${sheet.name} 第${i}行 ${headers[idx]}: ${originalForce.name} -> ${newData.name}`);
           }
         });
+        if (Object.keys(rowUpdate).length > 0) {
+          updates.push({ tableName: sheet.name, rowIndex: i, data: rowUpdate });
+        }
       }
     });
   }
 
-  // 保存数据
-  await performDirectInjection(fullData);
-  try {
-    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
+  const ok = await saveTableUpdates(api, updates, fullData);
+  if (ok) {
     showToast(`势力"${newData.name || originalForce.name}"保存成功`, 'success');
-
-    // 重新提取数据并更新面板
-    state.cachedData = processData(fullData);
+    state.cachedData = processData(api.exportTableAsJson());
     updateOpenPanels();
     $('.ci-edit-overlay').remove();
-  } catch (e: any) {
-    showToast('保存失败: ' + e.message, 'error');
-    dbg('[势力保存] 保存出错:', e);
+  } else {
+    showToast('保存失败', 'error');
   }
 }
 
@@ -2466,33 +2672,37 @@ async function saveEventData(originalTask: any, newData: any) {
     penalty: getCol(h, ['惩罚', '惩处', '失败条件']),
   };
 
-  // 更新基础字段
-  if (cols.name > -1 && newData.name !== undefined) targetRow[cols.name] = newData.name;
-  if (cols.type > -1 && newData.type !== undefined) targetRow[cols.type] = newData.type;
-  if (cols.status > -1 && newData.status !== undefined) targetRow[cols.status] = newData.status;
-  if (cols.time > -1 && newData.time !== undefined) targetRow[cols.time] = newData.time;
-  if (cols.location > -1 && newData.location !== undefined) targetRow[cols.location] = newData.location;
-  if (cols.desc > -1 && newData.desc !== undefined) targetRow[cols.desc] = newData.desc;
+  // 收集更新数据
+  const rowData: Record<string, any> = {};
+  const setField = (colIdx: number, val: any) => {
+    if (colIdx > -1 && val !== undefined) {
+      rowData[h[colIdx]] = val;
+      targetRow[colIdx] = val;
+    }
+  };
+  setField(cols.name, newData.name);
+  setField(cols.type, newData.type);
+  setField(cols.status, newData.status);
+  setField(cols.time, newData.time);
+  setField(cols.location, newData.location);
+  setField(cols.desc, newData.desc);
+  setField(cols.publisher, newData.publisher?.val || '');
+  setField(cols.executor, newData.executor?.val || '');
+  setField(cols.reward, newData.reward?.val || '');
+  setField(cols.penalty, newData.penalty?.val || '');
 
-  // 更新可选字段
-  if (cols.publisher > -1 && newData.publisher !== undefined) targetRow[cols.publisher] = newData.publisher?.val || '';
-  if (cols.executor > -1 && newData.executor !== undefined) targetRow[cols.executor] = newData.executor?.val || '';
-  if (cols.reward > -1 && newData.reward !== undefined) targetRow[cols.reward] = newData.reward?.val || '';
-  if (cols.penalty > -1 && newData.penalty !== undefined) targetRow[cols.penalty] = newData.penalty?.val || '';
+  const updates = Object.keys(rowData).length > 0
+    ? [{ tableName: targetTable.name, rowIndex: targetRowIndex, data: rowData }]
+    : [];
 
-  // 保存数据
-  await performDirectInjection(fullData);
-  try {
-    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
+  const ok = await saveTableUpdates(api, updates, fullData);
+  if (ok) {
     showToast(`事件"${newData.name || originalTask.name}"保存成功`, 'success');
-
-    // 重新提取数据并更新面板
-    state.cachedData = processData(fullData);
+    state.cachedData = processData(api.exportTableAsJson());
     updateOpenPanels();
     $('.ci-edit-overlay').remove();
-  } catch (e: any) {
-    showToast('保存失败: ' + e.message, 'error');
-    dbg('[事件保存] 保存出错:', e);
+  } else {
+    showToast('保存失败', 'error');
   }
 }
 
@@ -2551,18 +2761,25 @@ async function saveItemData(originalItem: any, newData: any) {
     desc: getColIdx(['描述', '效果']),
   };
 
-  // 更新基础字段
-  if (cols.name > -1 && newData.name !== undefined) row[cols.name] = newData.name;
-  if (cols.type > -1 && newData.type !== undefined) row[cols.type] = newData.type;
-  if (cols.count > -1 && newData.count !== undefined) row[cols.count] = newData.count;
-  if (cols.owner > -1 && newData.owner !== undefined) row[cols.owner] = newData.owner;
-  if (cols.desc > -1 && newData.desc !== undefined) row[cols.desc] = newData.desc;
+  // 收集主表更新数据
+  const updates: Array<{ tableName: string; rowIndex: number; data: Record<string, any> }> = [];
+  const mainData: Record<string, any> = {};
+  const setField = (colIdx: number, val: any) => {
+    if (colIdx > -1 && val !== undefined) {
+      mainData[h[colIdx]] = val;
+      row[colIdx] = val;
+    }
+  };
+  setField(cols.name, newData.name);
+  setField(cols.type, newData.type);
+  setField(cols.count, newData.count);
+  setField(cols.owner, newData.owner);
+  setField(cols.desc, newData.desc);
 
-  // 更新其他字段（来自details对象，排除已在上面更新的基础字段）
+  // 详情字段
   if (newData.details && Object.keys(newData.details).length > 0) {
     Object.entries(newData.details).forEach(([fieldName, fieldValue]) => {
-      // 为每个detail字段找到对应的列索引
-      const fieldColIdx = h.findIndex((header: string) => header === fieldName);
+      const fieldColIdx = h.findIndex((header: any) => header === fieldName);
       if (
         fieldColIdx > -1 &&
         fieldColIdx !== cols.name &&
@@ -2572,64 +2789,66 @@ async function saveItemData(originalItem: any, newData: any) {
         fieldColIdx !== cols.desc
       ) {
         row[fieldColIdx] = fieldValue;
-        dbg(`[物品编辑] 更新字段 ${fieldName}: ${fieldValue}`);
+        mainData[h[fieldColIdx]] = fieldValue;
       }
     });
   }
 
-  // 如果物品名称改变，需要同步更新所有其他表中相关的物品名称
+  if (Object.keys(mainData).length > 0) {
+    updates.push({ tableName: src.table, rowIndex: src.rowIdx, data: mainData });
+  }
+
+  // 同步物品名称到其他表
   if (newData.name !== originalItem.name) {
     Object.keys(fullData).forEach(sheetKey => {
       if (!sheetKey.startsWith('sheet_')) return;
       const sheet = fullData[sheetKey];
       if (!sheet || !sheet.content || !Array.isArray(sheet.content) || sheet.content.length < 2) return;
+      if (sheet.name === src.table) return;
 
       const headers = sheet.content[0] || [];
-      // 查找所有可能包含物品名称的列
-      const itemNameCols = headers
-        .map((header, idx) => ({ header, idx }))
-        .filter(
-          ({ header }) =>
-            header &&
-            (header.includes('物品') ||
-              header.includes('道具') ||
-              header.includes('装备') ||
-              header.includes('背包') ||
-              header.includes('Item') ||
-              header.includes('Equipment')),
-        );
+      const itemNameColIdxs: number[] = [];
+      headers.forEach((header: any, idx: number) => {
+        if (
+          header &&
+          (String(header).includes('物品') ||
+            String(header).includes('道具') ||
+            String(header).includes('装备') ||
+            String(header).includes('背包') ||
+            String(header).includes('Item') ||
+            String(header).includes('Equipment'))
+        ) {
+          itemNameColIdxs.push(idx);
+        }
+      });
+      if (itemNameColIdxs.length === 0) return;
 
-      if (itemNameCols.length === 0) return;
-
-      // 遍历内容行，更新所有匹配的物品名称
       for (let i = 1; i < sheet.content.length; i++) {
-        const row = sheet.content[i];
-        if (!row) continue;
-
-        itemNameCols.forEach(({ header, idx }) => {
-          const rowValue = String(row[idx] || '').trim();
+        const sheetRow = sheet.content[i];
+        if (!sheetRow) continue;
+        const rowUpdate: Record<string, any> = {};
+        itemNameColIdxs.forEach(idx => {
+          const rowValue = String(sheetRow[idx] || '').trim();
           if (rowValue === originalItem.name) {
-            row[idx] = newData.name;
-            dbg(`[物品名称同步] 更新表 ${sheet.name} 第 ${i} 行 ${header}: ${originalItem.name} -> ${newData.name}`);
+            sheetRow[idx] = newData.name;
+            rowUpdate[headers[idx]] = newData.name;
           }
         });
+        if (Object.keys(rowUpdate).length > 0) {
+          updates.push({ tableName: sheet.name, rowIndex: i, data: rowUpdate });
+        }
       }
     });
   }
 
-  // 保存数据
-  await performDirectInjection(fullData);
-  try {
-    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
+  const ok = await saveTableUpdates(api, updates, fullData);
+  if (ok) {
     showToast(`物品"${newData.name || originalItem.name}"保存成功`, 'success');
-
-    // 重新提取数据并更新面板
-    state.cachedData = processData(fullData);
+    state.cachedData = processData(api.exportTableAsJson());
     updateOpenPanels();
     $('.ci-edit-overlay').remove();
-  } catch (e: any) {
-    showToast('保存失败: ' + e.message, 'error');
-    dbg('[物品保存] 保存出错:', e);
+  } else {
+    showToast('保存失败', 'error');
   }
 }
 
@@ -2671,46 +2890,33 @@ function showArchiveEditDialog(d: any) {
     archiveEditHtml += '</div>';
   }
 
-  // 身体特征编辑区
-  if ((charExtra.bodyInfo && charExtra.bodyInfo.length > 0) || charExtra.bodyNotes) {
-    archiveEditHtml += '<div class="ci-archive-edit-section">';
-    archiveEditHtml += '<div class="ci-archive-edit-section-title">身体特征</div>';
-    // 身体特征各项编辑
-    archiveEditHtml += (charExtra.bodyInfo || [])
-      .map(
-        (item: any, idx: number) => `
-        <div class="ci-archive-edit-item" data-type="bodyInfo" data-idx="${idx}" data-src-table="${item._src?.table || ''}" data-src-col="${item._src?.col || ''}">
-          <input class="ci-input-field ci-archive-label-input" data-field="key" value="${item.key || ''}" placeholder="标签名">
-          <textarea class="ci-input-field ci-archive-value-input" data-field="value" rows="2" placeholder="内容">${item.value || ''}</textarea>
-        </div>
-      `,
-      )
-      .join('');
-    // 身体特征备注编辑（放在最后，与显示顺序一致）
-    archiveEditHtml += `
-      <div class="ci-archive-edit-item" data-type="bodyNotes">
-        <label style="display:block; margin-bottom:4px; font-weight:bold; color:#666;">备注</label>
-        <textarea class="ci-input-field ci-archive-value-input" data-field="bodyNotes" rows="3" placeholder="添加身体特征备注信息">${charExtra.bodyNotes || ''}</textarea>
-      </div>
-    `;
-    archiveEditHtml += '</div>';
+  // 身体特征编辑区 - 每列只显示一个 textarea（整列原始内容），保存时整列覆盖
+  if (charExtra.bodyInfoGroups && charExtra.bodyInfoGroups.length > 0) {
+    charExtra.bodyInfoGroups.forEach((group: any) => {
+      if (!group.colName) return;
+      archiveEditHtml += '<div class="ci-archive-edit-section">';
+      archiveEditHtml += `<div class="ci-archive-edit-section-title">${group.colName}</div>`;
+      // 关键：直接用列名作为 label，整列原始值作为 textarea，保存时整列覆盖
+      archiveEditHtml += `
+      <div class="ci-archive-edit-item" data-type="rawColumn" data-src-table="${group.tableName || ''}" data-src-col="${group.colName || ''}">
+        <textarea class="ci-input-field ci-archive-value-input" data-field="rawValue" rows="4" placeholder="${group.colName}">${group.rawValue || ''}</textarea>
+      </div>`;
+      archiveEditHtml += '</div>';
+    });
   }
 
-  // 衣着装扮编辑区
-  if (charExtra.clothing && charExtra.clothing.length > 0) {
-    archiveEditHtml += '<div class="ci-archive-edit-section">';
-    archiveEditHtml += '<div class="ci-archive-edit-section-title">衣着装扮</div>';
-    archiveEditHtml += charExtra.clothing
-      .map(
-        (item: any, idx: number) => `
-        <div class="ci-archive-edit-item" data-type="clothing" data-idx="${idx}" data-src-table="${item._src?.table || ''}" data-src-col="${item._src?.col || ''}">
-          <input class="ci-input-field ci-archive-label-input" data-field="key" value="${item.key || ''}" placeholder="标签名">
-          <textarea class="ci-input-field ci-archive-value-input" data-field="value" rows="2" placeholder="内容">${item.value || ''}</textarea>
-        </div>
-      `,
-      )
-      .join('');
-    archiveEditHtml += '</div>';
+  // 衣着装扮编辑区 - 每列只显示一个 textarea
+  if (charExtra.clothingGroups && charExtra.clothingGroups.length > 0) {
+    charExtra.clothingGroups.forEach((group: any) => {
+      if (!group.colName) return;
+      archiveEditHtml += '<div class="ci-archive-edit-section">';
+      archiveEditHtml += `<div class="ci-archive-edit-section-title">${group.colName}</div>`;
+      archiveEditHtml += `
+      <div class="ci-archive-edit-item" data-type="rawColumn" data-src-table="${group.tableName || ''}" data-src-col="${group.colName || ''}">
+        <textarea class="ci-input-field ci-archive-value-input" data-field="rawValue" rows="4" placeholder="${group.colName}">${group.rawValue || ''}</textarea>
+      </div>`;
+      archiveEditHtml += '</div>';
+    });
   }
 
   // 其他信息编辑区（按表名分组）
@@ -2794,36 +3000,41 @@ function showArchiveEditDialog(d: any) {
     // 收集编辑后的数据
     const updatedData: any = {
       stats: [],
-      bodyInfo: [],
-      bodyNotes: '',
-      clothing: [],
+      rawColumns: [], // [{srcTable, srcCol, value}] - 整列原始内容覆盖更新
       otherInfo: [],
     };
 
-    // 收集所有编辑项（按类型分组）
+    // 收集所有编辑项
     $overlay.find('.ci-archive-edit-item').each(function (this: HTMLElement) {
       const $item = $(this);
       const type = $item.attr('data-type');
       const tableName = $item.attr('data-table');
-
-      const itemData = {
-        label: $item.find('[data-field="label"]').val() || $item.find('[data-field="key"]').val(),
-        key: $item.find('[data-field="key"]').val() || $item.find('[data-field="label"]').val(),
-        value: $item.find('[data-field="value"]').val(),
-        srcTable: $item.attr('data-src-table'),
-        srcCol: $item.attr('data-src-col'),
-      };
+      const srcTable = $item.attr('data-src-table');
+      const srcCol = $item.attr('data-src-col');
 
       if (type === 'stats') {
-        updatedData.stats.push(itemData);
-      } else if (type === 'bodyNotes') {
-        updatedData.bodyNotes = $item.find('[data-field="bodyNotes"]').val();
-      } else if (type === 'bodyInfo') {
-        updatedData.bodyInfo.push(itemData);
-      } else if (type === 'clothing') {
-        updatedData.clothing.push(itemData);
+        updatedData.stats.push({
+          label: $item.find('[data-field="label"]').val(),
+          value: $item.find('[data-field="value"]').val(),
+          srcTable,
+          srcCol,
+        });
+      } else if (type === 'rawColumn') {
+        // 关键：整列原始内容覆盖，零小标题/备注污染
+        if (srcTable && srcCol) {
+          updatedData.rawColumns.push({
+            srcTable,
+            srcCol,
+            value: ($item.find('[data-field="rawValue"]').val() || '') as string,
+          });
+        }
       } else if (type === 'otherInfo') {
-        // 按表名分组其他信息
+        const itemData = {
+          label: $item.find('[data-field="label"]').val(),
+          value: $item.find('[data-field="value"]').val(),
+          srcTable,
+          srcCol,
+        };
         let tableGroup = updatedData.otherInfo.find((t: any) => t.tableName === tableName);
         if (!tableGroup) {
           tableGroup = { tableName: tableName, items: [] };
@@ -2848,8 +3059,8 @@ function showArchiveEditDialog(d: any) {
  * 支持直接列匹配和 "Key:Value" 格式的复合内容匹配
  */
 function updateCellOrComposite(row: any[], headers: string[], key: string, value: string): boolean {
-  // 1. 尝试直接列匹配
-  const colIdx = headers.findIndex(h => h && (String(h) === key || String(h).includes(key)));
+  // 1. 严格列名相等匹配（避免模糊匹配引发跨表混合编辑）
+  const colIdx = headers.findIndex(h => h && String(h) === key);
   if (colIdx !== -1 && row[colIdx] !== undefined) {
     row[colIdx] = value;
     return true;
@@ -2857,6 +3068,7 @@ function updateCellOrComposite(row: any[], headers: string[], key: string, value
 
   // 2. 尝试复合单元格匹配 (Key:Value; Key2:Value2)
   for (let i = 0; i < row.length; i++) {
+    if (isSystemColumn(headers[i])) continue; // 跳过系统列
     const cell = String(row[i]);
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // 匹配 "Key:Value" 或 "Key：Value"，直到分号或结束
@@ -2889,140 +3101,126 @@ async function saveArchiveData(charName: string, srcInfo: any, updatedData: any)
       fullData.mate = { type: 'chatSheets', version: 1 };
     }
 
-    // 查找包含该角色档案信息的表
-    Object.keys(fullData).forEach(sheetKey => {
-      if (!sheetKey.startsWith('sheet_')) return;
-      const sheet = fullData[sheetKey];
-      // 检查 sheet.content 是否存在且有效
-      if (!sheet || !sheet.content || !Array.isArray(sheet.content) || sheet.content.length < 2) return;
+    // [严格保存] 每个编辑项都自带 _src(table, col)，严格按 _src 定位单元格
+    // updates: { tableName, rowIndex, data: { 列名: 新值 } }
+    const updates: Array<{ tableName: string; rowIndex: number; data: Record<string, any> }> = [];
 
-      const tableName = sheet.name || '';
-      // 使用 content[0] 作为表头
+    // 辅助：获取或创建一行的 update entry
+    const getRowEntry = (tableName: string, rowIndex: number) => {
+      let entry = updates.find(u => u.tableName === tableName && u.rowIndex === rowIndex);
+      if (!entry) {
+        entry = { tableName, rowIndex, data: {} };
+        updates.push(entry);
+      }
+      return entry;
+    };
+
+    // 辅助：在指定表中找到指定角色行
+    const findCharRowInTable = (tableName: string): { rowIndex: number; row: any[]; headers: any[] } | null => {
+      const sheet = Object.values(fullData).find((s: any) => s && s.name === tableName) as any;
+      if (!sheet || !sheet.content || !Array.isArray(sheet.content) || sheet.content.length < 2) return null;
       const headers = sheet.content[0] || [];
-
-      // 检查是否是角色相关的表（包含角色名列）
       const nameColIdx = headers.findIndex(
-        (h: string) => h && ['角色', '姓名', '名字', '名称'].some(n => String(h).includes(n)),
+        (h: any) => h && ['角色', '姓名', '名字', '名称'].some(n => String(h).includes(n)),
       );
-      if (nameColIdx === -1) return;
-
-      // 遍历内容行 (从索引1开始)
+      if (nameColIdx === -1) return null;
       for (let i = 1; i < sheet.content.length; i++) {
         const row = sheet.content[i];
-        if (!row) continue;
-
-        const rowName = String(row[nameColIdx] || '').trim();
-        if (rowName !== charName) continue;
-
-        dbg('[档案保存] 找到角色行:', tableName, i);
-
-        // 尝试更新所有类型的数据，不再限制表名
-        // updateCellOrComposite 会自动检查列名是否匹配，如果不匹配会返回 false，不会误修改
-
-        // 属性信息 (v1.37 新增)
-        if (updatedData.stats && updatedData.stats.length > 0) {
-          updatedData.stats.forEach((item: any) => {
-            // 属性通常在 "属性", "Stats", "五维" 等列中
-            // 我们尝试匹配这些列名
-            const statsCols = headers.filter(
-              (h: string) => h && ['属性', 'Stats', '能力值', '五维', '六维'].some(kw => String(h).includes(kw)),
-            );
-
-            // 尝试在这些列中更新
-            let updated = false;
-            statsCols.forEach((colName: string) => {
-              if (!updated && updateCellOrComposite(row, headers, item.label, item.value)) {
-                dbg('[档案保存] 更新属性:', item.label, '->', item.value);
-                updated = true;
-              }
-            });
-
-            // 如果没更新成功（可能是复合值未匹配到），尝试直接作为列名匹配（针对单列单属性的情况）
-            if (!updated) {
-              if (updateCellOrComposite(row, headers, item.label, item.value)) {
-                dbg('[档案保存] 更新属性(直接匹配):', item.label, '->', item.value);
-              }
-            }
-          });
-        }
-
-        // 身体状态
-        if (updatedData.bodyStatus && updatedData.bodyStatus.length > 0) {
-          updatedData.bodyStatus.forEach((item: any) => {
-            if (updateCellOrComposite(row, headers, item.label, item.value)) {
-              dbg('[档案保存] 更新身体状态:', item.label, '->', item.value);
-            }
-          });
-        }
-
-        // 身体信息
-        if (updatedData.bodyInfo && updatedData.bodyInfo.length > 0) {
-          updatedData.bodyInfo.forEach((item: any) => {
-            if (updateCellOrComposite(row, headers, item.key, item.value)) {
-              dbg('[档案保存] 更新身体信息:', item.key, '->', item.value);
-            }
-          });
-        }
-
-        // 身体特征备注
-        if (updatedData.bodyNotes && updatedData.bodyNotes.trim()) {
-          // 尝试在身体特征相关的列中添加备注信息
-          const bodyFeatureColIdx = headers.findIndex(
-            (h: string) => h && ['特征', '身体特征', '身体部位', '部位'].some(kw => String(h).includes(kw)),
-          );
-          if (bodyFeatureColIdx !== -1 && row[bodyFeatureColIdx] !== undefined) {
-            // 在现有内容后添加备注
-            const currentContent = String(row[bodyFeatureColIdx] || '');
-            const notesText = `备注：${updatedData.bodyNotes}`;
-            if (currentContent && !currentContent.includes('备注：')) {
-              row[bodyFeatureColIdx] = currentContent + '；' + notesText;
-            } else if (!currentContent) {
-              row[bodyFeatureColIdx] = notesText;
-            } else {
-              // 如果已有备注，替换它
-              const withoutNotes = currentContent.replace(/；备注：[^；]*/, '');
-              row[bodyFeatureColIdx] = withoutNotes + '；' + notesText;
-            }
-            dbg('[档案保存] 更新身体特征备注:', updatedData.bodyNotes);
-          }
-        }
-
-        // 衣着信息
-        if (updatedData.clothing && updatedData.clothing.length > 0) {
-          updatedData.clothing.forEach((item: any) => {
-            if (updateCellOrComposite(row, headers, item.key, item.value)) {
-              dbg('[档案保存] 更新衣着信息:', item.key, '->', item.value);
-            }
-          });
-        }
-
-        // 其他信息
-        if (updatedData.otherInfo && updatedData.otherInfo.length > 0) {
-          updatedData.otherInfo.forEach((tableGroup: any) => {
-            if (tableGroup.items && tableGroup.items.length > 0) {
-              tableGroup.items.forEach((item: any) => {
-                if (updateCellOrComposite(row, headers, item.label, item.value)) {
-                  dbg('[档案保存] 更新其他信息:', item.label, '->', item.value);
-                }
-              });
-            }
-          });
+        if (row && String(row[nameColIdx] || '').trim() === charName) {
+          return { rowIndex: i, row, headers };
         }
       }
-    });
+      return null;
+    };
 
-    // 关键修复：先执行直接注入，确保隔离数据被更新
-    await performDirectInjection(fullData);
+    // 辅助：根据 _src 严格更新指定单元格
+    const updateBySrc = (srcTable: string, srcCol: string, key: string, value: string) => {
+      if (!srcTable || !srcCol) return;
+      if (isSystemColumn(srcCol)) return; // 跳过系统列
+      const located = findCharRowInTable(srcTable);
+      if (!located) return;
+      const { row, headers, rowIndex } = located;
+      const colIdx = headers.findIndex((h: any) => h && String(h) === srcCol);
+      if (colIdx === -1 || isSystemColumn(headers[colIdx])) return;
 
-    // 保存更新后的数据
-    const importResult = await api.importTableAsJson(JSON.stringify(fullData));
-    if (importResult === false) {
-      showToast('保存失败', 'error');
-    } else {
+      // 直接列匹配优先
+      if (key === srcCol || !key) {
+        row[colIdx] = value;
+      } else {
+        // 复合单元格匹配 (Key:Value;...) - 仅在该列内修改
+        const cell = String(row[colIdx] || '');
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedKey}[:：]\\s*)([^;；]+)`);
+        if (regex.test(cell)) {
+          row[colIdx] = cell.replace(regex, `$1${value}`);
+        } else {
+          // 没有匹配到则跳过（避免误改）
+          return;
+        }
+      }
+      const entry = getRowEntry(srcTable, rowIndex);
+      entry.data[srcCol] = row[colIdx];
+    };
+
+    // 1. 属性信息 - 严格按 _src 保存
+    if (updatedData.stats && updatedData.stats.length > 0) {
+      updatedData.stats.forEach((item: any) => {
+        if (item.srcTable && item.srcCol) {
+          updateBySrc(item.srcTable, item.srcCol, item.label, item.value);
+        }
+      });
+    }
+
+    // 2. 身体状态 - 严格按 _src 保存
+    if (updatedData.bodyStatus && updatedData.bodyStatus.length > 0) {
+      updatedData.bodyStatus.forEach((item: any) => {
+        if (item.srcTable && item.srcCol) {
+          updateBySrc(item.srcTable, item.srcCol, item.label, item.value);
+        }
+      });
+    }
+
+    // 3. 整列原始内容覆盖（rawColumns）- 关键：零解析、零小标题、零备注污染
+    // 编辑界面直接展示整列原始内容，保存时直接整列覆盖，调用 updateRow 增量API
+    if (updatedData.rawColumns && updatedData.rawColumns.length > 0) {
+      updatedData.rawColumns.forEach((col: any) => {
+        if (!col.srcTable || !col.srcCol) return;
+        const located = findCharRowInTable(col.srcTable);
+        if (!located) return;
+        const { row, headers, rowIndex } = located;
+        const colIdx = headers.findIndex((h: any) => h && String(h) === col.srcCol);
+        if (colIdx === -1 || isSystemColumn(headers[colIdx])) return;
+
+        const newValue = col.value !== undefined ? String(col.value) : '';
+        // 仅当内容真正改变时才生成更新
+        if (String(row[colIdx] || '') !== newValue) {
+          row[colIdx] = newValue;
+          const entry = getRowEntry(col.srcTable, rowIndex);
+          entry.data[headers[colIdx]] = newValue;
+        }
+      });
+    }
+
+    // 6. 其他信息 - 严格按 _src 保存
+    if (updatedData.otherInfo && updatedData.otherInfo.length > 0) {
+      updatedData.otherInfo.forEach((tableGroup: any) => {
+        if (tableGroup.items && tableGroup.items.length > 0) {
+          tableGroup.items.forEach((item: any) => {
+            if (item.srcTable && item.srcCol) {
+              updateBySrc(item.srcTable, item.srcCol, item.label, item.value);
+            }
+          });
+        }
+      });
+    }
+
+    const ok = await saveTableUpdates(api, updates, fullData);
+    if (ok) {
       showToast('档案已保存');
-      // 刷新数据
       state.cachedData = processData(api.exportTableAsJson());
       updateOpenPanels();
+    } else {
+      showToast('保存失败', 'error');
     }
   } catch (e) {
     console.error('[档案保存] 异常:', e);
@@ -3334,7 +3532,8 @@ function showItemDetail(item: any, event: any) {
           ${Object.entries(item.details || {})
             .filter(
               ([k]) =>
-                !['名称', '类型', '描述', '归属', '拥有者', '数量', 'Owner', '分类', '类别', 'Category'].includes(k),
+                !['名称', '类型', '描述', '归属', '拥有者', '数量', 'Owner', '分类', '类别', 'Category'].includes(k) &&
+                !isSystemColumn(k),
             )
             .map(
               ([k, v]) => `
@@ -3499,7 +3698,13 @@ function openItemEditModal(item: any) {
     ];
 
     Object.entries(item.details).forEach(([key, value]) => {
-      if (!excludeFields.includes(key) && value !== undefined && value !== null && String(value).trim() !== '') {
+      if (
+        !excludeFields.includes(key) &&
+        !isSystemColumn(key) &&
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ''
+      ) {
         editFields.push(`
           <div class="ci-input-group" style="margin-bottom:12px;">
             <label class="ci-input-label">${key}</label>
@@ -4111,7 +4316,14 @@ function extractWorldInfoData(rawData: any): any {
             details: {} as Record<string, string>,
           };
           h.forEach((header: string, idx: number) => {
-            if (idx !== nameIdx && idx !== leaderIdx && idx !== purposeIdx && idx !== descIdx && row[idx]) {
+            if (
+              idx !== nameIdx &&
+              idx !== leaderIdx &&
+              idx !== purposeIdx &&
+              idx !== descIdx &&
+              row[idx] &&
+              !isSystemColumn(header)
+            ) {
               forceData.details[header] = row[idx];
             }
           });
@@ -4153,7 +4365,14 @@ function extractWorldInfoData(rawData: any): any {
 
           // 遍历表头，将所有非核心列（包括“地点”）存入 details
           h.forEach((header: string, idx: number) => {
-            if (idx !== summaryIdx && idx !== timeIdx && idx !== indexIdx && idx !== outlineIdx && row[idx]) {
+            if (
+              idx !== summaryIdx &&
+              idx !== timeIdx &&
+              idx !== indexIdx &&
+              idx !== outlineIdx &&
+              row[idx] &&
+              !isSystemColumn(header)
+            ) {
               item.details[header] = row[idx];
             }
           });
@@ -5179,7 +5398,7 @@ function showSkillDetail(skill: any, event: any) {
         <div class="ci-item-popup-desc" style="white-space: pre-wrap;">${skill.desc || '暂无描述'}</div>
         <div class="ci-item-popup-details">
           ${Object.entries(skill.details || {})
-            .filter(([k]) => !['名称', '类型', '描述', '拥有人', '持有者', '角色名'].includes(k))
+            .filter(([k]) => !['名称', '类型', '描述', '拥有人', '持有者', '角色名'].includes(k) && !isSystemColumn(k))
             .map(
               ([k, v]) => `
               <div class="ci-item-detail-row">
@@ -5312,7 +5531,13 @@ function openSkillEditModal(skill: any) {
     ];
 
     Object.entries(skill.details).forEach(([key, value]) => {
-      if (!excludeFields.includes(key) && value !== undefined && value !== null && String(value).trim() !== '') {
+      if (
+        !excludeFields.includes(key) &&
+        !isSystemColumn(key) &&
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ''
+      ) {
         editFields.push(`
           <div class="ci-input-group" style="margin-bottom:12px;">
             <label class="ci-input-label">${key}</label>
@@ -5427,16 +5652,22 @@ async function saveSkillData(originalSkill: any, newData: any) {
     desc: getColIdx(['描述', '效果', '说明', 'Desc']),
   };
 
-  // Update basic fields
-  if (cols.name > -1 && newData.name !== undefined) row[cols.name] = newData.name;
-  if (cols.type > -1 && newData.type !== undefined) row[cols.type] = newData.type;
-  if (cols.owner > -1 && newData.owner !== undefined) row[cols.owner] = newData.owner;
-  if (cols.desc > -1 && newData.desc !== undefined) row[cols.desc] = newData.desc;
+  // 收集更新数据
+  const rowData: Record<string, any> = {};
+  const setField = (colIdx: number, val: any) => {
+    if (colIdx > -1 && val !== undefined) {
+      rowData[h[colIdx]] = val;
+      row[colIdx] = val;
+    }
+  };
+  setField(cols.name, newData.name);
+  setField(cols.type, newData.type);
+  setField(cols.owner, newData.owner);
+  setField(cols.desc, newData.desc);
 
-  // Update details
   if (newData.details && Object.keys(newData.details).length > 0) {
     Object.entries(newData.details).forEach(([fieldName, fieldValue]) => {
-      const fieldColIdx = h.findIndex((header: string) => header === fieldName);
+      const fieldColIdx = h.findIndex((header: any) => header === fieldName);
       if (
         fieldColIdx > -1 &&
         fieldColIdx !== cols.name &&
@@ -5445,22 +5676,23 @@ async function saveSkillData(originalSkill: any, newData: any) {
         fieldColIdx !== cols.desc
       ) {
         row[fieldColIdx] = fieldValue;
-        dbg(`[技能编辑] 更新字段 ${fieldName}: ${fieldValue}`);
+        rowData[h[fieldColIdx]] = fieldValue;
       }
     });
   }
 
-  await performDirectInjection(fullData);
-  try {
-    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    showToast(`技能"${newData.name || originalSkill.name}"保存成功`, 'success');
+  const updates = Object.keys(rowData).length > 0
+    ? [{ tableName: src.table, rowIndex: src.rowIdx, data: rowData }]
+    : [];
 
-    state.cachedData = processData(fullData);
+  const ok = await saveTableUpdates(api, updates, fullData);
+  if (ok) {
+    showToast(`技能"${newData.name || originalSkill.name}"保存成功`, 'success');
+    state.cachedData = processData(api.exportTableAsJson());
     updateOpenPanels();
     $('.ci-edit-overlay').remove();
-  } catch (e: any) {
-    showToast('保存失败: ' + e.message, 'error');
-    dbg('[技能保存] 保存出错:', e);
+  } else {
+    showToast('保存失败', 'error');
   }
 }
 
@@ -7038,40 +7270,41 @@ function buildCharArchiveHtml(d: any, charExtra: any): string {
     html += '</div>';
   }
 
-  // 身体信息区块 - 任务1&2修复：统一使用block-style格式
-  if ((charExtra.bodyInfo && charExtra.bodyInfo.length > 0) || charExtra.bodyNotes) {
-    html += '<div class="ci-archive-section">';
-    html += '<div class="ci-archive-section-title">身体特征</div>';
-    html += '<div class="ci-archive-items">';
-    if (charExtra.bodyInfo) {
-      charExtra.bodyInfo.forEach((item: any) => {
-        // 任务2修复：所有内容都使用block-style格式
+  // 身体特征区块 - 按列分组（每个列独立成 section，避免不同列的内容混合）
+  if (charExtra.bodyInfoGroups && charExtra.bodyInfoGroups.length > 0) {
+    charExtra.bodyInfoGroups.forEach((group: any) => {
+      if (!group.items || (group.items.length === 0 && !group.notes)) return;
+      html += '<div class="ci-archive-section">';
+      // 使用真实列名作为分组标题
+      html += `<div class="ci-archive-section-title">${group.colName}</div>`;
+      html += '<div class="ci-archive-items">';
+      group.items.forEach((item: any) => {
         html += `<div class="ci-archive-item block-style"><span class="ci-archive-label">${item.key}</span><span class="ci-archive-value">${item.value}</span></div>`;
       });
-    }
-    html += '</div>';
-    if (charExtra.bodyNotes) {
-      html += `<div class="ci-archive-notes">${charExtra.bodyNotes}</div>`;
-    }
-    html += '</div>';
+      html += '</div>';
+      if (group.notes) {
+        html += `<div class="ci-archive-notes">${group.notes}</div>`;
+      }
+      html += '</div>';
+    });
   }
 
-  // 衣着信息区块 - 任务1&2修复：统一使用block-style格式
-  if ((charExtra.clothing && charExtra.clothing.length > 0) || charExtra.clothingNotes) {
-    html += '<div class="ci-archive-section">';
-    html += '<div class="ci-archive-section-title">衣着装扮</div>';
-    html += '<div class="ci-archive-items">';
-    if (charExtra.clothing) {
-      charExtra.clothing.forEach((item: any) => {
-        // 任务2修复：所有内容都使用block-style格式
+  // 衣着装扮区块 - 按列分组
+  if (charExtra.clothingGroups && charExtra.clothingGroups.length > 0) {
+    charExtra.clothingGroups.forEach((group: any) => {
+      if (!group.items || (group.items.length === 0 && !group.notes)) return;
+      html += '<div class="ci-archive-section">';
+      html += `<div class="ci-archive-section-title">${group.colName}</div>`;
+      html += '<div class="ci-archive-items">';
+      group.items.forEach((item: any) => {
         html += `<div class="ci-archive-item block-style"><span class="ci-archive-label">${item.key}</span><span class="ci-archive-value">${item.value}</span></div>`;
       });
-    }
-    html += '</div>';
-    if (charExtra.clothingNotes) {
-      html += `<div class="ci-archive-notes">${charExtra.clothingNotes}</div>`;
-    }
-    html += '</div>';
+      html += '</div>';
+      if (group.notes) {
+        html += `<div class="ci-archive-notes">${group.notes}</div>`;
+      }
+      html += '</div>';
+    });
   }
 
   // 其他信息区块（按表名分组）- 任务1&2修复：统一使用block-style格式
@@ -7100,8 +7333,8 @@ function buildCharArchiveHtml(d: any, charExtra: any): string {
   // 如果没有任何额外信息，显示空状态
   if (
     (!charExtra.bodyStatus || charExtra.bodyStatus.length === 0) &&
-    (!charExtra.bodyInfo || charExtra.bodyInfo.length === 0) &&
-    (!charExtra.clothing || charExtra.clothing.length === 0) &&
+    (!charExtra.bodyInfoGroups || charExtra.bodyInfoGroups.length === 0) &&
+    (!charExtra.clothingGroups || charExtra.clothingGroups.length === 0) &&
     (!charExtra.otherInfo || charExtra.otherInfo.length === 0)
   ) {
     html += '<div class="ci-archive-empty">暂无档案信息</div>';
@@ -10864,26 +11097,6 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
 
   $('body').append($overlay);
 
-  // [轻量化逻辑] 往期报道编辑框高度自适应
-  const $editFields = $overlay.find('textarea.ci-input-field');
-  const uiAdjustHeight = (el: HTMLElement) => {
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 2 + 'px';
-  };
-
-  $editFields
-    .on('input', function () {
-      uiAdjustHeight(this);
-    })
-    .css({ resize: 'none', overflow: 'hidden' });
-
-  // 初始渲染后的高度校准
-  setTimeout(() => {
-    $editFields.each(function () {
-      uiAdjustHeight(this);
-    });
-  }, 50);
-
   // 绑定事件
   $overlay.find('.ci-edit-close').on('click', () => $overlay.remove());
   $overlay.on('click', (e: any) => {
@@ -10906,68 +11119,63 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
     // 保存数据到对应的表格
     if (api && api.exportTableAsJson && api.importTableAsJson) {
       const rawData = api.exportTableAsJson();
-
-      updates.forEach(update => {
-        const { table, col, value } = update;
-        let targetTable = null;
-        let currentRefTable = table === 'outline' ? outlineTable : summaryTable;
-
-        if (currentRefTable) {
-          // 通过表名找到对应的表对象
-          for (const key in rawData) {
-            if (rawData[key] && rawData[key].name === currentRefTable.name) {
-              targetTable = rawData[key];
-              break;
-            }
-          }
-        }
-
-        if (targetTable && targetTable.content) {
-          // 找到对应的行
-          const headers = targetTable.content[0];
-          const indexIdx = getColHelper(headers, ['索引', '编码', '编号', '编码索引']);
-          const timeIdx = getColHelper(headers, ['时间', '时间跨度', '日期']);
-
-          for (let i = 1; i < targetTable.content.length; i++) {
-            const row = targetTable.content[i];
-            const rowIndex = indexIdx > -1 ? row[indexIdx] : '';
-            const rowTime = timeIdx > -1 ? row[timeIdx] : '';
-
-            if (rowIndex == targetIndex && rowTime == targetTime) {
-              row[col] = value;
-              break;
-            }
-          }
-        }
-      });
-
-      // 修复导入报错：确保 mate 结构存在
       if (!rawData.mate) {
         rawData.mate = { type: 'chatSheets', version: 1 };
       }
 
-      // 保存数据
-      await performDirectInjection(rawData);
-      try {
-        if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(rawData));
+      // 按 (tableName, rowIndex) 聚合需要更新的列
+      type RowAgg = { tableName: string; rowIndex: number; data: Record<string, any> };
+      const aggMap = new Map<string, RowAgg>();
+
+      updates.forEach(update => {
+        const { table, col, value } = update;
+        const currentRefTable = table === 'outline' ? outlineTable : summaryTable;
+        if (!currentRefTable) return;
+
+        // 在 rawData 中找到目标表
+        let targetTable: any = null;
+        for (const key in rawData) {
+          if (rawData[key] && rawData[key].name === currentRefTable.name) {
+            targetTable = rawData[key];
+            break;
+          }
+        }
+        if (!targetTable || !targetTable.content) return;
+
+        const headers = targetTable.content[0];
+        const indexIdx = getColHelper(headers, ['索引', '编码', '编号', '编码索引']);
+        const timeIdx = getColHelper(headers, ['时间', '时间跨度', '日期']);
+
+        for (let i = 1; i < targetTable.content.length; i++) {
+          const row = targetTable.content[i];
+          const rowIndex = indexIdx > -1 ? row[indexIdx] : '';
+          const rowTime = timeIdx > -1 ? row[timeIdx] : '';
+
+          if (rowIndex == targetIndex && rowTime == targetTime) {
+            row[col] = value;
+            const colName = headers[col];
+            const aggKey = `${targetTable.name}@${i}`;
+            if (!aggMap.has(aggKey)) {
+              aggMap.set(aggKey, { tableName: targetTable.name, rowIndex: i, data: {} });
+            }
+            if (colName) aggMap.get(aggKey)!.data[colName] = value;
+            break;
+          }
+        }
+      });
+
+      const incUpdates = Array.from(aggMap.values());
+      const ok = await saveTableUpdates(api, incUpdates, rawData);
+      if (ok) {
         showToast('报道数据已保存', 'success');
-
-        // 重新提取数据并更新面板
-        state.cachedData = processData(rawData);
+        state.cachedData = processData(api.exportTableAsJson());
         updateOpenPanels();
-
-        // 刷新往期报道弹窗
         $('.ci-news-history-overlay').remove();
         showNewsHistoryModal();
-
         $overlay.remove();
-      } catch (e: any) {
-        showToast('保存失败: ' + e.message, 'error');
-        dbg('[往期报道保存] 保存出错:', e);
-        return;
+      } else {
+        showToast('保存失败', 'error');
       }
-
-      $overlay.remove();
     }
   });
 }
