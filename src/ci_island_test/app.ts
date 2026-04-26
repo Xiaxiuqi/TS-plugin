@@ -116,15 +116,23 @@ export function initApp(jQueryInstance: any): void {
 
   dbg('Script Initializing (modular version)...');
 
-  // 关键修复：将 webpack 注入到 head 的 <style> 传送到当前 iframe/document 内
-  // 解决酒馆助手脚本导入时 CSS 缺失问题（与原版 index.original.ts:10738 一致）
-  // 使用控制台 import 时 CSS 已注入到顶层 head，但作为脚本导入时需要 teleport
+  // 关键修复：将 webpack style-loader 注入到 head 的 <style> 传送到当前脚本环境的 head 内
+  // - 控制台 import 时：document 已是顶层，teleportStyle 等于复制一份到自己
+  // - 酒馆助手脚本模式：style 被注入到脚本 iframe 的 head，需要 teleport 才能让 DOM 拿到样式
+  // 参考 示例/脚本示例/设置界面.ts 的最佳实践：保留 destroy 用于卸载清理
+  let teleportDestroy: (() => void) | null = null;
   try {
-    teleportStyle();
+    const result = teleportStyle();
+    teleportDestroy = result.destroy;
     dbg('[CSS注入] teleportStyle 完成');
   } catch (e) {
     console.warn('[浮岛] teleportStyle 失败（可能在非 iframe 环境）:', e);
   }
+
+  // 卸载脚本时清理传送的 style，避免重复加载时样式叠加
+  jQueryInstance(window).on('pagehide.ci_island_test', () => {
+    if (teleportDestroy) teleportDestroy();
+  });
 
   // 创建 UI 骨架
   const { $con, $pan, $ops, $mapPan } = createUI();
@@ -268,12 +276,18 @@ export function initApp(jQueryInstance: any): void {
 
 /**
  * 等待 jQuery 加载并初始化应用
+ *
+ * 关键：用 jq(() => initApp(jq)) DOM ready 包装，确保 body/head 都已就绪
+ * - 酒馆助手脚本模式：脚本异步加载完成时 DOM 可能未就绪，必须等待
+ * - 控制台 import 模式：DOM 已就绪时 jq(fn) 立即同步执行回调，不影响
+ *
+ * 参考最佳实践：示例/脚本示例/设置界面.ts、示例/前端界面示例/界面.ts
  */
 export function bootstrap(): void {
   const waitForJQuery = () => {
     const jq = (window as any).jQuery || (window.parent as any).jQuery || (window as any).$;
     if (jq) {
-      initApp(jq);
+      jq(() => initApp(jq));
     } else {
       setTimeout(waitForJQuery, 100);
     }

@@ -148,14 +148,13 @@ function syncOptionsPosition(islandLeft: number, _islandTop: number): void {
   else $ops.find('.ci-option-bubble').removeClass('flipped');
 }
 
-function syncInventoryMenuPosition(islandLeft: number, islandTop: number): void {
+function syncInventoryMenuPosition(islandLeft: number, _islandTop: number): void {
   if (!state.isInventoryMenuOpen) return;
   const $menu = $('.ci-inventory-menu');
   if (!$menu.length) return;
 
-  const $con = $('#ci-island-container');
   const $invBtn = $('.ci-btn[data-type="inventory"]');
-  if (!$con.length || !$invBtn.length) return;
+  if (!$invBtn.length) return;
 
   const win = window.top || window;
   const winW = win.innerWidth || 1024;
@@ -165,20 +164,17 @@ function syncInventoryMenuPosition(islandLeft: number, islandTop: number): void 
   const menuH = $menu.outerHeight() || 100;
   const padding = 10;
 
+  // 关键修复：直接用 getBoundingClientRect()(视口坐标) 计算按钮中心
+  // 之前的 islandTop + relativeY 在 jQuery .offset() 与 rect 的滚动差异下会产生偏差，
+  // 导致菜单被错位到浮岛顶部。菜单是 position: fixed，自然就该用视口坐标。
+  const btnRect = $invBtn[0].getBoundingClientRect();
+  const btnCenterY = btnRect.top + btnRect.height / 2;
+  let targetTop = btnCenterY - menuH / 2;
+
   let targetLeft: any = 'auto';
   let targetRight: any = 'auto';
   let align = 'flex-end';
   let isFlipped = false;
-
-  // 计算物品仓库按钮相对于浮岛容器的垂直偏移（基于实际 DOM 矩形）
-  const conRect = $con[0].getBoundingClientRect();
-  const btnRect = $invBtn[0].getBoundingClientRect();
-  const relativeY = btnRect.top - conRect.top;
-  const btnH = btnRect.height;
-
-  // 让菜单中心对齐按钮中心
-  const btnCenterY = islandTop + relativeY + btnH / 2;
-  let targetTop = btnCenterY - menuH / 2;
 
   if (islandLeft < winW / 2) {
     // 浮岛在左侧：菜单在右侧显示
@@ -543,16 +539,12 @@ export function bindEvents(
       const $menu = $('.ci-inventory-menu');
 
       if (state.isInventoryMenuOpen) {
-        // 关键修复：先定位再显示
-        // 否则菜单 outerHeight() 在 opacity:0 状态下可能不准确
-        // 同时避免菜单在没有 left/top 时短暂出现在浮岛顶部（DOM 流默认位置）
+        // 先定位再显示（避免菜单在没有 left/top 时短暂出现在浮岛顶部）
         const offset = $con.offset();
-        // 先让菜单可被测量但保持隐藏（visibility hidden 而非 opacity）
-        $menu.css({ visibility: 'hidden' }).addClass('visible');
-        // 立即定位（此时 outerHeight 能拿到正确值）
+        $menu.addClass('visible');
+        // syncInventoryMenuPosition 内部使用 getBoundingClientRect 计算按钮中心
+        // 不再依赖 offset.top（保留 islandLeft 用于左/右侧判断）
         syncInventoryMenuPosition(offset.left, offset.top);
-        // 恢复可见
-        $menu.css({ visibility: '' });
         $(this).addClass('active');
       } else {
         $menu.removeClass('visible');
