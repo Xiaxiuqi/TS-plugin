@@ -16,5 +16,5 @@ src/数据库前端/
 项目文档.txt
 备份/
 初始模板/
-src\ci_island_test\REFACTOR_PLAN.md
-src\ci_island_test\styles\README.md
+src/ci_island_test/REFACTOR_PLAN.md
+src/ci_island_test/styles/README.md
