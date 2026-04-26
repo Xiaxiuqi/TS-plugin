@@ -1,0 +1,603 @@
+// 浮岛容器、按钮、通用面板 - 从原 style.scss:268-867 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+
+.ci-drag-grip {
+  width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: #9aa0a6;
+  flex-shrink: 0;
+  order: 0 !important; /* 始终在最上方 */
+}
+
+/* [Fix] 按钮样式 */
+.ci-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.2s;
+  position: relative;
+  flex-shrink: 0;
+  margin: 2px 0;
+}
+.ci-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #333;
+  transform: scale(1.05);
+}
+.ci-btn.active {
+  background: #333;
+  color: #fff;
+}
+
+#ci-main-trigger {
+  order: 1 !important;
+}
+
+/* 子按钮容器：使用display:contents让子元素参与flex排序 */
+.ci-sub-buttons {
+  display: contents;
+  /* 确保子元素正确参与父容器的flex布局 */
+}
+
+/* 子按钮：主要人物(2)、人物关系(3)、物品仓库(4) */
+/* 默认隐藏，展开状态下显示 */
+.ci-sub-buttons .ci-btn[data-type='main'] {
+  order: 2 !important;
+  display: none !important;
+  flex-shrink: 0;
+}
+.ci-sub-buttons .ci-btn[data-type='relation'] {
+  order: 3 !important;
+  display: none !important;
+  flex-shrink: 0;
+
+  /* 人物关系按钮特殊样式 */
+  &:hover {
+    color: #9c88ff;
+  }
+  &.active {
+    background: #333;
+    color: white;
+  }
+}
+.ci-sub-buttons .ci-btn[data-type='inventory'] {
+  order: 4 !important;
+  display: none !important;
+  flex-shrink: 0;
+
+  /* 物品仓库按钮样式 */
+  &.active {
+    background: #333;
+    color: white;
+  }
+}
+
+/* 展开状态下显示子按钮 - 使用更高优先级选择器 */
+#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='main'],
+#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='relation'],
+#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='inventory'] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#ci-island-container.expanded #ci-main-trigger {
+  background: #333;
+  color: #fff;
+}
+
+/* 按钮顺序：拖动手柄(0) -> 主按钮(1) -> 子按钮组(2-4) -> 世界信息(5) -> 地图(6) -> 选项(7) -> 刷新(8) */
+#ci-world-info-btn {
+  order: 5 !important;
+  display: flex !important; /* 始终显示世界信息按钮 */
+  flex-shrink: 0;
+}
+#ci-map-btn {
+  order: 6 !important;
+  /* 地图按钮：默认隐藏，有地图数据时显示 */
+  display: none !important;
+  flex-shrink: 0;
+}
+#ci-map-btn.has-map {
+  display: flex !important;
+}
+#ci-map-btn.no-map {
+  display: none !important;
+}
+#ci-options-btn {
+  order: 7 !important;
+  /* 选项按钮：默认隐藏，有选项数据时显示（和地图按钮逻辑相同） */
+  display: none !important;
+  flex-shrink: 0;
+  z-index: 1; /* 确保不被其他元素遮挡 */
+}
+#ci-options-btn.has-options {
+  display: flex !important;
+}
+#ci-options-btn.no-options {
+  /* 没有选项数据时隐藏 */
+  display: none !important;
+}
+#ci-refresh-btn {
+  order: 8 !important;
+  display: flex !important; /* 始终显示刷新按钮 */
+  flex-shrink: 0;
+}
+#ci-settings-btn {
+  order: 9 !important;
+  flex-shrink: 0;
+}
+
+/* [Opt #4] 选项气泡定位 */
+.ci-options-container {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 2002;
+  max-height: 80vh;
+  overflow: visible; /* [Fix] Prevent overflow when options scale */
+  scrollbar-width: none; /* Hide scrollbar */
+}
+.ci-options-container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.ci-options-container.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ci-option-bubble {
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  padding: 8px 12px;
+  border-radius: 12px 12px 2px 12px;
+  box-shadow: var(--ci-shadow);
+  color: var(--ci-text);
+  font-size: 12px;
+  max-width: 200px;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  flex-shrink: 0;
+  outline: none; /* 移除按钮黑边 */
+  transition: all 0.2s ease; /* 添加平滑过渡 */
+}
+.ci-option-bubble:hover {
+  background: #fff;
+  transform: scale(1.05);
+}
+.ci-option-bubble:focus {
+  outline: none;
+} /* 移除聚焦时的黑边 */
+.ci-option-bubble:active {
+  transform: scale(0.98);
+} /* 点击反馈 */
+/* 翻转样式：当浮岛在右侧时 */
+.ci-option-bubble.flipped {
+  border-radius: 12px 12px 12px 2px;
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.ci-tooltip {
+  display: none;
+  position: absolute;
+  right: 42px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 99;
+}
+.ci-btn:hover .ci-tooltip {
+  display: block;
+}
+
+/* 主面板 - 通用面板样式，所有面板共享基础样式 */
+/* 使用.ci-panel类实现样式复用，三个子面板（人物关系/物品仓库/世界信息）自动继承 */
+#ci-panel,
+#ci-map-panel,
+#ci-relation-panel,
+#ci-inventory-panel,
+#ci-worldinfo-panel,
+.ci-panel.ci-sub-panel {
+  position: fixed;
+  width: 400px;
+  min-width: 200px !important;
+  max-width: 95vw;
+  box-sizing: border-box;
+  height: 600px;
+  background: var(--ci-bg);
+  backdrop-filter: var(--ci-glass);
+  -webkit-backdrop-filter: var(--ci-glass);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  z-index: 2001;
+  display: none;
+  flex-direction: column;
+  border: var(--ci-border);
+  opacity: 0;
+  transform: scale(0.95);
+  overflow: hidden; /* [Fix] Prevent internal elements from covering panel border-radius */
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    left 0.3s cubic-bezier(0.2, 0, 0, 1),
+    top 0.3s cubic-bezier(0.2, 0, 0, 1),
+    width 0.1s,
+    height 0.1s;
+}
+#ci-panel.visible,
+#ci-map-panel.visible,
+.ci-panel.ci-sub-panel.visible {
+  display: flex !important;
+  opacity: var(--panel-opacity, 1) !important;
+  transform: scale(1) !important;
+}
+#ci-panel.no-transition,
+#ci-map-panel.no-transition,
+.ci-panel.ci-sub-panel.no-transition {
+  transition: none !important;
+}
+
+/* 子面板固定状态 - 统一样式 */
+.ci-panel.ci-sub-panel.pinned,
+#ci-panel.pinned {
+  border: 2px solid #2196f3 !important;
+  box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+}
+
+#ci-map-panel {
+  background: var(--map-bg);
+  border: 2px solid var(--map-border);
+  color: var(--map-text);
+}
+#ci-map-panel.pinned {
+  border: 2px solid #2196f3 !important;
+  box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+}
+
+#ci-map-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.02);
+}
+#ci-map-svg {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  display: block;
+}
+#ci-map-svg:active {
+  cursor: grabbing;
+}
+
+.ci-map-controls {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ci-map-btn-circle {
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  color: var(--ci-text);
+  border-radius: 50%;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: 0.2s;
+
+  /* 强制控制SVG尺寸，防止过大 */
+  svg {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px;
+    min-height: 18px;
+    max-width: 18px;
+    max-height: 18px;
+    display: block;
+  }
+}
+.ci-map-btn-circle:hover {
+  transform: scale(1.1);
+  background: var(--ci-bg-hover, #fff);
+}
+
+/* 关系面板控制按钮样式 - 参照地图面板按钮 */
+.ci-btn-circle {
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  color: var(--ci-text);
+  border-radius: 50%;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: 0.2s;
+  font-size: 14px;
+
+  /* 强制控制SVG尺寸，防止过大 */
+  svg {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px;
+    min-height: 16px;
+    max-width: 16px;
+    max-height: 16px;
+    display: block;
+  }
+}
+
+.ci-btn-circle:hover {
+  transform: scale(1.1);
+  background: var(--ci-bg-hover, rgba(0, 0, 0, 0.08));
+}
+
+/* 夜间模式关系面板按钮特殊样式 */
+body.theme-night .ci-btn-circle {
+  background: #444;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+body.theme-night .ci-btn-circle:hover {
+  background: #555;
+}
+
+.map-location-group {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.map-location-rect {
+  fill: rgba(140, 110, 84, 0.3);
+  stroke: var(--map-accent);
+  stroke-width: 1.5px;
+  transition: all 0.3s ease;
+}
+.map-location-group:hover .map-location-rect {
+  fill: rgba(180, 138, 92, 0.6);
+}
+.map-location-label {
+  font-size: 32px !important; /* 增大字号 */
+  font-weight: bold;
+  pointer-events: none;
+  fill: var(--map-text);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); /* 增加阴影提升可读性 */
+}
+
+.ci-map-location-popup {
+  position: fixed !important; /* 强制 Fixed 定位 */
+  z-index: 3000 !important;
+  /* 基础样式复用物品详情卡逻辑 */
+}
+
+.protagonist-map-avatar {
+  pointer-events: none;
+}
+.pulse-wave {
+  fill: none;
+  stroke: var(--map-highlight);
+  stroke-width: 2px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.ci-panel-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.ci-header-cats {
+  display: flex;
+  gap: 4px;
+  margin-left: 10px;
+}
+.ci-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ddd;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.ci-cat-dot.active {
+  transform: scale(1.4);
+}
+.ci-cat-dot[data-type='main'].active {
+  background: #ffca28;
+}
+.ci-cat-dot[data-type='side'].active {
+  background: #42a5f5;
+}
+.ci-cat-dot[data-type='retired'].active {
+  background: #bdbdbd;
+}
+
+.ci-close-btn,
+.ci-edit-btn,
+.ci-pin-btn,
+.ci-refresh-btn,
+.ci-panel-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  opacity: 0.6;
+  transition: 0.2s;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: inherit;
+}
+.ci-close-btn:hover,
+.ci-edit-btn:hover,
+.ci-pin-btn:hover,
+.ci-refresh-btn:hover,
+.ci-panel-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+.ci-edit-btn.active {
+  color: #4caf50;
+  opacity: 1;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+// 任务3修复：图钉按钮active状态添加外发光效果（参考地图面板pinned样式）
+.ci-pin-btn.active {
+  color: #2196f3;
+  opacity: 1;
+  background: rgba(33, 150, 243, 0.15);
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.6);
+  border-radius: 50%;
+}
+
+// 新面板的标题样式
+.ci-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ci-text-primary, #333);
+
+  .ci-panel-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+.ci-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  position: relative;
+  background: var(--ci-bg-secondary);
+}
+.ci-panel-content::-webkit-scrollbar,
+.ci-info-scroll::-webkit-scrollbar,
+.ci-bag-grid::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.ci-panel-content,
+.ci-info-scroll,
+.ci-bag-grid {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ci-grid-view {
+  display: grid;
+
+  /* [Fix] 移除 1fr，使用固定列宽，确保间距恒定为 16px，剩余空间留白 */
+
+  grid-template-columns: repeat(auto-fill, 160px);
+
+  grid-auto-rows: min-content;
+
+  gap: 16px;
+
+  width: 100%;
+
+  justify-content: center;
+
+  padding-bottom: 40px;
+}
+
+.ci-card {
+  background: #fff;
+
+  border-radius: 12px;
+
+  padding: 12px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  width: 160px; /* 显式指定宽度，与列宽一致 */
+
+  box-sizing: border-box;
+  align-items: center;
+  box-shadow: var(--ci-card-shadow);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  position: relative;
+  cursor: pointer;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s;
+  height: auto;
+  min-height: 200px;
+}

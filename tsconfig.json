@@ -49,5 +49,6 @@
   "exclude": [
     "**/dist/**",
     "**/node_modules/**",
+    "**/_backup/**",
   ]
 }
