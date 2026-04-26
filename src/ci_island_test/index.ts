@@ -1904,62 +1904,7 @@ async function saveCharData(src: any, newData: any) {
 
   await performDirectInjection(fullData);
   try {
-    let surgicalSuccess = false;
-    // 优先尝试使用 surgical API (updateRow)
-    if (typeof api.updateRow === 'function') {
-      try {
-        dbg('[角色保存] 尝试使用 surgical API (updateRow)...');
-        // 1. 更新主行
-        const mainUpdateData: any = {};
-        if (currentCols.name > -1) mainUpdateData[h[currentCols.name]] = newData.name;
-        if (currentCols.sex > -1) mainUpdateData[h[currentCols.sex]] = newData.sex;
-        if (currentCols.age > -1) mainUpdateData[h[currentCols.age]] = newData.age;
-        if (currentCols.job > -1) mainUpdateData[h[currentCols.job]] = newData.job;
-        if (currentCols.identity > -1) mainUpdateData[h[currentCols.identity]] = newData.identity;
-        if (currentCols.loc > -1) mainUpdateData[h[currentCols.loc]] = newData.loc;
-        if (currentCols.longGoal > -1) mainUpdateData[h[currentCols.longGoal]] = newData.longGoal;
-
-        surgicalSuccess = await api.updateRow(src.table, -1, mainUpdateData); // updateRow 支持通过内容匹配或者传入 -1 配合数据中的主键，但这里最好还是找到具体的 rowIndex
-
-        // 重新寻找 rowIndex 以确保准确性
-        let finalRowIdx = -1;
-        for (let i = 1; i < table.content.length; i++) {
-          if (table.content[i][currentCols.name] === newData.name) {
-             finalRowIdx = i;
-             break;
-          }
-        }
-        
-        if (finalRowIdx !== -1) {
-           surgicalSuccess = await api.updateRow(src.table, finalRowIdx, mainUpdateData);
-        }
-
-        // 2. 如果成功且有更名或身体状态更新，由于涉及多表，继续使用 surgical API 可能需要多次调用
-        // 为保持性能和逻辑简单，如果涉及多表同步，我们目前在 surgical 成功后依然可以调用 refreshDataAndWorldbook
-        if (surgicalSuccess && (newData.name !== src.originName || (newData.bodyStatus && newData.bodyStatus.length > 0))) {
-            // 对于更名和身体状态这种跨表操作，如果 API 没提供批量跨表接口，
-            // 我们可以选择继续用 full save 确保万无一失，或者对每个受影响的行调用 updateRow。
-            // 考虑到用户要求“优先调用数据库API”，且 full save 是“后备手段”，
-            // 如果这里 surgicalSuccess 已经是 true 了，说明主表已更新。
-            // 为了安全，这里我们暂时标记为 false 以触发后备的全量保存来处理复杂的跨表同步，
-            // 或者我们可以尝试完成所有 surgical 调用。
-            // 考虑到跨表逻辑的复杂性，这里我们优先对主行使用 API，然后由于更名是跨表，我们转入 fallback。
-            if (newData.name !== src.originName || (newData.bodyStatus && newData.bodyStatus.length > 0)) {
-               surgicalSuccess = false; 
-               dbg('[角色保存] 涉及跨表同步，转入全量保存方案以确保一致性');
-            }
-        }
-      } catch (e) {
-        dbg('[角色保存] Surgical API 调用失败:', e);
-        surgicalSuccess = false;
-      }
-    }
-
-    if (!surgicalSuccess) {
-      dbg('[角色保存] 使用全量保存作为后备手段...');
-      if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    }
-    
+    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
     showToast('保存成功');
     state.cachedData = processData(fullData);
     updateOpenPanels();
@@ -2060,25 +2005,6 @@ async function deleteCharData(src: any) {
     }
   }
   if (delIdx !== -1) {
-    // 优先尝试使用 surgical API (deleteRow)
-    if (typeof api.deleteRow === 'function') {
-      try {
-        dbg('[角色删除] 尝试使用 surgical API (deleteRow)...');
-        const success = await api.deleteRow(src.table, delIdx);
-        if (success) {
-          showToast('删除成功');
-          state.cachedData = processData(api.exportTableAsJson());
-          updateOpenPanels();
-          $('.ci-edit-overlay').remove();
-          return;
-        }
-      } catch (e) {
-        dbg('[角色删除] Surgical API 调用失败:', e);
-      }
-    }
-
-    // 后备方案：全量保存
-    dbg('[角色删除] 使用全量保存作为后备手段...');
     table.content.splice(delIdx, 1);
     await performDirectInjection(fullData);
     if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
@@ -2450,44 +2376,7 @@ async function saveForceData(originalForce: any, newData: any) {
   // 保存数据
   await performDirectInjection(fullData);
   try {
-    let surgicalSuccess = false;
-    // 优先尝试使用 surgical API (updateRow)
-    if (typeof api.updateRow === 'function') {
-      try {
-        dbg('[势力保存] 尝试使用 surgical API (updateRow)...');
-        const updateData: any = {};
-        if (cols.name > -1) updateData[h[cols.name]] = newData.name;
-        if (cols.leader > -1) updateData[h[cols.leader]] = newData.leader;
-        if (cols.purpose > -1) updateData[h[cols.purpose]] = newData.purpose;
-        if (cols.desc > -1) updateData[h[cols.desc]] = newData.desc;
-
-        if (newData.details) {
-          Object.entries(newData.details).forEach(([key, value]) => {
-            const detailIdx = h.findIndex((header: string) => header && header.toLowerCase().includes(key.toLowerCase()));
-            if (detailIdx > -1) {
-              updateData[h[detailIdx]] = value;
-            }
-          });
-        }
-
-        surgicalSuccess = await api.updateRow(targetTable.name, targetRowIndex, updateData);
-        
-        // 如果涉及更名同步，转回全量保存以确保一致性
-        if (surgicalSuccess && newData.name !== originalForce.name) {
-           surgicalSuccess = false;
-           dbg('[势力保存] 涉及更名同步，转入全量保存方案');
-        }
-      } catch (e) {
-        dbg('[势力保存] Surgical API 失败:', e);
-        surgicalSuccess = false;
-      }
-    }
-
-    if (!surgicalSuccess) {
-      dbg('[势力保存] 使用全量保存作为后备手段...');
-      if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    }
-
+    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
     showToast(`势力"${newData.name || originalForce.name}"保存成功`, 'success');
 
     // 重新提取数据并更新面板
@@ -2594,40 +2483,7 @@ async function saveEventData(originalTask: any, newData: any) {
   // 保存数据
   await performDirectInjection(fullData);
   try {
-    let surgicalSuccess = false;
-    // 优先尝试使用 surgical API (updateRow)
-    if (typeof api.updateRow === 'function') {
-      try {
-        dbg('[事件保存] 尝试使用 surgical API (updateRow)...');
-        const updateData: any = {};
-        if (cols.name > -1) updateData[h[cols.name]] = newData.name;
-        if (cols.type > -1) updateData[h[cols.type]] = newData.type;
-        if (cols.status > -1) updateData[h[cols.status]] = newData.status;
-        if (cols.time > -1) updateData[h[cols.time]] = newData.time;
-        if (cols.location > -1) updateData[h[cols.location]] = newData.location;
-        if (cols.desc > -1) updateData[h[cols.desc]] = newData.desc;
-        if (cols.publisher > -1) updateData[h[cols.publisher]] = newData.publisher?.val || '';
-        if (cols.executor > -1) updateData[h[cols.executor]] = newData.executor?.val || '';
-        if (cols.reward > -1) updateData[h[cols.reward]] = newData.reward?.val || '';
-        if (cols.penalty > -1) updateData[h[cols.penalty]] = newData.penalty?.val || '';
-
-        surgicalSuccess = await api.updateRow(targetTable.name, targetRowIndex, updateData);
-        
-        // 名字同步逻辑略复杂，这里如果改名了我们暂时转全量以简化
-        if (surgicalSuccess && newData.name !== originalTask.name) {
-           surgicalSuccess = false;
-        }
-      } catch (e) {
-        dbg('[事件保存] Surgical API 失败:', e);
-        surgicalSuccess = false;
-      }
-    }
-
-    if (!surgicalSuccess) {
-      dbg('[事件保存] 使用全量保存作为后备手段...');
-      if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    }
-    
+    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
     showToast(`事件"${newData.name || originalTask.name}"保存成功`, 'success');
 
     // 重新提取数据并更新面板
@@ -2764,43 +2620,7 @@ async function saveItemData(originalItem: any, newData: any) {
   // 保存数据
   await performDirectInjection(fullData);
   try {
-    let surgicalSuccess = false;
-    // 优先尝试使用 surgical API (updateRow)
-    if (typeof api.updateRow === 'function') {
-      try {
-        dbg('[物品保存] 尝试使用 surgical API (updateRow)...');
-        const updateData: any = {};
-        if (cols.name > -1) updateData[h[cols.name]] = newData.name;
-        if (cols.type > -1) updateData[h[cols.type]] = newData.type;
-        if (cols.count > -1) updateData[h[cols.count]] = newData.count;
-        if (cols.owner > -1) updateData[h[cols.owner]] = newData.owner;
-        if (cols.desc > -1) updateData[h[cols.desc]] = newData.desc;
-
-        if (newData.details) {
-          Object.entries(newData.details).forEach(([fieldName, fieldValue]) => {
-            if (h.includes(fieldName)) {
-              updateData[fieldName] = fieldValue;
-            }
-          });
-        }
-
-        surgicalSuccess = await api.updateRow(src.table, src.rowIdx, updateData);
-        
-        // 如果改名涉及多表同步，转全量
-        if (surgicalSuccess && newData.name !== originalItem.name) {
-           surgicalSuccess = false;
-        }
-      } catch (e) {
-        dbg('[物品保存] Surgical API 失败:', e);
-        surgicalSuccess = false;
-      }
-    }
-
-    if (!surgicalSuccess) {
-      dbg('[物品保存] 使用全量保存作为后备手段...');
-      if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    }
-    
+    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
     showToast(`物品"${newData.name || originalItem.name}"保存成功`, 'success');
 
     // 重新提取数据并更新面板
@@ -3194,38 +3014,13 @@ async function saveArchiveData(charName: string, srcInfo: any, updatedData: any)
     // 关键修复：先执行直接注入，确保隔离数据被更新
     await performDirectInjection(fullData);
 
-    let surgicalSuccess = false;
-    // 优先尝试使用 surgical API (updateRow)
-    // 注意：档案保存通常涉及多个表格的同步，目前 API 暂不支持原子化的跨表更新
-    // 因此如果涉及多个表的更新，我们依然优先使用全量保存以确保一致性
-    if (typeof api.updateRow === 'function') {
-      try {
-        dbg('[档案保存] 尝试使用 surgical API (updateRow)...');
-        // 统计受影响的表格数量
-        const affectedTables: string[] = [];
-        // 这里我们可以尝试记录下所有需要更新的 row 和 data，但逻辑会非常复杂
-        // 简化逻辑：如果只涉及单一表格的更新，我们可以使用 surgical API
-        // 但目前的实现是遍历所有表，所以我们倾向于转入全量保存方案
-        surgicalSuccess = false; 
-        dbg('[档案保存] 涉及跨表多行同步，转入全量保存方案以确保一致性');
-      } catch (e) {
-        dbg('[档案保存] Surgical API 失败:', e);
-      }
-    }
-
-    if (!surgicalSuccess) {
-      dbg('[档案保存] 使用全量保存作为后备手段...');
-      const importResult = await api.importTableAsJson(JSON.stringify(fullData));
-      if (importResult === false) {
-        showToast('保存失败', 'error');
-      } else {
-        showToast('档案已保存');
-        // 刷新数据
-        state.cachedData = processData(api.exportTableAsJson());
-        updateOpenPanels();
-      }
+    // 保存更新后的数据
+    const importResult = await api.importTableAsJson(JSON.stringify(fullData));
+    if (importResult === false) {
+      showToast('保存失败', 'error');
     } else {
       showToast('档案已保存');
+      // 刷新数据
       state.cachedData = processData(api.exportTableAsJson());
       updateOpenPanels();
     }
@@ -5657,37 +5452,7 @@ async function saveSkillData(originalSkill: any, newData: any) {
 
   await performDirectInjection(fullData);
   try {
-    let surgicalSuccess = false;
-    // 优先尝试使用 surgical API (updateRow)
-    if (typeof api.updateRow === 'function') {
-      try {
-        dbg('[技能保存] 尝试使用 surgical API (updateRow)...');
-        const updateData: any = {};
-        if (cols.name > -1) updateData[h[cols.name]] = newData.name;
-        if (cols.type > -1) updateData[h[cols.type]] = newData.type;
-        if (cols.owner > -1) updateData[h[cols.owner]] = newData.owner;
-        if (cols.desc > -1) updateData[h[cols.desc]] = newData.desc;
-
-        if (newData.details) {
-          Object.entries(newData.details).forEach(([fieldName, fieldValue]) => {
-            if (h.includes(fieldName)) {
-              updateData[fieldName] = fieldValue;
-            }
-          });
-        }
-
-        surgicalSuccess = await api.updateRow(src.table, src.rowIdx, updateData);
-      } catch (e) {
-        dbg('[技能保存] Surgical API 失败:', e);
-        surgicalSuccess = false;
-      }
-    }
-
-    if (!surgicalSuccess) {
-      dbg('[技能保存] 使用全量保存作为后备手段...');
-      if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
-    }
-    
+    if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(fullData));
     showToast(`技能"${newData.name || originalSkill.name}"保存成功`, 'success');
 
     state.cachedData = processData(fullData);
@@ -11184,58 +10949,7 @@ function showHistoryItemEditOverlay(targetIndex: any, targetTime: any) {
       // 保存数据
       await performDirectInjection(rawData);
       try {
-        let surgicalSuccess = false;
-        // 优先尝试使用 surgical API (updateRow)
-        if (typeof api.updateRow === 'function') {
-          try {
-            dbg('[往期报道保存] 尝试使用 surgical API (updateRow)...');
-            // 由于报道保存通常涉及多个表的多个行（或者是同一张表的多行，如果是批量编辑的话）
-            // 这里我们为了演示目的尝试对每一个更新调用 updateRow
-            // 但如果 updates 数组很长，全量保存可能更好。
-            // 这里我们采用折中方案：如果只有一个更新，用 surgical，否则转全量
-            if (updates.length === 1) {
-               const update = updates[0];
-               const { table, col, value } = update;
-               let currentRefTable = table === 'outline' ? outlineTable : summaryTable;
-               
-               // 我们需要找到 rowIndex
-               let targetRowIdx = -1;
-               if (currentRefTable) {
-                  for (const key in rawData) {
-                    if (rawData[key] && rawData[key].name === currentRefTable.name) {
-                      const targetTable = rawData[key];
-                      const headers = targetTable.content[0];
-                      const indexIdx = getColHelper(headers, ['索引', '编码', '编号', '编码索引']);
-                      const timeIdx = getColHelper(headers, ['时间', '时间跨度', '日期']);
-                      for (let i = 1; i < targetTable.content.length; i++) {
-                        const row = targetTable.content[i];
-                        if (row[indexIdx] == targetIndex && row[timeIdx] == targetTime) {
-                          targetRowIdx = i;
-                          break;
-                        }
-                      }
-                      if (targetRowIdx !== -1) {
-                        const updateData: any = {};
-                        updateData[headers[col]] = value;
-                        surgicalSuccess = await api.updateRow(currentRefTable.name, targetRowIdx, updateData);
-                      }
-                      break;
-                    }
-                  }
-               }
-            } else {
-               dbg('[往期报道保存] 多个更新项，直接使用全量保存方案');
-            }
-          } catch (e) {
-            dbg('[往期报道保存] Surgical API 失败:', e);
-          }
-        }
-
-        if (!surgicalSuccess) {
-          dbg('[往期报道保存] 使用全量保存作为后备手段...');
-          if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(rawData));
-        }
-        
+        if (api.importTableAsJson) await api.importTableAsJson(JSON.stringify(rawData));
         showToast('报道数据已保存', 'success');
 
         // 重新提取数据并更新面板
