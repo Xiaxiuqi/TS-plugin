@@ -4,8 +4,6 @@
  *
  * 完整初始化逻辑见原 src/ci_island_test/index.ts:10733 initApp
  */
-import { teleportStyle } from '@util/script';
-
 import { state } from './core/state';
 import { dbg } from './core/utils';
 import { safeSetItem } from './core/storage';
@@ -116,7 +114,6 @@ export function initApp(jQueryInstance: any): void {
   (window as any).jQuery = jQueryInstance;
 
   dbg('Script Initializing (modular version)...');
-  teleportStyle();
 
   // 创建 UI 骨架
   const { $con, $pan, $ops, $mapPan } = createUI();
