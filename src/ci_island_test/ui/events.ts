@@ -152,28 +152,45 @@ function syncInventoryMenuPosition(islandLeft: number, islandTop: number): void 
   if (!state.isInventoryMenuOpen) return;
   const $menu = $('.ci-inventory-menu');
   if (!$menu.length) return;
+
+  const $con = $('#ci-island-container');
+  const $invBtn = $('.ci-btn[data-type="inventory"]');
+  if (!$con.length || !$invBtn.length) return;
+
   const win = window.top || window;
   const winW = win.innerWidth || 1024;
   const winH = win.innerHeight || 768;
   const gap = 15;
   const islandW = 44;
   const menuH = $menu.outerHeight() || 100;
-  const menuW = $menu.outerWidth() || 200;
   const padding = 10;
 
   let targetLeft: any = 'auto';
   let targetRight: any = 'auto';
+  let align = 'flex-end';
   let isFlipped = false;
 
+  // 计算物品仓库按钮相对于浮岛容器的垂直偏移（基于实际 DOM 矩形）
+  const conRect = $con[0].getBoundingClientRect();
+  const btnRect = $invBtn[0].getBoundingClientRect();
+  const relativeY = btnRect.top - conRect.top;
+  const btnH = btnRect.height;
+
+  // 让菜单中心对齐按钮中心
+  const btnCenterY = islandTop + relativeY + btnH / 2;
+  let targetTop = btnCenterY - menuH / 2;
+
   if (islandLeft < winW / 2) {
+    // 浮岛在左侧：菜单在右侧显示
     targetLeft = islandLeft + islandW + gap + 'px';
+    align = 'flex-start';
     isFlipped = true;
   } else {
+    // 浮岛在右侧：菜单在左侧显示
     targetRight = winW - islandLeft + gap + 'px';
     isFlipped = false;
   }
 
-  let targetTop = islandTop;
   if (targetTop + menuH > winH) targetTop = Math.max(padding, winH - menuH - padding);
   if (targetTop < padding) targetTop = padding;
 
@@ -182,10 +199,10 @@ function syncInventoryMenuPosition(islandLeft: number, islandTop: number): void 
     left: targetLeft,
     right: targetRight,
     top: targetTop + 'px',
+    alignItems: align,
     zIndex: 2147483647,
   });
-  // 不依赖 menuW，避免未使用变量
-  void menuW;
+
   if (isFlipped) $menu.addClass('flipped');
   else $menu.removeClass('flipped');
 }
