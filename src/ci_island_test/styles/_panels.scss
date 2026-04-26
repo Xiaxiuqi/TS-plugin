@@ -150,7 +150,8 @@
   align-items: flex-end;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s;
+  /* 入场更快(快速响应)，离场稍慢(让用户感知渐隐) */
+  transition: opacity 0.25s ease;
   z-index: 2002;
   max-height: 80vh;
   overflow: visible; /* [Fix] Prevent overflow when options scale */
@@ -170,16 +171,30 @@
   border: 1px solid var(--ci-border);
   padding: 8px 12px;
   border-radius: 12px 12px 2px 12px;
-  box-shadow: var(--ci-shadow);
+  /* 轻量阴影：与菜单气泡风格一致 */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   color: var(--ci-text);
   font-size: 12px;
   max-width: 200px;
   cursor: pointer;
   backdrop-filter: blur(5px);
-  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  /* 入场用 popIn 关键帧实现回弹缩放效果 */
+  animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
   flex-shrink: 0;
   outline: none; /* 移除按钮黑边 */
-  transition: all 0.2s ease; /* 添加平滑过渡 */
+  /* 离场过渡：当父容器 .ci-options-container 失去 .visible 后，本身也跟随渐出 */
+  /* 同时保留 hover/active 的颜色与变形过渡 */
+  transition:
+    opacity 0.25s ease,
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+/* 父容器隐藏时让 bubble 也跟随渐隐 + 轻微缩小（与 popIn 反向） */
+.ci-options-container:not(.visible) .ci-option-bubble {
+  opacity: 0;
+  transform: scale(0.85) translateY(8px);
+  pointer-events: none;
 }
 .ci-option-bubble:hover {
   background: #fff;

@@ -142,7 +142,8 @@
   border: 1px solid var(--ci-border);
   padding: 8px 12px;
   border-radius: 12px 12px 2px 12px;
-  box-shadow: var(--ci-shadow);
+  /* 轻量阴影：与 ci-stat-bubble / ci-option-bubble 视觉风格一致，避免气泡被"重投影"压住 */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   color: var(--ci-text);
   font-size: 12px;
   cursor: pointer;
@@ -158,6 +159,7 @@
   &:hover {
     background: #fff;
     transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   }
 
   .ci-bubble-icon {

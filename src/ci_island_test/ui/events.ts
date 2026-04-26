@@ -738,12 +738,12 @@ export function bindEvents(
     e.stopPropagation();
 
     const $btn = $(this);
+    // 用 100ms 短防抖避免连点抖动，但不影响"打开后立刻关闭"的用户体验
     if ($btn.data('clicking')) {
-      dbg('[选项按钮] 点击防抖中，忽略');
       return;
     }
     $btn.data('clicking', true);
-    setTimeout(() => $btn.data('clicking', false), 300);
+    setTimeout(() => $btn.data('clicking', false), 100);
 
     state.isOptionsOpen = !state.isOptionsOpen;
 
@@ -757,7 +757,10 @@ export function bindEvents(
             sendGameActionRequest(opt);
             state.isOptionsOpen = false;
             $ops.removeClass('visible');
-            setTimeout(() => $ops.empty(), 300);
+            // 等待 CSS transition (.25s) 完成后再清空 DOM，避免动画被截断
+            setTimeout(() => {
+              if (!state.isOptionsOpen) $ops.empty();
+            }, 280);
           });
           $ops.append($bubble);
         });
@@ -767,7 +770,11 @@ export function bindEvents(
       }
     } else {
       $ops.removeClass('visible');
-      setTimeout(() => $ops.empty(), 300);
+      // 等待 CSS transition (.25s) 完成后再清空 DOM，避免动画被截断；
+      // 同时防御性检查：若用户在 280ms 内又打开了，则不要 empty
+      setTimeout(() => {
+        if (!state.isOptionsOpen) $ops.empty();
+      }, 280);
     }
   });
 
