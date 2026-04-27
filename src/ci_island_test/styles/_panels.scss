@@ -61,13 +61,17 @@
    - 展开态：max-height 恢复 → 浮岛容器 height:auto 自然撑开
    - pointer-events: none 防止收起态被误点
    ============================================================ */
+/* ============================================================
+   子按钮折叠动画（main / inventory）
+   - 始终参与布局（display: flex），通过 max-height + min-height + opacity + transform 过渡
+   - 收起态：max-height/min-height: 0 + opacity: 0 + scale(0.5) + margin: 0
+   - 展开态：max-height/min-height: 32px + opacity: 1 + scale(1) + margin: 2px 0
+   ============================================================ */
 .ci-sub-buttons .ci-btn[data-type='main'],
-.ci-sub-buttons .ci-btn[data-type='relation'],
 .ci-sub-buttons .ci-btn[data-type='inventory'] {
   display: flex !important;
   flex-shrink: 0;
   overflow: hidden;
-  /* 关键：必须同时覆盖 max-height 和 min-height（基础 .ci-btn 设置了 min-height: 32px） */
   max-height: 0 !important;
   min-height: 0 !important;
   opacity: 0;
@@ -82,28 +86,6 @@
     margin 0.25s ease;
 }
 
-.ci-sub-buttons .ci-btn[data-type='main']      { order: 2 !important; }
-.ci-sub-buttons .ci-btn[data-type='relation']  { order: 3 !important; }
-.ci-sub-buttons .ci-btn[data-type='inventory'] { order: 4 !important; }
-
-/* 人物关系按钮特殊配色 */
-.ci-sub-buttons .ci-btn[data-type='relation'] {
-  &:hover {
-    color: #9c88ff;
-  }
-  &.active {
-    background: #333;
-    color: white;
-  }
-}
-.ci-sub-buttons .ci-btn[data-type='inventory'] {
-  &.active {
-    background: #333;
-    color: white;
-  }
-}
-
-/* 展开状态：main 和 inventory 总是显示 */
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='main'],
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='inventory'] {
   max-height: 32px !important;
@@ -114,7 +96,43 @@
   pointer-events: auto;
 }
 
-/* 关系按钮：仅在 expanded 且 has-relation 时展开（无关系数据时保持收起态，浮岛自然收缩） */
+/* ============================================================
+   人物关系按钮：按需显示（无关系数据时完全脱离布局，避免占据 flex gap 造成不等距）
+   - 默认 display: none → 不参与 flex 布局，gap 不会作用于它两侧
+   - .has-relation 时改为 display: flex，并参与展开/收起动画
+   ============================================================ */
+.ci-sub-buttons .ci-btn[data-type='relation'] {
+  /* 默认完全不参与布局，等用户数据中有关系列时才出现 */
+  display: none !important;
+  flex-shrink: 0;
+  overflow: hidden;
+  max-height: 0;
+  min-height: 0;
+  opacity: 0;
+  transform: scale(0.5);
+  margin: 0 !important;
+  pointer-events: none;
+  transition:
+    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    min-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    margin 0.25s ease;
+
+  &:hover {
+    color: #9c88ff;
+  }
+  &.active {
+    background: #333;
+    color: white;
+  }
+}
+
+/* 有关系数据时：参与布局，但按浮岛展开/收起切换 max-height */
+.ci-sub-buttons .ci-btn[data-type='relation'].has-relation {
+  display: flex !important;
+}
+
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='relation'].has-relation {
   max-height: 32px !important;
   min-height: 32px !important;
@@ -122,6 +140,16 @@
   transform: scale(1);
   margin: 2px 0 !important;
   pointer-events: auto;
+}
+
+.ci-sub-buttons .ci-btn[data-type='main']      { order: 2 !important; }
+.ci-sub-buttons .ci-btn[data-type='relation']  { order: 3 !important; }
+.ci-sub-buttons .ci-btn[data-type='inventory'] { order: 4 !important; }
+
+/* inventory 按钮 active 配色 */
+.ci-sub-buttons .ci-btn[data-type='inventory'].active {
+  background: #333;
+  color: white;
 }
 
 #ci-island-container.expanded #ci-main-trigger {

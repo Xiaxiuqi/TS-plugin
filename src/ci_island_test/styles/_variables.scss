@@ -253,11 +253,8 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
     flex-shrink: 0;
   }
 
-  /* 主入口/世界信息/地图/选项/刷新等"始终显示"按钮：保持可见
-     注：.ci-sub-buttons 内的按钮显隐由 _panels.scss 的 max-height 过渡控制（不在此处覆盖） */
-  & > .ci-btn {
-    display: flex !important;
-    opacity: 1 !important;
-    position: relative !important;
-  }
+  /* 注：每个按钮的显隐 / 样式由 _panels.scss 中独立的选择器精确控制
+     不在此处使用 `& > .ci-btn { display: flex !important }` 通用规则覆盖
+     （这种通用规则的特异性 (1,1,0) 会盖过 #ci-map-btn { display: none !important } (1,0,0)
+      导致按需显示按钮失效——已在 Task H 中修复） */
 }
