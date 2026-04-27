@@ -90,22 +90,15 @@
   }
 }
 
-/* 浮岛展开时：显示 main / inventory（短促淡入，不抢戏） */
+/* 浮岛展开时：显示 main / inventory（无淡入，跟随容器整体过渡即可） */
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='main'],
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='inventory'] {
   display: flex;
-  animation: ci-sub-btn-fade-in 0.12s ease;
 }
 
 /* 浮岛展开 + 有关系数据时：显示 relation 按钮 */
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='relation'].has-relation {
   display: flex;
-  animation: ci-sub-btn-fade-in 0.12s ease;
-}
-
-@keyframes ci-sub-btn-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
 }
 
 .ci-sub-buttons .ci-btn[data-type='main']      { order: 2 !important; }

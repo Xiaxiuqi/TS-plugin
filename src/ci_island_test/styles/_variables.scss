@@ -222,10 +222,7 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
   background: linear-gradient(135deg, #212122 0%, #333 100%) !important;
 }
 
-/* 浮岛主容器：通过 max-height 过渡实现整体平滑展开/收缩
-   - 收起态：max-height 限制在能容纳"始终显示"按钮的范围（约 200px）
-   - 展开态：max-height 提至 500px（足够容纳全部按钮）
-   - max-height 取设计上限，实际高度由 flex 内容自然决定，过渡时只裁剪而非缩放 */
+/* 浮岛主容器：高度由内部子按钮 display 切换自然驱动（无过渡，瞬切） */
 #ci-island-container {
   position: fixed;
   top: 150px;
@@ -242,22 +239,14 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
   flex-direction: column;
   align-items: center;
   padding: 6px 0;
-  overflow: hidden; /* 关键：max-height 收起时裁剪超出内容 */
+  overflow: visible;
   user-select: none;
   gap: 4px;
   box-sizing: border-box;
   height: auto;
-  /* 收起态 max-height 上限（容纳基础按钮）；过渡 0.3s 让浮岛展开/收缩平滑 */
-  max-height: 220px;
-  transition: max-height 0.3s ease;
 
   /* 直接子元素不被压缩 */
   & > * {
     flex-shrink: 0;
   }
-}
-
-/* 浮岛展开态：max-height 提至上限，内部 flex 自然撑开 */
-#ci-island-container.expanded {
-  max-height: 500px;
 }
