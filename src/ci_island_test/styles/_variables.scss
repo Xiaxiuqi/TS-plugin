@@ -222,7 +222,10 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
   background: linear-gradient(135deg, #212122 0%, #333 100%) !important;
 }
 
-/* 浮岛主容器：高度由内部子按钮 max-height 过渡自然撑开/收缩 */
+/* 浮岛主容器：通过 max-height 过渡实现整体平滑展开/收缩
+   - 收起态：max-height 限制在能容纳"始终显示"按钮的范围（约 200px）
+   - 展开态：max-height 提至 500px（足够容纳全部按钮）
+   - max-height 取设计上限，实际高度由 flex 内容自然决定，过渡时只裁剪而非缩放 */
 #ci-island-container {
   position: fixed;
   top: 150px;
@@ -239,22 +242,22 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
   flex-direction: column;
   align-items: center;
   padding: 6px 0;
-  /* CSS 不支持 height: auto 的 transition；浮岛高度由内部子按钮的 max-height 过渡自然驱动 */
-  overflow: visible !important;
+  overflow: hidden; /* 关键：max-height 收起时裁剪超出内容 */
   user-select: none;
   gap: 4px;
   box-sizing: border-box;
-  height: auto !important;
-  min-height: fit-content !important;
-  max-height: none !important;
+  height: auto;
+  /* 收起态 max-height 上限（容纳基础按钮）；过渡 0.3s 让浮岛展开/收缩平滑 */
+  max-height: 220px;
+  transition: max-height 0.3s ease;
 
   /* 直接子元素不被压缩 */
   & > * {
     flex-shrink: 0;
   }
+}
 
-  /* 注：每个按钮的显隐 / 样式由 _panels.scss 中独立的选择器精确控制
-     不在此处使用 `& > .ci-btn { display: flex !important }` 通用规则覆盖
-     （这种通用规则的特异性 (1,1,0) 会盖过 #ci-map-btn { display: none !important } (1,0,0)
-      导致按需显示按钮失效——已在 Task H 中修复） */
+/* 浮岛展开态：max-height 提至上限，内部 flex 自然撑开 */
+#ci-island-container.expanded {
+  max-height: 500px;
 }
