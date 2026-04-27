@@ -222,7 +222,7 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
   background: linear-gradient(135deg, #212122 0%, #333 100%) !important;
 }
 
-/* [Fix #3] 浮岛布局与高度 - 修复按钮被截断问题 */
+/* 浮岛主容器：高度由内部子按钮 max-height 过渡自然撑开/收缩 */
 #ci-island-container {
   position: fixed;
   top: 150px;
@@ -239,32 +239,25 @@ body.theme-night .ci-archive-item.block-style .ci-archive-value {
   flex-direction: column;
   align-items: center;
   padding: 6px 0;
-  transition: height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: visible !important; /* 修复：改为visible避免按钮被截断 */
+  /* CSS 不支持 height: auto 的 transition；浮岛高度由内部子按钮的 max-height 过渡自然驱动 */
+  overflow: visible !important;
   user-select: none;
   gap: 4px;
   box-sizing: border-box;
-  /* 确保高度自适应内容，不设置固定高度 */
   height: auto !important;
   min-height: fit-content !important;
   max-height: none !important;
 
-  /* 确保所有直接子元素都可见且不被压缩 */
+  /* 直接子元素不被压缩 */
   & > * {
     flex-shrink: 0;
-    visibility: visible !important;
   }
 
-  /* 确保按钮不会被隐藏 - 仅对直接子按钮生效，排除.ci-sub-buttons内的按钮 */
+  /* 主入口/世界信息/地图/选项/刷新等"始终显示"按钮：保持可见
+     注：.ci-sub-buttons 内的按钮显隐由 _panels.scss 的 max-height 过渡控制（不在此处覆盖） */
   & > .ci-btn {
     display: flex !important;
-    visibility: visible !important;
     opacity: 1 !important;
     position: relative !important;
-  }
-
-  /* 子按钮容器内的按钮默认隐藏，由expanded状态控制 */
-  & > .ci-sub-buttons > .ci-btn {
-    display: none;
   }
 }

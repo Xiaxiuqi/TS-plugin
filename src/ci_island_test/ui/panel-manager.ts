@@ -213,31 +213,65 @@ export function closeAll($con: any, $pan: any, $mapPan: any): void {
 }
 
 /**
- * 更新浮岛高度类（根据数据状态显示/隐藏按钮）
+ * 可选按钮配置：根据数据状态决定是否显示。
+ *
+ * 未来要新增类似的"按数据有无显隐"的按钮，**只需在此数组添加一项 +
+ * 在 SCSS 给按钮加上 `.<showClass>` 选择器规则**。
+ *
+ * SCSS 规则约定：
+ *   - 按钮默认 `display: none !important;` 隐藏
+ *   - 加上 `.<showClass>` 类时显示
+ *
+ * 设计要点：
+ *   - 用 `$el` 缓存 jQuery 对象，避免每次重新查询 DOM（性能优化）
+ *   - 用 `toggleClass(class, bool)` 一次调用完成状态切换（比 add+remove 更快）
+ *   - 不需要 hideClass：默认就是隐藏态，省一半内存与 DOM 操作
  */
-export function updateHeightClass($con: any): void {
-  const hasOpt = state.optionsData.length > 0;
-  const hasMap = !!state.cachedData.hasMapTable;
+interface OptionalButtonConfig {
+  /** jQuery 选择器（仅首次访问时使用） */
+  selector: string;
+  /** 检测函数：返回 true 表示有数据 → 显示按钮 */
+  hasData: () => boolean;
+  /** 有数据时添加的类（SCSS 用此类设置 display: flex） */
+  showClass: string;
+  /** 缓存的 jQuery 对象（首次访问时填充，避免重复查询） */
+  $el?: any;
+}
 
-  // 显示/隐藏选项按钮（使用类控制）
-  if (hasOpt) {
-    $('#ci-options-btn').addClass('has-options').removeClass('no-options');
-  } else {
-    $('#ci-options-btn').removeClass('has-options').addClass('no-options');
+const OPTIONAL_BUTTONS: OptionalButtonConfig[] = [
+  {
+    selector: '#ci-options-btn',
+    hasData: () => state.optionsData.length > 0,
+    showClass: 'has-options',
+  },
+  {
+    selector: '#ci-map-btn',
+    hasData: () => !!state.cachedData.hasMapTable,
+    showClass: 'has-map',
+  },
+  {
+    selector: '.ci-btn[data-type="relation"]',
+    hasData: () => !!(state.cachedData as any).hasRelationData,
+    showClass: 'has-relation',
+  },
+];
+
+/**
+ * 通用：根据数据状态批量更新可选按钮的显隐 class
+ * 用 toggleClass(cls, bool) 单次操作 + 缓存 jQuery 对象避免重复查询
+ */
+function applyOptionalButtonsVisibility(): void {
+  for (const cfg of OPTIONAL_BUTTONS) {
+    if (!cfg.$el || !cfg.$el.length) cfg.$el = $(cfg.selector);
+    if (!cfg.$el.length) continue;
+    cfg.$el.toggleClass(cfg.showClass, cfg.hasData());
   }
+}
 
-  // 显示/隐藏地图按钮
-  if (hasMap) {
-    $('#ci-map-btn').addClass('has-map').removeClass('no-map');
-  } else {
-    $('#ci-map-btn').removeClass('has-map').addClass('no-map');
-  }
-
-  // 世界信息按钮始终显示
-  $('#ci-world-info-btn').css('display', 'flex');
-
-  // 刷新按钮始终显示
-  $('#ci-refresh-btn').css('display', 'flex');
-
-  $con.css('height', 'auto');
+/**
+ * 更新浮岛按钮显隐状态（根据数据状态控制可选按钮的显示）
+ * 调用时机：每次数据更新后（processData 完成时）。
+ */
+export function updateHeightClass(_$con: any): void {
+  applyOptionalButtonsVisibility();
 }

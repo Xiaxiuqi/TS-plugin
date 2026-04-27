@@ -106,6 +106,8 @@ export function processData(rawData: any): any {
     hasMapTable: false,
     hasSkillsTable: false,
     hasLongGoal: false,
+    /** 是否检测到角色关系数据（任何角色表存在"关系/与主角关系/角色间关系"列，且至少一行有非空关系内容） */
+    hasRelationData: false,
     externalAreas: [],
     allSkills: [],
     worldInfo: {
@@ -537,6 +539,15 @@ export function processData(rawData: any): any {
 
       if (idx.longGoal > -1) result.hasLongGoal = true;
       if (idx.name === -1) return;
+
+      // 关系列检测：表头里有 rel 列且至少一行有非空内容
+      if (idx.rel > -1 && !result.hasRelationData) {
+        const hasAnyRelation = rows.some((r: any) => {
+          const v = r[idx.rel];
+          return v !== null && v !== undefined && String(v).trim() !== '';
+        });
+        if (hasAnyRelation) result.hasRelationData = true;
+      }
 
       const isProtagTable = s.name.includes(CONFIG.tables.protagonist);
       const isImportantTable = s.name.includes(CONFIG.tables.important) || s.name.includes('重要角色');
