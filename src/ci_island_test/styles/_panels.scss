@@ -62,62 +62,24 @@
    - pointer-events: none 防止收起态被误点
    ============================================================ */
 /* ============================================================
-   子按钮折叠动画（main / inventory）
-   - 始终参与布局（display: flex），通过 max-height + min-height + opacity + transform 过渡
-   - 收起态：max-height/min-height: 0 + opacity: 0 + scale(0.5) + margin: 0
-   - 展开态：max-height/min-height: 32px + opacity: 1 + scale(1) + margin: 2px 0
+   子按钮显隐策略（main / relation / inventory）
+   核心：用 display: none ↔ flex 切换确保收起态完全脱离 flex 布局，
+        避免 max-height: 0 占据 gap 导致间距不等距
+   动画：展开时通过 keyframes 实现 opacity 淡入（不用 max-height/transform 弹跳）
    ============================================================ */
+
+/* 主要人物 / 物品仓库：受浮岛展开/收起控制 */
 .ci-sub-buttons .ci-btn[data-type='main'],
 .ci-sub-buttons .ci-btn[data-type='inventory'] {
-  display: flex !important;
+  display: none;
   flex-shrink: 0;
-  overflow: hidden;
-  max-height: 0 !important;
-  min-height: 0 !important;
-  opacity: 0;
-  transform: scale(0.5);
-  margin: 0 !important;
-  pointer-events: none;
-  transition:
-    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    min-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 0.2s ease,
-    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    margin 0.25s ease;
 }
 
-#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='main'],
-#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='inventory'] {
-  max-height: 32px !important;
-  min-height: 32px !important;
-  opacity: 1;
-  transform: scale(1);
-  margin: 2px 0 !important;
-  pointer-events: auto;
-}
-
-/* ============================================================
-   人物关系按钮：按需显示（无关系数据时完全脱离布局，避免占据 flex gap 造成不等距）
-   - 默认 display: none → 不参与 flex 布局，gap 不会作用于它两侧
-   - .has-relation 时改为 display: flex，并参与展开/收起动画
-   ============================================================ */
+/* 人物关系：默认 display: none（无关系数据时彻底不参与布局，gap 不会作用于它）
+   .has-relation 类由 OPTIONAL_BUTTONS 添加，配合 .expanded 才显示 */
 .ci-sub-buttons .ci-btn[data-type='relation'] {
-  /* 默认完全不参与布局，等用户数据中有关系列时才出现 */
-  display: none !important;
+  display: none;
   flex-shrink: 0;
-  overflow: hidden;
-  max-height: 0;
-  min-height: 0;
-  opacity: 0;
-  transform: scale(0.5);
-  margin: 0 !important;
-  pointer-events: none;
-  transition:
-    max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    min-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 0.2s ease,
-    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    margin 0.25s ease;
 
   &:hover {
     color: #9c88ff;
@@ -128,18 +90,22 @@
   }
 }
 
-/* 有关系数据时：参与布局，但按浮岛展开/收起切换 max-height */
-.ci-sub-buttons .ci-btn[data-type='relation'].has-relation {
-  display: flex !important;
+/* 浮岛展开时：显示 main / inventory（仅淡入动画，不用伸缩弹跳） */
+#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='main'],
+#ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='inventory'] {
+  display: flex;
+  animation: ci-sub-btn-fade-in 0.25s ease;
 }
 
+/* 浮岛展开 + 有关系数据时：显示 relation 按钮 */
 #ci-island-container.expanded .ci-sub-buttons .ci-btn[data-type='relation'].has-relation {
-  max-height: 32px !important;
-  min-height: 32px !important;
-  opacity: 1;
-  transform: scale(1);
-  margin: 2px 0 !important;
-  pointer-events: auto;
+  display: flex;
+  animation: ci-sub-btn-fade-in 0.25s ease;
+}
+
+@keyframes ci-sub-btn-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .ci-sub-buttons .ci-btn[data-type='main']      { order: 2 !important; }
