@@ -172,19 +172,29 @@ export function findTableByName(data: any, name: string): any {
 
 // ========== 拖拽处理 ==========
 /**
- * 通用拖拽处理函数（支持鼠标和触摸）
+ * 通用拖拽处理函数（基于 Pointer Events + setPointerCapture）
+ *
+ * 一次性处理鼠标 / 触摸 / 笔触三种输入，由浏览器原生锁定指针事件路由，
+ * **完美解决火狐跨 iframe 拖动事件丢失问题**（光标移出 iframe 范围也照常收到事件）。
+ *
+ * 浏览器兼容性（PointerEvent 全平台标准）：
+ *   - Edge 12+（2015）/ Chrome 55+（2016）/ Firefox 59+（2018）/ Safari 13+（2019）
+ *   - 任何能跑酒馆助手（ES2017+）的环境都支持，无需 fallback
+ *
  * @param $el 触发拖拽的元素
- * @param onStart 拖拽开始回调
+ * @param onStart 拖拽开始回调（point: {clientX, clientY}, e: PointerEvent）
  * @param onMove 拖拽移动回调
  * @param onEnd 拖拽结束回调
  */
 export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): void => {
-  const startDrag = (e: any) => {
-    const isTouch = e.type === 'touchstart';
-    if (!isTouch && e.button !== 0) return;
+  $el.on('pointerdown', (e: any) => {
+    const oe: PointerEvent = e.originalEvent || e;
 
-    // 检查是否点击了按钮或禁止拖拽的元素
-    const $target = $(e.target);
+    // 仅响应鼠标主键 / 触摸主指针 / 笔触主点
+    if (oe.pointerType === 'mouse' && oe.button !== 0) return;
+
+    // 跳过禁止拖拽的元素（按钮等）
+    const $target = $(oe.target);
     if (
       $target.closest(
         '.ci-close-btn, .ci-edit-btn, .ci-pin-btn, .ci-save-layout-btn, .ci-refresh-btn, .no-drag',
@@ -193,33 +203,46 @@ export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): voi
       return;
     }
 
-    if (!isTouch) e.preventDefault();
-    e.stopPropagation();
-    const point = isTouch ? e.originalEvent.touches[0] : e;
-    onStart(point, e);
-    const moveEvent = isTouch ? 'touchmove' : 'mousemove';
-    const endEvent = isTouch ? 'touchend' : 'mouseup';
-    const moveHandler = (ev: any) => {
-      const p = isTouch ? ev.originalEvent.touches[0] : ev;
-      onMove(p, ev);
+    try {
+      oe.preventDefault();
+    } catch (err) {
+      // 某些 passive 事件下 preventDefault 不可用，忽略
+    }
+    oe.stopPropagation();
+
+    onStart({ clientX: oe.clientX, clientY: oe.clientY }, oe);
+
+    // 关键：捕获指针 → 后续所有 pointermove/pointerup/pointercancel 都路由到 target
+    // 这能让光标拖出元素 / 跨 iframe 后依然收到事件（火狐适配核心）
+    const target = oe.target as Element;
+    const pointerId = oe.pointerId;
+    try {
+      target.setPointerCapture?.(pointerId);
+    } catch (err) {
+      // target 可能已脱离 DOM，忽略
+    }
+
+    const moveHandler = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      onMove({ clientX: ev.clientX, clientY: ev.clientY }, ev);
     };
-    const endHandler = (ev: any) => {
+    const endHandler = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
       onEnd(ev);
-      $(window).off(moveEvent, moveHandler).off(endEvent, endHandler);
+      target.removeEventListener('pointermove', moveHandler as any);
+      target.removeEventListener('pointerup', endHandler as any);
+      target.removeEventListener('pointercancel', endHandler as any);
       try {
-        $(window.parent).off(moveEvent, moveHandler).off(endEvent, endHandler);
-      } catch (e) {
-        // Ignore cross-origin errors
+        target.releasePointerCapture?.(pointerId);
+      } catch (err) {
+        // ignore
       }
     };
-    $(window).on(moveEvent, moveHandler).on(endEvent, endHandler);
-    try {
-      $(window.parent).on(moveEvent, moveHandler).on(endEvent, endHandler);
-    } catch (e) {
-      // Ignore cross-origin errors
-    }
-  };
-  $el.on('mousedown touchstart', startDrag);
+
+    target.addEventListener('pointermove', moveHandler as any);
+    target.addEventListener('pointerup', endHandler as any);
+    target.addEventListener('pointercancel', endHandler as any);
+  });
 };
 
 // ========== 元素约束 ==========
