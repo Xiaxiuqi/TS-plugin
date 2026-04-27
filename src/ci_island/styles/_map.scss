@@ -1,0 +1,368 @@
+// 地图面板 - 从原 style.scss:4701-5065 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+
+// 模态弹窗容器
+.ci-map-modal {
+  background: var(--map-bg, #fdfaf5);
+  border: 2px solid var(--map-border, #8c6e54);
+  border-radius: 16px;
+  width: 360px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: ci-modal-in 0.25s ease;
+  display: flex;
+  flex-direction: column;
+
+  // 弹窗头部
+  .ci-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, var(--map-accent, #8c6e54) 0%, var(--map-highlight, #b48a5c) 100%);
+    color: #fff;
+
+    .ci-modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .ci-modal-icon {
+        font-size: 18px;
+      }
+    }
+
+    .ci-modal-close {
+      cursor: pointer;
+      opacity: 0.8;
+      padding: 4px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+
+      &:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  // 弹窗主体
+  .ci-modal-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    color: var(--map-text, #5a3e2b);
+
+    // 隐藏滚动条
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    // 描述区域
+    .ci-modal-desc {
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 8px;
+      border-left: 3px solid var(--map-accent, #8c6e54);
+    }
+
+    // 信息行
+    .ci-modal-info-row {
+      display: flex;
+      margin-bottom: 10px;
+      font-size: 13px;
+
+      .ci-modal-label {
+        width: 70px;
+        color: rgba(90, 62, 43, 0.6);
+        flex-shrink: 0;
+      }
+
+      .ci-modal-value {
+        flex: 1;
+        color: var(--map-text, #5a3e2b);
+        font-weight: 500;
+      }
+    }
+
+    // 分隔线
+    .ci-modal-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--map-border, #8c6e54), transparent);
+      margin: 16px 0;
+      opacity: 0.3;
+    }
+
+    // 元素列表区域
+    .ci-modal-elements-section {
+      margin-top: 12px;
+
+      .ci-modal-section-title {
+        font-size: 12px;
+        color: rgba(90, 62, 43, 0.6);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        &::before {
+          content: '';
+          width: 4px;
+          height: 4px;
+          background: var(--map-accent, #8c6e54);
+          border-radius: 50%;
+        }
+      }
+    }
+
+    // 元素按钮列表
+    .ci-modal-elements-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    // 元素按钮
+    .ci-modal-element-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(var(--map-accent-rgb, 140, 110, 84), 0.1);
+      border: 1px solid rgba(var(--map-accent-rgb, 140, 110, 84), 0.3);
+      border-radius: 20px;
+      color: var(--map-text, #5a3e2b);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      .ci-element-icon {
+        font-size: 14px;
+      }
+
+      &:hover {
+        background: var(--map-accent, #8c6e54);
+        border-color: var(--map-accent, #8c6e54);
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(140, 110, 84, 0.3);
+      }
+
+      // NPC元素
+      &.npc {
+        background: rgba(102, 126, 234, 0.1);
+        border-color: rgba(102, 126, 234, 0.3);
+
+        &:hover {
+          background: #667eea;
+          border-color: #667eea;
+        }
+      }
+
+      // 物品元素
+      &.item {
+        background: rgba(245, 166, 35, 0.1);
+        border-color: rgba(245, 166, 35, 0.3);
+
+        &:hover {
+          background: #f5a623;
+          border-color: #f5a623;
+        }
+      }
+    }
+
+    // 互动选项区域
+    .ci-modal-interactions {
+      margin-top: 12px;
+
+      .ci-modal-section-title {
+        font-size: 12px;
+        color: rgba(90, 62, 43, 0.6);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        &::before {
+          content: '';
+          width: 4px;
+          height: 4px;
+          background: var(--map-accent, #8c6e54);
+          border-radius: 50%;
+        }
+      }
+
+      .ci-modal-interaction-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+
+    // 互动按钮
+    .ci-interact-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(var(--map-accent-rgb, 140, 110, 84), 0.08);
+      border: 1px solid rgba(var(--map-accent-rgb, 140, 110, 84), 0.2);
+      border-radius: 10px;
+      color: var(--map-text, #5a3e2b);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      .ci-interact-icon {
+        font-size: 16px;
+        opacity: 0.7;
+      }
+
+      &:hover {
+        background: rgba(var(--map-accent-rgb, 140, 110, 84), 0.15);
+        border-color: var(--map-accent, #8c6e54);
+        transform: translateX(4px);
+
+        .ci-interact-icon {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  // 弹窗底部
+  .ci-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(var(--map-border-rgb, 140, 110, 84), 0.2);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.02);
+
+    // 操作按钮基础样式
+    .ci-modal-action-btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .ci-btn-icon {
+        font-size: 14px;
+      }
+
+      // 取消/关闭按钮
+      &.secondary {
+        background: rgba(var(--map-text-rgb, 90, 62, 43), 0.1);
+        color: var(--map-text, #5a3e2b);
+
+        &:hover {
+          background: rgba(var(--map-text-rgb, 90, 62, 43), 0.18);
+        }
+      }
+
+      // 主要操作按钮
+      &.primary {
+        background: linear-gradient(135deg, var(--map-accent, #8c6e54) 0%, var(--map-highlight, #b48a5c) 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(140, 110, 84, 0.3);
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(140, 110, 84, 0.4);
+        }
+      }
+    }
+
+    // "到这里去"按钮特殊样式
+    .ci-go-here-btn {
+      background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+      }
+    }
+  }
+}
+
+// 夜间模式适配
+.theme-night,
+.theme-night-purple {
+  .ci-map-modal-overlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .ci-map-modal {
+    background: var(--map-bg);
+    border-color: var(--map-border);
+
+    .ci-modal-header {
+      background: linear-gradient(135deg, var(--map-accent) 0%, rgba(var(--map-accent-rgb), 0.7) 100%);
+    }
+
+    .ci-modal-body {
+      .ci-modal-desc {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .ci-modal-label {
+        color: rgba(var(--map-text-rgb), 0.5);
+      }
+    }
+
+    .ci-modal-footer {
+      background: rgba(255, 255, 255, 0.02);
+      border-top-color: rgba(var(--map-border-rgb), 0.3);
+    }
+  }
+}
+
+// ========== v8.9 世界信息面板样式 ==========
+
+// 世界信息按钮样式 - 注意：order已在上方按钮顺序中定义为5
+#ci-world-info-btn {
+  &.active {
+    background: #333;
+    color: white;
+  }
+}
+
+// ========== 世界信息面板内容样式 ==========
+// 面板基础样式已在通用面板样式中定义
+.ci-worldinfo-content {
+  flex: 1;
+  overflow-y: auto !important; /* 启用面板级整体滚动 */
+  overflow-x: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  /* 统一滚动条样式，使其贴合边缘 */
+  &::-webkit-scrollbar {
+    width: 4px;
+    display: block !important;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+  }
+}

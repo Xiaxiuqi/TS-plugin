@@ -1,0 +1,187 @@
+// 雷达图样式 - 从原 style.scss:7490-7671 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+
+.radar-grid {
+  fill: none;
+  stroke: #e0e0e0;
+  stroke-width: 1px;
+}
+
+.radar-axis {
+  stroke: #e0e0e0;
+  stroke-width: 1px;
+}
+
+.radar-area {
+  fill: rgba(26, 115, 232, 0.2);
+  stroke: #1a73e8;
+  stroke-width: 2px;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 4px 6px rgba(26, 115, 232, 0.2));
+}
+
+.radar-label-group {
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  text {
+    font-size: 11px;
+    fill: #666;
+    transition: all 0.2s ease;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+  }
+
+  &:hover {
+    text {
+      fill: #1a73e8;
+      font-weight: bold;
+      font-size: 12px;
+    }
+  }
+}
+
+/* 属性锻炼气泡 */
+.ci-stat-bubble {
+  position: absolute;
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  color: var(--ci-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 100000; /* 确保在所有图层之上 */
+  animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+
+  &:hover {
+    background: var(--ci-accent);
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.3);
+  }
+}
+
+/* 夜间模式适配 */
+.theme-night .radar-chart-container,
+.theme-night-purple .radar-chart-container {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-night .radar-grid,
+.theme-night-purple .radar-grid,
+.theme-night .radar-axis,
+.theme-night-purple .radar-axis {
+  stroke: #444;
+}
+
+.theme-night .radar-area,
+.theme-night-purple .radar-area {
+  fill: rgba(92, 124, 250, 0.2);
+  stroke: #5c7cfa;
+  filter: drop-shadow(0 4px 6px rgba(92, 124, 250, 0.2));
+}
+
+.theme-night .radar-label-group text,
+.theme-night-purple .radar-label-group text {
+  fill: #aaa;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.theme-night .radar-label-group:hover text,
+.theme-night-purple .radar-label-group:hover text {
+  fill: #fff;
+}
+
+.theme-night .ci-stat-bubble,
+.theme-night-purple .ci-stat-bubble {
+  background: #333;
+  border-color: #555;
+  color: #eee;
+
+  &:hover {
+    background: var(--ci-accent);
+    color: white;
+  }
+}
+
+/* 物品菜单容器 */
+.ci-inventory-menu {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 2002;
+  overflow: visible;
+}
+.ci-inventory-menu.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ci-inventory-menu.flipped {
+  align-items: flex-start;
+
+  .ci-menu-bubble-btn {
+    border-radius: 12px 12px 12px 2px;
+  }
+}
+
+/* 物品菜单气泡按钮 */
+.ci-menu-bubble-btn {
+  background: var(--ci-bg);
+  border: 1px solid var(--ci-border);
+  padding: 8px 12px;
+  border-radius: 12px 12px 2px 12px;
+  /* 轻量阴影：与 ci-stat-bubble / ci-option-bubble 视觉风格一致，避免气泡被"重投影"压住 */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: var(--ci-text);
+  font-size: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #fff;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .ci-bubble-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .ci-bubble-text {
+    font-weight: 500;
+  }
+}
+
+/* 技能面板内容 */
+.ci-skills-content {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  position: relative;
+}
