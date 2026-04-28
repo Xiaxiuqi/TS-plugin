@@ -199,6 +199,19 @@ export function findTableByName(data: any, name: string): any {
  * @param onEnd 拖拽结束回调
  */
 export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): void => {
+  // 关键：始终使用顶层 window 注册 mousemove/mouseup
+  // - 控制台 import 模式：window.top === window，等同于绑在自己身上
+  // - 酒馆助手脚本模式：脚本运行在 TH-script-* iframe 内，但 DOM 和鼠标事件都派发到顶层 window
+  //   → 必须把 listener 绑到顶层 window 才能收到 mousemove，否则 iframe window 永远收不到
+  // - 用原生 addEventListener 绕过 jQuery 跨 frame 限制（火狐对 jQuery.on 跨 frame 有安全限制）
+  const getTopWin = (): Window => {
+    try {
+      return (window.top || window) as Window;
+    } catch (e) {
+      return window;
+    }
+  };
+
   const startDrag = (e: any) => {
     const isTouch = e.type === 'touchstart';
     if (!isTouch && e.button !== 0) return;
@@ -222,26 +235,24 @@ export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): voi
     const endEvent = isTouch ? 'touchend' : 'mouseup';
 
     const moveHandler = (ev: any) => {
-      const p = isTouch ? ev.originalEvent.touches[0] : ev;
+      // 触屏 originalEvent 兼容（jQuery 包装时是 originalEvent，原生时直接是 ev）
+      const ne = ev.originalEvent || ev;
+      const p = isTouch && ne.touches ? ne.touches[0] : ne;
       onMove({ clientX: p.clientX, clientY: p.clientY }, ev);
     };
     const endHandler = (ev: any) => {
       onEnd(ev);
-      $(window).off(moveEvent, moveHandler).off(endEvent, endHandler);
-      try {
-        $(window.parent).off(moveEvent, moveHandler).off(endEvent, endHandler);
-      } catch (err) {
-        // 跨域 iframe 异常，忽略
-      }
+      // 清理顶层 window 上的监听器（原生 removeEventListener）
+      const topWin = getTopWin();
+      topWin.removeEventListener(moveEvent, moveHandler);
+      topWin.removeEventListener(endEvent, endHandler);
     };
 
-    // 双层监听：window + window.parent，跨 iframe 兜底
-    $(window).on(moveEvent, moveHandler).on(endEvent, endHandler);
-    try {
-      $(window.parent).on(moveEvent, moveHandler).on(endEvent, endHandler);
-    } catch (err) {
-      // 跨域 iframe 异常，忽略
-    }
+    // 用原生 addEventListener 绑到顶层 window
+    // 这是修复火狐脚本模式拖动的关键：jQuery 跨 frame 注册事件在火狐下不可靠
+    const topWin = getTopWin();
+    topWin.addEventListener(moveEvent, moveHandler);
+    topWin.addEventListener(endEvent, endHandler);
   };
 
   $el.on('mousedown touchstart', startDrag);
