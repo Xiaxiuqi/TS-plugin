@@ -199,11 +199,17 @@ export function findTableByName(data: any, name: string): any {
  * @param onEnd 拖拽结束回调
  */
 export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): void => {
-  // 关键：始终使用顶层 window 注册 mousemove/mouseup
-  // - 控制台 import 模式：window.top === window，等同于绑在自己身上
-  // - 酒馆助手脚本模式：脚本运行在 TH-script-* iframe 内，但 DOM 和鼠标事件都派发到顶层 window
-  //   → 必须把 listener 绑到顶层 window 才能收到 mousemove，否则 iframe window 永远收不到
-  // - 用原生 addEventListener 绕过 jQuery 跨 frame 限制（火狐对 jQuery.on 跨 frame 有安全限制）
+  // 关键：使用原生 addEventListener 绑定所有事件
+  //
+  // 为什么不用 jQuery .on()：
+  //   - 酒馆助手脚本模式下，浮岛代码运行在 TH-script-* iframe 内
+  //   - 但浮岛 DOM 元素在顶层 body
+  //   - jQuery 实例是 iframe 内的，包装顶层元素后 .on('mousedown') 在火狐下不路由
+  //   - 实测：诊断脚本用原生 addEventListener 在 grip 上能收到 mousedown，
+  //          而浮岛 jQuery 的 mousedown handler 不被触发
+  //   → 必须用原生 addEventListener，事件直接在顶层 DOM 上路由
+  //
+  // window.top 用于绑定 mousemove/mouseup，确保鼠标在 iframe 外也能收到
   const getTopWin = (): Window => {
     try {
       return (window.top || window) as Window;
@@ -212,15 +218,27 @@ export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): voi
     }
   };
 
+  // 解析元素：兼容 jQuery 集合 / 单元素 / 原生元素
+  const elements: Element[] = (() => {
+    if (!$el) return [];
+    if (typeof $el.toArray === 'function') return $el.toArray();
+    if ($el[0] && $el[0].addEventListener) return [$el[0]];
+    if ($el.addEventListener) return [$el];
+    return [];
+  })();
+
   const startDrag = (e: any) => {
     const isTouch = e.type === 'touchstart';
     if (!isTouch && e.button !== 0) return;
 
     // 跳过禁止拖拽的子元素（按钮等）
+    const target = e.target as Element;
     if (
-      $(e.target).closest(
+      target &&
+      target.closest &&
+      target.closest(
         '.ci-close-btn, .ci-edit-btn, .ci-pin-btn, .ci-save-layout-btn, .ci-refresh-btn, .no-drag',
-      ).length
+      )
     ) {
       return;
     }
@@ -228,34 +246,35 @@ export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): voi
     if (!isTouch) e.preventDefault();
     e.stopPropagation();
 
-    const point = isTouch ? e.originalEvent.touches[0] : e;
+    const point = isTouch ? e.touches[0] : e;
     onStart({ clientX: point.clientX, clientY: point.clientY }, e);
 
     const moveEvent = isTouch ? 'touchmove' : 'mousemove';
     const endEvent = isTouch ? 'touchend' : 'mouseup';
 
     const moveHandler = (ev: any) => {
-      // 触屏 originalEvent 兼容（jQuery 包装时是 originalEvent，原生时直接是 ev）
-      const ne = ev.originalEvent || ev;
-      const p = isTouch && ne.touches ? ne.touches[0] : ne;
+      const p = isTouch && ev.touches ? ev.touches[0] : ev;
       onMove({ clientX: p.clientX, clientY: p.clientY }, ev);
     };
     const endHandler = (ev: any) => {
       onEnd(ev);
-      // 清理顶层 window 上的监听器（原生 removeEventListener）
       const topWin = getTopWin();
       topWin.removeEventListener(moveEvent, moveHandler);
       topWin.removeEventListener(endEvent, endHandler);
     };
 
-    // 用原生 addEventListener 绑到顶层 window
-    // 这是修复火狐脚本模式拖动的关键：jQuery 跨 frame 注册事件在火狐下不可靠
     const topWin = getTopWin();
     topWin.addEventListener(moveEvent, moveHandler);
     topWin.addEventListener(endEvent, endHandler);
   };
 
-  $el.on('mousedown touchstart', startDrag);
+  // 原生 addEventListener 绑定 mousedown/touchstart 到每个拖动元素
+  // 这是修复火狐脚本模式 mousedown 不路由的关键
+  elements.forEach(el => {
+    if (!el || !el.addEventListener) return;
+    el.addEventListener('mousedown', startDrag);
+    el.addEventListener('touchstart', startDrag, { passive: false });
+  });
 };
 
 // ========== 元素约束 ==========
