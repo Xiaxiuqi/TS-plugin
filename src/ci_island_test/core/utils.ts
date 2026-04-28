@@ -464,3 +464,44 @@ export function getPresentCharacterList(): Set<string> {
   });
   return presentSet;
 }
+
+
+// ========== 顶层 window 的 requestAnimationFrame ==========
+/**
+ * 获取顶层 window 的 requestAnimationFrame
+ *
+ * 火狐严格按 W3C 规范：display:none 的 iframe 内的 rAF 完全不调度。
+ * 酒馆助手的 TH-script-* iframe 默认 display:none，
+ * 因此脚本模式下 iframe 内的 rAF 永远不触发，导致拖动失效。
+ *
+ * Chrome / Edge 容错（即使 iframe 不可见也调度 rAF），所以原版方案在 Chrome/Edge 工作正常。
+ *
+ * 本函数返回顶层 window 的 rAF，确保在脚本模式下也能正确调度。
+ *
+ * 兼容性：
+ * - 控制台 import 模式：window.top === window，等同于本地 rAF
+ * - 脚本模式：返回顶层 rAF，绕过 iframe 冻结限制
+ * - 跨域 iframe：try-catch fallback 到本地 rAF
+ *
+ * @returns 绑定到顶层 window 的 requestAnimationFrame 函数
+ */
+export const getTopRaf = (): ((cb: FrameRequestCallback) => number) => {
+  try {
+    const topWin = (window.top || window) as Window;
+    return topWin.requestAnimationFrame.bind(topWin);
+  } catch (e) {
+    return window.requestAnimationFrame.bind(window);
+  }
+};
+
+/**
+ * 获取顶层 window 的 cancelAnimationFrame（与 getTopRaf 配对使用）
+ */
+export const getTopCancelRaf = (): ((id: number) => void) => {
+  try {
+    const topWin = (window.top || window) as Window;
+    return topWin.cancelAnimationFrame.bind(topWin);
+  } catch (e) {
+    return window.cancelAnimationFrame.bind(window);
+  }
+};

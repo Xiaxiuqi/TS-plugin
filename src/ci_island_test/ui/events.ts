@@ -27,6 +27,8 @@ import {
   constrainElement,
   sendGameActionRequest,
   getProtagonistName,
+  getTopRaf,
+  getTopCancelRaf,
 } from '../core/utils';
 import { STORAGE_POS_KEY, STORAGE_PANEL_SIZE_KEY, STORAGE_MAP_SIZE_KEY } from '../core/constants';
 import { safeSetItem } from '../core/storage';
@@ -319,8 +321,12 @@ export function bindEvents(
   bindIslandDrag($con, $pan, $mapPan, $grip);
 
   // ---------------- 窗口大小调整 ----------------
+  // 火狐 iframe 冻结修复：使用顶层 window 的 rAF（而非 iframe 内的 rAF）
+  const topRaf = getTopRaf();
+  const topCancelRaf = getTopCancelRaf();
+
   const handleResize = () => {
-    requestAnimationFrame(() => {
+    topRaf(() => {
       const safePos = constrainElement($con);
       if ($pan.hasClass('visible')) syncPanelPosition($con, $pan, safePos.left, safePos.top);
       if ($mapPan.hasClass('visible') && !state.isMapPinned)
@@ -368,7 +374,7 @@ export function bindEvents(
         },
         (curr: any, e: any) => {
           if (e.cancelable) e.preventDefault();
-          requestAnimationFrame(() => {
+          topRaf(() => {
             const deltaX = curr.clientX - startX;
             const deltaY = curr.clientY - startY;
             $targetPanel.css({ left: startLeft + deltaX, top: startTop + deltaY });
@@ -412,7 +418,7 @@ export function bindEvents(
         (curr: any, e: any) => {
           e.stopPropagation();
           if (e.cancelable) e.preventDefault();
-          requestAnimationFrame(() => {
+          topRaf(() => {
             const deltaX = curr.clientX - startX;
             const deltaY = curr.clientY - startY;
             const newH = Math.max(200, startH + deltaY);
@@ -842,8 +848,11 @@ function bindIslandDrag($con: any, $pan: any, $mapPan: any, $grip: any): void {
       $('.ci-sub-panel:not(.pinned)').addClass('no-transition');
     },
     (curr: any) => {
-      if (state.drag.rafId) cancelAnimationFrame(state.drag.rafId);
-      state.drag.rafId = requestAnimationFrame(() => {
+      // 火狐 iframe 冻结修复：使用顶层 window 的 rAF
+      const topRaf = getTopRaf();
+      const topCancelRaf = getTopCancelRaf();
+      if (state.drag.rafId) topCancelRaf(state.drag.rafId);
+      state.drag.rafId = topRaf(() => {
         const deltaX = curr.clientX - state.drag.startX;
         const deltaY = curr.clientY - state.drag.startY;
         const newLeft = state.drag.initialLeft + deltaX;
@@ -866,7 +875,10 @@ function bindIslandDrag($con: any, $pan: any, $mapPan: any, $grip: any): void {
     },
     () => {
       state.drag.active = false;
-      if (state.drag.rafId) cancelAnimationFrame(state.drag.rafId);
+      if (state.drag.rafId) {
+        const topCancelRaf = getTopCancelRaf();
+        topCancelRaf(state.drag.rafId);
+      }
       $pan.removeClass('no-transition');
       $mapPan.removeClass('no-transition');
       $('.ci-sub-panel').removeClass('no-transition');
@@ -1150,7 +1162,9 @@ function bindSubPanelEvents(): void {
       },
       (curr: any, e: any) => {
         if (e.cancelable) e.preventDefault();
-        requestAnimationFrame(() => {
+        // 火狐 iframe 冻结修复：使用顶层 window 的 rAF
+        const topRaf = getTopRaf();
+        topRaf(() => {
           const deltaX = curr.clientX - startX;
           const deltaY = curr.clientY - startY;
           $subPanel.css({ left: startLeft + deltaX, top: startTop + deltaY });
@@ -1188,7 +1202,9 @@ function bindSubPanelEvents(): void {
         (curr: any, e: any) => {
           e.stopPropagation();
           if (e.cancelable) e.preventDefault();
-          requestAnimationFrame(() => {
+          // 火狐 iframe 冻结修复：使用顶层 window 的 rAF
+          const topRaf = getTopRaf();
+          topRaf(() => {
             const deltaX = curr.clientX - resStartX;
             const deltaY = curr.clientY - resStartY;
             const newH = Math.max(200, resStartH + deltaY);
