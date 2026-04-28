@@ -36,7 +36,7 @@
 .ci-btn:hover {
   background: rgba(0, 0, 0, 0.08);
   color: #333;
-  transform: scale(1.05);
+  /* 移除 transform: scale(1.05) —— 用户期望仅背景色变化，无任何缩放/位移 */
 }
 .ci-btn.active {
   background: #333;
