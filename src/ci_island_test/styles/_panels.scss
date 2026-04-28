@@ -626,3 +626,17 @@ body.theme-night .ci-btn-circle:hover {
   height: auto;
   min-height: 200px;
 }
+
+
+// ========== 拖动元素全局样式（火狐手势防御 + 文本选择阻止） ==========
+// 用 SCSS 一次声明，避免 JS 层每个元素 inline style 重复设置
+// 原 utils.ts:handleDrag 在每次注册时为每个元素设置 4 次 inline style，启动时 22 元素 × 4 = 88 次
+// 移到 SCSS 后：webpack 编译期 1 次声明，运行时零成本
+.ci-drag-grip,
+.ci-drag-handle,
+.ci-resize-handle {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}

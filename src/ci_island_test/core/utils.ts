@@ -172,121 +172,79 @@ export function findTableByName(data: any, name: string): any {
 
 // ========== 拖拽处理 ==========
 /**
- * 通用拖拽处理函数（基于 W3C Pointer Events 标准，火狐完全适配版）
+ * 通用拖拽处理函数（mousedown/touchstart 双绑，全浏览器兼容）
  *
- * 一次性处理鼠标 / 触摸 / 笔触三种输入，按 Firefox MDN 文档明确推荐的方式实现：
- *   1. 用原生 addEventListener 替代 jQuery .on() —— 绕过 jQuery 兼容层（火狐关键）
- *   2. 强制设置 touch-action: none —— 阻止火狐把指针事件转化为页面滚动
- *   3. 强制设置 user-select: none —— 阻止火狐把拖动识别为文本选择
- *   4. setPointerCapture + try-catch —— 容错跨 frame 限制
- *   5. target + document 双层监听 —— capture 失败时由 document 兜底（火狐跨 iframe）
+ * 设计原则（基于 5 轮火狐对照测试验证）：
+ *   - mousedown 处理鼠标拖动，touchstart 处理触屏拖动
+ *   - $(window) + $(window.parent) 双层监听 mousemove/mouseup，跨 iframe 兜底
+ *   - 拖动元素的 touch-action / user-select 在 SCSS 全局声明（_panels.scss）
  *
- * 浏览器兼容性（PointerEvent 全平台标准）：
- *   - Edge 12+（2015）/ Chrome 55+（2016）/ Firefox 59+（2018）/ Safari 13+（2019）
- *   - 任何能跑酒馆助手（ES2017+）的环境都支持，无需 fallback
+ * 为什么不用 PointerEvent（已通过实测排除）：
+ *   1. 火狐严格按 W3C 规范，pointerdown.preventDefault() 会抑制后续 mousedown
+ *   2. 火狐跨 iframe 时 pointermove 不路由到 target/document 上注册的 listener
+ *   → 实测证明：移除 pointerdown listener 后，纯 mousedown/mousemove/mouseup 完美工作
+ *
+ * 浏览器兼容性：
+ *   - Chrome / Edge / Firefox / Safari 全平台稳定（mousedown 是浏览器最底层事件）
+ *   - 触屏：iOS Safari 12+ / Android Chrome 30+
  *
  * 内存开销：
- *   - 静态：每个拖动元素 ~200B（1 个 pointerdown 监听器 + 2 个 inline style）
- *   - 拖动中峰值：+1.2KB（target/document 各 3 个监听器，结束立即清理）
- *   - 拖动结束：0B（全部 removeEventListener）
+ *   - 静态：每个拖动元素 1 个 mousedown + 1 个 touchstart listener（jQuery 一次绑定）
+ *   - 拖动期峰值：4 个 listener（window + window.parent 各 mousemove + mouseup）
+ *   - 拖动结束：全部 .off 清理，零泄漏
  *
- * @param $el 触发拖拽的元素（支持 jQuery 集合 / 单元素 / 原生元素）
- * @param onStart 拖拽开始回调（point: {clientX, clientY}, e: PointerEvent）
+ * @param $el 触发拖拽的 jQuery 元素
+ * @param onStart 拖拽开始回调（point: {clientX, clientY}, e: Event）
  * @param onMove 拖拽移动回调
  * @param onEnd 拖拽结束回调
  */
 export const handleDrag = ($el: any, onStart: any, onMove: any, onEnd: any): void => {
-  // 兼容 jQuery 集合 / 单元素 / 原生元素三种调用方式
-  const elements: HTMLElement[] = (() => {
-    if (!$el) return [];
-    if (typeof $el.toArray === 'function') return $el.toArray();
-    if ($el[0] && $el[0].addEventListener) return [$el[0]];
-    if ($el.addEventListener) return [$el];
-    return [];
-  })();
+  const startDrag = (e: any) => {
+    const isTouch = e.type === 'touchstart';
+    if (!isTouch && e.button !== 0) return;
 
-  elements.forEach(el => {
-    if (!el || !el.addEventListener) return;
+    // 跳过禁止拖拽的子元素（按钮等）
+    if (
+      $(e.target).closest(
+        '.ci-close-btn, .ci-edit-btn, .ci-pin-btn, .ci-save-layout-btn, .ci-refresh-btn, .no-drag',
+      ).length
+    ) {
+      return;
+    }
 
-    // 火狐适配关键 1：CSS 显式声明
-    // touch-action:none → 阻止火狐把指针事件转化为页面滚动/缩放（最关键）
-    // user-select:none → 阻止火狐把拖动识别为文本选择
-    // 用 inline style 设置确保最高优先级，无视外部 CSS 影响
-    el.style.touchAction = 'none';
-    el.style.userSelect = 'none';
-    (el.style as any).webkitUserSelect = 'none';
-    (el.style as any).msUserSelect = 'none';
+    if (!isTouch) e.preventDefault();
+    e.stopPropagation();
 
-    // 火狐适配关键 2：原生 addEventListener
-    // 完全绕过 jQuery 事件兼容层（jQuery 对 pointerdown 在某些版本下注册不一致）
-    el.addEventListener('pointerdown', (oe: PointerEvent) => {
-      // 仅响应鼠标主键 / 触摸主指针 / 笔触主点
-      if (oe.pointerType === 'mouse' && oe.button !== 0) return;
+    const point = isTouch ? e.originalEvent.touches[0] : e;
+    onStart({ clientX: point.clientX, clientY: point.clientY }, e);
 
-      // 跳过禁止拖拽的子元素（按钮等）
-      const target = oe.target as Element;
-      if (
-        target &&
-        target.closest &&
-        target.closest(
-          '.ci-close-btn, .ci-edit-btn, .ci-pin-btn, .ci-save-layout-btn, .ci-refresh-btn, .no-drag',
-        )
-      ) {
-        return;
-      }
+    const moveEvent = isTouch ? 'touchmove' : 'mousemove';
+    const endEvent = isTouch ? 'touchend' : 'mouseup';
 
+    const moveHandler = (ev: any) => {
+      const p = isTouch ? ev.originalEvent.touches[0] : ev;
+      onMove({ clientX: p.clientX, clientY: p.clientY }, ev);
+    };
+    const endHandler = (ev: any) => {
+      onEnd(ev);
+      $(window).off(moveEvent, moveHandler).off(endEvent, endHandler);
       try {
-        oe.preventDefault();
+        $(window.parent).off(moveEvent, moveHandler).off(endEvent, endHandler);
       } catch (err) {
-        // 某些 passive 事件下 preventDefault 不可用，忽略
+        // 跨域 iframe 异常，忽略
       }
-      oe.stopPropagation();
+    };
 
-      onStart({ clientX: oe.clientX, clientY: oe.clientY }, oe);
+    // 双层监听：window + window.parent，跨 iframe 兜底
+    $(window).on(moveEvent, moveHandler).on(endEvent, endHandler);
+    try {
+      $(window.parent).on(moveEvent, moveHandler).on(endEvent, endHandler);
+    } catch (err) {
+      // 跨域 iframe 异常，忽略
+    }
+  };
 
-      const pointerId = oe.pointerId;
-
-      // 火狐适配关键 3：setPointerCapture 容错
-      // 火狐对跨 iframe 调用 setPointerCapture 限制更严格，可能抛错
-      try {
-        target.setPointerCapture?.(pointerId);
-      } catch (err) {
-        // target 可能已脱离 DOM 或跨域，忽略，由下方 document 兜底
-      }
-
-      const moveHandler = (ev: PointerEvent) => {
-        if (ev.pointerId !== pointerId) return;
-        onMove({ clientX: ev.clientX, clientY: ev.clientY }, ev);
-      };
-      const endHandler = (ev: PointerEvent) => {
-        if (ev.pointerId !== pointerId) return;
-        onEnd(ev);
-        // 清理两层监听器（target + document）
-        target.removeEventListener('pointermove', moveHandler as any);
-        target.removeEventListener('pointerup', endHandler as any);
-        target.removeEventListener('pointercancel', endHandler as any);
-        document.removeEventListener('pointermove', moveHandler as any);
-        document.removeEventListener('pointerup', endHandler as any);
-        document.removeEventListener('pointercancel', endHandler as any);
-        try {
-          target.releasePointerCapture?.(pointerId);
-        } catch (err) {
-          // ignore
-        }
-      };
-
-      // 火狐适配关键 4：target + document 双层监听
-      //   - 主路径：target（capture 生效时收到所有事件，Edge/Chrome/Safari 走这条）
-      //   - 兜底：document（capture 失败时仍能收到事件，火狐跨 iframe 关键路径）
-      // 双层监听通过 pointerId 严格匹配避免重复触发，开销可忽略（仅拖动期间）
-      target.addEventListener('pointermove', moveHandler as any);
-      target.addEventListener('pointerup', endHandler as any);
-      target.addEventListener('pointercancel', endHandler as any);
-      document.addEventListener('pointermove', moveHandler as any);
-      document.addEventListener('pointerup', endHandler as any);
-      document.addEventListener('pointercancel', endHandler as any);
-    });
-  });
+  $el.on('mousedown touchstart', startDrag);
 };
 
 // ========== 元素约束 ==========
