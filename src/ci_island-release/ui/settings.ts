@@ -34,7 +34,7 @@ export function createSettingsUI(): void {
     // 头部
     const $header = $(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0;">
-        <span style="font-weight:bold;font-size:16px;">浮岛设置 <span style="font-size:10px;font-weight:normal;opacity:0.6;">v1.5</span></span>
+        <span style="font-weight:bold;font-size:16px;">浮岛设置 <span style="font-size:10px;font-weight:normal;opacity:0.6;">v1.6</span></span>
         <span class="ci-close-btn">${ICONS.close}</span>
       </div>
     `);
