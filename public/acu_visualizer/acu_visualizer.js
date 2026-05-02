@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         兼容性可视化表格 v9.51
+// @name         兼容性可视化表格 v9.55
 // @namespace    http://tampermonkey.net/
-// @version      9.5.1
-// @description  兼容性可视化表格 v9.51
+// @version      9.5.5
+// @description  兼容性可视化表格 v9.55
 // @author       Cline (Optimized)
 // @match        */*
 // @grant        none
@@ -117,8 +117,8 @@
   let isCellEditing = false;
   let isRefreshing = false;
   let currentDiffMap = new Set();
-  let currentPagination = {};
-  let currentUserEditMap = new Set();
+  const currentPagination = {};
+  const currentUserEditMap = new Set();
 
   // --- 新增：搜索功能状态 ---
   let currentSearchTerm = '';
@@ -131,10 +131,10 @@
   let dragRowElement = null;
 
   // 行位置映射表（用于存储前端显示位置与原始数据索引的映射关系）
-  let rowPositionMapping = {};
+  const rowPositionMapping = {};
 
   // 使用集合管理待删除行
-  let pendingDeletes = new Set();
+  const pendingDeletes = new Set();
 
   // [新增] 防回弹控制器
   const UpdateController = {
@@ -148,14 +148,12 @@
         // 2秒后恢复监听，给数据库一点写入时间
         setTimeout(() => {
           UpdateController._suppressNext = false;
-
         }, 2000);
       }
     },
     // 过滤更新信号 (需要在 init 中注册这个函数替代原来的回调)
     handleUpdate: () => {
       if (UpdateController._suppressNext) {
-
         return;
       }
       // 这里调用原本的刷新逻辑，比如 smartUpdateTable 或 insertTableAfterLatestAIMessage
@@ -237,16 +235,16 @@
   const shouldShowBadge = tableName => {
     const tabStatus = getSingleTabStatus(tableName);
     // 核心逻辑：有更新 且 (用户未看 且 哈希不一致)
-    return tabStatus.hasNewUpdates &&
-           !tabStatus.userHasSeen &&
-           tabStatus.lastViewedHash !== tabStatus.currentUpdateHash;
+    return (
+      tabStatus.hasNewUpdates && !tabStatus.userHasSeen && tabStatus.lastViewedHash !== tabStatus.currentUpdateHash
+    );
   };
 
   const markTabAsSeen = tableName => {
     const status = getSingleTabStatus(tableName);
     return updateTabStatus(tableName, {
       userHasSeen: true,
-      lastViewedHash: status.currentUpdateHash // 记录当前版本为已看
+      lastViewedHash: status.currentUpdateHash, // 记录当前版本为已看
     });
   };
 
@@ -259,7 +257,7 @@
 
     const updates = {
       hasNewUpdates: hasUpdates,
-      currentUpdateHash: updateHash
+      currentUpdateHash: updateHash,
     };
 
     // 如果检测到新哈希且与已看的不同，重置 userHasSeen
@@ -417,7 +415,7 @@
   const getStorageSize = () => {
     let total = 0;
     for (let key in localStorage) {
-      if (localStorage.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
       }
     }
@@ -438,7 +436,6 @@
   const cleanupStorage = () => {
     try {
       const size = parseFloat(getStorageSize());
-
 
       if (size > STORAGE_SIZE_LIMIT_MB) {
         console.warn('[ACU] 存储超限，开始清理...');
@@ -544,8 +541,6 @@
     const originalSize = parseFloat(getStorageSize());
 
     try {
-
-
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -585,7 +580,6 @@
 
             // 注意: 这里不清除 currentDiffMap,以保留现有的高亮显示
             // 只有当下次 generateDiffMap 运行时,新的快照才会生效
-
           }
         }
       } else {
@@ -887,7 +881,7 @@
         tableName,
         rowIndex,
         colIndex,
-        newValue: strValue
+        newValue: strValue,
       });
 
       $dialog.remove();
@@ -934,7 +928,8 @@
       if (!oldSheet) {
         if (newSheet.content) {
           newSheet.content.forEach((row, rIdx) => {
-            if (rIdx > 0) { // 跳过表头
+            if (rIdx > 0) {
+              // 跳过表头
               diffSet.add(`${tableName}-row-${rIdx - 1}`);
             }
           });
@@ -996,7 +991,6 @@
         });
       }
     }
-
 
     return diffSet;
   };
@@ -1433,13 +1427,13 @@
 
         // 【新增】如果清理了历史记录或快照,强制刷新表格以重新应用高亮
         if (cleanupSettings.clearHistory || cleanupSettings.clearSnapshots) {
-            console.log('[ACU] 清理后刷新表格');
-            setTimeout(() => {
-                // 强制完全刷新
-                lastTableDataHash = '';
-                isFirstRender = true;
-                smartUpdateTable(true);
-            }, 500);
+          console.log('[ACU] 清理后刷新表格');
+          setTimeout(() => {
+            // 强制完全刷新
+            lastTableDataHash = '';
+            isFirstRender = true;
+            smartUpdateTable(true);
+          }, 500);
         }
       } else {
         showStatusMessage(`清理失败: ${result.error}`, 'error');
@@ -1490,10 +1484,10 @@
         // 【新增】清理后强制刷新表格
         console.log('[ACU] 清理所有数据后刷新表格');
         setTimeout(() => {
-            // 强制完全刷新
-            lastTableDataHash = '';
-            isFirstRender = true;
-            smartUpdateTable(true);
+          // 强制完全刷新
+          lastTableDataHash = '';
+          isFirstRender = true;
+          smartUpdateTable(true);
         }, 500);
       } else {
         showStatusMessage(`清理失败: ${result.error}`, 'error');
@@ -1565,14 +1559,16 @@
 
     // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
     let settingsMouseDownOnBg = false;
-    $('.acu-settings-overlay').on('mousedown', function (e) {
-      settingsMouseDownOnBg = $(e.target).hasClass('acu-settings-overlay');
-    }).on('mouseup', function (e) {
-      if (settingsMouseDownOnBg && $(e.target).hasClass('acu-settings-overlay')) {
-        $(this).remove();
-      }
-      settingsMouseDownOnBg = false;
-    });
+    $('.acu-settings-overlay')
+      .on('mousedown', function (e) {
+        settingsMouseDownOnBg = $(e.target).hasClass('acu-settings-overlay');
+      })
+      .on('mouseup', function (e) {
+        if (settingsMouseDownOnBg && $(e.target).hasClass('acu-settings-overlay')) {
+          $(this).remove();
+        }
+        settingsMouseDownOnBg = false;
+      });
   };
 
   // 显示清理确认对话框
@@ -1646,15 +1642,17 @@
 
       // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
       let confirmMouseDownOnBg = false;
-      $('.acu-confirm-overlay').on('mousedown', function (e) {
-        confirmMouseDownOnBg = $(e.target).hasClass('acu-confirm-overlay');
-      }).on('mouseup', function (e) {
-        if (confirmMouseDownOnBg && $(e.target).hasClass('acu-confirm-overlay')) {
-          $(this).remove();
-          resolve(false);
-        }
-        confirmMouseDownOnBg = false;
-      });
+      $('.acu-confirm-overlay')
+        .on('mousedown', function (e) {
+          confirmMouseDownOnBg = $(e.target).hasClass('acu-confirm-overlay');
+        })
+        .on('mouseup', function (e) {
+          if (confirmMouseDownOnBg && $(e.target).hasClass('acu-confirm-overlay')) {
+            $(this).remove();
+            resolve(false);
+          }
+          confirmMouseDownOnBg = false;
+        });
     });
   };
 
@@ -3912,7 +3910,8 @@
     if (!$popup || !$popup.length) return;
 
     // 清理旧标记
-    $popup.find('.acu-card')
+    $popup
+      .find('.acu-card')
       .removeClass('acu-sc-card-status acu-sc-card-core acu-sc-card-manual acu-sc-card-common acu-sc-card-config');
 
     // 通过稳定的子元素ID后缀定位（不依赖 UNIQUE_SCRIPT_ID）
@@ -3946,7 +3945,9 @@
     $popup.removeAttr('data-acu-shortcut');
     $popup.find('#acu-shortcut-style').remove();
     $popup.find('#acu-shortcut-dialog-style').remove();
-    $popup.find('.acu-card').removeClass('acu-sc-card-status acu-sc-card-core acu-sc-card-manual acu-sc-card-common acu-sc-card-config');
+    $popup
+      .find('.acu-card')
+      .removeClass('acu-sc-card-status acu-sc-card-core acu-sc-card-manual acu-sc-card-common acu-sc-card-config');
   };
 
   // 快捷选项：真正独立弹窗（不打开/不托管数据库面板），仅使用暴露API + 数据库存储
@@ -4376,7 +4377,7 @@
     try {
       let ST = window.SillyTavern || (window.parent ? window.parent.SillyTavern : null);
       if (!ST && window.top && window.top.SillyTavern) ST = window.top.SillyTavern;
-      const chat = (ST && ST.chat) ? ST.chat : [];
+      const chat = ST && ST.chat ? ST.chat : [];
       return chat.filter(m => m && !m.is_user).length;
     } catch (e) {
       return 0;
@@ -4394,9 +4395,9 @@
     const $container = $('.acu-table-container');
     const isNightMode = $container.hasClass('night-mode');
     // 获取当前主题类名
-    const themeClass = ['retro', 'dark', 'modern', 'forest', 'ocean']
-      .map(t => `acu-theme-${t}`)
-      .find(c => $container.hasClass(c)) || 'acu-theme-modern';
+    const themeClass =
+      ['retro', 'dark', 'modern', 'forest', 'ocean'].map(t => `acu-theme-${t}`).find(c => $container.hasClass(c)) ||
+      'acu-theme-modern';
 
     injectShortcutDialogStylesOnce();
     if ($('.acu-shortcut-lite-overlay').length) return;
@@ -4466,157 +4467,119 @@
       </div>
     `;
 
+    const $overlay = $(html);
 
+    $('body').append($overlay);
 
-                const $overlay = $(html);
+    const close = () => $overlay.remove();
 
-                $('body').append($overlay);
+    $overlay.find('.acu-shortcut-lite-close').on('click', close);
 
+    // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
 
+    let shortcutMouseDownOnBg = false;
 
-                const close = () => $overlay.remove();
+    $overlay
+      .on('mousedown', function (e) {
+        shortcutMouseDownOnBg = $(e.target).hasClass('acu-shortcut-lite-overlay');
+      })
+      .on('mouseup', function (e) {
+        if (shortcutMouseDownOnBg && $(e.target).hasClass('acu-shortcut-lite-overlay')) close();
 
-                $overlay.find('.acu-shortcut-lite-close').on('click', close);
+        shortcutMouseDownOnBg = false;
+      });
 
-                // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
+    const saveSettingsFromUi = () => {
+      const autoUpdateThreshold = parseInt(String($('#acu-sc-autoUpdateThreshold').val() || '0'), 10);
 
-                let shortcutMouseDownOnBg = false;
+      const autoUpdateFrequency = parseInt(String($('#acu-sc-autoUpdateFrequency').val() || '1'), 10);
 
-                $overlay.on('mousedown', function (e) {
+      const updateBatchSize = parseInt(String($('#acu-sc-updateBatchSize').val() || '1'), 10);
 
-                  shortcutMouseDownOnBg = $(e.target).hasClass('acu-shortcut-lite-overlay');
+      const skipUpdateFloors = parseInt(String($('#acu-sc-skipUpdateFloors').val() || '0'), 10);
 
-                }).on('mouseup', function (e) {
+      // 优先使用数据库API更新设置（确保内存和localStorage同步）
 
-                  if (shortcutMouseDownOnBg && $(e.target).hasClass('acu-shortcut-lite-overlay')) close();
+      if (api && typeof api.updateSettings === 'function') {
+        const ok = api.updateSettings({
+          autoUpdateThreshold,
 
-                  shortcutMouseDownOnBg = false;
+          autoUpdateFrequency,
 
-                });
+          updateBatchSize,
 
+          skipUpdateFloors,
+        });
 
+        if (ok) {
+          showNotification('配置已保存', 'success');
 
-                const saveSettingsFromUi = () => {
+          return true;
+        }
+      }
 
-                  const autoUpdateThreshold = parseInt(String($('#acu-sc-autoUpdateThreshold').val() || '0'), 10);
+      // 回退到直接写localStorage（兼容旧版数据库）
 
-                  const autoUpdateFrequency = parseInt(String($('#acu-sc-autoUpdateFrequency').val() || '1'), 10);
+      const { key, settings } = readDbSettings();
 
-                  const updateBatchSize = parseInt(String($('#acu-sc-updateBatchSize').val() || '1'), 10);
+      const next = { ...(settings || {}) };
 
-                  const skipUpdateFloors = parseInt(String($('#acu-sc-skipUpdateFloors').val() || '0'), 10);
+      next.autoUpdateThreshold = autoUpdateThreshold;
 
+      next.autoUpdateFrequency = autoUpdateFrequency;
 
+      next.updateBatchSize = updateBatchSize;
 
-                  // 优先使用数据库API更新设置（确保内存和localStorage同步）
+      next.skipUpdateFloors = skipUpdateFloors;
 
-                  if (api && typeof api.updateSettings === 'function') {
+      writeDbSettings(key, next);
 
-                    const ok = api.updateSettings({
+      showNotification('配置已保存（回退模式）', 'success');
 
-                      autoUpdateThreshold,
+      return true;
+    };
 
-                      autoUpdateFrequency,
+    $('#acu-sc-save').on('click', () => saveSettingsFromUi());
 
-                      updateBatchSize,
+    $('#acu-sc-update').on('click', async () => {
+      try {
+        // [修复] 使用 api.manualUpdate() 替代 api.triggerUpdate()
 
-                      skipUpdateFloors
+        // triggerUpdate 是外部触发的自动更新逻辑(单次)，而 manualUpdate 才是数据库内部的"立即手动更新"逻辑(支持分批/Loading提示)
 
-                    });
+        if (typeof api.manualUpdate === 'function') {
+          await api.manualUpdate();
 
-                    if (ok) {
+          // manualUpdate 内部已有 Toast 提示，这里不再重复弹窗，或者仅做简单反馈
 
-                      showNotification('配置已保存', 'success');
+          // showNotification('手动更新指令已发送', 'info');
+        } else {
+          // Fallback
 
-                      return true;
+          showNotification('正在触发手动更新...', 'info');
 
-                    }
+          const ok = await api.triggerUpdate();
 
-                  }
-
-
-
-                  // 回退到直接写localStorage（兼容旧版数据库）
-
-                  const { key, settings } = readDbSettings();
-
-                  const next = { ...(settings || {}) };
-
-                  next.autoUpdateThreshold = autoUpdateThreshold;
-
-                  next.autoUpdateFrequency = autoUpdateFrequency;
-
-                  next.updateBatchSize = updateBatchSize;
-
-                  next.skipUpdateFloors = skipUpdateFloors;
-
-                  writeDbSettings(key, next);
-
-                  showNotification('配置已保存（回退模式）', 'success');
-
-                  return true;
-
-                };
-
-
-
-                $('#acu-sc-save').on('click', () => saveSettingsFromUi());
-
-                $('#acu-sc-update').on('click', async () => {
-
-                  try {
-
-                    // [修复] 使用 api.manualUpdate() 替代 api.triggerUpdate()
-
-                    // triggerUpdate 是外部触发的自动更新逻辑(单次)，而 manualUpdate 才是数据库内部的"立即手动更新"逻辑(支持分批/Loading提示)
-
-                    if (typeof api.manualUpdate === 'function') {
-
-                       await api.manualUpdate();
-
-                       // manualUpdate 内部已有 Toast 提示，这里不再重复弹窗，或者仅做简单反馈
-
-                       // showNotification('手动更新指令已发送', 'info');
-
-                    } else {
-
-                       // Fallback
-
-                       showNotification('正在触发手动更新...', 'info');
-
-                       const ok = await api.triggerUpdate();
-
-                       showNotification(ok !== false ? '手动更新已完成' : '手动更新失败或被终止', ok !== false ? 'success' : 'error');
-
-                    }
-
-                  } catch (e) {
-
-                    showNotification('手动更新出错: ' + (e?.message || e), 'error');
-
-                  }
-
-                });
-
-
-
-                $('#acu-sc-open-visualizer').on('click', () => {
-
-                  try {
-
-                    api.openVisualizer();
-
-                    close(); // 打开可视化编辑器后自动关闭弹窗
-
-                  } catch (e) {
-
-                    showNotification('打开可视化编辑器失败', 'error');
-
-                  }
-
-                });
-
-              };
+          showNotification(
+            ok !== false ? '手动更新已完成' : '手动更新失败或被终止',
+            ok !== false ? 'success' : 'error',
+          );
+        }
+      } catch (e) {
+        showNotification('手动更新出错: ' + (e?.message || e), 'error');
+      }
+    });
+
+    $('#acu-sc-open-visualizer').on('click', () => {
+      try {
+        api.openVisualizer();
+
+        close(); // 打开可视化编辑器后自动关闭弹窗
+      } catch (e) {
+        showNotification('打开可视化编辑器失败', 'error');
+      }
+    });
+  };
 
   const showRefreshMenu = event => {
     const { $ } = getCore();
@@ -4760,7 +4723,7 @@
   };
 
   // 移除通知
-  const removeNotification = (notification) => {
+  const removeNotification = notification => {
     const { $ } = getCore();
 
     notification.fadeOut(500, function () {
@@ -4878,12 +4841,24 @@
 
   // [V8.97] 获取数据隔离代码（仅用于UI显示，不包含chatId）
   const getDataIsolationCode = () => {
-    const SETTINGS_KEYS = ['shujuku_v80_allSettings_v2', 'shujuku_v70_allSettings_v2', 'shujuku_v60_allSettings_v2', 'shujuku_v50_allSettings_v2', 'shujuku_v36_allSettings_v2', 'shujuku_v34_allSettings_v2'];
+    const SETTINGS_KEYS = [
+      'shujuku_v80_allSettings_v2',
+      'shujuku_v70_allSettings_v2',
+      'shujuku_v60_allSettings_v2',
+      'shujuku_v50_allSettings_v2',
+      'shujuku_v36_allSettings_v2',
+      'shujuku_v34_allSettings_v2',
+    ];
     let dataIsolationCode = '';
 
     try {
       let storage = window.localStorage;
-      if (!storage.getItem(SETTINGS_KEYS[0]) && !storage.getItem(SETTINGS_KEYS[1]) && !storage.getItem(SETTINGS_KEYS[2]) && window.parent) {
+      if (
+        !storage.getItem(SETTINGS_KEYS[0]) &&
+        !storage.getItem(SETTINGS_KEYS[1]) &&
+        !storage.getItem(SETTINGS_KEYS[2]) &&
+        window.parent
+      ) {
         try {
           storage = window.parent.localStorage;
         } catch (e) {}
@@ -4893,7 +4868,11 @@
       try {
         const bridge = window.parent?.['__ACU_USERSCRIPT_BRIDGE__'] || window['__ACU_USERSCRIPT_BRIDGE__'];
         const tavernSettings = bridge?.extension_settings;
-        if (tavernSettings && tavernSettings.__userscripts && tavernSettings.__userscripts['shujuku_v100__userscript_settings_v1']) {
+        if (
+          tavernSettings &&
+          tavernSettings.__userscripts &&
+          tavernSettings.__userscripts['shujuku_v100__userscript_settings_v1']
+        ) {
           const userscriptSettings = tavernSettings.__userscripts['shujuku_v100__userscript_settings_v1'];
           const v10GlobalMetaStr = userscriptSettings['shujuku_v100_globalMeta_v1'];
           if (v10GlobalMetaStr) {
@@ -4927,14 +4906,26 @@
 
   const getIsolationKey = () => {
     // 支持多个版本的数据库设置存储键 (v80最新, v70, v60, v50, v36, v34最旧)
-    const SETTINGS_KEYS = ['shujuku_v80_allSettings_v2', 'shujuku_v70_allSettings_v2', 'shujuku_v60_allSettings_v2', 'shujuku_v50_allSettings_v2', 'shujuku_v36_allSettings_v2', 'shujuku_v34_allSettings_v2'];
+    const SETTINGS_KEYS = [
+      'shujuku_v80_allSettings_v2',
+      'shujuku_v70_allSettings_v2',
+      'shujuku_v60_allSettings_v2',
+      'shujuku_v50_allSettings_v2',
+      'shujuku_v36_allSettings_v2',
+      'shujuku_v34_allSettings_v2',
+    ];
     let dataIsolationCode = '';
     let chatId = '';
 
     try {
       let storage = window.localStorage;
       // 尝试获取父级存储
-      if (!storage.getItem(SETTINGS_KEYS[0]) && !storage.getItem(SETTINGS_KEYS[1]) && !storage.getItem(SETTINGS_KEYS[2]) && window.parent) {
+      if (
+        !storage.getItem(SETTINGS_KEYS[0]) &&
+        !storage.getItem(SETTINGS_KEYS[1]) &&
+        !storage.getItem(SETTINGS_KEYS[2]) &&
+        window.parent
+      ) {
         try {
           storage = window.parent.localStorage;
         } catch (e) {}
@@ -4990,11 +4981,16 @@
       isolationKey = `chat_${chatId}`;
     }
 
-      // console.log(`[ACU] 最终隔离Key: ${isoKey || '无标签'}`);
+    // console.log(`[ACU] 最终隔离Key: ${isoKey || '无标签'}`);
     return isolationKey;
   };
 
-  // 【核心修复 V8.98】保存函数 - 优先使用精准 API 并支持后备机制
+  // 【核心修复 V9.6】保存函数 - 优先使用精准 API，失败后降级到全量保存
+  // 关键修复点:
+  // 1. 修复 deletions 变量未定义的BUG (原 5030 行)
+  // 2. 三种操作 (cell_edit/delete/row_update) 改为并行处理而非互斥
+  // 3. 任一精准API失败立即降级到全量保存 importTableAsJson
+  // 4. 保存成功后调用 refreshDataAndWorldbook 刷新世界书
   const saveDataToDatabase = async (tableData, updateContext = null) => {
     if (isSaving) return false;
 
@@ -5005,180 +5001,226 @@
       const api = getDB();
       let saveSuccessful = false;
       let usedMethod = 'none';
+      let needsBulkFallback = false; // 标记是否需要降级到全量保存
 
       try {
-        // --- 方案 1: 优先尝试精准 API (内存开销最小，且维护数据库计数器) ---
+        // ============================================================
+        // 方案 1: 优先尝试精准 API (维护数据库计数器，开销最小)
+        // ============================================================
         if (api) {
-          try {
-            // A. 处理单单元格更新 (如果提供了上下文)
-            if (updateContext && updateContext.type === 'cell_edit') {
-              const { tableName, rowIndex, colIndex, newValue } = updateContext;
-              console.log(`[ACU-API] 尝试精准更新单元格: ${tableName}[${rowIndex}, ${colIndex}]`);
+          // 收集三类操作
+          const hasCellEdit = updateContext && updateContext.type === 'cell_edit';
+          const deletions = getPendingDeletions(); // 获取待删除映射
+          const hasDeletes = Object.keys(deletions).length > 0;
 
+          // 收集 row_update (排除已经有 cell_edit 上下文的单元格)
+          const rowUpdates = {}; // tableName -> Set<rowIndex>
+          if (currentUserEditMap.size > 0) {
+            currentUserEditMap.forEach(key => {
+              const match = key.match(/(.+)-(\d+)-(\d+)/);
+              if (match) {
+                const [_, tableName, rowIdxStr] = match;
+                const rowIdx = parseInt(rowIdxStr);
+
+                // 如果当前 cell_edit 已经处理了这个单元格，跳过
+                if (hasCellEdit && updateContext.tableName === tableName && updateContext.rowIndex === rowIdx) {
+                  return;
+                }
+
+                if (!rowUpdates[tableName]) rowUpdates[tableName] = new Set();
+                rowUpdates[tableName].add(rowIdx);
+              }
+            });
+          }
+          const hasRowUpdates = Object.keys(rowUpdates).length > 0;
+
+          // ---------- A. 单单元格精准更新 ----------
+          if (hasCellEdit) {
+            try {
+              const { tableName, rowIndex, colIndex, newValue } = updateContext;
+              console.log(`[ACU-API] updateCell: ${tableName}[行${rowIndex + 1}, 列${colIndex}]`);
               // API 的 rowIndex 从 1 开始 (数据第一行)
               const success = await api.updateCell(tableName, rowIndex + 1, colIndex, newValue);
               if (success) {
                 saveSuccessful = true;
                 usedMethod = 'api_updateCell';
+                console.log('[ACU-API] ✓ updateCell 成功');
+              } else {
+                console.warn('[ACU-API] ✗ updateCell 返回 false，触发全量后备');
+                needsBulkFallback = true;
               }
+            } catch (e) {
+              console.warn('[ACU-API] updateCell 异常:', e);
+              needsBulkFallback = true;
             }
+          }
 
-            // B. 处理行删除
-            if (!saveSuccessful && pendingDeletes.size > 0) {
+          // ---------- B. 行删除 (倒序删除以保持索引稳定) ----------
+          if (hasDeletes && !needsBulkFallback) {
+            try {
               let allDeletesSuccess = true;
-
               for (const tableName of Object.keys(deletions)) {
-                // 必须从后往前删以保持索引稳定
+                // 必须从后往前删
                 const sortedIndices = deletions[tableName].map(i => parseInt(i)).sort((a, b) => b - a);
+
                 for (const rowIndex of sortedIndices) {
+                  console.log(`[ACU-API] deleteRow: ${tableName}[行${rowIndex + 1}]`);
                   const success = await api.deleteRow(tableName, rowIndex + 1);
-                  if (!success) allDeletesSuccess = false;
+                  if (!success) {
+                    console.warn(`[ACU-API] ✗ deleteRow 失败: ${tableName}[行${rowIndex + 1}]`);
+                    allDeletesSuccess = false;
+                    break;
+                  }
                 }
+                if (!allDeletesSuccess) break;
               }
 
               if (allDeletesSuccess) {
                 saveSuccessful = true;
-                usedMethod = 'api_deleteRow';
+                usedMethod = usedMethod === 'none' ? 'api_deleteRow' : usedMethod + '+deleteRow';
+                console.log('[ACU-API] ✓ deleteRow 全部成功');
+              } else {
+                console.warn('[ACU-API] deleteRow 部分失败，触发全量后备');
+                needsBulkFallback = true;
+                saveSuccessful = false;
               }
+            } catch (e) {
+              console.warn('[ACU-API] deleteRow 异常:', e);
+              needsBulkFallback = true;
+              saveSuccessful = false;
             }
+          }
 
-            // C. 处理用户编辑的行 (基于 currentUserEditMap)
-            if (!saveSuccessful && currentUserEditMap.size > 0) {
-              const affectedRows = {};
-
-              currentUserEditMap.forEach(key => {
-                const match = key.match(/(.+)-(\d+)-(\d+)/);
-                if (match) {
-                  const [_, tableName, rowIndex, colIndex] = match;
-                  if (!affectedRows[tableName]) affectedRows[tableName] = new Set();
-                  affectedRows[tableName].add(parseInt(rowIndex));
-                }
-              });
-
+          // ---------- C. 整行更新 (基于 currentUserEditMap) ----------
+          if (hasRowUpdates && !needsBulkFallback) {
+            try {
               let allUpdatesSuccess = true;
-              for (const tableName of Object.keys(affectedRows)) {
+              for (const tableName of Object.keys(rowUpdates)) {
                 const sheet = Object.values(tableData).find(s => s?.name === tableName);
                 if (!sheet || !sheet.content) continue;
 
                 const headers = sheet.content[0] || [];
-                for (const rowIndex of affectedRows[tableName]) {
+                for (const rowIndex of rowUpdates[tableName]) {
                   const rowData = sheet.content[rowIndex + 1];
                   if (!rowData) continue;
 
+                  // 构造列名->值映射
                   const updateObj = {};
                   headers.forEach((header, colIdx) => {
                     if (header) updateObj[header] = rowData[colIdx];
                   });
 
+                  console.log(`[ACU-API] updateRow: ${tableName}[行${rowIndex + 1}]`);
                   const success = await api.updateRow(tableName, rowIndex + 1, updateObj);
-                  if (!success) allUpdatesSuccess = false;
+                  if (!success) {
+                    console.warn(`[ACU-API] ✗ updateRow 失败: ${tableName}[行${rowIndex + 1}]`);
+                    allUpdatesSuccess = false;
+                    break;
+                  }
                 }
+                if (!allUpdatesSuccess) break;
               }
 
               if (allUpdatesSuccess) {
                 saveSuccessful = true;
-                usedMethod = 'api_updateRow';
+                usedMethod = usedMethod === 'none' ? 'api_updateRow' : usedMethod + '+updateRow';
+                console.log('[ACU-API] ✓ updateRow 全部成功');
+              } else {
+                console.warn('[ACU-API] updateRow 部分失败，触发全量后备');
+                needsBulkFallback = true;
+                saveSuccessful = false;
               }
+            } catch (e) {
+              console.warn('[ACU-API] updateRow 异常:', e);
+              needsBulkFallback = true;
+              saveSuccessful = false;
             }
-          } catch (apiErr) {
-            console.warn('[ACU-API] 精准 API 调用失败，将尝试备选方案:', apiErr);
           }
+
+          // 如果 cell_edit/delete/row_update 都没有，但是用户点击了"保存"按钮（手动保存），
+          // 说明可能有快照差异需要保存，直接走全量保存
+          if (!hasCellEdit && !hasDeletes && !hasRowUpdates && !saveSuccessful) {
+            console.log('[ACU-API] 没有精准操作可执行，直接使用全量保存');
+            needsBulkFallback = true;
+          }
+        } else {
+          // API 不可用，直接降级
+          console.warn('[ACU-SAVE] AutoCardUpdaterAPI 不可用');
+          needsBulkFallback = true;
         }
 
-        // --- 方案 2: API 批量后备 (如果精准 API 失败或不适用) ---
-        if (!saveSuccessful && api && api.importTableAsJson) {
+        // ============================================================
+        // 方案 2: 全量保存后备 (importTableAsJson)
+        // ============================================================
+        if ((!saveSuccessful || needsBulkFallback) && api && typeof api.importTableAsJson === 'function') {
           try {
+            console.log('[ACU-API] 执行全量保存 importTableAsJson...');
+
+            // 全量保存前，必须先在 tableData 中应用待删除的行
+            const deletions = getPendingDeletions();
+            if (Object.keys(deletions).length > 0) {
+              Object.keys(deletions).forEach(tableName => {
+                for (const sheetId in tableData) {
+                  if (sheetId === 'mate') continue;
+                  const sheet = tableData[sheetId];
+                  if (sheet?.name === tableName && sheet.content) {
+                    const indexesToDelete = deletions[tableName].map(i => parseInt(i)).sort((a, b) => b - a);
+                    indexesToDelete.forEach(rowIndex => {
+                      const actualRowIndex = rowIndex + 1;
+                      if (sheet.content[actualRowIndex]) {
+                        sheet.content.splice(actualRowIndex, 1);
+                      }
+                    });
+                    break;
+                  }
+                }
+              });
+            }
+
             const apiSuccess = await api.importTableAsJson(JSON.stringify(tableData));
             if (apiSuccess) {
               saveSuccessful = true;
-              usedMethod = 'api_bulk';
+              usedMethod = 'api_bulk_importTableAsJson';
+              console.log('[ACU-API] ✓ 全量保存成功');
+            } else {
+              console.warn('[ACU-API] ✗ importTableAsJson 返回 false');
             }
           } catch (bulkErr) {
-            console.warn('[ACU-API] 批量 API 更新失败:', bulkErr);
+            console.warn('[ACU-API] 全量保存异常:', bulkErr);
           }
         }
 
-        // --- 方案 3: 最终手动注入后备 (ST.chat 直接注入) ---
-        if (!saveSuccessful) {
-          console.warn('[ACU-SAVE] 所有 API 方案均不可用或失败，退回到手动注入模式...');
-
-          // 执行原有的删除逻辑以确保 tableData 同步
-          const deletions = getPendingDeletions();
-          Object.keys(deletions).forEach(tableName => {
-            for (const sheetId in tableData) {
-              if (sheetId === 'mate') continue;
-              const sheet = tableData[sheetId];
-              if (sheet?.name === tableName && sheet.content) {
-                const indexesToDelete = deletions[tableName].map(i => parseInt(i)).sort((a, b) => b - a);
-                indexesToDelete.forEach(rowIndex => {
-                  const actualRowIndex = rowIndex + 1;
-                  if (sheet.content[actualRowIndex]) sheet.content.splice(actualRowIndex, 1);
-                });
-                break;
-              }
-            }
-          });
-
-          // 执行直接注入
-          try {
-            let ST = window.SillyTavern || (window.parent ? window.parent.SillyTavern : null);
-            if (!ST && window.top && window.top.SillyTavern) ST = window.top.SillyTavern;
-
-            let isolationKey = getDataIsolationCode();
-
-            if (ST && ST.chat && ST.chat.length > 0) {
-              let targetMsg = null;
-              for (let i = ST.chat.length - 1; i >= 0; i--) {
-                if (!ST.chat[i].is_user) {
-                  targetMsg = ST.chat[i];
-                  break;
-                }
-              }
-
-              if (targetMsg) {
-                if (!targetMsg.TavernDB_ACU_IsolatedData) targetMsg.TavernDB_ACU_IsolatedData = {};
-                if (!targetMsg.TavernDB_ACU_IsolatedData[isolationKey]) {
-                  targetMsg.TavernDB_ACU_IsolatedData[isolationKey] = {
-                    independentData: {},
-                    modifiedKeys: [],
-                    updateGroupKeys: [],
-                  };
-                }
-
-                const tagData = targetMsg.TavernDB_ACU_IsolatedData[isolationKey];
-                const sheetsToSave = Object.keys(tableData).filter(k => k.startsWith('sheet_'));
-                sheetsToSave.forEach(k => {
-                  tagData.independentData[k] = JSON.parse(JSON.stringify(tableData[k]));
-                });
-                tagData.modifiedKeys = [...new Set([...(tagData.modifiedKeys || []), ...sheetsToSave])];
-
-                if (ST.saveChat) {
-                  await ST.saveChat();
-                  saveSuccessful = true;
-                  usedMethod = 'manual_injection';
-                }
-              }
-            }
-          } catch (manualErr) {
-            console.error('[ACU-SAVE] 手动注入失败:', manualErr);
-          }
-        }
-
-        // --- 保存后的清理与反馈 ---
+        // ============================================================
+        // 保存后处理：刷新世界书 + UI更新 + 清理状态
+        // ============================================================
         if (saveSuccessful) {
-          console.log(`[ACU-SAVE] 保存流程完成。方法: ${usedMethod}`);
+          console.log(`[ACU-SAVE] ✓ 保存完成，方法: ${usedMethod}`);
+
+          // 调用 refreshDataAndWorldbook 强制刷新世界书 (如果可用)
+          if (api && typeof api.refreshDataAndWorldbook === 'function') {
+            try {
+              await api.refreshDataAndWorldbook();
+              console.log('[ACU-SAVE] ✓ 世界书已刷新');
+            } catch (refreshErr) {
+              console.warn('[ACU-SAVE] 世界书刷新失败 (非致命):', refreshErr);
+            }
+          }
 
           pendingDeletes.clear();
           savePendingDeletions({});
-          currentUserEditMap.clear(); // 保存成功后清理编辑标记
+          currentUserEditMap.clear();
 
-          if (typeof generateDataHash === 'function') lastTableDataHash = generateDataHash(tableData);
+          if (typeof generateDataHash === 'function') {
+            lastTableDataHash = generateDataHash(tableData);
+          }
 
           showNotification(`保存成功！(${usedMethod})`, 'success');
 
           setTimeout(() => {
             const { $ } = getCore();
-            if (typeof $ !== 'undefined') $('.pending-deletion').removeClass('pending-deletion');
+            if (typeof $ !== 'undefined') {
+              $('.pending-deletion').removeClass('pending-deletion');
+            }
 
             if (typeof currentDiffMap !== 'undefined' && typeof generateDiffMap === 'function') {
               currentDiffMap = generateDiffMap(tableData);
@@ -5192,7 +5234,8 @@
           }, 50);
           return true;
         } else {
-          alert('保存失败：尝试了所有保存方案均告失败。请检查控制台日志 (F12)。');
+          console.error('[ACU-SAVE] ✗ 所有保存方案均失败');
+          alert('保存失败：精准API和全量保存均失败。\n请检查控制台日志 (F12) 获取详细信息。');
           return false;
         }
       } catch (e) {
@@ -5204,7 +5247,6 @@
       }
     });
   };
-
 
   const ensureProperFormat = data => {
     if (!data) return data;
@@ -5416,7 +5458,6 @@
     const hasSnapshot = loadSnapshot() !== null;
     if (hasSnapshot || forceFullUpdate) {
       currentDiffMap = generateDiffMap(rawData);
-
     } else {
       console.log('[ACU] 无快照,保持现有diffMap');
     }
@@ -5479,7 +5520,13 @@
         if (currentSearchTerm) {
           const term = currentSearchTerm.toLowerCase();
           filteredCount = tableData.rows.filter(row =>
-            row.some((cell, idx) => idx > 0 && String(cell || '').toLowerCase().includes(term))
+            row.some(
+              (cell, idx) =>
+                idx > 0 &&
+                String(cell || '')
+                  .toLowerCase()
+                  .includes(term),
+            ),
           ).length;
         }
 
@@ -5525,7 +5572,7 @@
     const $execBtn = $section.find('.acu-search-execute-btn');
 
     // 切换展开/收起 (最高优先级操作 Style)
-    $toggleBtn.off('click.acu').on('click.acu', function() {
+    $toggleBtn.off('click.acu').on('click.acu', function () {
       isSearchVisible = !isSearchVisible;
 
       // 关键修正：这里的按钮本身就是 i 标签，直接操作 $(this)
@@ -5554,13 +5601,13 @@
     });
 
     // 执行搜索按钮
-    $execBtn.off('click.acu').on('click.acu', function() {
+    $execBtn.off('click.acu').on('click.acu', function () {
       currentSearchTerm = $searchInput.val().trim();
       updateTableContentOnly();
     });
 
     // 回车搜索
-    $searchInput.off('keydown.acu').on('keydown.acu', function(e) {
+    $searchInput.off('keydown.acu').on('keydown.acu', function (e) {
       if (e.key === 'Enter') {
         currentSearchTerm = $(this).val().trim();
         updateTableContentOnly();
@@ -5568,7 +5615,7 @@
     });
 
     // 清空搜索
-    $clearBtn.off('click.acu').on('click.acu', function() {
+    $clearBtn.off('click.acu').on('click.acu', function () {
       $searchInput.val('');
       currentSearchTerm = '';
       $(this).hide();
@@ -5576,7 +5623,7 @@
     });
 
     // 输入框变化动态控制清空按钮
-    $searchInput.on('input.acu', function() {
+    $searchInput.on('input.acu', function () {
       if ($(this).val()) $clearBtn.show();
       else $clearBtn.hide();
     });
@@ -5735,7 +5782,7 @@
         <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
-                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.51 [标识：${getDataIsolationCode() || '无'}]</span></span>
+                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.55 [标识：${getDataIsolationCode() || '无'}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
                         <!-- 极致月相盒：重回 summary 内部实现垂直居中与结构绑定 -->
@@ -5865,7 +5912,7 @@
   };
 
   // 初始化行位置映射表
-  const initializeRowMapping = (tableName) => {
+  const initializeRowMapping = tableName => {
     const rawData = getTableData();
     const tables = processJsonData(rawData);
 
@@ -5934,7 +5981,7 @@
   };
 
   // 加载行位置映射关系
-  const loadRowMapping = (tableName) => {
+  const loadRowMapping = tableName => {
     try {
       const saved = localStorage.getItem(`acu_row_position_mapping_${tableName}`);
       if (saved) {
@@ -5968,7 +6015,9 @@
         const row = tableData.rows[originalIndex];
         return row.some((cell, idx) => {
           if (idx === 0) return false; // 跳过隐藏列
-          return String(cell || '').toLowerCase().includes(term);
+          return String(cell || '')
+            .toLowerCase()
+            .includes(term);
         });
       });
     }
@@ -6024,10 +6073,13 @@
               const term = currentSearchTerm.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
               const regex = new RegExp(`(${term})`, 'gi');
               // 仅对文本内容进行高亮，避免破坏可能存在的换行符 <br>
-              formattedContent = formattedContent.split(/(<br>)/gi).map(part => {
-                if (part.toLowerCase() === '<br>') return part;
-                return part.replace(regex, '<mark class="acu-search-match-text">$1</mark>');
-              }).join('');
+              formattedContent = formattedContent
+                .split(/(<br>)/gi)
+                .map(part => {
+                  if (part.toLowerCase() === '<br>') return part;
+                  return part.replace(regex, '<mark class="acu-search-match-text">$1</mark>');
+                })
+                .join('');
             } catch (reErr) {
               console.warn('[ACU] 高亮正则生成失败:', reErr);
             }
@@ -6070,7 +6122,7 @@
     $section.find('.data-table').addClass('is-sorting-rows');
     $rows.attr('draggable', 'true').off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
 
-    $rows.on('dragstart.acu', function(e) {
+    $rows.on('dragstart.acu', function (e) {
       if (!isEditingRowOrder) return;
       isDragging = true;
       dragStartIndex = $(this).index();
@@ -6081,7 +6133,7 @@
       e.originalEvent.dataTransfer.setData('text/plain', dragStartIndex.toString());
     });
 
-    $rows.on('dragend.acu', function() {
+    $rows.on('dragend.acu', function () {
       isDragging = false;
       dragStartIndex = -1;
       dragEndIndex = -1;
@@ -6089,7 +6141,7 @@
       $section.find('.drag-over').removeClass('drag-over');
     });
 
-    $rows.on('dragover.acu', function(e) {
+    $rows.on('dragover.acu', function (e) {
       if (!isDragging || !isEditingRowOrder) return;
 
       e.preventDefault();
@@ -6105,18 +6157,18 @@
       }
     });
 
-    $rows.on('dragenter.acu', function(e) {
+    $rows.on('dragenter.acu', function (e) {
       e.preventDefault();
     });
 
-    $rows.on('dragleave.acu', function(e) {
+    $rows.on('dragleave.acu', function (e) {
       if (e.target === this || $(e.target).closest('tr')[0] === this) {
         $(this).removeClass('drag-over');
         dragEndIndex = -1;
       }
     });
 
-    $rows.on('drop.acu', function(e) {
+    $rows.on('drop.acu', function (e) {
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
@@ -6133,11 +6185,7 @@
           const $tableSection = $(`#acu-table-${getSafeTableId(tableName)}`);
           if ($tableSection.length) {
             const currentPage = getCurrentPageForTable(tableName);
-            const paginationHtml = generatePaginationHTML(
-              tableName,
-              tables[tableName].rows.length,
-              currentPage
-            );
+            const paginationHtml = generatePaginationHTML(tableName, tables[tableName].rows.length, currentPage);
             const newTableHtml = renderDataTable(tables[tableName], tableName);
 
             $tableSection.find('.acu-pagination-container').remove();
@@ -6176,7 +6224,7 @@
     $tabs.attr('draggable', 'true');
 
     // 使用事件委托绑定事件，避免重复绑定和性能损耗
-    $tabsContainer.off('.acu-drag');
+    consabsContainer.off('.acu-drag');
 
     $tabsContainer.on('dragstart.acu-drag', '.acu-tab-btn', function (e) {
       if (!isEditingOrder) return;
@@ -6229,7 +6277,7 @@
   };
 
   // 新增：顺序管理菜单弹出
-  const showOrderMenu = (event) => {
+  const showOrderMenu = event => {
     const { $ } = getCore();
 
     const $existingMenu = $('.acu-order-menu');
@@ -6283,7 +6331,7 @@
     });
 
     // 【修复】改进的点击外部关闭逻辑，支持父窗口监听
-    const closeOrderMenu = (e) => {
+    const closeOrderMenu = e => {
       if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
         $menu.remove();
         document.removeEventListener('click', closeOrderMenu);
@@ -6445,23 +6493,23 @@
         const rawData = getTableData();
         const tables = processJsonData(rawData);
         if (tables && tables[tableName]) {
-           const $section = $(`#acu-table-${tableId}`);
-           const currentPage = getCurrentPageForTable(tableName);
-           const paginationHtml = generatePaginationHTML(
-             tableName,
-             tables[tableName].rows ? tables[tableName].rows.length : 0,
-             currentPage,
-           );
-           const newTableHtml = renderDataTable(tables[tableName], tableName);
+          const $section = $(`#acu-table-${tableId}`);
+          const currentPage = getCurrentPageForTable(tableName);
+          const paginationHtml = generatePaginationHTML(
+            tableName,
+            tables[tableName].rows ? tables[tableName].rows.length : 0,
+            currentPage,
+          );
+          const newTableHtml = renderDataTable(tables[tableName], tableName);
 
-           $section.find('.acu-pagination-container').remove();
-           $section.find('.section-title').after(paginationHtml);
-           $section.find('.data-table-wrapper').replaceWith(newTableHtml);
+          $section.find('.acu-pagination-container').remove();
+          $section.find('.section-title').after(paginationHtml);
+          $section.find('.data-table-wrapper').replaceWith(newTableHtml);
 
-           bindCellEventsForSection($section);
-           bindPaginationEvents($section, tableName, tables[tableName]);
-           bindRowDragEvents($section, tableName);
-         }
+          bindCellEventsForSection($section);
+          bindPaginationEvents($section, tableName, tables[tableName]);
+          bindRowDragEvents($section, tableName);
+        }
 
         // 添加这行：检查是否需要跳转到最后一页
         setTimeout(() => checkAndJumpToLastPageForSummary(), 100);
@@ -6485,13 +6533,15 @@
 
     // 2. 核心：月相/太阳切换按钮交互
     // 改用 button 并执行 preventDefault，这是拦截 summary 默认行为最稳固的手段
-    $('.acu-mode-toggle').off('click.acu').on('click.acu', function (e) {
+    $('.acu-mode-toggle')
+      .off('click.acu')
+      .on('click.acu', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
         toggleNightMode();
         return false;
-    });
+      });
   };
 
   const showCellMenu = (event, cell) => {
@@ -6805,7 +6855,7 @@
             tableName,
             rowIndex,
             colIndex,
-            newValue: newContent
+            newValue: newContent,
           });
           if (saveSuccess) {
             // 标记为高亮
@@ -6838,101 +6888,103 @@
 
         // 点击外部关闭（防误触：mousedown+mouseup都在overlay背景才关闭）
         let editMouseDownOnBg = false;
-        $editOverlay.on('mousedown', function (e) {
-          editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
-        }).on('mouseup', function (e) {
-          if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
-          editMouseDownOnBg = false;
-        });
+        $editOverlay
+          .on('mousedown', function (e) {
+            editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
+          })
+          .on('mouseup', function (e) {
+            if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
+            editMouseDownOnBg = false;
+          });
         break;
 
       case 'insert-above':
-         // 在上方插入新行
-         try {
-           const rawData = getTableData();
-           if (!rawData?.[tableKey]) {
-             alert('无法获取表格数据');
-             return;
-           }
+        // 在上方插入新行
+        try {
+          const rawData = getTableData();
+          if (!rawData?.[tableKey]) {
+            alert('无法获取表格数据');
+            return;
+          }
 
-           // 获取当前表格的列数
-           const headers = rawData[tableKey].content[0] || [];
-           const colCount = headers.length;
+          // 获取当前表格的列数
+          const headers = rawData[tableKey].content[0] || [];
+          const colCount = headers.length;
 
-           // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
-           const newRow = [];
-           for (let i = 0; i < colCount; i++) {
-             if (i === 1) {
-               // 第一列数据单元格（跳过表头列）填入"1"作为占位符
-               newRow.push('1');
-             } else {
-               newRow.push(''); // 其他单元格保持空白
-             }
-           }
+          // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
+          const newRow = [];
+          for (let i = 0; i < colCount; i++) {
+            if (i === 1) {
+              // 第一列数据单元格（跳过表头列）填入"1"作为占位符
+              newRow.push('1');
+            } else {
+              newRow.push(''); // 其他单元格保持空白
+            }
+          }
 
-           // 在指定行上方插入新行
-           const insertIndex = rowIndex + 1; // +1: 因为第一行是表头
-           rawData[tableKey].content.splice(insertIndex, 0, newRow);
+          // 在指定行上方插入新行
+          const insertIndex = rowIndex + 1; // +1: 因为第一行是表头
+          rawData[tableKey].content.splice(insertIndex, 0, newRow);
 
-           // 标记为已编辑（标记第一列数据单元格）
-           currentUserEditMap.add(`${tableName}-${rowIndex}-1`); // 标记第一个数据单元格为用户编辑
+          // 标记为已编辑（标记第一列数据单元格）
+          currentUserEditMap.add(`${tableName}-${rowIndex}-1`); // 标记第一个数据单元格为用户编辑
 
-           // 保存数据
-           const saveSuccess = await saveDataToDatabase(rawData);
-           if (saveSuccess) {
-             showNotification('已成功在上方添加新行（第一列已填入占位符"1"）', 'success');
-             // 重新渲染表格
-             smartUpdateTable(true);
-           }
-         } catch (e) {
-           console.error('添加新行失败:', e);
-           alert('添加新行失败：' + e.message);
-         }
-         break;
+          // 保存数据
+          const saveSuccess = await saveDataToDatabase(rawData);
+          if (saveSuccess) {
+            showNotification('已成功在上方添加新行（第一列已填入占位符"1"）', 'success');
+            // 重新渲染表格
+            smartUpdateTable(true);
+          }
+        } catch (e) {
+          console.error('添加新行失败:', e);
+          alert('添加新行失败：' + e.message);
+        }
+        break;
 
       case 'insert':
-         // 在下方插入新行
-         try {
-           const rawData = getTableData();
-           if (!rawData?.[tableKey]) {
-             alert('无法获取表格数据');
-             return;
-           }
+        // 在下方插入新行
+        try {
+          const rawData = getTableData();
+          if (!rawData?.[tableKey]) {
+            alert('无法获取表格数据');
+            return;
+          }
 
-           // 获取当前表格的列数
-           const headers = rawData[tableKey].content[0] || [];
-           const colCount = headers.length;
+          // 获取当前表格的列数
+          const headers = rawData[tableKey].content[0] || [];
+          const colCount = headers.length;
 
-           // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
-           const newRow = [];
-           for (let i = 0; i < colCount; i++) {
-             if (i === 1) {
-               // 第一列数据单元格（跳过表头列）填入"1"作为占位符
-               newRow.push('1');
-             } else {
-               newRow.push(''); // 其他单元格保持空白
-             }
-           }
+          // 创建新的空白行，并在第一列数据单元格（索引1）填入"1"作为占位符
+          const newRow = [];
+          for (let i = 0; i < colCount; i++) {
+            if (i === 1) {
+              // 第一列数据单元格（跳过表头列）填入"1"作为占位符
+              newRow.push('1');
+            } else {
+              newRow.push(''); // 其他单元格保持空白
+            }
+          }
 
-           // 在指定行下方插入新行
-           const insertIndex = rowIndex + 2; // +2: +1因为第一行是表头，+1因为要插入在下方
-           rawData[tableKey].content.splice(insertIndex, 0, newRow);
+          // 在指定行下方插入新行
+          const insertIndex = rowIndex + 2; // +2: +1因为第一行是表头，+1因为要插入在下方
+          rawData[tableKey].content.splice(insertIndex, 0, newRow);
 
-           // 标记为已编辑（标记第一列数据单元格）
-           currentUserEditMap.add(`${tableName}-${rowIndex + 1}-1`); // 标记第一个数据单元格为用户编辑
+          // 标记为已编辑（标记第一列数据单元格）
+          currentUserEditMap.add(`${tableName}-${rowIndex + 1}-1`); // 标记第一个数据单元格为用户编辑
 
-           // 保存数据
-           const saveSuccess = await saveDataToDatabase(rawData);
-           if (saveSuccess) {
-             showNotification('已成功在下方添加新行（第一列已填入占位符"1"）', 'success');
-             // 重新渲染表格
-             smartUpdateTable(true);
-           }
-         } catch (e) {
-           console.error('添加新行失败:', e);
-           alert('添加新行失败：' + e.message);
-         }
-         break;
+          // 保存数据
+          const saveSuccess = await saveDataToDatabase(rawData);
+          if (saveSuccess) {
+            showNotification('已成功在下方添加新行（第一列已填入占位符"1"）', 'success');
+            // 重新渲染表格
+            smartUpdateTable(true);
+          }
+        } catch (e) {
+          console.error('添加新行失败:', e);
+          alert('添加新行失败：' + e.message);
+        }
+        break;
 
       case 'delete':
         // 标记删除，不实际删除
@@ -7082,11 +7134,16 @@
       });
 
     // --- 新增：为每个表格分区绑定搜索功能 ---
-    $('.acu-table-section').each(function() {
+    $('.acu-table-section').each(function () {
       const $section = $(this);
-      const tableName = $section.find('.section-title').contents().filter(function() {
-        return this.nodeType === 3; // 获取文本节点（表格名）
-      }).text().trim();
+      const tableName = $section
+        .find('.section-title')
+        .contents()
+        .filter(function () {
+          return this.nodeType === 3; // 获取文本节点（表格名）
+        })
+        .text()
+        .trim();
       if (tableName) {
         bindCellEventsForSection($section, tableName);
       }
@@ -7161,7 +7218,6 @@
       if (!loadSnapshot()) {
         const current = api.exportTableAsJson();
         if (current) {
-
           saveSnapshot(current);
           lastTableDataHash = generateDataHash(current);
         }
