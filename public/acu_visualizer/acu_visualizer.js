@@ -2,7 +2,7 @@
 // @name         兼容性可视化表格 v9.55
 // @namespace    http://tampermonkey.net/
 // @version      9.5.5
-// @description  兼容性可视化表格 v9.55
+// @description  兼容性可视化表格 v9.55 -release
 // @author       Cline (Optimized)
 // @match        */*
 // @grant        none
@@ -414,7 +414,7 @@
   // 检查 localStorage 大小
   const getStorageSize = () => {
     let total = 0;
-    for (let key in localStorage) {
+    for (const key in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
       }
@@ -536,8 +536,8 @@
   // 【新增】手动清理存储函数（用户控制）
   const manualCleanupStorage = (settings = getCleanupSettings()) => {
     const { $ } = getCore();
-    let cleanedItems = [];
-    let keptItems = [];
+    const cleanedItems = [];
+    const keptItems = [];
     const originalSize = parseFloat(getStorageSize());
 
     try {
@@ -4683,7 +4683,7 @@
   };
 
   // 通知队列管理
-  let notificationQueue = [];
+  const notificationQueue = [];
   const NOTIFICATION_SPACING = 10; // 每个通知之间的间距
 
   // 统一的通知函数
@@ -6214,7 +6214,7 @@
 
     const $tabs = $tabsContainer.find('.acu-tab-btn');
     let dragStartIndex = -1;
-    let originalOrder = [];
+    const originalOrder = [];
 
     // 记录初始顺序用于取消
     $tabs.each(function () {
@@ -6291,7 +6291,7 @@
 
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
 
-    let menuHtml = `
+    const menuHtml = `
       <div class="acu-cell-menu acu-order-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
           <div class="acu-cell-menu-item" data-action="tab-order">📑 编辑标签顺序 ${isEditingOrder ? ' (开启中)' : ''}</div>
           <div class="acu-cell-menu-item" data-action="row-order">☰ 编辑行内容顺序 ${isEditingRowOrder ? ' (开启中)' : ''}</div>
@@ -6573,7 +6573,7 @@
     const deleteKey = `${tableName}-row-${rowIndex}`;
     const isPendingDelete = pendingDeletes.has(deleteKey);
 
-    let menuHtml = isPendingDelete
+    const menuHtml = isPendingDelete
       ? `
       <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
           <div class="acu-cell-menu-item restore" data-action="restore">🔄 恢复整行</div>
@@ -7039,7 +7039,7 @@
     const tableHtml = generateTableHTML();
     $('.acu-table-container').remove();
 
-    let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
+    const $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
     if ($latestAIMessage.length === 0) {
       const $chatContainer = $('#chat, .chat-container').first();
@@ -7243,7 +7243,7 @@
         const observer = new MutationObserver(mutations => {
           mutations.forEach(mutation => {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-              for (let node of mutation.addedNodes) {
+              for (const node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
                   const $node = $(node);
                   if ($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
