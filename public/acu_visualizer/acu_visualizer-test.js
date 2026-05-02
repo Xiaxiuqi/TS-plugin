@@ -415,8 +415,8 @@
   const getStorageSize = () => {
     let total = 0;
     for (let key in localStorage) {
-      if (localStorage.hasOwnProperty(key)) {
-        tconsal += localStorage[key].length + key.length;
+      if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+        total += localStorage[key].length + key.length;
       }
     }
     return (total / 1024 / 1024).toFixed(2); // 返回 MB
