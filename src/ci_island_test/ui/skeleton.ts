@@ -31,7 +31,7 @@ export function createUI(): {
   $('body').append('<input type="file" id="ci-hidden-input" accept="image/*" style="display:none">');
 
   // Toast 容器
-  $('body').append('<div id="ci-toast">浮岛 v1.6 载入成功</div>');
+  $('body').append('<div id="ci-toast">浮岛 v1.6【-测试】载入成功</div>');
 
   // 浮岛主容器
   const $con = $(`
