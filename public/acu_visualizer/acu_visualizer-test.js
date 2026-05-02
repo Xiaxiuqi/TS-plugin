@@ -539,8 +539,8 @@
     let cleanedItems = [];
     let keptItems = [];
     const originalSize = parseFloat(getStorageSize());
-cons
-    consy {
+
+    try {
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -4720,7 +4720,7 @@ cons
       const notificationHeight = notification.outerHeight() || 0;
       currentTop += notificationHeight + NOTIFICATION_SPACING;
     });
-  cons
+  };
 
   // 移除通知
   const removeNotification = notification => {
@@ -6301,7 +6301,7 @@ cons
     const $menu = $(menuHtml);
     $('body').append($menu);
 
-    consnst clickX = event.clientX;
+    const clickX = event.clientX;
     const clickY = event.clientY;
 
     $menu.css({
@@ -6581,7 +6581,7 @@ cons
       </div>
     `
       : `
-    cons<div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
+      <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
           <div class="acu-cell-menu-item edit" data-action="edit">✏️ 编辑</div>
           <div class="acu-cell-menu-item history" data-action="history">📜 历史记录</div>
           <div class="acu-cell-menu-item insert" data-action="insert-above">➕ 在上方插入新行</div>
@@ -7045,7 +7045,7 @@ cons
       const $chatContainer = $('#chat, .chat-container').first();
       if ($chatContainer.length) {
         $chatContainer.append(tableHtml);
-    cons} else {
+      } else {
         $('body').append(tableHtml);
       }
     } else {
@@ -7245,7 +7245,7 @@ cons
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
               for (let node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
-                  cconsst $node = $(node);
+                  const $node = $(node);
                   if ($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
                     setTimeout(() => {
                       checkAndUpdateTablePosition();
