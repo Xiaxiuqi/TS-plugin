@@ -90,8 +90,13 @@ importers:
         specifier: ^2.8.4
         version: 2.8.4
       zod:
+<<<<<<< HEAD
         specifier: ^4.4.3
         version: 4.4.3
+=======
+        specifier: ^4.4.2
+        version: 4.4.2
+>>>>>>> 83d9038af3d5ad60dd9744400c8b94779c47044e
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.4
@@ -4109,8 +4114,13 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+<<<<<<< HEAD
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+=======
+  zod@4.4.2:
+    resolution: {integrity: sha512-IynmDyxsEsb9RKzO3J9+4SxXnl2FTFSzNBaKKaMV6tsSk0rw9gYw9gs+JFCq/qk2LCZ78KDwyj+Z289TijSkUw==}
+>>>>>>> 83d9038af3d5ad60dd9744400c8b94779c47044e
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -8311,6 +8321,10 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
+<<<<<<< HEAD
   zod@4.4.3: {}
+=======
+  zod@4.4.2: {}
+>>>>>>> 83d9038af3d5ad60dd9744400c8b94779c47044e
 
   zwitch@2.0.4: {}
