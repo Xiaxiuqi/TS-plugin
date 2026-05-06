@@ -2,7 +2,7 @@
 // @name         兼容性可视化表格 v9.55
 // @namespace    http://tampermonkey.net/
 // @version      9.5.5
-// @description  兼容性可视化表格 v9.55 -release
+// @description  兼容性可视化表格 v9.55
 // @author       Cline (Optimized)
 // @match        */*
 // @grant        none
@@ -192,6 +192,30 @@
     { id: 'forest', name: '森之物语', icon: 'fas fa-leaf' },
     { id: 'ocean', name: '深海幽蓝', icon: 'fas fa-water' },
   ];
+
+  const acuSvgIcon = (name, className = 'acu-svg-icon') => {
+    const icons = {
+      check: '<path d="M20 6 9 17l-5-5"></path>',
+      save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
+      tabs: '<path d="M4 5h8l2 3h6v11H4z"></path><path d="M4 9h16"></path>',
+      rows: '<path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path>',
+      close: '<path d="M18 6 6 18"></path><path d="M6 6l12 12"></path>',
+      restore: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path>',
+      edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
+      history: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path>',
+      plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
+      trash:
+        '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path>',
+      send: '<path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path>',
+    };
+    return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.check}</svg>`;
+  };
+
+  const acuMenuIcon = name => `<span class="acu-menu-icon">${acuSvgIcon(name)}</span>`;
+  const acuMenuItemContent = (iconName, label) =>
+    `${acuMenuIcon(iconName)}<span class="acu-menu-label">${label}</span>`;
+  const acuButtonIconLabel = (iconName, label) =>
+    `<span class="acu-inline-svg-label">${acuSvgIcon(iconName)}<span>${label}</span></span>`;
 
   const DEFAULT_TAB_STATUS = {
     hasNewUpdates: false,
@@ -414,7 +438,7 @@
   // 检查 localStorage 大小
   const getStorageSize = () => {
     let total = 0;
-    for (const key in localStorage) {
+    for (let key in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
       }
@@ -536,8 +560,8 @@
   // 【新增】手动清理存储函数（用户控制）
   const manualCleanupStorage = (settings = getCleanupSettings()) => {
     const { $ } = getCore();
-    const cleanedItems = [];
-    const keptItems = [];
+    let cleanedItems = [];
+    let keptItems = [];
     const originalSize = parseFloat(getStorageSize());
 
     try {
@@ -1686,6 +1710,15 @@
                     --acu-text: #5a3e2b;
                     --acu-border: #d4c4a8;
                     --acu-highlight: #b48a5c;
+                    --acu-hover-bg: #eadcc7;
+                    --acu-hover-bg-soft: rgba(180, 138, 92, 0.15);
+                    --acu-hover-bg-strong: #f0e6d5;
+                    --acu-table-even-row-bg: rgba(250, 245, 235, 0.9);
+                    --acu-save-hover: #6aa86a;
+                    --acu-refresh-hover: #735842;
+                    --acu-row-sort-hover: rgba(180, 138, 92, 0.12);
+                    --acu-row-drop-bg: rgba(140, 110, 84, 0.18);
+                    --acu-row-drop-border: #8c6e54;
                 }
                 .acu-theme-dark {
                     --acu-primary: #8479b8;
@@ -1695,6 +1728,15 @@
                     --acu-text: #5a4f7c;
                     --acu-border: #d4cce8;
                     --acu-highlight: #958ac5;
+                    --acu-hover-bg: #e4def8;
+                    --acu-hover-bg-soft: rgba(132, 121, 184, 0.16);
+                    --acu-hover-bg-strong: #dad2f2;
+                    --acu-table-even-row-bg: rgba(246, 243, 255, 0.92);
+                    --acu-save-hover: #6aa878;
+                    --acu-refresh-hover: #6f64a8;
+                    --acu-row-sort-hover: rgba(132, 121, 184, 0.14);
+                    --acu-row-drop-bg: rgba(132, 121, 184, 0.2);
+                    --acu-row-drop-border: #8479b8;
                 }
                 .acu-theme-modern {
                     --acu-primary: #5c9dff;
@@ -1704,6 +1746,15 @@
                     --acu-text: #444;
                     --acu-border: #d0d0d0;
                     --acu-highlight: #4a8ae6;
+                    --acu-hover-bg: #e4efff;
+                    --acu-hover-bg-soft: rgba(92, 157, 255, 0.14);
+                    --acu-hover-bg-strong: #d8e9ff;
+                    --acu-table-even-row-bg: rgba(245, 249, 255, 0.94);
+                    --acu-save-hover: #4fa85c;
+                    --acu-refresh-hover: #286090;
+                    --acu-row-sort-hover: rgba(92, 157, 255, 0.12);
+                    --acu-row-drop-bg: rgba(92, 157, 255, 0.2);
+                    --acu-row-drop-border: #5c9dff;
                 }
                 .acu-theme-forest {
                     --acu-primary: #4a8c5c;
@@ -1713,6 +1764,15 @@
                     --acu-text: #3a6b4a;
                     --acu-border: #b8d0b8;
                     --acu-highlight: #5a9c6c;
+                    --acu-hover-bg: #dcebdd;
+                    --acu-hover-bg-soft: rgba(74, 140, 92, 0.14);
+                    --acu-hover-bg-strong: #d2e6d4;
+                    --acu-table-even-row-bg: rgba(243, 250, 243, 0.94);
+                    --acu-save-hover: #3f7f50;
+                    --acu-refresh-hover: #3b744a;
+                    --acu-row-sort-hover: rgba(74, 140, 92, 0.12);
+                    --acu-row-drop-bg: rgba(74, 140, 92, 0.2);
+                    --acu-row-drop-border: #4a8c5c;
                 }
                 .acu-theme-ocean {
                     --acu-primary: #4a7ca8;
@@ -1722,6 +1782,15 @@
                     --acu-text: #3a6c98;
                     --acu-border: #b8d0e0;
                     --acu-highlight: #5a8cb8;
+                    --acu-hover-bg: #dceaf5;
+                    --acu-hover-bg-soft: rgba(74, 124, 168, 0.14);
+                    --acu-hover-bg-strong: #d2e3f1;
+                    --acu-table-even-row-bg: rgba(242, 248, 253, 0.94);
+                    --acu-save-hover: #4f9a68;
+                    --acu-refresh-hover: #3c678c;
+                    --acu-row-sort-hover: rgba(74, 124, 168, 0.12);
+                    --acu-row-drop-bg: rgba(74, 124, 168, 0.2);
+                    --acu-row-drop-border: #4a7ca8;
                 }
 
                 .acu-table-container.night-mode.acu-theme-dark {
@@ -2302,10 +2371,21 @@
                     text-align: center;
                     transition: all 0.2s;
                 }
+                .acu-table-container.night-mode .acu-page-btn {
+                    background: #3a3a3a !important;
+                    color: #dbdbd6 !important;
+                    border-color: #555 !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+                }
                 .acu-table-container .acu-page-btn:hover {
                     background: var(--acu-primary);
                     color: white;
                     border-color: var(--acu-primary);
+                }
+                .acu-table-container.night-mode .acu-page-btn:hover {
+                    background: #4a4a4a !important;
+                    color: #ffffff !important;
+                    border-color: var(--acu-highlight, var(--acu-primary)) !important;
                 }
                 .acu-table-container .acu-page-btn.active {
                     background: var(--acu-primary);
@@ -2313,9 +2393,20 @@
                     border-color: var(--acu-primary);
                     font-weight: bold;
                 }
+                .acu-table-container.night-mode .acu-page-btn.active {
+                    background: var(--acu-primary) !important;
+                    color: #ffffff !important;
+                    border-color: var(--acu-highlight, var(--acu-primary)) !important;
+                    box-shadow: 0 0 6px rgba(0,0,0,0.35) !important;
+                }
                 .acu-table-container .acu-page-btn.disabled {
                     opacity: 0.5;
                     cursor: not-allowed;
+                }
+                .acu-table-container.night-mode .acu-page-btn.disabled {
+                    background: #333333 !important;
+                    color: #9a9a9a !important;
+                    border-color: #444 !important;
                 }
                 .acu-table-container .acu-tab-btn {
                     background: var(--acu-secondary) !important;
@@ -2338,7 +2429,7 @@
                     box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
                 }
                 .acu-table-container .acu-tab-btn:hover {
-                    background: #e8dfd0 !important;
+                    background: var(--acu-hover-bg, var(--acu-secondary)) !important;
                 }
                 .acu-table-container.night-mode .acu-tab-btn:hover {
                     background: #4a4a4a !important;
@@ -2364,7 +2455,7 @@
                     border-color: var(--acu-primary) !important;
                 }
                 .acu-table-container.editing-order .acu-tab-btn:hover {
-                    background: #f0e6d5 !important;
+                    background: var(--acu-hover-bg-strong, var(--acu-hover-bg, var(--acu-secondary))) !important;
                 }
                 .acu-table-container.night-mode.editing-order .acu-tab-btn:hover {
                     background: #4a4a4a !important;
@@ -2408,7 +2499,7 @@
                     -webkit-user-select: none !important;
                 }
                 .acu-table-container.editing-row-order .data-table tbody tr:hover {
-                    background-color: rgba(255, 165, 0, 0.1) !important;
+                    background-color: var(--acu-row-sort-hover, var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15))) !important;
                 }
                 .acu-table-container:not(.editing-row-order) .data-table tbody tr {
                     cursor: default !important;
@@ -2423,8 +2514,8 @@
                     background-color: rgba(255, 215, 0, 0.2) !important;
                 }
                 .acu-table-container .data-table tbody tr.drag-over {
-                    background-color: rgba(135, 206, 250, 0.2) !important;
-                    border-top: 2px solid #87CEFA !important;
+                    background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
+                    border-top: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
                 }
                 .acu-table-container.night-mode .data-table tbody tr.drag-over {
                     background-color: rgba(135, 206, 250, 0.15) !important;
@@ -2469,13 +2560,13 @@
                     color: #dbdbd6 !important;
                 }
                 .acu-table-container .data-table tr:nth-child(even) td {
-                    background-color: rgba(250, 245, 235, 0.9) !important;
+                    background-color: var(--acu-table-even-row-bg, rgba(250, 245, 235, 0.9)) !important;
                 }
                 .acu-table-container.night-mode .data-table tr:nth-child(even) td {
                     background-color: rgba(58, 58, 58, 0.9) !important;
                 }
                 .acu-table-container .acu-editable-cell:hover {
-                    background-color: rgba(180, 138, 92, 0.15) !important;
+                    background-color: var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15)) !important;
                 }
                 .acu-table-container.night-mode .acu-editable-cell:hover {
                     background-color: rgba(132, 121, 184, 0.2) !important;
@@ -2552,7 +2643,7 @@
                     background: var(--acu-primary) !important;
                 }
                 .acu-table-container .acu-save-db-btn-header:hover {
-                    background: #6fc86f !important;
+                    background: var(--acu-save-hover, #6fc86f) !important;
                     transform: translateY(-1px) !important;
                 }
                 .acu-table-container.night-mode .acu-save-db-btn-header:hover {
@@ -2581,7 +2672,7 @@
                     background: var(--acu-primary) !important;
                 }
                 .acu-table-container .acu-refresh-btn-header:hover {
-                    background: #286090 !important;
+                    background: var(--acu-refresh-hover, #286090) !important;
                     transform: translateY(-1px) !important;
                 }
                 .acu-table-container.night-mode .acu-refresh-btn-header:hover {
@@ -2651,7 +2742,7 @@
                     color: #e7e7e1 !important;
                 }
                 .acu-cell-menu.acu-refresh-menu .acu-cell-menu-item:hover {
-                    background: rgba(0,0,0,0.05) !important;
+                    background: var(--acu-hover-bg-soft, rgba(0,0,0,0.05)) !important;
                 }
                 .acu-cell-menu.acu-refresh-menu.night-mode .acu-cell-menu-item:hover {
                     background: rgba(255,255,255,0.07) !important;
@@ -2723,6 +2814,39 @@
                     width: 100%;
                     table-layout: fixed;
                 }
+                .acu-svg-icon {
+                    width: 1em !important;
+                    height: 1em !important;
+                    display: inline-block !important;
+                    vertical-align: -0.15em !important;
+                    flex-shrink: 0 !important;
+                    stroke: currentColor !important;
+                }
+                .acu-menu-icon {
+                    width: 18px !important;
+                    min-width: 18px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    margin-right: 8px !important;
+                    color: currentColor !important;
+                }
+                .acu-menu-icon .acu-svg-icon {
+                    width: 15px !important;
+                    height: 15px !important;
+                }
+                .acu-menu-label {
+                    flex: 1 1 auto !important;
+                }
+                .acu-inline-svg-label {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    gap: 5px !important;
+                }
+                .acu-notification .acu-svg-icon,
+                .acu-save-db-btn-header .acu-svg-icon {
+                    margin-right: 5px !important;
+                }
                 .acu-cell-menu-item {
                     padding: 10px 15px !important;
                     cursor: pointer !important;
@@ -2731,13 +2855,15 @@
                     color: #626262 !important;
                     font-family: 'Microsoft YaHei', sans-serif !important;
                     transition: background-color 0.2s !important;
+                    display: flex !important;
+                    align-items: center !important;
                 }
                 .acu-cell-menu.night-mode .acu-cell-menu-item {
                     border-bottom-color: #555 !important;
                     color: #ffffff !important;
                 }
                 .acu-cell-menu-item:hover {
-                    background-color: var(--acu-secondary) !important;
+                    background-color: var(--acu-hover-bg, var(--acu-secondary)) !important;
                 }
                 .acu-cell-menu.night-mode .acu-cell-menu-item:hover {
                     background-color: #4a4a4a !important;
@@ -2930,7 +3056,7 @@
                 }
 
                 .acu-theme-menu .acu-cell-menu-item.active {
-                    background-color: var(--acu-secondary) !important;
+                    background-color: var(--acu-hover-bg-strong, var(--acu-hover-bg, var(--acu-secondary))) !important;
                     font-weight: bold !important;
                 }
                 .acu-theme-menu.night-mode .acu-cell-menu-item.active {
@@ -3604,7 +3730,7 @@
                     transition: all 0.3s ease !important;
                 }
                 .acu-history-item:hover {
-                    background: rgba(var(--acu-highlight-rgb, 180, 138, 92), 0.15) !important;
+                    background: var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15)) !important;
                     border-color: var(--acu-highlight) !important;
                     transform: translateX(4px) !important;
                 }
@@ -3816,7 +3942,7 @@
     const config = getConfig();
 
     let menuHtml = `
-            <div class="acu-cell-menu acu-theme-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001; min-width: 140px; padding: 8px 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">`;
+            <div class="acu-cell-menu acu-theme-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001; min-width: 140px; padding: 8px 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">`;
 
     THEMES.forEach(theme => {
       const isActive = config.theme === theme.id;
@@ -4600,8 +4726,9 @@
     $('.acu-refresh-menu').remove();
 
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const config = getConfig();
     const menuHtml = `
-      <div class="acu-cell-menu acu-refresh-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
+      <div class="acu-cell-menu acu-refresh-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
         <div class="acu-cell-menu-item" data-action="refresh">刷新表格</div>
         <div class="acu-cell-menu-item" data-action="shortcut">快捷选项</div>
         <div class="acu-cell-menu-item close" data-action="close">关闭菜单</div>
@@ -4683,7 +4810,7 @@
   };
 
   // 通知队列管理
-  const notificationQueue = [];
+  let notificationQueue = [];
   const NOTIFICATION_SPACING = 10; // 每个通知之间的间距
 
   // 统一的通知函数
@@ -4743,7 +4870,7 @@
   // 保留原有函数用于兼容
   const showLoadSuccessNotification = () => {
     console.log('[ACU] 正在触发加载成功通知...');
-    showNotification('✅ 表格数据已成功加载', 'success');
+    showNotification(`${acuButtonIconLabel('check', '表格数据已成功加载')}`, 'success');
   };
 
   const updateTabBadges = () => {
@@ -6214,7 +6341,7 @@
 
     const $tabs = $tabsContainer.find('.acu-tab-btn');
     let dragStartIndex = -1;
-    const originalOrder = [];
+    let originalOrder = [];
 
     // 记录初始顺序用于取消
     $tabs.each(function () {
@@ -6290,12 +6417,13 @@
     $('.acu-cell-menu, .acu-edit-overlay').remove();
 
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const config = getConfig();
 
-    const menuHtml = `
-      <div class="acu-cell-menu acu-order-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
-          <div class="acu-cell-menu-item" data-action="tab-order">📑 编辑标签顺序 ${isEditingOrder ? ' (开启中)' : ''}</div>
-          <div class="acu-cell-menu-item" data-action="row-order">☰ 编辑行内容顺序 ${isEditingRowOrder ? ' (开启中)' : ''}</div>
-          <div class="acu-cell-menu-item close" data-action="close">❌ 关闭菜单</div>
+    let menuHtml = `
+      <div class="acu-cell-menu acu-order-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
+          <div class="acu-cell-menu-item" data-action="tab-order">${acuMenuItemContent('tabs', `编辑标签顺序${isEditingOrder ? ' (开启中)' : ''}`)}</div>
+          <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
+          <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>`;
 
     const $menu = $(menuHtml);
@@ -6565,6 +6693,7 @@
     const columnName = $(cell).data('col-name') || '';
     const cellContent = $(cell).text().replace(/<br>/g, '\n');
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const config = getConfig();
 
     // 检查列名是否包含"选项"
     const showSendToInput = columnName.includes('选项');
@@ -6573,22 +6702,22 @@
     const deleteKey = `${tableName}-row-${rowIndex}`;
     const isPendingDelete = pendingDeletes.has(deleteKey);
 
-    const menuHtml = isPendingDelete
+    let menuHtml = isPendingDelete
       ? `
-      <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
-          <div class="acu-cell-menu-item restore" data-action="restore">🔄 恢复整行</div>
-          <div class="acu-cell-menu-item close" data-action="close">✕ 关闭菜单</div>
+      <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
+          <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
+          <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `
       : `
-      <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
-          <div class="acu-cell-menu-item edit" data-action="edit">✏️ 编辑</div>
-          <div class="acu-cell-menu-item history" data-action="history">📜 历史记录</div>
-          <div class="acu-cell-menu-item insert" data-action="insert-above">➕ 在上方插入新行</div>
-          <div class="acu-cell-menu-item insert" data-action="insert">➕ 在下方插入新行</div>
-          <div class="acu-cell-menu-item delete" data-action="delete">🗑️ 删除整行</div>
-          ${showSendToInput ? '<div class="acu-cell-menu-item sendToInput" data-action="sendToInput">📤 发送至输入框</div>' : ''}
-          <div class="acu-cell-menu-item close" data-action="close">✕ 关闭菜单</div>
+      <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
+          <div class="acu-cell-menu-item edit" data-action="edit">${acuMenuItemContent('edit', '编辑')}</div>
+          <div class="acu-cell-menu-item history" data-action="history">${acuMenuItemContent('history', '历史记录')}</div>
+          <div class="acu-cell-menu-item insert" data-action="insert-above">${acuMenuItemContent('plus', '在上方插入新行')}</div>
+          <div class="acu-cell-menu-item insert" data-action="insert">${acuMenuItemContent('plus', '在下方插入新行')}</div>
+          <div class="acu-cell-menu-item delete" data-action="delete">${acuMenuItemContent('trash', '删除整行')}</div>
+          ${showSendToInput ? `<div class="acu-cell-menu-item sendToInput" data-action="sendToInput">${acuMenuItemContent('send', '发送至输入框')}</div>` : ''}
+          <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `;
 
@@ -7039,7 +7168,7 @@
     const tableHtml = generateTableHTML();
     $('.acu-table-container').remove();
 
-    const $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
+    let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
     if ($latestAIMessage.length === 0) {
       const $chatContainer = $('#chat, .chat-container').first();
@@ -7103,19 +7232,19 @@
       .on('click.acu', async function () {
         if (isSaving) return;
 
-        $(this).prop('disabled', true).text('💾 保存中...');
+        $(this).prop('disabled', true).html(acuButtonIconLabel('save', '保存中...'));
 
         const rawData = getTableData();
         if (rawData) {
           // 保存数据，包含待删除的行
           const saveSuccess = await saveDataToDatabase(rawData);
-          $(this).prop('disabled', false).text('💾 保存到数据库');
+          $(this).prop('disabled', false).html(acuButtonIconLabel('save', '保存到数据库'));
 
           if (!saveSuccess) {
             showNotification('保存失败，请检查数据库连接！', 'error');
           }
         } else {
-          $(this).prop('disabled', false).text('💾 保存到数据库');
+          $(this).prop('disabled', false).html(acuButtonIconLabel('save', '保存到数据库'));
           alert('无法获取数据，保存失败！');
         }
       });
@@ -7243,7 +7372,7 @@
         const observer = new MutationObserver(mutations => {
           mutations.forEach(mutation => {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-              for (const node of mutation.addedNodes) {
+              for (let node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
                   const $node = $(node);
                   if ($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
