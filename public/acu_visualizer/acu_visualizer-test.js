@@ -1713,6 +1713,14 @@
                     --acu-text: #5a3e2b;
                     --acu-border: #d4c4a8;
                     --acu-highlight: #b48a5c;
+                    --acu-hover-bg: #eadcc7;
+                    --acu-hover-bg-soft: rgba(180, 138, 92, 0.15);
+                    --acu-hover-bg-strong: #f0e6d5;
+                    --acu-save-hover: #6aa86a;
+                    --acu-refresh-hover: #735842;
+                    --acu-row-sort-hover: rgba(180, 138, 92, 0.12);
+                    --acu-row-drop-bg: rgba(140, 110, 84, 0.18);
+                    --acu-row-drop-border: #8c6e54;
                 }
                 .acu-theme-dark {
                     --acu-primary: #8479b8;
@@ -1722,6 +1730,14 @@
                     --acu-text: #5a4f7c;
                     --acu-border: #d4cce8;
                     --acu-highlight: #958ac5;
+                    --acu-hover-bg: #e4def8;
+                    --acu-hover-bg-soft: rgba(132, 121, 184, 0.16);
+                    --acu-hover-bg-strong: #dad2f2;
+                    --acu-save-hover: #6aa878;
+                    --acu-refresh-hover: #6f64a8;
+                    --acu-row-sort-hover: rgba(132, 121, 184, 0.14);
+                    --acu-row-drop-bg: rgba(132, 121, 184, 0.2);
+                    --acu-row-drop-border: #8479b8;
                 }
                 .acu-theme-modern {
                     --acu-primary: #5c9dff;
@@ -1731,6 +1747,14 @@
                     --acu-text: #444;
                     --acu-border: #d0d0d0;
                     --acu-highlight: #4a8ae6;
+                    --acu-hover-bg: #e4efff;
+                    --acu-hover-bg-soft: rgba(92, 157, 255, 0.14);
+                    --acu-hover-bg-strong: #d8e9ff;
+                    --acu-save-hover: #4fa85c;
+                    --acu-refresh-hover: #286090;
+                    --acu-row-sort-hover: rgba(92, 157, 255, 0.12);
+                    --acu-row-drop-bg: rgba(92, 157, 255, 0.2);
+                    --acu-row-drop-border: #5c9dff;
                 }
                 .acu-theme-forest {
                     --acu-primary: #4a8c5c;
@@ -1740,6 +1764,14 @@
                     --acu-text: #3a6b4a;
                     --acu-border: #b8d0b8;
                     --acu-highlight: #5a9c6c;
+                    --acu-hover-bg: #dcebdd;
+                    --acu-hover-bg-soft: rgba(74, 140, 92, 0.14);
+                    --acu-hover-bg-strong: #d2e6d4;
+                    --acu-save-hover: #3f7f50;
+                    --acu-refresh-hover: #3b744a;
+                    --acu-row-sort-hover: rgba(74, 140, 92, 0.12);
+                    --acu-row-drop-bg: rgba(74, 140, 92, 0.2);
+                    --acu-row-drop-border: #4a8c5c;
                 }
                 .acu-theme-ocean {
                     --acu-primary: #4a7ca8;
@@ -1749,6 +1781,14 @@
                     --acu-text: #3a6c98;
                     --acu-border: #b8d0e0;
                     --acu-highlight: #5a8cb8;
+                    --acu-hover-bg: #dceaf5;
+                    --acu-hover-bg-soft: rgba(74, 124, 168, 0.14);
+                    --acu-hover-bg-strong: #d2e3f1;
+                    --acu-save-hover: #4f9a68;
+                    --acu-refresh-hover: #3c678c;
+                    --acu-row-sort-hover: rgba(74, 124, 168, 0.12);
+                    --acu-row-drop-bg: rgba(74, 124, 168, 0.2);
+                    --acu-row-drop-border: #4a7ca8;
                 }
 
                 .acu-table-container.night-mode.acu-theme-dark {
@@ -2365,7 +2405,7 @@
                     box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
                 }
                 .acu-table-container .acu-tab-btn:hover {
-                    background: #e8dfd0 !important;
+                    background: var(--acu-hover-bg, var(--acu-secondary)) !important;
                 }
                 .acu-table-container.night-mode .acu-tab-btn:hover {
                     background: #4a4a4a !important;
@@ -2391,7 +2431,7 @@
                     border-color: var(--acu-primary) !important;
                 }
                 .acu-table-container.editing-order .acu-tab-btn:hover {
-                    background: #f0e6d5 !important;
+                    background: var(--acu-hover-bg-strong, var(--acu-hover-bg, var(--acu-secondary))) !important;
                 }
                 .acu-table-container.night-mode.editing-order .acu-tab-btn:hover {
                     background: #4a4a4a !important;
@@ -2435,7 +2475,7 @@
                     -webkit-user-select: none !important;
                 }
                 .acu-table-container.editing-row-order .data-table tbody tr:hover {
-                    background-color: rgba(255, 165, 0, 0.1) !important;
+                    background-color: var(--acu-row-sort-hover, var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15))) !important;
                 }
                 .acu-table-container:not(.editing-row-order) .data-table tbody tr {
                     cursor: default !important;
@@ -2450,8 +2490,8 @@
                     background-color: rgba(255, 215, 0, 0.2) !important;
                 }
                 .acu-table-container .data-table tbody tr.drag-over {
-                    background-color: rgba(135, 206, 250, 0.2) !important;
-                    border-top: 2px solid #87CEFA !important;
+                    background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
+                    border-top: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
                 }
                 .acu-table-container.night-mode .data-table tbody tr.drag-over {
                     background-color: rgba(135, 206, 250, 0.15) !important;
@@ -2502,7 +2542,7 @@
                     background-color: rgba(58, 58, 58, 0.9) !important;
                 }
                 .acu-table-container .acu-editable-cell:hover {
-                    background-color: rgba(180, 138, 92, 0.15) !important;
+                    background-color: var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15)) !important;
                 }
                 .acu-table-container.night-mode .acu-editable-cell:hover {
                     background-color: rgba(132, 121, 184, 0.2) !important;
@@ -2579,7 +2619,7 @@
                     background: var(--acu-primary) !important;
                 }
                 .acu-table-container .acu-save-db-btn-header:hover {
-                    background: #6fc86f !important;
+                    background: var(--acu-save-hover, #6fc86f) !important;
                     transform: translateY(-1px) !important;
                 }
                 .acu-table-container.night-mode .acu-save-db-btn-header:hover {
@@ -2608,7 +2648,7 @@
                     background: var(--acu-primary) !important;
                 }
                 .acu-table-container .acu-refresh-btn-header:hover {
-                    background: #286090 !important;
+                    background: var(--acu-refresh-hover, #286090) !important;
                     transform: translateY(-1px) !important;
                 }
                 .acu-table-container.night-mode .acu-refresh-btn-header:hover {
@@ -2678,7 +2718,7 @@
                     color: #e7e7e1 !important;
                 }
                 .acu-cell-menu.acu-refresh-menu .acu-cell-menu-item:hover {
-                    background: rgba(0,0,0,0.05) !important;
+                    background: var(--acu-hover-bg-soft, rgba(0,0,0,0.05)) !important;
                 }
                 .acu-cell-menu.acu-refresh-menu.night-mode .acu-cell-menu-item:hover {
                     background: rgba(255,255,255,0.07) !important;
@@ -2799,7 +2839,7 @@
                     color: #ffffff !important;
                 }
                 .acu-cell-menu-item:hover {
-                    background-color: var(--acu-secondary) !important;
+                    background-color: var(--acu-hover-bg, var(--acu-secondary)) !important;
                 }
                 .acu-cell-menu.night-mode .acu-cell-menu-item:hover {
                     background-color: #4a4a4a !important;
@@ -2992,7 +3032,7 @@
                 }
 
                 .acu-theme-menu .acu-cell-menu-item.active {
-                    background-color: var(--acu-secondary) !important;
+                    background-color: var(--acu-hover-bg-strong, var(--acu-hover-bg, var(--acu-secondary))) !important;
                     font-weight: bold !important;
                 }
                 .acu-theme-menu.night-mode .acu-cell-menu-item.active {
@@ -3666,7 +3706,7 @@
                     transition: all 0.3s ease !important;
                 }
                 .acu-history-item:hover {
-                    background: rgba(var(--acu-highlight-rgb, 180, 138, 92), 0.15) !important;
+                    background: var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15)) !important;
                     border-color: var(--acu-highlight) !important;
                     transform: translateX(4px) !important;
                 }
@@ -3878,7 +3918,7 @@
     const config = getConfig();
 
     let menuHtml = `
-            <div class="acu-cell-menu acu-theme-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001; min-width: 140px; padding: 8px 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">`;
+            <div class="acu-cell-menu acu-theme-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001; min-width: 140px; padding: 8px 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">`;
 
     THEMES.forEach(theme => {
       const isActive = config.theme === theme.id;
@@ -4662,8 +4702,9 @@
     $('.acu-refresh-menu').remove();
 
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const config = getConfig();
     const menuHtml = `
-      <div class="acu-cell-menu acu-refresh-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
+      <div class="acu-cell-menu acu-refresh-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
         <div class="acu-cell-menu-item" data-action="refresh">刷新表格</div>
         <div class="acu-cell-menu-item" data-action="shortcut">快捷选项</div>
         <div class="acu-cell-menu-item close" data-action="close">关闭菜单</div>
@@ -6352,9 +6393,10 @@
     $('.acu-cell-menu, .acu-edit-overlay').remove();
 
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const config = getConfig();
 
     let menuHtml = `
-      <div class="acu-cell-menu acu-order-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
+      <div class="acu-cell-menu acu-order-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
           <div class="acu-cell-menu-item" data-action="tab-order">${acuMenuItemContent('tabs', `编辑标签顺序${isEditingOrder ? ' (开启中)' : ''}`)}</div>
           <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
@@ -6627,6 +6669,7 @@
     const columnName = $(cell).data('col-name') || '';
     const cellContent = $(cell).text().replace(/<br>/g, '\n');
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const config = getConfig();
 
     // 检查列名是否包含"选项"
     const showSendToInput = columnName.includes('选项');
@@ -6637,13 +6680,13 @@
 
     let menuHtml = isPendingDelete
       ? `
-      <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
+      <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
           <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `
       : `
-      <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
+      <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
           <div class="acu-cell-menu-item edit" data-action="edit">${acuMenuItemContent('edit', '编辑')}</div>
           <div class="acu-cell-menu-item history" data-action="history">${acuMenuItemContent('history', '历史记录')}</div>
           <div class="acu-cell-menu-item insert" data-action="insert-above">${acuMenuItemContent('plus', '在上方插入新行')}</div>
