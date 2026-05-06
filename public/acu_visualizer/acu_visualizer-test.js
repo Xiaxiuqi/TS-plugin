@@ -1716,6 +1716,7 @@
                     --acu-hover-bg: #eadcc7;
                     --acu-hover-bg-soft: rgba(180, 138, 92, 0.15);
                     --acu-hover-bg-strong: #f0e6d5;
+                    --acu-table-even-row-bg: rgba(250, 245, 235, 0.9);
                     --acu-save-hover: #6aa86a;
                     --acu-refresh-hover: #735842;
                     --acu-row-sort-hover: rgba(180, 138, 92, 0.12);
@@ -1733,6 +1734,7 @@
                     --acu-hover-bg: #e4def8;
                     --acu-hover-bg-soft: rgba(132, 121, 184, 0.16);
                     --acu-hover-bg-strong: #dad2f2;
+                    --acu-table-even-row-bg: rgba(246, 243, 255, 0.92);
                     --acu-save-hover: #6aa878;
                     --acu-refresh-hover: #6f64a8;
                     --acu-row-sort-hover: rgba(132, 121, 184, 0.14);
@@ -1750,6 +1752,7 @@
                     --acu-hover-bg: #e4efff;
                     --acu-hover-bg-soft: rgba(92, 157, 255, 0.14);
                     --acu-hover-bg-strong: #d8e9ff;
+                    --acu-table-even-row-bg: rgba(245, 249, 255, 0.94);
                     --acu-save-hover: #4fa85c;
                     --acu-refresh-hover: #286090;
                     --acu-row-sort-hover: rgba(92, 157, 255, 0.12);
@@ -1767,6 +1770,7 @@
                     --acu-hover-bg: #dcebdd;
                     --acu-hover-bg-soft: rgba(74, 140, 92, 0.14);
                     --acu-hover-bg-strong: #d2e6d4;
+                    --acu-table-even-row-bg: rgba(243, 250, 243, 0.94);
                     --acu-save-hover: #3f7f50;
                     --acu-refresh-hover: #3b744a;
                     --acu-row-sort-hover: rgba(74, 140, 92, 0.12);
@@ -1784,6 +1788,7 @@
                     --acu-hover-bg: #dceaf5;
                     --acu-hover-bg-soft: rgba(74, 124, 168, 0.14);
                     --acu-hover-bg-strong: #d2e3f1;
+                    --acu-table-even-row-bg: rgba(242, 248, 253, 0.94);
                     --acu-save-hover: #4f9a68;
                     --acu-refresh-hover: #3c678c;
                     --acu-row-sort-hover: rgba(74, 124, 168, 0.12);
@@ -2369,10 +2374,21 @@
                     text-align: center;
                     transition: all 0.2s;
                 }
+                .acu-table-container.night-mode .acu-page-btn {
+                    background: #3a3a3a !important;
+                    color: #dbdbd6 !important;
+                    border-color: #555 !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+                }
                 .acu-table-container .acu-page-btn:hover {
                     background: var(--acu-primary);
                     color: white;
                     border-color: var(--acu-primary);
+                }
+                .acu-table-container.night-mode .acu-page-btn:hover {
+                    background: #4a4a4a !important;
+                    color: #ffffff !important;
+                    border-color: var(--acu-highlight, var(--acu-primary)) !important;
                 }
                 .acu-table-container .acu-page-btn.active {
                     background: var(--acu-primary);
@@ -2380,9 +2396,20 @@
                     border-color: var(--acu-primary);
                     font-weight: bold;
                 }
+                .acu-table-container.night-mode .acu-page-btn.active {
+                    background: var(--acu-primary) !important;
+                    color: #ffffff !important;
+                    border-color: var(--acu-highlight, var(--acu-primary)) !important;
+                    box-shadow: 0 0 6px rgba(0,0,0,0.35) !important;
+                }
                 .acu-table-container .acu-page-btn.disabled {
                     opacity: 0.5;
                     cursor: not-allowed;
+                }
+                .acu-table-container.night-mode .acu-page-btn.disabled {
+                    background: #333333 !important;
+                    color: #9a9a9a !important;
+                    border-color: #444 !important;
                 }
                 .acu-table-container .acu-tab-btn {
                     background: var(--acu-secondary) !important;
@@ -2536,7 +2563,7 @@
                     color: #dbdbd6 !important;
                 }
                 .acu-table-container .data-table tr:nth-child(even) td {
-                    background-color: rgba(250, 245, 235, 0.9) !important;
+                    background-color: var(--acu-table-even-row-bg, rgba(250, 245, 235, 0.9)) !important;
                 }
                 .acu-table-container.night-mode .data-table tr:nth-child(even) td {
                     background-color: rgba(58, 58, 58, 0.9) !important;
