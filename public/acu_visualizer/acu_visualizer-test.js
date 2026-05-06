@@ -193,6 +193,33 @@
     { id: 'ocean', name: '深海幽蓝', icon: 'fas fa-water' },
   ];
 
+  const acuSvgIcon = (name, className = 'acu-svg-icon') => {
+    const icons = {
+      check: '<path d="M20 6 9 17l-5-5"></path>',
+      save:
+        '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
+      tabs: '<path d="M4 5h8l2 3h6v11H4z"></path><path d="M4 9h16"></path>',
+      rows: '<path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path>',
+      close: '<path d="M18 6 6 18"></path><path d="M6 6l12 12"></path>',
+      restore: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path>',
+      edit:
+        '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
+      history:
+        '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path>',
+      plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
+      trash:
+        '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path>',
+      send: '<path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path>',
+    };
+    return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.check}</svg>`;
+  };
+
+  const acuMenuIcon = name => `<span class="acu-menu-icon">${acuSvgIcon(name)}</span>`;
+  const acuMenuItemContent = (iconName, label) =>
+    `${acuMenuIcon(iconName)}<span class="acu-menu-label">${label}</span>`;
+  const acuButtonIconLabel = (iconName, label) =>
+    `<span class="acu-inline-svg-label">${acuSvgIcon(iconName)}<span>${label}</span></span>`;
+
   const DEFAULT_TAB_STATUS = {
     hasNewUpdates: false,
     userHasSeen: false,
@@ -2723,6 +2750,39 @@
                     width: 100%;
                     table-layout: fixed;
                 }
+                .acu-svg-icon {
+                    width: 1em !important;
+                    height: 1em !important;
+                    display: inline-block !important;
+                    vertical-align: -0.15em !important;
+                    flex-shrink: 0 !important;
+                    stroke: currentColor !important;
+                }
+                .acu-menu-icon {
+                    width: 18px !important;
+                    min-width: 18px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    margin-right: 8px !important;
+                    color: currentColor !important;
+                }
+                .acu-menu-icon .acu-svg-icon {
+                    width: 15px !important;
+                    height: 15px !important;
+                }
+                .acu-menu-label {
+                    flex: 1 1 auto !important;
+                }
+                .acu-inline-svg-label {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    gap: 5px !important;
+                }
+                .acu-notification .acu-svg-icon,
+                .acu-save-db-btn-header .acu-svg-icon {
+                    margin-right: 5px !important;
+                }
                 .acu-cell-menu-item {
                     padding: 10px 15px !important;
                     cursor: pointer !important;
@@ -2731,6 +2791,8 @@
                     color: #626262 !important;
                     font-family: 'Microsoft YaHei', sans-serif !important;
                     transition: background-color 0.2s !important;
+                    display: flex !important;
+                    align-items: center !important;
                 }
                 .acu-cell-menu.night-mode .acu-cell-menu-item {
                     border-bottom-color: #555 !important;
@@ -4743,7 +4805,7 @@
   // 保留原有函数用于兼容
   const showLoadSuccessNotification = () => {
     console.log('[ACU] 正在触发加载成功通知...');
-    showNotification('✅ 表格数据已成功加载', 'success');
+    showNotification(`${acuButtonIconLabel('check', '表格数据已成功加载')}`, 'success');
   };
 
   const updateTabBadges = () => {
@@ -6293,9 +6355,9 @@
 
     let menuHtml = `
       <div class="acu-cell-menu acu-order-menu ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
-          <div class="acu-cell-menu-item" data-action="tab-order">📑 编辑标签顺序 ${isEditingOrder ? ' (开启中)' : ''}</div>
-          <div class="acu-cell-menu-item" data-action="row-order">☰ 编辑行内容顺序 ${isEditingRowOrder ? ' (开启中)' : ''}</div>
-          <div class="acu-cell-menu-item close" data-action="close">❌ 关闭菜单</div>
+          <div class="acu-cell-menu-item" data-action="tab-order">${acuMenuItemContent('tabs', `编辑标签顺序${isEditingOrder ? ' (开启中)' : ''}`)}</div>
+          <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
+          <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>`;
 
     const $menu = $(menuHtml);
@@ -6576,19 +6638,19 @@
     let menuHtml = isPendingDelete
       ? `
       <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
-          <div class="acu-cell-menu-item restore" data-action="restore">🔄 恢复整行</div>
-          <div class="acu-cell-menu-item close" data-action="close">✕ 关闭菜单</div>
+          <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
+          <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `
       : `
       <div class="acu-cell-menu ${isNightMode ? 'night-mode' : ''}">
-          <div class="acu-cell-menu-item edit" data-action="edit">✏️ 编辑</div>
-          <div class="acu-cell-menu-item history" data-action="history">📜 历史记录</div>
-          <div class="acu-cell-menu-item insert" data-action="insert-above">➕ 在上方插入新行</div>
-          <div class="acu-cell-menu-item insert" data-action="insert">➕ 在下方插入新行</div>
-          <div class="acu-cell-menu-item delete" data-action="delete">🗑️ 删除整行</div>
-          ${showSendToInput ? '<div class="acu-cell-menu-item sendToInput" data-action="sendToInput">📤 发送至输入框</div>' : ''}
-          <div class="acu-cell-menu-item close" data-action="close">✕ 关闭菜单</div>
+          <div class="acu-cell-menu-item edit" data-action="edit">${acuMenuItemContent('edit', '编辑')}</div>
+          <div class="acu-cell-menu-item history" data-action="history">${acuMenuItemContent('history', '历史记录')}</div>
+          <div class="acu-cell-menu-item insert" data-action="insert-above">${acuMenuItemContent('plus', '在上方插入新行')}</div>
+          <div class="acu-cell-menu-item insert" data-action="insert">${acuMenuItemContent('plus', '在下方插入新行')}</div>
+          <div class="acu-cell-menu-item delete" data-action="delete">${acuMenuItemContent('trash', '删除整行')}</div>
+          ${showSendToInput ? `<div class="acu-cell-menu-item sendToInput" data-action="sendToInput">${acuMenuItemContent('send', '发送至输入框')}</div>` : ''}
+          <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `;
 
@@ -7103,19 +7165,19 @@
       .on('click.acu', async function () {
         if (isSaving) return;
 
-        $(this).prop('disabled', true).text('💾 保存中...');
+        $(this).prop('disabled', true).html(acuButtonIconLabel('save', '保存中...'));
 
         const rawData = getTableData();
         if (rawData) {
           // 保存数据，包含待删除的行
           const saveSuccess = await saveDataToDatabase(rawData);
-          $(this).prop('disabled', false).text('💾 保存到数据库');
+          $(this).prop('disabled', false).html(acuButtonIconLabel('save', '保存到数据库'));
 
           if (!saveSuccess) {
             showNotification('保存失败，请检查数据库连接！', 'error');
           }
         } else {
-          $(this).prop('disabled', false).text('💾 保存到数据库');
+          $(this).prop('disabled', false).html(acuButtonIconLabel('save', '保存到数据库'));
           alert('无法获取数据，保存失败！');
         }
       });
