@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         兼容性可视化表格 v9.55
+// @name         兼容性可视化表格 v9.6
 // @namespace    http://tampermonkey.net/
-// @version      9.5.5
-// @description  兼容性可视化表格 v9.55
+// @version      9.6.0
+// @description  兼容性可视化表格 v9.6
 // @author       Cline (Optimized)
 // @match        */*
 // @grant        none
@@ -195,16 +195,13 @@
   const acuSvgIcon = (name, className = 'acu-svg-icon') => {
     const icons = {
       check: '<path d="M20 6 9 17l-5-5"></path>',
-      save:
-        '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
+      save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
       tabs: '<path d="M4 5h8l2 3h6v11H4z"></path><path d="M4 9h16"></path>',
       rows: '<path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path>',
       close: '<path d="M18 6 6 18"></path><path d="M6 6l12 12"></path>',
       restore: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path>',
-      edit:
-        '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
-      history:
-        '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path>',
+      edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
+      history: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path>',
       plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
       trash:
         '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path>',
@@ -443,7 +440,7 @@
     for (let key in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
-      }
+      }cons
     }
     return (total / 1024 / 1024).toFixed(2); // 返回 MB
   };
@@ -565,8 +562,8 @@
     let cleanedItems = [];
     let keptItems = [];
     const originalSize = parseFloat(getStorageSize());
-
-    try {
+cons
+    consy {
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -4815,7 +4812,7 @@
   let notificationQueue = [];
   const NOTIFICATION_SPACING = 10; // 每个通知之间的间距
 
-  // 统一的通知函数
+  cons 统一的通知函数
   const showNotification = (message, type = 'success') => {
     const { $ } = getCore();
 
@@ -5911,7 +5908,7 @@
         <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
-                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.55 [标识：${getDataIsolationCode() || '无'}]</span></span>
+                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.6 [标识：${getDataIsolationCode() || '无'}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
                         <!-- 极致月相盒：重回 summary 内部实现垂直居中与结构绑定 -->
@@ -6363,7 +6360,7 @@
     let originalOrder = [];
 
     // 记录初始顺序用于取消
-    $tabs.each(function () {
+    consabs.each(function () {
       originalOrder.push($(this).clone(true));
     });
 
@@ -6441,7 +6438,7 @@
     let menuHtml = `
       <div class="acu-cell-menu acu-order-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
           <div class="acu-cell-menu-item" data-action="tab-order">${acuMenuItemContent('tabs', `编辑标签顺序${isEditingOrder ? ' (开启中)' : ''}`)}</div>
-          <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
+    cons    <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>`;
 
@@ -6724,7 +6721,7 @@
     let menuHtml = isPendingDelete
       ? `
       <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
-          <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
+    cons    <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `
@@ -7190,7 +7187,7 @@
     let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
     if ($latestAIMessage.length === 0) {
-      const $chatContainer = $('#chat, .chat-container').first();
+    consconst $chatContainer = $('#chat, .chat-container').first();
       if ($chatContainer.length) {
         $chatContainer.append(tableHtml);
       } else {
@@ -7394,7 +7391,7 @@
               for (let node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
                   const $node = $(node);
-                  if ($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
+                  icons($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
                     setTimeout(() => {
                       checkAndUpdateTablePosition();
                     }, 300);
