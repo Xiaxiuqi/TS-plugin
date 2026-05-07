@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         兼容性可视化表格 v9.6
+// @name         兼容性可视化表格 v9.55
 // @namespace    http://tampermonkey.net/
-// @version      9.6.0
-// @description  兼容性可视化表格 v9.6
+// @version      9.5.5
+// @description  兼容性可视化表格 v9.55
 // @author       Cline (Optimized)
 // @match        */*
 // @grant        none
@@ -195,13 +195,16 @@
   const acuSvgIcon = (name, className = 'acu-svg-icon') => {
     const icons = {
       check: '<path d="M20 6 9 17l-5-5"></path>',
-      save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
+      save:
+        '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
       tabs: '<path d="M4 5h8l2 3h6v11H4z"></path><path d="M4 9h16"></path>',
       rows: '<path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path>',
       close: '<path d="M18 6 6 18"></path><path d="M6 6l12 12"></path>',
       restore: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path>',
-      edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
-      history: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path>',
+      edit:
+        '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
+      history:
+        '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path>',
       plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
       trash:
         '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path>',
@@ -440,7 +443,7 @@
     for (let key in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
-      }cons
+      }
     }
     return (total / 1024 / 1024).toFixed(2); // 返回 MB
   };
@@ -562,8 +565,8 @@
     let cleanedItems = [];
     let keptItems = [];
     const originalSize = parseFloat(getStorageSize());
-cons
-    consy {
+
+    try {
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -2512,19 +2515,11 @@ cons
                 .acu-table-container.night-mode .data-table tbody tr.dragging {
                     background-color: rgba(255, 215, 0, 0.2) !important;
                 }
-                .acu-table-container .data-table tbody tr.drag-over-before,
-                .acu-table-container .data-table tbody tr.drag-over-after {
-                    position: relative !important;
+                .acu-table-container .data-table tbody tr.drag-over {
                     background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
-                }
-                .acu-table-container .data-table tbody tr.drag-over-before {
                     border-top: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
                 }
-                .acu-table-container .data-table tbody tr.drag-over-after {
-                    border-bottom: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
-                }
-                .acu-table-container.night-mode .data-table tbody tr.drag-over-before,
-                .acu-table-container.night-mode .data-table tbody tr.drag-over-after {
+                .acu-table-container.night-mode .data-table tbody tr.drag-over {
                     background-color: rgba(135, 206, 250, 0.15) !important;
                 }
 
@@ -4820,7 +4815,7 @@ cons
   let notificationQueue = [];
   const NOTIFICATION_SPACING = 10; // 每个通知之间的间距
 
-  cons 统一的通知函数
+  // 统一的通知函数
   const showNotification = (message, type = 'success') => {
     const { $ } = getCore();
 
@@ -5916,7 +5911,7 @@ cons
         <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
-                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.6 [标识：${getDataIsolationCode() || '无'}]</span></span>
+                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.55 [标识：${getDataIsolationCode() || '无'}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
                         <!-- 极致月相盒：重回 summary 内部实现垂直居中与结构绑定 -->
@@ -6098,24 +6093,23 @@ cons
     return displayIndex !== -1 ? displayIndex : originalIndex;
   };
 
-  // 将一行移动到指定插入线位置（insertIndex 是原始显示序列中的边界：0=第一行前，1=第一/二行之间）
-  const moveRowToInsertIndex = (tableName, fromIndex, insertIndex) => {
+  // 将一行移动到目标行位置（拖到下方时插入到目标行后，拖到上方时插入到目标行前）
+  const moveRow = (tableName, fromIndex, toIndex) => {
     if (!rowPositionMapping[tableName]) return;
     const mapping = rowPositionMapping[tableName];
     if (
       fromIndex < 0 ||
-      insertIndex < 0 ||
+      toIndex < 0 ||
       fromIndex >= mapping.length ||
-      insertIndex > mapping.length ||
-      insertIndex === fromIndex ||
-      insertIndex === fromIndex + 1
+      toIndex >= mapping.length ||
+      fromIndex === toIndex
     ) {
       return;
     }
 
     const [movedRow] = mapping.splice(fromIndex, 1);
-    const adjustedInsertIndex = fromIndex < insertIndex ? insertIndex - 1 : insertIndex;
-    mapping.splice(adjustedInsertIndex, 0, movedRow);
+    const insertIndex = fromIndex < toIndex ? toIndex : toIndex;
+    mapping.splice(insertIndex, 0, movedRow);
 
     // 保存映射关系到localStorage
     try {
@@ -6287,30 +6281,22 @@ cons
       dragStartIndex = -1;
       dragEndIndex = -1;
       $(this).removeClass('dragging');
-      $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
+      $section.find('.drag-over').removeClass('drag-over');
     });
 
     $rows.on('dragover.acu', function (e) {
       if (!isDragging || !isEditingRowOrder) return;
 
       e.preventDefault();
-      if (e.originalEvent?.dataTransfer) {
-        e.originalEvent.dataTransfer.dropEffect = 'move';
-      }
+      e.originalEvent.dataTransfer.dropEffect = 'move';
 
       const $this = $(this);
-      const targetIndex = parseInt($this.attr('data-display-index'), 10);
-      const fallbackIndex = $this.index();
-      const currentIndex = Number.isNaN(targetIndex) ? fallbackIndex : targetIndex;
-      const rect = this.getBoundingClientRect();
-      const isAfter = e.originalEvent.clientY > rect.top + rect.height / 2;
-      const insertIndex = currentIndex + (isAfter ? 1 : 0);
-      const nextClass = isAfter ? 'drag-over-after' : 'drag-over-before';
+      const currentIndex = $this.index();
 
-      if (insertIndex !== dragEndIndex || !$this.hasClass(nextClass)) {
-        $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
-        $this.addClass(nextClass);
-        dragEndIndex = insertIndex;
+      if (currentIndex !== dragEndIndex) {
+        $section.find('.drag-over').removeClass('drag-over');
+        $this.addClass('drag-over');
+        dragEndIndex = currentIndex;
       }
     });
 
@@ -6320,7 +6306,7 @@ cons
 
     $rows.on('dragleave.acu', function (e) {
       if (e.target === this || $(e.target).closest('tr')[0] === this) {
-        $(this).removeClass('drag-over-before drag-over-after');
+        $(this).removeClass('drag-over');
         dragEndIndex = -1;
       }
     });
@@ -6329,37 +6315,14 @@ cons
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
-      let dropIndex = -1;
-      const hintRow = $section[0]?.querySelector('.drag-over-before, .drag-over-after');
-
-      if (hintRow) {
-        const hintIndex = parseInt(hintRow.getAttribute('data-display-index'), 10);
-        if (!Number.isNaN(hintIndex)) {
-          dropIndex = hintIndex + (hintRow.classList.contains('drag-over-after') ? 1 : 0);
-        }
+      let dropIndex = parseInt($(this).attr('data-display-index'), 10);
+      if (Number.isNaN(dropIndex)) {
+        dropIndex = $(this).index();
       }
 
-      if (dropIndex < 0) {
-        dropIndex = dragEndIndex;
-      }
-
-      if (dropIndex < 0) {
-        const targetIndex = parseInt($(this).attr('data-display-index'), 10);
-        const fallbackIndex = $(this).index();
-        const currentIndex = Number.isNaN(targetIndex) ? fallbackIndex : targetIndex;
-        const rect = this.getBoundingClientRect();
-        const isAfter = e.originalEvent.clientY > rect.top + rect.height / 2;
-        dropIndex = currentIndex + (isAfter ? 1 : 0);
-      }
-
-      if (
-        dragStartIndex !== -1 &&
-        dropIndex !== -1 &&
-        dropIndex !== dragStartIndex &&
-        dropIndex !== dragStartIndex + 1
-      ) {
-        // 按可视提示线插入：提示线在哪里，实际落点就在哪里
-        moveRowToInsertIndex(tableName, dragStartIndex, dropIndex);
+      if (dragStartIndex !== dropIndex && dragStartIndex !== -1) {
+        // 移动显示位置：拖动第一行到第二行时，结果应为第二行、第一行、第三行
+        moveRow(tableName, dragStartIndex, dropIndex);
 
         // 重新渲染表格内容区域（不触碰标签页）
         const rawData = getTableData();
@@ -6385,11 +6348,7 @@ cons
         showNotification('行顺序已调整', 'success');
       }
 
-      if (hintRow) {
-        hintRow.classList.remove('drag-over-before', 'drag-over-after');
-      } else {
-        $(this).removeClass('drag-over-before drag-over-after');
-      }
+      $(this).removeClass('drag-over');
     });
   };
 
@@ -6399,7 +6358,7 @@ cons
     const $tabsContainer = $('#acu-tabs-sortable');
     if (!$tabsContainer.length) return;
 
-    consnst $tabs = $tabsContainer.find('.acu-tab-btn');
+    const $tabs = $tabsContainer.find('.acu-tab-btn');
     let dragStartIndex = -1;
     let originalOrder = [];
 
@@ -6477,7 +6436,7 @@ cons
     $('.acu-cell-menu, .acu-edit-overlay').remove();
 
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
-    consnst config = getConfig();
+    const config = getConfig();
 
     let menuHtml = `
       <div class="acu-cell-menu acu-order-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
@@ -6760,7 +6719,7 @@ cons
 
     // 检查是否在待删除集合中
     const deleteKey = `${tableName}-row-${rowIndex}`;
-    consnst isPendingDelete = pendingDeletes.has(deleteKey);
+    const isPendingDelete = pendingDeletes.has(deleteKey);
 
     let menuHtml = isPendingDelete
       ? `
@@ -7226,7 +7185,7 @@ cons
     const { $ } = getCore();
 
     const tableHtml = generateTableHTML();
-    cons'.acu-table-container').remove();
+    $('.acu-table-container').remove();
 
     let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
@@ -7430,7 +7389,7 @@ cons
       // 监听AI消息变化
       const observeAIMessages = () => {
         const observer = new MutationObserver(mutations => {
-          mutationsconsorEach(mutation => {
+          mutations.forEach(mutation => {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
               for (let node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
