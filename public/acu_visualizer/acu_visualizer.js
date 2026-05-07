@@ -127,6 +127,7 @@
   // 行拖动状态管理
   let dragStartIndex = -1;
   let dragEndIndex = -1;
+  let dragInsertIndex = -1;
   let isDragging = false;
 
   // 行位置映射表（用于存储前端显示位置与原始数据索引的映射关系）
@@ -2512,11 +2513,18 @@
                 .acu-table-container.night-mode .data-table tbody tr.dragging {
                     background-color: rgba(255, 215, 0, 0.2) !important;
                 }
-                .acu-table-container .data-table tbody tr.drag-over {
+                .acu-table-container .data-table tbody tr.drag-over-before,
+                .acu-table-container .data-table tbody tr.drag-over-after {
                     background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
-                    border-top: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
                 }
-                .acu-table-container.night-mode .data-table tbody tr.drag-over {
+                .acu-table-container .data-table tbody tr.drag-over-before td {
+                    border-top: 3px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+                }
+                .acu-table-container .data-table tbody tr.drag-over-after td {
+                    border-bottom: 3px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+                }
+                .acu-table-container.night-mode .data-table tbody tr.drag-over-before,
+                .acu-table-container.night-mode .data-table tbody tr.drag-over-after {
                     background-color: rgba(135, 206, 250, 0.15) !important;
                 }
 
@@ -6090,23 +6098,26 @@
     return displayIndex !== -1 ? displayIndex : originalIndex;
   };
 
-  // 将一行移动到目标行位置（拖到下方时插入到目标行后，拖到上方时插入到目标行前）
-  const moveRow = (tableName, fromIndex, toIndex) => {
-    if (!rowPositionMapping[tableName]) return;
+  // 将一行移动到插入槽位：insertIndex 表示“高亮线所在的插入缝隙”，范围为 0..行数
+  const moveRow = (tableName, fromIndex, insertIndex) => {
+    if (!rowPositionMapping[tableName]) return false;
     const mapping = rowPositionMapping[tableName];
-    if (
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= mapping.length ||
-      toIndex >= mapping.length ||
-      fromIndex === toIndex
-    ) {
-      return;
+    if (fromIndex < 0 || insertIndex < 0 || fromIndex >= mapping.length || insertIndex > mapping.length) {
+      return false;
+    }
+
+    // 插回原位前/后都等价于未移动
+    if (insertIndex === fromIndex || insertIndex === fromIndex + 1) {
+      return false;
     }
 
     const [movedRow] = mapping.splice(fromIndex, 1);
-    const insertIndex = fromIndex < toIndex ? toIndex : toIndex;
-    mapping.splice(insertIndex, 0, movedRow);
+    // 移除源行后，源行下方的插入槽位会整体前移 1
+    const adjustedInsertIndex = Math.max(
+      0,
+      Math.min(fromIndex < insertIndex ? insertIndex - 1 : insertIndex, mapping.length),
+    );
+    mapping.splice(adjustedInsertIndex, 0, movedRow);
 
     // 保存映射关系到localStorage
     try {
@@ -6114,6 +6125,7 @@
     } catch (e) {
       console.warn('[ACU] 无法保存行位置映射:', e);
     }
+    return true;
   };
 
   // 加载行位置映射关系
@@ -6249,14 +6261,20 @@
 
     // 关键修复：如果不是编辑模式，移除所有拖拽属性和事件，允许文本选择
     if (!isEditingRowOrder) {
-      $rows.removeAttr('draggable').off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
+      $rows
+        .removeAttr('draggable')
+        .removeClass('dragging drag-over-before drag-over-after')
+        .off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
       $section.find('.data-table').removeClass('is-sorting-rows');
       return;
     }
 
     // 开启模式：设置 draggable 并绑定事件
     $section.find('.data-table').addClass('is-sorting-rows');
-    $rows.attr('draggable', 'true').off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
+    $rows
+      .attr('draggable', 'true')
+      .removeClass('drag-over-before drag-over-after')
+      .off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
 
     $rows.on('dragstart.acu', function (e) {
       if (!isEditingRowOrder) return;
@@ -6277,8 +6295,9 @@
       isDragging = false;
       dragStartIndex = -1;
       dragEndIndex = -1;
+      dragInsertIndex = -1;
       $(this).removeClass('dragging');
-      $section.find('.drag-over').removeClass('drag-over');
+      $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
     });
 
     $rows.on('dragover.acu', function (e) {
@@ -6288,12 +6307,18 @@
       e.originalEvent.dataTransfer.dropEffect = 'move';
 
       const $this = $(this);
-      const currentIndex = $this.index();
+      const currentIndex = parseInt($this.attr('data-display-index'), 10);
+      const safeCurrentIndex = Number.isNaN(currentIndex) ? $this.index() : currentIndex;
+      const rect = this.getBoundingClientRect();
+      const pointerY = e.originalEvent?.clientY ?? rect.top;
+      const insertAfterCurrentRow = pointerY > rect.top + rect.height / 2;
+      const nextInsertIndex = safeCurrentIndex + (insertAfterCurrentRow ? 1 : 0);
 
-      if (currentIndex !== dragEndIndex) {
-        $section.find('.drag-over').removeClass('drag-over');
-        $this.addClass('drag-over');
-        dragEndIndex = currentIndex;
+      if (safeCurrentIndex !== dragEndIndex || nextInsertIndex !== dragInsertIndex) {
+        $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
+        $this.addClass(insertAfterCurrentRow ? 'drag-over-after' : 'drag-over-before');
+        dragEndIndex = safeCurrentIndex;
+        dragInsertIndex = nextInsertIndex;
       }
     });
 
@@ -6303,8 +6328,7 @@
 
     $rows.on('dragleave.acu', function (e) {
       if (e.target === this || $(e.target).closest('tr')[0] === this) {
-        $(this).removeClass('drag-over');
-        dragEndIndex = -1;
+        $(this).removeClass('drag-over-before drag-over-after');
       }
     });
 
@@ -6312,14 +6336,30 @@
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
-      let dropIndex = parseInt($(this).attr('data-display-index'), 10);
-      if (Number.isNaN(dropIndex)) {
-        dropIndex = $(this).index();
+      let dropIndex = dragInsertIndex;
+      const $highlightedRow = $section.find('.drag-over-before, .drag-over-after').first();
+      if ($highlightedRow.length) {
+        const highlightedIndex = parseInt($highlightedRow.attr('data-display-index'), 10);
+        if (!Number.isNaN(highlightedIndex)) {
+          dropIndex = highlightedIndex + ($highlightedRow.hasClass('drag-over-after') ? 1 : 0);
+        }
       }
 
-      if (dragStartIndex !== dropIndex && dragStartIndex !== -1) {
-        // 移动显示位置：拖动第一行到第二行时，结果应为第二行、第一行、第三行
-        moveRow(tableName, dragStartIndex, dropIndex);
+      if (dropIndex < 0 || Number.isNaN(dropIndex)) {
+        const currentIndex = parseInt($(this).attr('data-display-index'), 10);
+        const safeCurrentIndex = Number.isNaN(currentIndex) ? $(this).index() : currentIndex;
+        const rect = this.getBoundingClientRect();
+        const pointerY = e.originalEvent?.clientY ?? rect.top;
+        dropIndex = safeCurrentIndex + (pointerY > rect.top + rect.height / 2 ? 1 : 0);
+      }
+
+      if (dragStartIndex !== -1) {
+        // 只使用“当前高亮插入线”对应的槽位，避免 drop 事件落到鼠标下方行时覆盖高亮线语义
+        const moved = moveRow(tableName, dragStartIndex, dropIndex);
+        if (!moved) {
+          $(this).removeClass('drag-over-before drag-over-after');
+          return;
+        }
 
         // 重新渲染表格内容区域（不触碰标签页）
         const rawData = getTableData();
@@ -6345,7 +6385,7 @@
         showNotification('行顺序已调整', 'success');
       }
 
-      $(this).removeClass('drag-over');
+      $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
     });
   };
 
