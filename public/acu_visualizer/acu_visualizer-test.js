@@ -6093,17 +6093,27 @@
     return displayIndex !== -1 ? displayIndex : originalIndex;
   };
 
-  // 交换两行的显示位置
-  const swapRows = (tableName, index1, index2) => {
+  // 将一行移动到目标行位置（拖到下方时插入到目标行后，拖到上方时插入到目标行前）
+  const moveRow = (tableName, fromIndex, toIndex) => {
     if (!rowPositionMapping[tableName]) return;
+    const mapping = rowPositionMapping[tableName];
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= mapping.length ||
+      toIndex >= mapping.length ||
+      fromIndex === toIndex
+    ) {
+      return;
+    }
 
-    const temp = rowPositionMapping[tableName][index1];
-    rowPositionMapping[tableName][index1] = rowPositionMapping[tableName][index2];
-    rowPositionMapping[tableName][index2] = temp;
+    const [movedRow] = mapping.splice(fromIndex, 1);
+    const insertIndex = fromIndex < toIndex ? toIndex : toIndex;
+    mapping.splice(insertIndex, 0, movedRow);
 
     // 保存映射关系到localStorage
     try {
-      localStorage.setItem(`acu_row_position_mapping_${tableName}`, JSON.stringify(rowPositionMapping[tableName]));
+      localStorage.setItem(`acu_row_position_mapping_${tableName}`, JSON.stringify(mapping));
     } catch (e) {
       console.warn('[ACU] 无法保存行位置映射:', e);
     }
@@ -6311,8 +6321,8 @@
       }
 
       if (dragStartIndex !== dropIndex && dragStartIndex !== -1) {
-        // 交换显示位置
-        swapRows(tableName, dragStartIndex, dropIndex);
+        // 移动显示位置：拖动第一行到第二行时，结果应为第二行、第一行、第三行
+        moveRow(tableName, dragStartIndex, dropIndex);
 
         // 重新渲染表格内容区域（不触碰标签页）
         const rawData = getTableData();
