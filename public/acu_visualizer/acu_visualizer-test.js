@@ -2515,11 +2515,19 @@
                 .acu-table-container.night-mode .data-table tbody tr.dragging {
                     background-color: rgba(255, 215, 0, 0.2) !important;
                 }
-                .acu-table-container .data-table tbody tr.drag-over {
+                .acu-table-container .data-table tbody tr.drag-over-before,
+                .acu-table-container .data-table tbody tr.drag-over-after {
+                    position: relative !important;
                     background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
+                }
+                .acu-table-container .data-table tbody tr.drag-over-before {
                     border-top: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
                 }
-                .acu-table-container.night-mode .data-table tbody tr.drag-over {
+                .acu-table-container .data-table tbody tr.drag-over-after {
+                    border-bottom: 2px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+                }
+                .acu-table-container.night-mode .data-table tbody tr.drag-over-before,
+                .acu-table-container.night-mode .data-table tbody tr.drag-over-after {
                     background-color: rgba(135, 206, 250, 0.15) !important;
                 }
 
@@ -6093,23 +6101,24 @@
     return displayIndex !== -1 ? displayIndex : originalIndex;
   };
 
-  // 将一行移动到目标行位置（拖到下方时插入到目标行后，拖到上方时插入到目标行前）
-  const moveRow = (tableName, fromIndex, toIndex) => {
+  // 将一行移动到指定插入线位置（insertIndex 是原始显示序列中的边界：0=第一行前，1=第一/二行之间）
+  const moveRowToInsertIndex = (tableName, fromIndex, insertIndex) => {
     if (!rowPositionMapping[tableName]) return;
     const mapping = rowPositionMapping[tableName];
     if (
       fromIndex < 0 ||
-      toIndex < 0 ||
+      insertIndex < 0 ||
       fromIndex >= mapping.length ||
-      toIndex >= mapping.length ||
-      fromIndex === toIndex
+      insertIndex > mapping.length ||
+      insertIndex === fromIndex ||
+      insertIndex === fromIndex + 1
     ) {
       return;
     }
 
     const [movedRow] = mapping.splice(fromIndex, 1);
-    const insertIndex = fromIndex < toIndex ? toIndex : toIndex;
-    mapping.splice(insertIndex, 0, movedRow);
+    const adjustedInsertIndex = fromIndex < insertIndex ? insertIndex - 1 : insertIndex;
+    mapping.splice(adjustedInsertIndex, 0, movedRow);
 
     // 保存映射关系到localStorage
     try {
@@ -6281,22 +6290,30 @@
       dragStartIndex = -1;
       dragEndIndex = -1;
       $(this).removeClass('dragging');
-      $section.find('.drag-over').removeClass('drag-over');
+      $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
     });
 
     $rows.on('dragover.acu', function (e) {
       if (!isDragging || !isEditingRowOrder) return;
 
       e.preventDefault();
-      e.originalEvent.dataTransfer.dropEffect = 'move';
+      if (e.originalEvent?.dataTransfer) {
+        e.originalEvent.dataTransfer.dropEffect = 'move';
+      }
 
       const $this = $(this);
-      const currentIndex = $this.index();
+      const targetIndex = parseInt($this.attr('data-display-index'), 10);
+      const fallbackIndex = $this.index();
+      const currentIndex = Number.isNaN(targetIndex) ? fallbackIndex : targetIndex;
+      const rect = this.getBoundingClientRect();
+      const isAfter = e.originalEvent.clientY > rect.top + rect.height / 2;
+      const insertIndex = currentIndex + (isAfter ? 1 : 0);
+      const nextClass = isAfter ? 'drag-over-after' : 'drag-over-before';
 
-      if (currentIndex !== dragEndIndex) {
-        $section.find('.drag-over').removeClass('drag-over');
-        $this.addClass('drag-over');
-        dragEndIndex = currentIndex;
+      if (insertIndex !== dragEndIndex || !$this.hasClass(nextClass)) {
+        $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');
+        $this.addClass(nextClass);
+        dragEndIndex = insertIndex;
       }
     });
 
@@ -6306,7 +6323,7 @@
 
     $rows.on('dragleave.acu', function (e) {
       if (e.target === this || $(e.target).closest('tr')[0] === this) {
-        $(this).removeClass('drag-over');
+        $(this).removeClass('drag-over-before drag-over-after');
         dragEndIndex = -1;
       }
     });
@@ -6315,14 +6332,32 @@
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
-      let dropIndex = parseInt($(this).attr('data-display-index'), 10);
-      if (Number.isNaN(dropIndex)) {
-        dropIndex = $(this).index();
+      let dropIndex = -1;
+      const hintRow = $section[0]?.querySelector('.drag-over-before, .drag-over-after');
+
+      if (hintRow) {
+        const hintIndex = parseInt(hintRow.getAttribute('data-display-index'), 10);
+        if (!Number.isNaN(hintIndex)) {
+          dropIndex = hintIndex + (hintRow.classList.contains('drag-over-after') ? 1 : 0);
+        }
       }
 
-      if (dragStartIndex !== dropIndex && dragStartIndex !== -1) {
-        // 移动显示位置：拖动第一行到第二行时，结果应为第二行、第一行、第三行
-        moveRow(tableName, dragStartIndex, dropIndex);
+      if (dropIndex < 0) {
+        dropIndex = dragEndIndex;
+      }
+
+      if (dropIndex < 0) {
+        const targetIndex = parseInt($(this).attr('data-display-index'), 10);
+        const fallbackIndex = $(this).index();
+        const currentIndex = Number.isNaN(targetIndex) ? fallbackIndex : targetIndex;
+        const rect = this.getBoundingClientRect();
+        const isAfter = e.originalEvent.clientY > rect.top + rect.height / 2;
+        dropIndex = currentIndex + (isAfter ? 1 : 0);
+      }
+
+      if (dragStartIndex !== -1 && dropIndex !== -1 && dropIndex !== dragStartIndex && dropIndex !== dragStartIndex + 1) {
+        // 按可视提示线插入：提示线在哪里，实际落点就在哪里
+        moveRowToInsertIndex(tableName, dragStartIndex, dropIndex);
 
         // 重新渲染表格内容区域（不触碰标签页）
         const rawData = getTableData();
@@ -6348,7 +6383,11 @@
         showNotification('行顺序已调整', 'success');
       }
 
-      $(this).removeClass('drag-over');
+      if (hintRow) {
+        hintRow.classList.remove('drag-over-before', 'drag-over-after');
+      } else {
+        $(this).removeClass('drag-over-before drag-over-after');
+      }
     });
   };
 
