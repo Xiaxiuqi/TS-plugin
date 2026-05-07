@@ -128,7 +128,6 @@
   let dragStartIndex = -1;
   let dragEndIndex = -1;
   let isDragging = false;
-  let dragRowElement = null;
 
   // 行位置映射表（用于存储前端显示位置与原始数据索引的映射关系）
   const rowPositionMapping = {};
@@ -6190,7 +6189,7 @@
       const deleteKey = `${tableName}-row-${originalIndex}`;
       const isPendingDelete = pendingDeletes.has(deleteKey);
       const rowClass = isPendingDelete ? 'pending-deletion' : '';
-      html += `<tr class="${rowClass}" draggable="true">`;
+      html += `<tr class="${rowClass}" data-display-index="${displayIndex}" data-original-index="${originalIndex}" ${isEditingRowOrder ? 'draggable="true"' : ''}>`;
 
       row.forEach((cell, index) => {
         if (index > 0) {
@@ -6255,12 +6254,16 @@
     $rows.on('dragstart.acu', function (e) {
       if (!isEditingRowOrder) return;
       isDragging = true;
-      dragStartIndex = $(this).index();
-      dragRowElement = this;
+      dragStartIndex = parseInt($(this).attr('data-display-index'), 10);
+      if (Number.isNaN(dragStartIndex)) {
+        dragStartIndex = $(this).index();
+      }
       $(this).addClass('dragging');
 
-      e.originalEvent.dataTransfer.effectAllowed = 'move';
-      e.originalEvent.dataTransfer.setData('text/plain', dragStartIndex.toString());
+      if (e.originalEvent?.dataTransfer) {
+        e.originalEvent.dataTransfer.effectAllowed = 'move';
+        e.originalEvent.dataTransfer.setData('text/plain', dragStartIndex.toString());
+      }
     });
 
     $rows.on('dragend.acu', function () {
@@ -6302,7 +6305,10 @@
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
-      const dropIndex = $(this).index();
+      let dropIndex = parseInt($(this).attr('data-display-index'), 10);
+      if (Number.isNaN(dropIndex)) {
+        dropIndex = $(this).index();
+      }
 
       if (dragStartIndex !== dropIndex && dragStartIndex !== -1) {
         // 交换显示位置
@@ -6354,7 +6360,7 @@
     $tabs.attr('draggable', 'true');
 
     // 使用事件委托绑定事件，避免重复绑定和性能损耗
-    consabsContainer.off('.acu-drag');
+    $tabsContainer.off('.acu-drag');
 
     $tabsContainer.on('dragstart.acu-drag', '.acu-tab-btn', function (e) {
       if (!isEditingOrder) return;
