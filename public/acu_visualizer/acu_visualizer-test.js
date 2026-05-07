@@ -437,10 +437,10 @@
   // 检查 localStorage 大小
   const getStorageSize = () => {
     let total = 0;
-    for (let key in localStorage) {
+    for (const key in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
-      }cons
+      }
     }
     return (total / 1024 / 1024).toFixed(2); // 返回 MB
   };
@@ -559,11 +559,11 @@
   // 【新增】手动清理存储函数（用户控制）
   const manualCleanupStorage = (settings = getCleanupSettings()) => {
     const { $ } = getCore();
-    let cleanedItems = [];
-    let keptItems = [];
+    const cleanedItems = [];
+    const keptItems = [];
     const originalSize = parseFloat(getStorageSize());
-cons
-    consy {
+
+    try {
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -4809,10 +4809,10 @@ cons
   };
 
   // 通知队列管理
-  let notificationQueue = [];
+  const notificationQueue = [];
   const NOTIFICATION_SPACING = 10; // 每个通知之间的间距
 
-  cons 统一的通知函数
+  // 统一的通知函数
   const showNotification = (message, type = 'success') => {
     const { $ } = getCore();
 
@@ -6357,10 +6357,10 @@ cons
 
     const $tabs = $tabsContainer.find('.acu-tab-btn');
     let dragStartIndex = -1;
-    let originalOrder = [];
+    const originalOrder = [];
 
     // 记录初始顺序用于取消
-    consabs.each(function () {
+    $tabs.each(function () {
       originalOrder.push($(this).clone(true));
     });
 
@@ -6435,10 +6435,10 @@ cons
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
     const config = getConfig();
 
-    let menuHtml = `
+    const menuHtml = `
       <div class="acu-cell-menu acu-order-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
           <div class="acu-cell-menu-item" data-action="tab-order">${acuMenuItemContent('tabs', `编辑标签顺序${isEditingOrder ? ' (开启中)' : ''}`)}</div>
-    cons    <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
+          <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>`;
 
@@ -6718,10 +6718,10 @@ cons
     const deleteKey = `${tableName}-row-${rowIndex}`;
     const isPendingDelete = pendingDeletes.has(deleteKey);
 
-    let menuHtml = isPendingDelete
+    const menuHtml = isPendingDelete
       ? `
       <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
-    cons    <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
+          <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `
@@ -7184,10 +7184,10 @@ cons
     const tableHtml = generateTableHTML();
     $('.acu-table-container').remove();
 
-    let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
+    const $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
     if ($latestAIMessage.length === 0) {
-    consconst $chatContainer = $('#chat, .chat-container').first();
+      const $chatContainer = $('#chat, .chat-container').first();
       if ($chatContainer.length) {
         $chatContainer.append(tableHtml);
       } else {
@@ -7388,10 +7388,10 @@ cons
         const observer = new MutationObserver(mutations => {
           mutations.forEach(mutation => {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-              for (let node of mutation.addedNodes) {
+              for (const node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
                   const $node = $(node);
-                  icons($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
+                  if ($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
                     setTimeout(() => {
                       checkAndUpdateTablePosition();
                     }, 300);
