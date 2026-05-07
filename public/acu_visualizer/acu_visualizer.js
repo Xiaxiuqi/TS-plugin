@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         兼容性可视化表格 v9.6
+// @name         兼容性可视化表格 v9.55
 // @namespace    http://tampermonkey.net/
-// @version      9.6.0
-// @description  兼容性可视化表格 v9.6
+// @version      9.5.5
+// @description  兼容性可视化表格 v9.55
 // @author       Cline (Optimized)
 // @match        */*
 // @grant        none
@@ -128,6 +128,7 @@
   let dragStartIndex = -1;
   let dragEndIndex = -1;
   let isDragging = false;
+  let dragRowElement = null;
 
   // 行位置映射表（用于存储前端显示位置与原始数据索引的映射关系）
   const rowPositionMapping = {};
@@ -440,7 +441,7 @@
     for (let key in localStorage) {
       if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
         total += localStorage[key].length + key.length;
-      }cons
+      }
     }
     return (total / 1024 / 1024).toFixed(2); // 返回 MB
   };
@@ -562,8 +563,8 @@
     let cleanedItems = [];
     let keptItems = [];
     const originalSize = parseFloat(getStorageSize());
-cons
-    consy {
+
+    try {
       // 保存关键设置到临时变量
       const criticalData = {};
       CRITICAL_SETTINGS.forEach(key => {
@@ -4812,7 +4813,7 @@ cons
   let notificationQueue = [];
   const NOTIFICATION_SPACING = 10; // 每个通知之间的间距
 
-  cons 统一的通知函数
+  // 统一的通知函数
   const showNotification = (message, type = 'success') => {
     const { $ } = getCore();
 
@@ -5908,7 +5909,7 @@ cons
         <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
-                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.6 [标识：${getDataIsolationCode() || '无'}]</span></span>
+                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.55 [标识：${getDataIsolationCode() || '无'}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
                         <!-- 极致月相盒：重回 summary 内部实现垂直居中与结构绑定 -->
@@ -6090,27 +6091,17 @@ cons
     return displayIndex !== -1 ? displayIndex : originalIndex;
   };
 
-  // 将一行移动到目标行位置（拖到下方时插入到目标行后，拖到上方时插入到目标行前）
-  const moveRow = (tableName, fromIndex, toIndex) => {
+  // 交换两行的显示位置
+  const swapRows = (tableName, index1, index2) => {
     if (!rowPositionMapping[tableName]) return;
-    const mapping = rowPositionMapping[tableName];
-    if (
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= mapping.length ||
-      toIndex >= mapping.length ||
-      fromIndex === toIndex
-    ) {
-      return;
-    }
 
-    const [movedRow] = mapping.splice(fromIndex, 1);
-    const insertIndex = fromIndex < toIndex ? toIndex : toIndex;
-    mapping.splice(insertIndex, 0, movedRow);
+    const temp = rowPositionMapping[tableName][index1];
+    rowPositionMapping[tableName][index1] = rowPositionMapping[tableName][index2];
+    rowPositionMapping[tableName][index2] = temp;
 
     // 保存映射关系到localStorage
     try {
-      localStorage.setItem(`acu_row_position_mapping_${tableName}`, JSON.stringify(mapping));
+      localStorage.setItem(`acu_row_position_mapping_${tableName}`, JSON.stringify(rowPositionMapping[tableName]));
     } catch (e) {
       console.warn('[ACU] 无法保存行位置映射:', e);
     }
@@ -6196,7 +6187,7 @@ cons
       const deleteKey = `${tableName}-row-${originalIndex}`;
       const isPendingDelete = pendingDeletes.has(deleteKey);
       const rowClass = isPendingDelete ? 'pending-deletion' : '';
-      html += `<tr class="${rowClass}" data-display-index="${displayIndex}" data-original-index="${originalIndex}" ${isEditingRowOrder ? 'draggable="true"' : ''}>`;
+      html += `<tr class="${rowClass}" draggable="true">`;
 
       row.forEach((cell, index) => {
         if (index > 0) {
@@ -6261,16 +6252,12 @@ cons
     $rows.on('dragstart.acu', function (e) {
       if (!isEditingRowOrder) return;
       isDragging = true;
-      dragStartIndex = parseInt($(this).attr('data-display-index'), 10);
-      if (Number.isNaN(dragStartIndex)) {
-        dragStartIndex = $(this).index();
-      }
+      dragStartIndex = $(this).index();
+      dragRowElement = this;
       $(this).addClass('dragging');
 
-      if (e.originalEvent?.dataTransfer) {
-        e.originalEvent.dataTransfer.effectAllowed = 'move';
-        e.originalEvent.dataTransfer.setData('text/plain', dragStartIndex.toString());
-      }
+      e.originalEvent.dataTransfer.effectAllowed = 'move';
+      e.originalEvent.dataTransfer.setData('text/plain', dragStartIndex.toString());
     });
 
     $rows.on('dragend.acu', function () {
@@ -6312,14 +6299,11 @@ cons
       if (!isEditingRowOrder) return;
       e.preventDefault();
 
-      let dropIndex = parseInt($(this).attr('data-display-index'), 10);
-      if (Number.isNaN(dropIndex)) {
-        dropIndex = $(this).index();
-      }
+      const dropIndex = $(this).index();
 
       if (dragStartIndex !== dropIndex && dragStartIndex !== -1) {
-        // 移动显示位置：拖动第一行到第二行时，结果应为第二行、第一行、第三行
-        moveRow(tableName, dragStartIndex, dropIndex);
+        // 交换显示位置
+        swapRows(tableName, dragStartIndex, dropIndex);
 
         // 重新渲染表格内容区域（不触碰标签页）
         const rawData = getTableData();
@@ -6360,14 +6344,14 @@ cons
     let originalOrder = [];
 
     // 记录初始顺序用于取消
-    consabs.each(function () {
+    $tabs.each(function () {
       originalOrder.push($(this).clone(true));
     });
 
     $tabs.attr('draggable', 'true');
 
     // 使用事件委托绑定事件，避免重复绑定和性能损耗
-    $tabsContainer.off('.acu-drag');
+    consabsContainer.off('.acu-drag');
 
     $tabsContainer.on('dragstart.acu-drag', '.acu-tab-btn', function (e) {
       if (!isEditingOrder) return;
@@ -6438,7 +6422,7 @@ cons
     let menuHtml = `
       <div class="acu-cell-menu acu-order-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10005;">
           <div class="acu-cell-menu-item" data-action="tab-order">${acuMenuItemContent('tabs', `编辑标签顺序${isEditingOrder ? ' (开启中)' : ''}`)}</div>
-    cons    <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
+          <div class="acu-cell-menu-item" data-action="row-order">${acuMenuItemContent('rows', `编辑行内容顺序${isEditingRowOrder ? ' (开启中)' : ''}`)}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>`;
 
@@ -6721,7 +6705,7 @@ cons
     let menuHtml = isPendingDelete
       ? `
       <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
-    cons    <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
+          <div class="acu-cell-menu-item restore" data-action="restore">${acuMenuItemContent('restore', '恢复整行')}</div>
           <div class="acu-cell-menu-item close" data-action="close">${acuMenuItemContent('close', '关闭菜单')}</div>
       </div>
     `
@@ -7187,7 +7171,7 @@ cons
     let $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
 
     if ($latestAIMessage.length === 0) {
-    consconst $chatContainer = $('#chat, .chat-container').first();
+      const $chatContainer = $('#chat, .chat-container').first();
       if ($chatContainer.length) {
         $chatContainer.append(tableHtml);
       } else {
@@ -7391,7 +7375,7 @@ cons
               for (let node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
                   const $node = $(node);
-                  icons($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
+                  if ($node.hasClass('mes') && !$node.hasClass('sys') && !$node.hasClass('user')) {
                     setTimeout(() => {
                       checkAndUpdateTablePosition();
                     }, 300);
