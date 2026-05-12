@@ -698,7 +698,10 @@
   }
 
   function formatDiagnosis(data) {
+    const hiddenKeys = new Set(['环境', '环境标识', '入口版本', '入口目录', '加载器地址', 'UI实例来源']);
+
     return Object.entries(data)
+      .filter(([key]) => !hiddenKeys.has(key))
       .map(([key, value]) => {
         if (Array.isArray(value)) return `${key}: ${value.length ? value.join(', ') : '无'}`;
         if (value && typeof value === 'object') return `${key}: ${JSON.stringify(value, null, 2)}`;
@@ -740,7 +743,6 @@
     panel.innerHTML =
       managerView?.buildPanelHtml?.({
         displayEnv: CONFIG.displayEnv,
-        version: CONFIG.version,
         loaderStatus,
         theme: getTheme(),
       }) ||
@@ -757,15 +759,6 @@
     maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
     maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
     maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
-
-    root.querySelectorAll('[data-jjks-manager-size]').forEach(input => {
-      input.addEventListener('change', () => {
-        const key = input.getAttribute('data-jjks-manager-size');
-        const value = String(input.value || '').trim();
-        if (!key || !value) return;
-        root.style.setProperty(key === 'width' ? '--jjks-manager-width' : '--jjks-manager-max-height', value);
-      });
-    });
 
     root.addEventListener('click', event => {
       const target = event.target;
@@ -821,14 +814,14 @@
       if (node) node.textContent = String(value);
     };
 
-    setText('env', data.环境);
-    setText('version', data.入口版本);
     setText('loader', data.加载器状态);
     setText('theme', data.当前主题 === 'night' ? '暗色模式' : '米白模式');
-    setText('ui-source', data.UI实例来源 || '-');
-    setText('host', data.宿主命中SillyTavern ? 'SillyTavern 宿主已命中' : '未命中');
     setText('modules', modules.length);
     setText('roots', data.故事UI节点数);
+    setText('scanner', data.扫描器就绪 ? '已就绪' : '未就绪');
+    setText('theme-ready', data.主题模块就绪 ? '已就绪' : '未就绪');
+    setText('scan-window', data.最近扫描窗口 || 0);
+    setText('scan-mode', data.扫描模式 || '-');
 
     const chips = root.querySelector('[data-jjks-module-chips]');
     if (chips)
