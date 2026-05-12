@@ -203,6 +203,19 @@
     return `<pre class="story-ui-bp-raw">${safe(rawTargets)}</pre>`;
   }
 
+  function matchesRawText(rawText) {
+    return Boolean(rawText && BP_PANEL_PATTERN.test(rawText));
+  }
+
+  function fromRawText(rawText) {
+    if (!matchesRawText(rawText)) return null;
+    const wrapper = dom.createElement('span', {
+      className: 'story-ui-bp-fragment',
+      html: renderPanel(rawText),
+    });
+    return wrapper.firstElementChild || wrapper;
+  }
+
   function renderPanel(rawText) {
     const match = rawText.match(BP_PANEL_PATTERN);
     if (!match) return null;
@@ -250,5 +263,9 @@
     priority: 60,
     detect: findBpNodes,
     render,
+    matchesRawText,
+    fromRawText,
   });
+
+  ui.bpPanel = { matchesRawText, fromRawText };
 })();

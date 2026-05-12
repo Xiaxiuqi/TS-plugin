@@ -133,6 +133,19 @@
     `;
   }
 
+  function matchesRawText(rawText) {
+    return PLACEHOLDER_PATTERN.test(String(rawText || ''));
+  }
+
+  function fromRawText(rawText) {
+    if (!matchesRawText(rawText)) return null;
+    const wrapper = dom.createElement('span', {
+      className: 'story-ui-mvu-fragment',
+      html: renderStatusShell(),
+    });
+    return wrapper.firstElementChild || wrapper;
+  }
+
   function render(match) {
     const wrapper = dom.createElement('span', {
       className: 'story-ui-mvu-fragment',
@@ -169,5 +182,9 @@
     detect: findPlaceholderNodes,
     render,
     mount,
+    matchesRawText,
+    fromRawText,
   });
+
+  ui.mvuStatus = { matchesRawText, fromRawText };
 })();

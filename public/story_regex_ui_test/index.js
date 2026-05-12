@@ -106,6 +106,12 @@
   const baseUrl = detectBaseUrl();
   let loaderPromise = null;
   let loaderStatus = 'idle';
+  const INITIAL_SCAN_LIMIT = 5;
+  const messageSignatures = new Map();
+  const mountedModulesByMessage = new Map();
+  const recentScannedMessageIds = [];
+  let renderedWindowSize = 0;
+  let lastScanMode = 'dom';
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
@@ -279,6 +285,151 @@
     return loaderPromise;
   }
 
+  function getDisplayedMessageElement(messageId) {
+    if (messageId === undefined || messageId === null) return null;
+    try {
+      const byHelper = window.retrieveDisplayedMessage?.(messageId)?.[0];
+      if (byHelper) return byHelper;
+    } catch {
+      // ignore helper failures
+    }
+
+    return hostDocument.querySelector?.(`.mes[mesid="${messageId}"]`) || null;
+  }
+
+  function getRenderedMessageIds(limit = INITIAL_SCAN_LIMIT) {
+    const nodes = Array.from(hostDocument.querySelectorAll('.mes[mesid]'));
+    const ids = nodes.map(node => Number(node.getAttribute('mesid'))).filter(Number.isFinite);
+
+    renderedWindowSize = ids.length;
+    if (ids.length <= limit) return ids;
+    return ids.slice(-limit);
+  }
+
+  function getRecentMessageIds(limit = INITIAL_SCAN_LIMIT) {
+    return getRenderedMessageIds(limit);
+  }
+
+  function readRawMessage(messageId) {
+    try {
+      return window.getChatMessages?.(messageId)?.[0] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function computeSignature(rawText) {
+    const text = String(rawText || '');
+    if (!text) return 'empty:0';
+    const head = text.slice(0, 120);
+    const tail = text.slice(-120);
+    return `${text.length}:${head}:${tail}`;
+  }
+
+  function rememberRecentScannedMessageIds(messageIds) {
+    messageIds.forEach(messageId => {
+      const index = recentScannedMessageIds.indexOf(messageId);
+      if (index >= 0) recentScannedMessageIds.splice(index, 1);
+      recentScannedMessageIds.push(messageId);
+    });
+
+    while (recentScannedMessageIds.length > 10) {
+      recentScannedMessageIds.shift();
+    }
+  }
+
+  function clearMountedStoryUi(messageElement) {
+    if (!messageElement) return;
+    messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+  }
+
+  function insertMountedNode(messageElement, moduleId, node) {
+    if (!messageElement || !node) return null;
+    const container = createElementInHost('section');
+    container.className = 'story-ui-raw-mount';
+    container.dataset.storyUiRawMount = 'true';
+    container.dataset.storyUiModule = moduleId;
+    container.appendChild(node);
+    messageElement.appendChild(container);
+    return container;
+  }
+
+  function mountModulesForMessage(messageId, rawText) {
+    const messageElement = getDisplayedMessageElement(messageId);
+    if (!messageElement) return false;
+
+    clearMountedStoryUi(messageElement);
+
+    const ui = getUi();
+    const registry = ui?.registry;
+    const mounted = [];
+    if (!registry) return false;
+
+    registry.list().forEach(module => {
+      const matches = registry.safelyCall(module, 'matchesRawText', rawText);
+      if (!matches) return;
+
+      const builtNode = registry.safelyCall(module, 'fromRawText', rawText, {
+        messageId,
+        messageElement,
+        theme: ui?.theme?.getTheme?.() || 'day',
+      });
+
+      if (!builtNode) return;
+      builtNode.classList?.add?.('story-ui-root');
+      ui?.theme?.applyThemeToRoot?.(builtNode);
+      const mountHost = insertMountedNode(messageElement, module.id, builtNode);
+      if (mountHost) {
+        mounted.push(module.id);
+        registry.safelyCall(module, 'mount', builtNode, { kind: 'raw', rawText, messageId, node: messageElement });
+      }
+    });
+
+    if (mounted.length > 0) {
+      mountedModulesByMessage.set(messageId, mounted);
+      return true;
+    }
+
+    mountedModulesByMessage.delete(messageId);
+    return false;
+  }
+
+  function scanMessageIds(messageIds, mode = 'incremental') {
+    if (!Array.isArray(messageIds) || messageIds.length === 0) return;
+    lastScanMode = mode;
+    const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
+
+    uniqueIds.forEach(messageId => {
+      const chatMessage = readRawMessage(messageId);
+      const rawText = chatMessage?.message || '';
+      const signature = computeSignature(rawText);
+      const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
+      const previousSignature = messageSignatures.get(messageId);
+      if (previousSignature === signature && hasDisplayHost) return;
+
+      messageSignatures.set(messageId, signature);
+      mountModulesForMessage(messageId, rawText);
+    });
+
+    rememberRecentScannedMessageIds(uniqueIds);
+  }
+
+  function normalizeScanTargets(input) {
+    if (Array.isArray(input)) return input.filter(Number.isFinite);
+    if (typeof input === 'number' && Number.isFinite(input)) return [input];
+
+    const scope = input || getStoryDocument();
+    const fromScope =
+      scope?.nodeType === Node.ELEMENT_NODE
+        ? [Number(scope.getAttribute?.('mesid')), Number(scope.closest?.('.mes')?.getAttribute?.('mesid'))].filter(
+            Number.isFinite,
+          )
+        : [];
+
+    if (fromScope.length > 0) return fromScope;
+    return getRecentMessageIds(INITIAL_SCAN_LIMIT);
+  }
+
   function getMessageScope(messageId) {
     if (messageId === undefined || messageId === null) return getStoryDocument();
     try {
@@ -291,12 +442,13 @@
 
   function queueScan(scope = getStoryDocument()) {
     if (scanQueued) return;
+    const messageIds = normalizeScanTargets(scope);
     scanQueued = true;
     requestAnimationFrame(async () => {
       scanQueued = false;
       try {
         await ensureLoader();
-        getUi()?.scanner?.scan?.(scope);
+        scanMessageIds(messageIds, Array.isArray(scope) || typeof scope === 'number' ? 'message_ids' : 'window');
         refreshManagerState();
       } catch (error) {
         console.error(`${logPrefix} 扫描失败`, error);
@@ -332,6 +484,9 @@
       UI实例来源: getUiSource(),
       宿主命中SillyTavern: Boolean(hostWindow?.SillyTavern),
       另一个环境状态: otherState,
+      最近扫描窗口: renderedWindowSize,
+      最近扫描楼层: recentScannedMessageIds.slice(),
+      扫描模式: lastScanMode,
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
     };
@@ -605,7 +760,10 @@
     loaderPromise = null;
     try {
       await ensureLoader();
-      queueScan(document);
+      messageSignatures.clear();
+      mountedModulesByMessage.clear();
+      recentScannedMessageIds.length = 0;
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
@@ -617,7 +775,7 @@
 
   function handleManagerAction(action) {
     if (action === 'scan') {
-      queueScan(document);
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('已触发手动重扫', 'success');
       return;
     }
@@ -639,14 +797,14 @@
       return;
     }
 
-    on(events.APP_READY, () => queueScan(document));
-    on(events.USER_MESSAGE_RENDERED, messageId => queueScan(getMessageScope(messageId)));
-    on(events.CHARACTER_MESSAGE_RENDERED, messageId => queueScan(getMessageScope(messageId)));
-    on(events.MESSAGE_UPDATED, messageId => queueScan(getMessageScope(messageId)));
-    on(events.MESSAGE_EDITED, messageId => queueScan(getMessageScope(messageId)));
-    on(events.MESSAGE_SWIPED, messageId => queueScan(getMessageScope(messageId)));
-    on(events.MORE_MESSAGES_LOADED, () => queueScan(document));
-    on(events.CHAT_CHANGED, () => window.setTimeout(() => queueScan(document), 300));
+    on(events.APP_READY, () => queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT)));
+    on(events.USER_MESSAGE_RENDERED, messageId => queueScan(messageId));
+    on(events.CHARACTER_MESSAGE_RENDERED, messageId => queueScan(messageId));
+    on(events.MESSAGE_UPDATED, messageId => queueScan(messageId));
+    on(events.MESSAGE_EDITED, messageId => queueScan(messageId));
+    on(events.MESSAGE_SWIPED, messageId => queueScan(messageId));
+    on(events.MORE_MESSAGES_LOADED, () => queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT)));
+    on(events.CHAT_CHANGED, () => window.setTimeout(() => queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT)), 300));
   }
 
   function registerManagerButton() {
@@ -738,7 +896,7 @@
   ensureLoader()
     .then(() => {
       notify('故事 UI 外置资源加载完成。', 'success');
-      queueScan(hostDocument);
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
     })
     .catch(error => console.error(`${logPrefix} 初始化失败`, error));
 })();

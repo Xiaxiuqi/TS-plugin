@@ -57,6 +57,20 @@
     return candidates;
   }
 
+  function matchesRawText(rawText) {
+    return isLikelyVariableBlock({ tagName: 'pre' }, String(rawText || ''));
+  }
+
+  function fromRawText(rawText) {
+    if (!matchesRawText(rawText)) return null;
+    const lines = extractLines(rawText);
+    if (lines.length === 0) return null;
+    return render({
+      rawText,
+      kind: 'raw',
+    });
+  }
+
   function extractLines(rawText) {
     return String(rawText || '')
       .split(/\r?\n/)
@@ -98,5 +112,9 @@
     priority: 40,
     detect: findVariableBlocks,
     render,
+    matchesRawText,
+    fromRawText,
   });
+
+  ui.variableUpdate = { matchesRawText, fromRawText };
 })();
