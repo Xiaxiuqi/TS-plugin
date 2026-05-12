@@ -537,20 +537,58 @@
 
   function registerManagerButton() {
     try {
+      notify('咒回前端管理正在载入，请稍候…', 'info');
+
       if (window.appendInexistentScriptButtons) {
         window.appendInexistentScriptButtons([{ name: CONFIG.buttonName, visible: true }]);
       } else if (window.replaceScriptButtons) {
         window.replaceScriptButtons([{ name: CONFIG.buttonName, visible: true }]);
       }
 
-      const eventName = window.getButtonEvent?.(CONFIG.buttonName);
-      if (eventName && window.eventOn) {
-        window.eventOn(eventName, openManager);
-      } else {
-        console.warn(`${logPrefix} 脚本按钮事件 API 不可用`);
+      const bindButtonClickFallback = () => {
+        const candidates = Array.from(document.querySelectorAll('button')).filter(button => {
+          const name = (button.textContent || '').trim();
+          return name === CONFIG.buttonName || name.includes(CONFIG.buttonName);
+        });
+
+        candidates.forEach(button => {
+          if (button.dataset.jjksStoryUiBound === CONFIG.env) return;
+          button.dataset.jjksStoryUiBound = CONFIG.env;
+          button.addEventListener('click', event => {
+            try {
+              event.preventDefault();
+              event.stopPropagation();
+            } catch {
+              // ignore
+            }
+            openManager();
+          });
+        });
+      };
+
+      const bindByEventApi = () => {
+        const eventName = window.getButtonEvent?.(CONFIG.buttonName);
+        if (eventName && window.eventOn) {
+          window.eventOn(eventName, openManager);
+          return true;
+        }
+        return false;
+      };
+
+      const bound = bindByEventApi();
+      bindButtonClickFallback();
+
+      if (!bound) {
+        console.warn(`${logPrefix} 脚本按钮事件 API 不可用，已启用点击兜底绑定。`);
+        window.setTimeout(() => {
+          bindButtonClickFallback();
+        }, 500);
       }
+
+      notify('咒回前端管理已就绪，点击按钮可打开管理界面。', 'success');
     } catch (error) {
       console.error(`${logPrefix} 注册管理按钮失败`, error);
+      notify(`咒回前端管理初始化失败：${error?.message || error}`, 'error');
     }
   }
 
@@ -568,6 +606,9 @@
   registerManagerButton();
   bindEvents();
   ensureLoader()
-    .then(() => queueScan(document))
+    .then(() => {
+      notify('故事 UI 外置资源加载完成。', 'success');
+      queueScan(document);
+    })
     .catch(error => console.error(`${logPrefix} 初始化失败`, error));
 })();
