@@ -755,13 +755,13 @@
       '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
     root.dataset.jjksManagerFallback = managerView ? 'false' : 'true';
 
-    const themeActions = root.querySelector('[data-jjks-theme-actions]');
+    const themeActions = panel.querySelector('[data-jjks-theme-actions]');
     if (themeActions && !themeActions.childElementCount) {
       themeActions.appendChild(createButton('米白模式', { 'data-jjks-theme': 'day' }));
       themeActions.appendChild(createButton('暗色模式', { 'data-jjks-theme': 'night' }));
     }
 
-    const maintenanceActions = root.querySelector('[data-jjks-maintenance-actions]');
+    const maintenanceActions = panel.querySelector('[data-jjks-maintenance-actions]');
     if (maintenanceActions && !maintenanceActions.childElementCount) {
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
