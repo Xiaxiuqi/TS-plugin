@@ -17,6 +17,37 @@
   const LOADER_MARK = `jjks-story-ui-loader-${CONFIG.env}`;
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
 
+  function getCandidateWindows() {
+    const candidates = [];
+    const push = candidate => {
+      if (!candidate || candidates.includes(candidate)) return;
+      candidates.push(candidate);
+    };
+
+    push(window);
+
+    try {
+      push(window.parent);
+    } catch {
+      // ignore cross-origin parent
+    }
+
+    try {
+      push(window.top);
+    } catch {
+      // ignore cross-origin top
+    }
+
+    return candidates;
+  }
+
+  function findHostWindow() {
+    return getCandidateWindows().find(candidate => candidate?.document?.body) || window;
+  }
+
+  const hostWindow = findHostWindow();
+  const hostDocument = hostWindow.document || document;
+
   const state = (window.__jjksStoryUiIndexState = window.__jjksStoryUiIndexState || {});
   const currentScript = document.currentScript;
   function normalizeBaseUrl(value) {
@@ -61,6 +92,8 @@
     displayEnv: CONFIG.displayEnv,
     version: CONFIG.version,
     baseUrl,
+    hostEqualsWindow: hostWindow === window,
+    hostLocation: hostWindow?.location?.href || '',
     startedAt: new Date().toISOString(),
   };
 
@@ -108,7 +141,7 @@
   }
 
   function applyManagerTheme(theme = getTheme()) {
-    const root = document.getElementById(CONFIG.managerRootId);
+    const root = hostDocument.getElementById(CONFIG.managerRootId);
     if (!root) return;
     root.classList.toggle('jjks-manager-night', theme === 'night');
     root.classList.toggle('jjks-manager-day', theme !== 'night');
@@ -325,10 +358,10 @@
 
   function ensureManagerDom() {
     injectManagerStyle();
-    let root = document.getElementById(CONFIG.managerRootId);
+    let root = hostDocument.getElementById(CONFIG.managerRootId);
     if (root) return root;
 
-    root = document.createElement('div');
+    root = hostDocument.createElement('div');
     root.id = CONFIG.managerRootId;
     root.className = 'jjks-manager-mask jjks-manager-day';
     root.dataset.jjksManagerRoot = CONFIG.env;
@@ -377,7 +410,7 @@
     `;
 
     root.appendChild(panel);
-    document.body.appendChild(root);
+    hostDocument.body.appendChild(root);
 
     const themeActions = root.querySelector('[data-jjks-theme-actions]');
     themeActions.appendChild(createButton('米白模式', { 'data-jjks-theme': 'day' }));
@@ -424,12 +457,12 @@
   }
 
   function closeManager() {
-    const root = document.getElementById(CONFIG.managerRootId);
+    const root = hostDocument.getElementById(CONFIG.managerRootId);
     if (root) root.dataset.open = 'false';
   }
 
   function refreshManagerState() {
-    const root = document.getElementById(CONFIG.managerRootId);
+    const root = hostDocument.getElementById(CONFIG.managerRootId);
     if (!root) return;
 
     const data = diagnose();
@@ -546,7 +579,7 @@
       }
 
       const bindButtonClickFallback = () => {
-        const candidates = Array.from(document.querySelectorAll('button')).filter(button => {
+        const candidates = Array.from(hostDocument.querySelectorAll('button')).filter(button => {
           const name = (button.textContent || '').trim();
           return name === CONFIG.buttonName || name.includes(CONFIG.buttonName);
         });
@@ -562,6 +595,7 @@
               // ignore
             }
             openManager();
+            console.info(`${logPrefix} 已通过宿主页面按钮兜底绑定打开管理面板。`);
           });
         });
       };
@@ -583,6 +617,8 @@
         window.setTimeout(() => {
           bindButtonClickFallback();
         }, 500);
+      } else {
+        console.info(`${logPrefix} 已通过酒馆按钮事件 API 绑定管理按钮。`);
       }
 
       notify('咒回前端管理已就绪，点击按钮可打开管理界面。', 'success');
@@ -592,16 +628,26 @@
     }
   }
 
-  window.JJKSStoryUiManager = window.JJKSStoryUiManager || {};
-  window.JJKSStoryUiManager[CONFIG.env] = {
-    ensureLoader,
-    queueScan,
-    openManager,
-    closeManager,
-    diagnose,
-    reloadResources,
-    setTheme,
-  };
+  function exposeManagerApi() {
+    const api = {
+      ensureLoader,
+      queueScan,
+      openManager,
+      closeManager,
+      diagnose,
+      reloadResources,
+      setTheme,
+      hostWindow,
+      hostDocument,
+    };
+
+    window.JJKSStoryUiManager = window.JJKSStoryUiManager || {};
+    window.JJKSStoryUiManager[CONFIG.env] = api;
+    hostWindow.JJKSStoryUiManager = hostWindow.JJKSStoryUiManager || {};
+    hostWindow.JJKSStoryUiManager[CONFIG.env] = api;
+  }
+
+  exposeManagerApi();
 
   registerManagerButton();
   bindEvents();
