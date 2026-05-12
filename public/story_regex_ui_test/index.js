@@ -354,6 +354,11 @@
     return container;
   }
 
+  function hasMountedStoryUi(messageElement) {
+    if (!messageElement) return false;
+    return Boolean(messageElement.querySelector?.('[data-story-ui-raw-mount="true"]'));
+  }
+
   function mountModulesForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
@@ -404,8 +409,9 @@
       const rawText = chatMessage?.message || '';
       const signature = computeSignature(rawText);
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
+      const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (previousSignature === signature && hasDisplayHost) return;
+      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
