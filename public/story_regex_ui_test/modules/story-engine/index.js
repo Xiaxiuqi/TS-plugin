@@ -3,14 +3,18 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'story-engine';
-  const MODULE_VERSION = '0.1.0-test-integrated';
+  const MODULE_VERSION = '0.2.0-test-regex-restored';
   const BLOCK = {
     open: '<story_driver>',
     close: '</story_driver>',
   };
 
-  const NPC_BLOCK_PATTERN = /<npc_driver>\s*([\s\S]*?)\s*<\/npc_driver>/gi;
-  const COMBAT_BLOCK_PATTERN = /<combat_driver>\s*([\s\S]*?)\s*<\/combat_driver>/i;
+  const STORY_DRIVER_PATTERN =
+    /<story_driver>\s*━━\s*1[\.．、]\s*全域锚定\s*━━\s*\[时空\]:\s*(.*?)\s*\|\s*(.*?)\s*\[异常拦截\]:\s*(.*?)\s*\[NPC情报盲区\]:\s*(.*?)\s*\[死亡角色\]:\s*(.*?)\s*\[蝴蝶效应\]:\s*(.*?)\s*\[故事主线\]:\s*(.*?)\s*\[原作走向\]:\s*(.*?)\s*\[变数注入\]:\s*(.*?)(?=\s*(?:①|━━\s*2[\.．、]\s*行为逻辑锁))\s*(.*?)\s*━━\s*2[\.．、]\s*行为逻辑锁\s*━━\s*(.*?)\s*((?:<npc_driver>\s*.*?\s*<\/npc_driver>\s*)*)\s*<combat_driver>\s*(.*?)\s*<\/combat_driver>\s*━━\s*3[\.．、]\s*最终修正\s*━━\s*(.*?)\s*<\/story_driver>/s;
+
+  const NPC_BLOCK_PATTERN =
+    /<npc_driver>\s*━━\s*1[\.．、]\s*状态读取\s*━━\s*角色名称:\s*(.*?)\s*当前身份:\s*(.*?)\s*数据锚定:\s*-\s*关系:\s*(.*?)\s*-\s*好感:\s*(.*?)\s*-\s*信任:\s*(.*?)\s*行为底线:\s*(.*?)\s*核心诉求:\s*(.*?)\s*━━\s*2[\.．、]\s*双轨判定\s*━━\s*双轨结果:\s*-\s*分支=\s*(.*?)\s*-\s*好感=\s*(.*?)\s*-\s*信任=\s*(.*?)\s*-\s*结果=\s*(.*?)\s*<\/npc_driver>/gs;
+
   const EVENT_LINE_PATTERN = /^\s*-\s*(事件[^:：\n]+)[:：]\s*(.*?)(?:\s*(\(\d{1,3}%\)))?\s*$/gm;
 
   function normalizeText(value) {
@@ -23,124 +27,95 @@
     return dom.escapeHtml(String(value ?? ''));
   }
 
-  function extractSection(source, startLabel, endLabel) {
-    const text = String(source || '');
-    const start = text.indexOf(startLabel);
-    if (start < 0) return '';
-    const from = start + startLabel.length;
-    const end = endLabel ? text.indexOf(endLabel, from) : -1;
-    return normalizeText(end >= 0 ? text.slice(from, end) : text.slice(from));
-  }
-
-  function extractInline(source, label, nextLabels = []) {
-    const text = String(source || '');
-    const start = text.indexOf(label);
-    if (start < 0) return '';
-    const from = start + label.length;
-    let end = text.length;
-    nextLabels.forEach(nextLabel => {
-      const index = text.indexOf(nextLabel, from);
-      if (index >= 0 && index < end) end = index;
-    });
-    return normalizeText(text.slice(from, end));
-  }
-
-  function parseGlobalSection(content) {
-    const globalSection =
-      extractSection(content, '━━ 1. 全域锚定 ━━', '━━ 2. 行为逻辑锁 ━━') ||
-      extractSection(content, '━━ 1、全域锚定 ━━', '━━ 2、行为逻辑锁 ━━') ||
-      extractSection(content, '━━ 1．全域锚定 ━━', '━━ 2．行为逻辑锁 ━━');
-
-    const timeAndWeather = extractInline(globalSection, '[时空]:', ['[异常拦截]:']);
-    const separatorIndex = timeAndWeather.indexOf('|');
-    const time =
-      separatorIndex >= 0 ? normalizeText(timeAndWeather.slice(0, separatorIndex)) : normalizeText(timeAndWeather);
-    const weather = separatorIndex >= 0 ? normalizeText(timeAndWeather.slice(separatorIndex + 1)) : '';
-
-    const timelineAndEvents = extractInline(globalSection, '[变数注入]:', []);
-    const fusionSplit = timelineAndEvents.split(/(?:^|\n)①/);
-    const eventLogText = fusionSplit.length > 1 ? `①${fusionSplit.slice(1).join('①')}` : '';
-    const timeline = fusionSplit.length > 0 ? normalizeText(fusionSplit[0]) : '';
-
-    return {
-      time,
-      weather,
-      abnormal: extractInline(globalSection, '[异常拦截]:', ['[NPC情报盲区]:']),
-      blind: extractInline(globalSection, '[NPC情报盲区]:', ['[死亡角色]:']),
-      death: extractInline(globalSection, '[死亡角色]:', ['[蝴蝶效应]:']),
-      butterfly: extractInline(globalSection, '[蝴蝶效应]:', ['[故事主线]:']),
-      storyline: extractInline(globalSection, '[故事主线]:', ['[原作走向]:']),
-      canon: extractInline(globalSection, '[原作走向]:', ['[变数注入]:']),
-      timeline,
-      eventLogText,
-    };
-  }
-
-  function parseEvents(eventLogText) {
+  function parseEvents(source) {
     const events = [];
-    const source = String(eventLogText || '');
+    const text = String(source || '');
     let match;
-    while ((match = EVENT_LINE_PATTERN.exec(source))) {
+
+    while ((match = EVENT_LINE_PATTERN.exec(text))) {
       events.push({
         name: normalizeText(match[1]),
         text: normalizeText(match[2]),
         rate: normalizeText(match[3] || ''),
       });
     }
+
     EVENT_LINE_PATTERN.lastIndex = 0;
     return events;
   }
 
-  function parseNpcBlocks(content) {
-    const matches = [...String(content || '').matchAll(NPC_BLOCK_PATTERN)];
-    return matches.map(match => {
-      const block = match[1] || '';
-      const statusSection =
-        extractSection(block, '━━ 1. 状态读取 ━━', '━━ 2. 双轨判定 ━━') ||
-        extractSection(block, '━━ 1、状态读取 ━━', '━━ 2、双轨判定 ━━') ||
-        extractSection(block, '━━ 1．状态读取 ━━', '━━ 2．双轨判定 ━━');
-      const resultSection = extractInline(block, '双轨结果:', []);
-      return {
-        name: extractInline(statusSection, '角色名称:', ['当前身份:']),
-        identity: extractInline(statusSection, '当前身份:', ['数据锚定:']),
-        relation: extractInline(statusSection, '- 关系:', ['- 好感:']),
-        favor: extractInline(statusSection, '- 好感:', ['- 信任:']),
-        trust: extractInline(statusSection, '- 信任:', ['行为底线:']),
-        bottomLine: extractInline(statusSection, '行为底线:', ['核心诉求:']),
-        demand: extractInline(statusSection, '核心诉求:', []),
-        branch: extractInline(resultSection, '- 分支=', ['- 好感=']),
-        responseFavor: extractInline(resultSection, '- 好感=', ['- 信任=']),
-        responseTrust: extractInline(resultSection, '- 信任=', ['- 结果=']),
-        result: extractInline(resultSection, '- 结果=', []),
-      };
-    });
+  function parseNpcBlocks(source) {
+    const matches = [...String(source || '').matchAll(NPC_BLOCK_PATTERN)];
+    return matches.map(match => ({
+      name: normalizeText(match[1]),
+      identity: normalizeText(match[2]),
+      relation: normalizeText(match[3]),
+      favor: normalizeText(match[4]),
+      trust: normalizeText(match[5]),
+      bottomLine: normalizeText(match[6]),
+      demand: normalizeText(match[7]),
+      branch: normalizeText(match[8]),
+      responseFavor: normalizeText(match[9]),
+      responseTrust: normalizeText(match[10]),
+      result: normalizeText(match[11]),
+    }));
   }
 
   function parseStoryDriver(content) {
-    const parsedGlobal = parseGlobalSection(content);
-    const action =
-      extractSection(content, '━━ 2. 行为逻辑锁 ━━', '<combat_driver>') ||
-      extractSection(content, '━━ 2、行为逻辑锁 ━━', '<combat_driver>') ||
-      extractSection(content, '━━ 2．行为逻辑锁 ━━', '<combat_driver>');
-    const combat = normalizeText((String(content || '').match(COMBAT_BLOCK_PATTERN) || [])[1] || '');
-    const final =
-      extractInline(content, '━━ 3. 最终修正 ━━', ['</story_driver>']) ||
-      extractInline(content, '━━ 3、最终修正 ━━', ['</story_driver>']) ||
-      extractInline(content, '━━ 3．最终修正 ━━', ['</story_driver>']);
+    const match = String(content || '').match(STORY_DRIVER_PATTERN);
+
+    if (!match) {
+      return {
+        matched: false,
+        time: '',
+        weather: '',
+        abnormal: '',
+        blind: '',
+        death: '',
+        butterfly: '',
+        storyline: '',
+        canon: '',
+        timeline: '',
+        eventRaw: '',
+        events: [],
+        fusion: '',
+        action: normalizeText(content),
+        npcRaw: '',
+        npcs: parseNpcBlocks(content),
+        combat: '',
+        final: '',
+      };
+    }
+
+    const timeline = normalizeText(match[9]);
+    const eventRaw = normalizeText(match[10]);
+    const npcRaw = normalizeText(match[12]);
 
     return {
-      ...parsedGlobal,
-      events: parseEvents(parsedGlobal.eventLogText),
-      fusion: parsedGlobal.timeline,
-      action,
-      npcs: parseNpcBlocks(content),
-      combat,
-      final,
+      matched: true,
+      time: normalizeText(match[1]),
+      weather: normalizeText(match[2]),
+      abnormal: normalizeText(match[3]),
+      blind: normalizeText(match[4]),
+      death: normalizeText(match[5]),
+      butterfly: normalizeText(match[6]),
+      storyline: normalizeText(match[7]),
+      canon: normalizeText(match[8]),
+      timeline,
+      eventRaw,
+      events: parseEvents(eventRaw),
+      fusion: timeline,
+      action: normalizeText(match[11]),
+      npcRaw,
+      npcs: parseNpcBlocks(npcRaw),
+      combat: normalizeText(match[13]),
+      final: normalizeText(match[14]),
     };
   }
 
   function renderEventCards(events) {
     if (!events.length) return '<div class="story-ui-se-muted-empty">暂无事件记录</div>';
+
     return events
       .map(
         event => `
@@ -159,12 +134,8 @@
     return npcs
       .map(npc => {
         const relationChip = theme === 'night' ? `REL ${npc.relation}` : `关系 ${npc.relation}`;
-        const favorChip = theme === 'night' ? `FAV ${npc.responseFavor || npc.favor}` : `好感 ${npc.favor}`;
-        const trustChip = theme === 'night' ? `TRUST ${npc.responseTrust || npc.trust}` : `信任 ${npc.trust}`;
-        const branchLabel = theme === 'night' ? '分支' : '分支';
-        const responseLabel = theme === 'night' ? '回应' : '回应';
-        const trustLabel = theme === 'night' ? '托付' : '托付';
-        const resultLabel = theme === 'night' ? '结果' : '结果';
+        const favorChip = theme === 'night' ? `FAV ${npc.favor}` : `好感 ${npc.favor}`;
+        const trustChip = theme === 'night' ? `TRUST ${npc.trust}` : `信任 ${npc.trust}`;
 
         return `
           <div class="story-ui-se-npc-card">
@@ -177,10 +148,10 @@
             </div>
             <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">底线</span> ${escapeHtml(npc.bottomLine)}</div>
             <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">诉求</span> ${escapeHtml(npc.demand)}</div>
-            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">${escapeHtml(branchLabel)}</span> ${escapeHtml(npc.branch)}</div>
-            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">${escapeHtml(responseLabel)}</span> ${escapeHtml(npc.responseFavor)}</div>
-            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">${escapeHtml(trustLabel)}</span> ${escapeHtml(npc.responseTrust)}</div>
-            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">${escapeHtml(resultLabel)}</span> ${escapeHtml(npc.result)}</div>
+            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">分支</span> ${escapeHtml(npc.branch)}</div>
+            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">回应</span> ${escapeHtml(npc.responseFavor)}</div>
+            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">托付</span> ${escapeHtml(npc.responseTrust)}</div>
+            <div class="story-ui-se-npc-line"><span class="story-ui-se-block-label">结果</span> ${escapeHtml(npc.result)}</div>
           </div>
         `;
       })
@@ -200,12 +171,13 @@
               <span class="story-ui-se-orb-mark">✦</span>
               <span class="story-ui-se-orb-title">${isNight ? 'STORY TERMINAL' : 'STORY ENGINE'}</span>
             </summary>
+
             <section class="story-ui-se-panel">
               <header class="story-ui-se-panel-head">
                 <div class="story-ui-se-head-icon">✦</div>
                 <div>
                   <h3 class="story-ui-se-title">${isNight ? '故事引擎调度终端' : '故事引擎调度记录'}</h3>
-                  <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · INTEGRATED MODULE' : '紧凑信息仪表盘 · 外置整合模块'}</div>
+                  <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · NO SCRIPT PIPELINE' : '紧凑信息仪表盘 · 无脚本渲染'}</div>
                 </div>
                 <div class="story-ui-se-corner">✦ ✧</div>
               </header>
@@ -220,11 +192,11 @@
                 <article class="story-ui-se-card story-ui-se-card-summary">
                   <div class="story-ui-se-card-head"><span class="story-ui-se-card-dot"></span><span class="story-ui-se-card-title">${isNight ? 'GLOBAL PARAMETERS' : '全域摘要'}</span></div>
                   <div class="story-ui-se-summary-grid">
-                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">${isNight ? '异常' : '异常'}</div><div class="story-ui-se-summary-value">${escapeHtml(data.abnormal)}</div></div>
-                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">${isNight ? '盲区' : '盲区'}</div><div class="story-ui-se-summary-value">${escapeHtml(data.blind)}</div></div>
-                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">${isNight ? '死亡' : '死亡'}</div><div class="story-ui-se-summary-value">${escapeHtml(data.death)}</div></div>
-                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">${isNight ? '蝴蝶' : '蝴蝶'}</div><div class="story-ui-se-summary-value">${escapeHtml(data.butterfly)}</div></div>
-                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">${isNight ? '原作' : '原作'}</div><div class="story-ui-se-summary-value">${escapeHtml(data.canon)}</div></div>
+                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">异常</div><div class="story-ui-se-summary-value">${escapeHtml(data.abnormal)}</div></div>
+                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">盲区</div><div class="story-ui-se-summary-value">${escapeHtml(data.blind)}</div></div>
+                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">死亡</div><div class="story-ui-se-summary-value">${escapeHtml(data.death)}</div></div>
+                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">蝴蝶</div><div class="story-ui-se-summary-value">${escapeHtml(data.butterfly)}</div></div>
+                    <div class="story-ui-se-summary-item"><div class="story-ui-se-block-label">原作</div><div class="story-ui-se-summary-value">${escapeHtml(data.canon)}</div></div>
                   </div>
                 </article>
 
