@@ -3,17 +3,17 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'story-engine';
-  const MODULE_VERSION = '0.2.0-test-regex-restored';
+  const MODULE_VERSION = '0.3.0-test-template-aligned';
   const BLOCK = {
     open: '<story_driver>',
     close: '</story_driver>',
   };
 
-  const STORY_DRIVER_PATTERN =
-    /<story_driver>\s*━━\s*1[\.．、]\s*全域锚定\s*━━\s*\[时空\]:\s*(.*?)\s*\|\s*(.*?)\s*\[异常拦截\]:\s*(.*?)\s*\[NPC情报盲区\]:\s*(.*?)\s*\[死亡角色\]:\s*(.*?)\s*\[蝴蝶效应\]:\s*(.*?)\s*\[故事主线\]:\s*(.*?)\s*\[原作走向\]:\s*(.*?)\s*\[变数注入\]:\s*(.*?)(?=\s*(?:①|━━\s*2[\.．、]\s*行为逻辑锁))\s*(.*?)\s*━━\s*2[\.．、]\s*行为逻辑锁\s*━━\s*(.*?)\s*((?:<npc_driver>\s*.*?\s*<\/npc_driver>\s*)*)\s*<combat_driver>\s*(.*?)\s*<\/combat_driver>\s*━━\s*3[\.．、]\s*最终修正\s*━━\s*(.*?)\s*<\/story_driver>/s;
+  const STORY_DRIVER_INNER_PATTERN =
+    /━━\s*1[.．、]\s*全域锚定\s*━━\s*\[时空\]:\s*(.*?)\s*\|\s*(.*?)\s*\[异常拦截\]:\s*(.*?)\s*\[NPC情报盲区\]:\s*(.*?)\s*\[死亡角色\]:\s*(.*?)\s*\[蝴蝶效应\]:\s*(.*?)\s*\[故事主线\]:\s*(.*?)\s*\[原作走向\]:\s*(.*?)\s*\[变数注入\]:\s*([\s\S]*?)(?=\s*━━\s*2[.．、]\s*行为逻辑锁\s*━━)\s*━━\s*2[.．、]\s*行为逻辑锁\s*━━\s*([\s\S]*?)\s*((?:<npc_driver>\s*[\s\S]*?\s*<\/npc_driver>\s*)*)\s*<combat_driver>\s*([\s\S]*?)\s*<\/combat_driver>\s*━━\s*3[.．、]\s*最终修正\s*━━\s*([\s\S]*)/i;
 
   const NPC_BLOCK_PATTERN =
-    /<npc_driver>\s*━━\s*1[\.．、]\s*状态读取\s*━━\s*角色名称:\s*(.*?)\s*当前身份:\s*(.*?)\s*数据锚定:\s*-\s*关系:\s*(.*?)\s*-\s*好感:\s*(.*?)\s*-\s*信任:\s*(.*?)\s*行为底线:\s*(.*?)\s*核心诉求:\s*(.*?)\s*━━\s*2[\.．、]\s*双轨判定\s*━━\s*双轨结果:\s*-\s*分支=\s*(.*?)\s*-\s*好感=\s*(.*?)\s*-\s*信任=\s*(.*?)\s*-\s*结果=\s*(.*?)\s*<\/npc_driver>/gs;
+    /<npc_driver>\s*━━\s*1[.．、]\s*状态读取\s*━━\s*角色名称:\s*(.*?)\s*当前身份:\s*(.*?)\s*数据锚定:\s*-\s*关系:\s*(.*?)\s*-\s*好感:\s*(.*?)\s*-\s*信任:\s*(.*?)\s*行为底线:\s*(.*?)\s*核心诉求:\s*(.*?)\s*━━\s*2[.．、]\s*双轨判定\s*━━\s*双轨结果:\s*-\s*分支=\s*(.*?)\s*-\s*好感=\s*(.*?)\s*-\s*信任=\s*(.*?)\s*-\s*结果=\s*(.*?)\s*<\/npc_driver>/gs;
 
   const EVENT_LINE_PATTERN = /^\s*-\s*(事件[^:：\n]+)[:：]\s*(.*?)(?:\s*(\(\d{1,3}%\)))?\s*$/gm;
 
@@ -44,6 +44,23 @@
     return events;
   }
 
+  function splitVariableInjection(raw) {
+    const text = normalizeText(raw);
+    const eventIndex = text.search(/(^|\n)\s*-\s*事件[^:：\n]+[:：]/m);
+
+    if (eventIndex < 0) {
+      return {
+        fusion: text,
+        eventRaw: '',
+      };
+    }
+
+    return {
+      fusion: normalizeText(text.slice(0, eventIndex)),
+      eventRaw: normalizeText(text.slice(eventIndex)),
+    };
+  }
+
   function parseNpcBlocks(source) {
     const matches = [...String(source || '').matchAll(NPC_BLOCK_PATTERN)];
     return matches.map(match => ({
@@ -62,7 +79,7 @@
   }
 
   function parseStoryDriver(content) {
-    const match = String(content || '').match(STORY_DRIVER_PATTERN);
+    const match = normalizeText(content).match(STORY_DRIVER_INNER_PATTERN);
 
     if (!match) {
       return {
@@ -75,21 +92,18 @@
         butterfly: '',
         storyline: '',
         canon: '',
-        timeline: '',
+        fusion: '',
         eventRaw: '',
         events: [],
-        fusion: '',
         action: normalizeText(content),
-        npcRaw: '',
         npcs: parseNpcBlocks(content),
         combat: '',
         final: '',
       };
     }
 
-    const timeline = normalizeText(match[9]);
-    const eventRaw = normalizeText(match[10]);
-    const npcRaw = normalizeText(match[12]);
+    const variableInjectionRaw = normalizeText(match[9]);
+    const { fusion, eventRaw } = splitVariableInjection(variableInjectionRaw);
 
     return {
       matched: true,
@@ -101,15 +115,13 @@
       butterfly: normalizeText(match[6]),
       storyline: normalizeText(match[7]),
       canon: normalizeText(match[8]),
-      timeline,
+      fusion,
       eventRaw,
       events: parseEvents(eventRaw),
-      fusion: timeline,
-      action: normalizeText(match[11]),
-      npcRaw,
-      npcs: parseNpcBlocks(npcRaw),
-      combat: normalizeText(match[13]),
-      final: normalizeText(match[14]),
+      action: normalizeText(match[10]),
+      npcs: parseNpcBlocks(match[11]),
+      combat: normalizeText(match[12]),
+      final: normalizeText(match[13]),
     };
   }
 
