@@ -243,7 +243,7 @@
     return `
       <div class="story-ui-se-combat-layout">
         <section class="story-ui-se-combat-section init">
-          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-index">01</span><span class="story-ui-se-combat-section-title">初始化</span></div>
+          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-mark">✦</span><span class="story-ui-se-combat-section-title">初始化</span></div>
           <div class="story-ui-se-combat-meta-grid">
             <div class="story-ui-se-combat-meta-card"><div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.matchup)}</div><div class="story-ui-se-combat-meta-value">${escapeHtml(parsed.matchup || '无')}</div></div>
             <div class="story-ui-se-combat-meta-card"><div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.player)}</div><div class="story-ui-se-combat-meta-value">${escapeHtml(parsed.playerBaseBp || '无')}</div></div>
@@ -253,12 +253,12 @@
         </section>
 
         <section class="story-ui-se-combat-section calc">
-          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-index">02</span><span class="story-ui-se-combat-section-title">修正计算 · Calc</span></div>
+          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-mark">✦</span><span class="story-ui-se-combat-section-title">修正计算 · Calc</span></div>
           <div class="story-ui-se-combat-rich-text">${escapeHtml(parsed.calcText || '无')}</div>
         </section>
 
         <section class="story-ui-se-combat-section resolve">
-          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-index">03</span><span class="story-ui-se-combat-section-title">对抗判定 · Resolve</span></div>
+          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-mark">✦</span><span class="story-ui-se-combat-section-title">对抗判定 · Resolve</span></div>
           <div class="story-ui-se-combat-rich-text">${escapeHtml(parsed.resolveText || '无')}</div>
         </section>
       </div>
