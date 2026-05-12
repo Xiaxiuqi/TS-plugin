@@ -58,6 +58,11 @@
         css: 'modules/relation-status/style.css',
         script: 'modules/relation-status/index.js',
       },
+      {
+        id: 'manager-ui',
+        css: 'modules/manager-ui/style.css',
+        script: 'modules/manager-ui/index.js',
+      },
     ],
   };
 

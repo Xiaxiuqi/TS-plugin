@@ -708,55 +708,7 @@
   }
 
   function injectManagerStyle() {
-    if (hostDocument.querySelector(`style[data-jjks-manager-style="${STYLE_MARK}"]`)) return;
-    const style = createElementInHost('style');
-    style.dataset.jjksManagerStyle = STYLE_MARK;
-    style.textContent = `
-      .jjks-manager-mask{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,20,.58);backdrop-filter:blur(18px);font-family:"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;}
-      .jjks-manager-mask[data-open="true"]{display:flex;}
-      .jjks-manager-panel{width:min(1120px,calc(100vw - 40px));max-height:min(860px,calc(100vh - 40px));overflow:hidden;border-radius:28px;box-shadow:0 30px 90px rgba(0,0,0,.45);border:1px solid;position:relative;}
-      .jjks-manager-panel:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.75;background:radial-gradient(circle at 14% 0%,rgba(112,170,255,.18),transparent 32%),radial-gradient(circle at 86% 18%,rgba(158,114,255,.16),transparent 30%),linear-gradient(180deg,rgba(255,255,255,.05),transparent 32%);}
-      .jjks-manager-day .jjks-manager-panel{background:linear-gradient(180deg,#f4f8ff 0%,#edf4ff 46%,#e5ecfa 100%);border-color:rgba(107,133,179,.24);color:#152033;}
-      .jjks-manager-night .jjks-manager-panel{background:linear-gradient(180deg,#0b1220 0%,#12182a 46%,#0d1424 100%);border-color:rgba(106,136,198,.28);color:#edf4ff;box-shadow:0 32px 96px rgba(0,0,0,.58),0 0 42px rgba(96,130,255,.16);}
-      .jjks-manager-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:26px 28px 22px;border-bottom:1px solid rgba(124,147,189,.16);}
-      .jjks-manager-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.78;margin-bottom:8px;}
-      .jjks-manager-eyebrow:before{content:"";width:32px;height:1px;background:currentColor;opacity:.46;display:inline-block;}
-      .jjks-manager-head h2{margin:0;font-size:28px;letter-spacing:.03em;font-weight:800;}
-      .jjks-manager-head p{margin:10px 0 0;font-size:13px;line-height:1.7;opacity:.72;max-width:620px;}
-      .jjks-manager-close{width:42px;height:42px;border-radius:14px;border:1px solid rgba(120,146,193,.22);background:rgba(255,255,255,.08);color:inherit;font-size:24px;line-height:1;cursor:pointer;backdrop-filter:blur(10px);transition:transform .16s ease,background .16s ease,border-color .16s ease;}
-      .jjks-manager-close:hover{transform:translateY(-1px);background:rgba(255,255,255,.14);border-color:rgba(120,146,193,.38);}
-      .jjks-manager-body{position:relative;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px;padding:22px 24px 26px;overflow:auto;max-height:calc(min(860px,calc(100vh - 40px)) - 110px);}
-      .jjks-manager-column{display:grid;gap:18px;align-content:start;min-width:0;}
-      .jjks-manager-card{border:1px solid rgba(116,139,184,.16);border-radius:22px;padding:18px;background:rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(31,55,96,.08);backdrop-filter:blur(12px);}
-      .jjks-manager-night .jjks-manager-card{background:rgba(17,24,39,.72);border-color:rgba(120,146,193,.18);box-shadow:0 14px 36px rgba(0,0,0,.24);}
-      .jjks-manager-card h3{margin:0 0 14px;font-size:15px;letter-spacing:.08em;text-transform:uppercase;opacity:.88;}
-      .jjks-manager-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
-      .jjks-manager-metric{padding:14px 15px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.64),rgba(210,224,255,.38));border:1px solid rgba(116,139,184,.14);}
-      .jjks-manager-night .jjks-manager-metric{background:linear-gradient(180deg,rgba(36,51,81,.88),rgba(20,30,49,.78));border-color:rgba(120,146,193,.16);}
-      .jjks-manager-metric span{display:block;font-size:12px;opacity:.64;margin-bottom:8px;letter-spacing:.04em;}
-      .jjks-manager-metric strong{display:block;font-size:18px;line-height:1.3;word-break:break-word;}
-      .jjks-manager-status{display:grid;gap:10px;margin:0;}
-      .jjks-manager-status div{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:10px 0;border-bottom:1px dashed rgba(118,140,184,.18);}
-      .jjks-manager-status div:last-child{border-bottom:none;padding-bottom:0;}
-      .jjks-manager-status dt{opacity:.66;font-size:13px;}
-      .jjks-manager-status dd{margin:0;font-weight:700;text-align:right;max-width:58%;word-break:break-word;}
-      .jjks-manager-actions{display:flex;flex-wrap:wrap;gap:10px;}
-      .jjks-manager-button{border:1px solid rgba(110,136,187,.2);border-radius:14px;padding:10px 14px;background:linear-gradient(180deg,rgba(255,255,255,.84),rgba(222,234,255,.64));color:inherit;cursor:pointer;font-weight:700;font-size:13px;letter-spacing:.03em;transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease;}
-      .jjks-manager-button:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(52,86,146,.14);border-color:rgba(100,130,192,.34);}
-      .jjks-manager-night .jjks-manager-button{background:linear-gradient(180deg,rgba(39,53,83,.92),rgba(22,33,54,.88));border-color:rgba(120,146,193,.2);}
-      .jjks-manager-button[data-active="true"]{background:linear-gradient(135deg,#78a7ff,#a88bff);border-color:transparent;color:#081120;box-shadow:0 10px 24px rgba(120,167,255,.28);}
-      .jjks-manager-log{grid-column:1 / -1;}
-      .jjks-manager-log pre{white-space:pre-wrap;word-break:break-word;margin:0;min-height:180px;max-height:360px;overflow:auto;border-radius:18px;padding:16px;background:rgba(11,20,38,.06);font-family:"Consolas","SFMono-Regular","Microsoft YaHei",monospace;font-size:12px;line-height:1.66;border:1px solid rgba(116,139,184,.12);}
-      .jjks-manager-night .jjks-manager-log pre{background:rgba(6,10,19,.56);color:#dbe8ff;border-color:rgba(120,146,193,.14);}
-      .jjks-manager-warning{display:none;margin:0 0 14px;padding:12px 14px;border-radius:16px;background:rgba(255,179,71,.16);border:1px solid rgba(255,179,71,.24);font-size:13px;line-height:1.65;}
-      .jjks-manager-warning[data-visible="true"]{display:block;}
-      .jjks-manager-chip-row{display:flex;flex-wrap:wrap;gap:8px;}
-      .jjks-manager-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(120,167,255,.14);border:1px solid rgba(120,167,255,.18);font-size:12px;font-weight:600;}
-      .jjks-manager-night .jjks-manager-chip{background:rgba(120,167,255,.12);border-color:rgba(120,167,255,.22);}
-      @media (max-width:860px){.jjks-manager-body{grid-template-columns:1fr}.jjks-manager-overview{grid-template-columns:1fr 1fr}}
-      @media (max-width:640px){.jjks-manager-panel{border-radius:20px}.jjks-manager-head{padding:22px 20px 18px}.jjks-manager-head h2{font-size:22px}.jjks-manager-body{padding:18px}.jjks-manager-overview{grid-template-columns:1fr}}
-    `;
-    (hostDocument.head || hostDocument.body).appendChild(style);
+    return;
   }
 
   function createButton(text, attrs = {}) {
@@ -784,58 +736,15 @@
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
     panel.setAttribute('aria-label', '咒回前端管理');
-
-    panel.innerHTML = `
-      <header class="jjks-manager-head">
-        <div>
-          <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${CONFIG.displayEnv}</span>
-          <h2>咒回前端管理</h2>
-          <p>统一查看 Story UI 模块装载、扫描结果与前端主题状态。当前面板已按 MVU 状态栏的视觉语言重构。</p>
-        </div>
-        <button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button>
-      </header>
-      <main class="jjks-manager-body">
-        <div class="jjks-manager-column">
-          <section class="jjks-manager-card">
-            <h3>运行总览</h3>
-            <div class="jjks-manager-overview">
-              <article class="jjks-manager-metric"><span>当前环境</span><strong data-jjks-status="env">${CONFIG.displayEnv}</strong></article>
-              <article class="jjks-manager-metric"><span>资源状态</span><strong data-jjks-status="loader">${loaderStatus}</strong></article>
-              <article class="jjks-manager-metric"><span>模块数量</span><strong data-jjks-status="modules">0</strong></article>
-              <article class="jjks-manager-metric"><span>故事 UI 节点</span><strong data-jjks-status="roots">0</strong></article>
-            </div>
-          </section>
-          <section class="jjks-manager-card jjks-manager-log">
-            <h3>诊断信息</h3>
-            <pre data-jjks-diagnosis>等待诊断...</pre>
-          </section>
-        </div>
-        <div class="jjks-manager-column">
-          <section class="jjks-manager-card">
-            <h3>状态细节</h3>
-            <p class="jjks-manager-warning" data-jjks-warning></p>
-            <dl class="jjks-manager-status">
-              <div><dt>入口版本</dt><dd data-jjks-status="version">${CONFIG.version}</dd></div>
-              <div><dt>当前主题</dt><dd data-jjks-status="theme">${getTheme()}</dd></div>
-              <div><dt>UI 实例来源</dt><dd data-jjks-status="ui-source">-</dd></div>
-              <div><dt>宿主页面</dt><dd data-jjks-status="host">-</dd></div>
-            </dl>
-          </section>
-          <section class="jjks-manager-card">
-            <h3>日夜模式</h3>
-            <div class="jjks-manager-actions" data-jjks-theme-actions></div>
-          </section>
-          <section class="jjks-manager-card">
-            <h3>维护工具</h3>
-            <div class="jjks-manager-actions" data-jjks-maintenance-actions></div>
-          </section>
-          <section class="jjks-manager-card">
-            <h3>模块状态标签</h3>
-            <div class="jjks-manager-chip-row" data-jjks-module-chips></div>
-          </section>
-        </div>
-      </main>
-    `;
+    const managerView = hostWindow.JJKSStoryUiManagerView || window.JJKSStoryUiManagerView;
+    panel.innerHTML =
+      managerView?.buildPanelHtml?.({
+        displayEnv: CONFIG.displayEnv,
+        version: CONFIG.version,
+        loaderStatus,
+        theme: getTheme(),
+      }) ||
+      '<main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
 
     root.appendChild(panel);
     hostDocument.body.appendChild(root);
@@ -848,6 +757,15 @@
     maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
     maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
     maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
+
+    root.querySelectorAll('[data-jjks-manager-size]').forEach(input => {
+      input.addEventListener('change', () => {
+        const key = input.getAttribute('data-jjks-manager-size');
+        const value = String(input.value || '').trim();
+        if (!key || !value) return;
+        root.style.setProperty(key === 'width' ? '--jjks-manager-width' : '--jjks-manager-max-height', value);
+      });
+    });
 
     root.addEventListener('click', event => {
       const target = event.target;

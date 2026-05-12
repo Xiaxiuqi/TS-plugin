@@ -117,10 +117,10 @@
   function renderTargetCard(target) {
     const meter = clampMeterPercent(target.total);
     return `
-      <div class="bp-target-card" data-rarity="${escapeHtml(target.tier)}">
+      <div class="bp-target-card">
         <div class="bp-target-top">
-          <span class="bp-target-name" data-rarity="${escapeHtml(target.tier)}">✦ ${escapeHtml(target.name)}</span>
-          <span class="bp-tier" data-rarity="${escapeHtml(target.tier)}">${escapeHtml(target.tier)}</span>
+          <span class="bp-target-name">✦ ${escapeHtml(target.name)}</span>
+          <span class="bp-tier">${escapeHtml(target.tier)}</span>
         </div>
         <div class="bp-total">
           <div class="bp-total-head"><span>BP总值</span><span class="bp-total-value">${escapeHtml(target.total)}</span></div>

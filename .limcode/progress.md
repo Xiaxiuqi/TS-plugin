@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-12T22:59:59.914Z
+- Updated At: 2026-05-12T23:21:47.537Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：继续载入多正则 BP / 状态栏模块并保持统一主题与展开状态规则
-- 最新结论：已新增 bp_panel 战力雷达 bp-panel 模块，按米白/暗色源正则实现外层面板、目标卡片与特性条目渲染。
-- 下一步：验证 bp-panel 模块在真实消息中的替换顺序、BP进度条、特性条目与主题切换表现。
+- 当前焦点：拆分咒回前端管理界面为独立模块，并重做为与 MVU/故事引擎一致的米白/暗色可调尺寸管理面板
+- 最新结论：已将咒回前端管理界面的模板与样式迁移到 manager-ui 模块，并改为统一的米白/暗色视觉语言与可调尺寸结构。
+- 下一步：验证 manager-ui 模块的打开/关闭、主题切换、尺寸输入、诊断刷新和按钮交互表现。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -62,6 +62,7 @@
 - 2026-05-12T22:35:00.389Z | updated | 记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。
 - 2026-05-12T22:51:33.225Z | updated | 新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。
 - 2026-05-12T22:59:59.914Z | updated | 新增 bp-panel 模块，将 BP系统米白/暗色三条正则收敛为外置渲染模块。
+- 2026-05-12T23:21:47.537Z | updated | 拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -71,13 +72,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-12T22:59:59.914Z",
+  "updatedAt": "2026-05-12T23:21:47.537Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "继续载入多正则 BP / 状态栏模块并保持统一主题与展开状态规则",
-  "latestConclusion": "已新增 bp_panel 战力雷达 bp-panel 模块，按米白/暗色源正则实现外层面板、目标卡片与特性条目渲染。",
+  "currentFocus": "拆分咒回前端管理界面为独立模块，并重做为与 MVU/故事引擎一致的米白/暗色可调尺寸管理面板",
+  "latestConclusion": "已将咒回前端管理界面的模板与样式迁移到 manager-ui 模块，并改为统一的米白/暗色视觉语言与可调尺寸结构。",
   "currentBlocker": null,
-  "nextAction": "验证 bp-panel 模块在真实消息中的替换顺序、BP进度条、特性条目与主题切换表现。",
+  "nextAction": "验证 manager-ui 模块的打开/关闭、主题切换、尺寸输入、诊断刷新和按钮交互表现。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
@@ -213,6 +214,11 @@
       "at": "2026-05-12T22:59:59.914Z",
       "type": "updated",
       "message": "新增 bp-panel 模块，将 BP系统米白/暗色三条正则收敛为外置渲染模块。"
+    },
+    {
+      "at": "2026-05-12T23:21:47.537Z",
+      "type": "updated",
+      "message": "拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。"
     }
   ],
   "stats": {
@@ -226,8 +232,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-12T22:59:59.914Z",
-    "bodyHash": "sha256:ba5c48d491e9da0956e4a2fd1b2816d6d5042beab04a5a0e93658ea291fffd06"
+    "generatedAt": "2026-05-12T23:21:47.537Z",
+    "bodyHash": "sha256:f92dd2e1b2b5d2e0c4aebaaa848804350eb703cffbddc8c0c3c5d81d07879fcf"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
