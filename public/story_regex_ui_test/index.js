@@ -407,11 +407,7 @@
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return false;
 
-    const styleHidden =
-      getComputedStyle(textElement).display === 'none' || getComputedStyle(textElement).visibility === 'hidden';
-    const markerHidden =
-      textElement.classList.contains('story-ui-source-hidden') || Boolean(textElement.dataset.storyUiSourceHidden);
-    return styleHidden || markerHidden;
+    return Boolean(textElement.querySelector?.('[data-story-ui-source-fragment-hidden="true"]'));
   }
 
   function escapeRegex(value) {
@@ -456,19 +452,63 @@
     });
   }
 
+  function normalizeTextForCompare(text) {
+    return String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function findDisplayedSourceFragments(textElement, extractedContent) {
+    if (!textElement) return [];
+    const normalizedContent = normalizeTextForCompare(extractedContent);
+    if (!normalizedContent) return [];
+
+    const candidates = Array.from(
+      textElement.querySelectorAll?.('pre, code, ul, ol, li, blockquote, p, div, span') || [],
+    ).filter(node => !node.closest?.('.story-ui-root') && !node.closest?.('[data-story-ui-raw-mount="true"]'));
+
+    const directMatches = candidates.filter(node => {
+      const text = normalizeTextForCompare(node.textContent || '');
+      return text && (normalizedContent.includes(text) || text.includes(normalizedContent));
+    });
+    if (directMatches.length > 0) {
+      return directMatches.filter(node => !directMatches.some(other => other !== node && other.contains(node)));
+    }
+
+    const keywordLines = String(extractedContent || '')
+      .split(/\r?\n/)
+      .map(line => normalizeTextForCompare(line))
+      .filter(line => line.length >= 12)
+      .slice(0, 12);
+
+    if (keywordLines.length === 0) return [];
+
+    const keywordMatches = candidates.filter(node => {
+      const text = normalizeTextForCompare(node.textContent || '');
+      return keywordLines.some(line => text.includes(line));
+    });
+
+    return keywordMatches.filter(node => !keywordMatches.some(other => other !== node && other.contains(node)));
+  }
+
   function hideDisplayedSourceForModule(messageElement, module, rawText) {
     if (!messageElement || !module) return;
-    if (!moduleMatchesRawText(module, rawText)) return;
+    const extracted = extractModuleContent(module, rawText);
+    if (!extracted) return;
 
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return;
 
     ensureSourceHideStyle();
 
-    textElement.dataset.storyUiSourceHidden = module.id;
-    textElement.dataset.storyUiSourceDisplay = textElement.style.display || '';
-    textElement.classList.add('story-ui-source-hidden');
-    textElement.setAttribute('aria-hidden', 'true');
+    const fragments = findDisplayedSourceFragments(textElement, extracted.content);
+    fragments.forEach(fragment => {
+      fragment.dataset.storyUiSourceFragmentHidden = 'true';
+      fragment.dataset.storyUiSourceHidden = module.id;
+      fragment.dataset.storyUiSourceDisplay = fragment.style.display || '';
+      fragment.classList.add('story-ui-source-hidden');
+      fragment.setAttribute('aria-hidden', 'true');
+    });
   }
 
   function mountModulesForMessage(messageId, rawText) {
