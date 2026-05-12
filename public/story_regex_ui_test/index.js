@@ -383,6 +383,16 @@
     return Boolean(messageElement.querySelector?.('[data-story-ui-raw-mount="true"]'));
   }
 
+  function isDisplayedSourceHidden(messageElement) {
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return false;
+
+    const styleHidden =
+      getComputedStyle(textElement).display === 'none' || getComputedStyle(textElement).visibility === 'hidden';
+    const markerHidden = Boolean(textElement.dataset.storyUiSourceHidden);
+    return styleHidden || markerHidden;
+  }
+
   function escapeRegex(value) {
     return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
@@ -491,7 +501,13 @@
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
+      if (
+        previousSignature === signature &&
+        hasDisplayHost &&
+        hasMountedUi &&
+        isDisplayedSourceHidden(getDisplayedMessageElement(messageId))
+      )
+        return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
