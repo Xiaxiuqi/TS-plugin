@@ -463,6 +463,17 @@
     return wrapper.firstElementChild || null;
   }
 
+  function getExpandedDisplayValue(element) {
+    if (!element) return '';
+    if (element.classList?.contains('story-ui-mvu-sub-content')) return 'block';
+    if (element.classList?.contains('story-ui-mvu-item-content')) return 'block';
+    if (element.classList?.contains('story-ui-mvu-reward-content')) return 'block';
+    if (element.classList?.contains('story-ui-mvu-pink-container')) return 'flex';
+    if (element.classList?.contains('story-ui-mvu-jujutsu-container')) return 'flex';
+    if (element.classList?.contains('story-ui-mvu-body')) return 'block';
+    return 'block';
+  }
+
   function bindToggleHandlers(root) {
     if (!root || root.dataset.storyUiMvuBound) return;
     root.dataset.storyUiMvuBound = 'true';
@@ -475,7 +486,7 @@
         const content = nextToggle.nextElementSibling;
         if (!content) return;
         const isHidden = getComputedStyle(content).display === 'none';
-        content.style.display = isHidden ? '' : 'none';
+        content.style.display = isHidden ? getExpandedDisplayValue(content) : 'none';
         nextToggle.querySelector('.story-ui-mvu-toggle-icon')?.classList.toggle('collapsed', !isHidden);
         return;
       }
@@ -489,7 +500,7 @@
       const target = root.querySelector(`#${CSS.escape(targetId)}`);
       if (!target) return;
       const isHidden = getComputedStyle(target).display === 'none';
-      target.style.display = isHidden ? '' : 'none';
+      target.style.display = isHidden ? getExpandedDisplayValue(target) : 'none';
       if (iconId) {
         root.querySelector(`#${CSS.escape(iconId)}`)?.classList.toggle('collapsed', !isHidden);
       }
