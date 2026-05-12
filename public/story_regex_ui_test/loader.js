@@ -48,6 +48,11 @@
         css: 'modules/world-log/style.css',
         script: 'modules/world-log/index.js',
       },
+      {
+        id: 'relation-status',
+        css: 'modules/relation-status/style.css',
+        script: 'modules/relation-status/index.js',
+      },
     ],
   };
 

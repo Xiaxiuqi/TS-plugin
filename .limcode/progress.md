@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-12T22:35:00.389Z
+- Updated At: 2026-05-12T22:51:33.225Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：修正文档并继续载入世界运行报告 wlog 模块，统一接入主题切换重渲染与展开状态保留
-- 最新结论：已完成 variable-update、mvu-status、story-engine 的主题切换与状态保留基础修正，当前准备新增世界运行报告模块。
-- 下一步：实现并接入 wlog 模块，修复现有 ESLint 表达式告警，并验证 loader/scanner 集成。
+- 当前焦点：继续载入多正则状态栏模块并保持主题切换/展开状态规则一致
+- 最新结论：已新增 status_relationship 羁绊状态栏 relation-status 模块，按米白/暗色源正则实现外层面板与角色卡片渲染。
+- 下一步：验证 relation-status 模块在真实消息中的替换顺序、主题切换和展开状态表现。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -60,6 +60,7 @@
 - 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:53:50.057Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T22:35:00.389Z | updated | 记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。
+- 2026-05-12T22:51:33.225Z | updated | 新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -69,13 +70,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-12T22:35:00.389Z",
+  "updatedAt": "2026-05-12T22:51:33.225Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "修正文档并继续载入世界运行报告 wlog 模块，统一接入主题切换重渲染与展开状态保留",
-  "latestConclusion": "已完成 variable-update、mvu-status、story-engine 的主题切换与状态保留基础修正，当前准备新增世界运行报告模块。",
+  "currentFocus": "继续载入多正则状态栏模块并保持主题切换/展开状态规则一致",
+  "latestConclusion": "已新增 status_relationship 羁绊状态栏 relation-status 模块，按米白/暗色源正则实现外层面板与角色卡片渲染。",
   "currentBlocker": null,
-  "nextAction": "实现并接入 wlog 模块，修复现有 ESLint 表达式告警，并验证 loader/scanner 集成。",
+  "nextAction": "验证 relation-status 模块在真实消息中的替换顺序、主题切换和展开状态表现。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
@@ -201,6 +202,11 @@
       "at": "2026-05-12T22:35:00.389Z",
       "type": "updated",
       "message": "记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。"
+    },
+    {
+      "at": "2026-05-12T22:51:33.225Z",
+      "type": "updated",
+      "message": "新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。"
     }
   ],
   "stats": {
@@ -214,8 +220,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-12T22:35:00.389Z",
-    "bodyHash": "sha256:e584ced63a83f611eef3f7e96f3b580d0f1d85472f9a57d99eadc37f85817f9d"
+    "generatedAt": "2026-05-12T22:51:33.225Z",
+    "bodyHash": "sha256:5a0d9c43f02916db61854319fb23c82e4262d9531ff1eddc91c2e14e865d88bf"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
