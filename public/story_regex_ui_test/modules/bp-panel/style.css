@@ -114,7 +114,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
   gap: 8px;
-  white-space: pre-wrap;
 }
 
 .story-ui-bp .bp-target-card {

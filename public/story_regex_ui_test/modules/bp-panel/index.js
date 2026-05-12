@@ -9,9 +9,12 @@
     close: '</bp_panel>',
   };
 
-  const OUTER_PATTERN = /<bp_panel>\s*【BP战力雷达】\s*【扫描状态】\s*([\s\S]*?)\s*【已扫描目标】\s*([\s\S]*?)\s*<\/bp_panel>/i;
-  const TARGET_PATTERN = /^\s*-\s*名称:\s*([^|\n]+?)\s*\|\s*BP总值:\s*([+-]?\d+(?:\.\d+)?)\s*\|\s*层级:\s*([^\n]+?)\s*\n\s*操作:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*肉体:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*咒术:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*特性备注:\s*\n((?:\s*-\s*.+(?:\n|$))*)/gm;
+  const OUTER_PATTERN =
+    /<bp_panel>\s*【BP战力雷达】\s*【扫描状态】\s*([\s\S]*?)\s*【已扫描目标】\s*([\s\S]*?)\s*<\/bp_panel>/i;
   const TRAIT_PATTERN = /^\s*-\s*(?!-)([^|:：\n]+?)[:：]\s*(.*?)\s*$/gm;
+  const TARGET_SPLIT_PATTERN = /^\s*-\s*名称:\s*/gm;
+  const TARGET_BLOCK_PATTERN =
+    /^名称:\s*([^|\n]+?)\s*\|\s*BP总值:\s*([+-]?\d+(?:\.\d+)?)\s*\|\s*层级:\s*([^\n]+?)\s*\n\s*操作:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*肉体:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*咒术:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*特性备注:\s*\n([\s\S]*)$/;
 
   function escapeHtml(value) {
     return dom.escapeHtml(String(value ?? ''));
@@ -42,15 +45,31 @@
     return traits;
   }
 
+  function splitTargetBlocks(targetsSource) {
+    const source = String(targetsSource || '').replace(/\r\n?/g, '\n');
+    const matches = Array.from(source.matchAll(TARGET_SPLIT_PATTERN));
+    if (matches.length === 0) return [];
+
+    return matches
+      .map((match, index) => {
+        const start = match.index ?? 0;
+        const end = index + 1 < matches.length ? (matches[index + 1].index ?? source.length) : source.length;
+        return source.slice(start, end).trim();
+      })
+      .filter(Boolean);
+  }
+
   function parseBpPanel(rawText) {
     const match = String(rawText || '').match(OUTER_PATTERN);
     const scanText = normalizeText(match?.[1] || '');
     const targetsSource = normalizeText(match?.[2] || '');
     const targets = [];
-    let targetMatch;
 
-    TARGET_PATTERN.lastIndex = 0;
-    while ((targetMatch = TARGET_PATTERN.exec(targetsSource))) {
+    splitTargetBlocks(targetsSource).forEach(block => {
+      const normalizedBlock = block.replace(/^\s*-\s*/, '');
+      const targetMatch = normalizedBlock.match(TARGET_BLOCK_PATTERN);
+      if (!targetMatch) return;
+
       targets.push({
         name: normalizeText(targetMatch[1]),
         total: normalizeText(targetMatch[2]),
@@ -63,8 +82,9 @@
         curseNote: normalizeText(targetMatch[9]),
         traitsRaw: normalizeText(targetMatch[10]),
         traits: parseTraits(targetMatch[10]),
+        rawBlock: normalizeText(block),
       });
-    }
+    });
 
     return {
       scanText,
