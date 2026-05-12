@@ -27,6 +27,13 @@
     version: 'test',
     loadedCss: new Set(),
     loadedScripts: new Set(),
+    modules: [
+      {
+        id: 'variable-update',
+        css: 'modules/variable-update/style.css',
+        script: 'modules/variable-update/index.js',
+      },
+    ],
   };
 
   function toUrl(path) {
@@ -78,6 +85,17 @@
     });
   }
 
+  async function loadModules() {
+    for (const moduleDef of state.modules) {
+      if (moduleDef.css) {
+        await loadCss(moduleDef.css);
+      }
+      if (moduleDef.script) {
+        await loadScript(moduleDef.script);
+      }
+    }
+  }
+
   async function boot() {
     try {
       await loadCss('shared.css');
@@ -87,14 +105,7 @@
       await loadScript('core/theme.js');
       await loadScript('core/scanner.js');
 
-      await loadCss('modules/variable-update/style.css');
-      await loadScript('modules/variable-update/index.js');
-
-      await loadCss('modules/mvu-status/style.css');
-      await loadScript('modules/mvu-status/index.js');
-
-      await loadCss('modules/bp-panel/style.css');
-      await loadScript('modules/bp-panel/index.js');
+      await loadModules();
 
       window[GLOBAL_KEY]?.theme?.init?.();
       window[GLOBAL_KEY]?.scanner?.init?.();
