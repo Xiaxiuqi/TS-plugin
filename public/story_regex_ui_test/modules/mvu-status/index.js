@@ -76,7 +76,7 @@
     return `<div class="story-ui-mvu-clothes-line">${slots
       .map(([slot, value]) => {
         const isEmpty = !value || value === '无';
-        return `<span class="story-ui-mvu-cloth-chip ${isEmpty ? 'cloth-empty' : ''}"><span class="story-ui-mvu-cloth-slot">${escapeHtml(slot)}</span>${escapeHtml(value)}</span>`;
+        return `<span class="story-ui-mvu-cloth-chip ${isEmpty ? 'is-empty story-ui-mvu-cloth-empty' : ''}"><span class="story-ui-mvu-cloth-slot">${escapeHtml(slot)}</span>${escapeHtml(value)}</span>`;
       })
       .join('')}</div>`;
   }
@@ -199,6 +199,8 @@
   }
 
   function renderUser(allVariables, subtitle) {
+    const theme = ui.theme?.getTheme?.() || 'day';
+    const markIcon = theme === 'night' ? '✧' : '✦';
     const user = getVar(allVariables, 'stat_data.user', {});
     const tasksModule = getVar(allVariables, 'stat_data.任务系统', {});
 
@@ -314,7 +316,7 @@
     return `
       <section class="story-ui-mvu-panel">
         <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-user-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-user-icon">
-          <span class="story-ui-mvu-mark">✦</span>
+          <span class="story-ui-mvu-mark">${markIcon}</span>
           <div>
             <div class="story-ui-mvu-title">个人状态档案</div>
             <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>
@@ -370,6 +372,8 @@
   }
 
   function renderRelations(allVariables, subtitle) {
+    const theme = ui.theme?.getTheme?.() || 'day';
+    const markIcon = theme === 'night' ? '✧' : '✦';
     const npcs = getVar(allVariables, 'stat_data.人际档案', {});
     let fullHtml = '';
 
@@ -423,7 +427,7 @@
     return `
       <section class="story-ui-mvu-panel">
         <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-jujutsu-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-rel-icon">
-          <span class="story-ui-mvu-mark">✦</span>
+          <span class="story-ui-mvu-mark">${markIcon}</span>
           <div>
             <div class="story-ui-mvu-title">咒术高专 · 羁绊档案</div>
             <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>

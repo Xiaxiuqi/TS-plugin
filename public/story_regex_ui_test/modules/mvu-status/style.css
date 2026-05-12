@@ -690,73 +690,6 @@
   gap: 3px;
 }
 
-  .story-ui-mvu.story-ui-night .story-ui-mvu-mini-card {
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.052);
-    box-shadow:
-      inset 3px 0 0 rgba(136, 174, 184, 0.34),
-      var(--mvu-shadow-soft);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-mini-title {
-    color: var(--mvu-sage);
-    box-shadow: inset 0 -1px 0 var(--mvu-line);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-sub-toggle-header,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-item-toggle-header,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-reward-toggle-header {
-    background: var(--mvu-card);
-    box-shadow:
-      inset 3px 0 0 rgba(200, 168, 108, 0.48),
-      var(--mvu-shadow-soft);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-item-toggle-header {
-    box-shadow:
-      inset 3px 0 0 rgba(136, 174, 184, 0.44),
-      var(--mvu-shadow-soft);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-sub-toggle-header:hover,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-item-toggle-header:hover,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-reward-toggle-header:hover {
-    background: var(--mvu-card-2);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-sub-content,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-item-content,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-reward-content {
-    background: rgba(255, 255, 255, 0.028);
-    box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.07);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-innate-ct-header {
-    box-shadow:
-      inset 3px 0 0 rgba(185, 135, 126, 0.58),
-      var(--mvu-shadow-soft);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-reward-section {
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-reward-toggle-header {
-    box-shadow: inset 3px 0 0 rgba(200, 168, 108, 0.58);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-reward-content {
-    background: rgba(0, 0, 0, 0.12);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-task-header {
-    box-shadow:
-      inset 3px 0 0 rgba(185, 135, 126, 0.58),
-      var(--mvu-shadow-soft);
-  }
-}
-
 .story-ui-mvu-bar-bg {
   width: 100%;
   height: 7px;
@@ -780,6 +713,7 @@
 
 .story-ui-mvu-bar-fill {
   position: absolute;
+  top: 0;
   height: 100%;
   border-radius: 999px;
   transition:
@@ -914,6 +848,72 @@
 
 .story-ui-mvu.story-ui-night .story-ui-mvu-char-name {
   box-shadow: inset 0 -1px 0 var(--mvu-line);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-mini-card {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.052);
+  box-shadow:
+    inset 3px 0 0 rgba(136, 174, 184, 0.34),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-mini-title {
+  color: var(--mvu-sage);
+  box-shadow: inset 0 -1px 0 var(--mvu-line);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-sub-toggle-header,
+.story-ui-mvu.story-ui-night .story-ui-mvu-item-toggle-header,
+.story-ui-mvu.story-ui-night .story-ui-mvu-reward-toggle-header {
+  background: var(--mvu-card);
+  box-shadow:
+    inset 3px 0 0 rgba(200, 168, 108, 0.48),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-item-toggle-header {
+  box-shadow:
+    inset 3px 0 0 rgba(136, 174, 184, 0.44),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-sub-toggle-header:hover,
+.story-ui-mvu.story-ui-night .story-ui-mvu-item-toggle-header:hover,
+.story-ui-mvu.story-ui-night .story-ui-mvu-reward-toggle-header:hover {
+  background: var(--mvu-card-2);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-sub-content,
+.story-ui-mvu.story-ui-night .story-ui-mvu-item-content,
+.story-ui-mvu.story-ui-night .story-ui-mvu-reward-content {
+  background: rgba(255, 255, 255, 0.028);
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.07);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-innate-ct-header {
+  box-shadow:
+    inset 3px 0 0 rgba(185, 135, 126, 0.58),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-reward-section {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-reward-toggle-header {
+  box-shadow: inset 3px 0 0 rgba(200, 168, 108, 0.58);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-reward-content {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-task-header {
+  box-shadow:
+    inset 3px 0 0 rgba(185, 135, 126, 0.58),
+    var(--mvu-shadow-soft);
 }
 
 .story-ui-mvu.story-ui-night .story-ui-mvu-profile-tag,
