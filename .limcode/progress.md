@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-12T16:39:24.651Z
+- Updated At: 2026-05-12T16:53:50.057Z
 - Status: active
 - Phase: implementation
 
@@ -58,6 +58,7 @@
 - 2026-05-12T15:02:38.418Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:24:47.041Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
+- 2026-05-12T16:53:50.057Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -67,7 +68,7 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-12T16:39:24.651Z",
+  "updatedAt": "2026-05-12T16:53:50.057Z",
   "status": "active",
   "phase": "implementation",
   "currentFocus": "故事 UI 已迁移为 public 双环境酒馆助手入口，并完成咒回前端管理界面首版实现",
@@ -188,6 +189,12 @@
       "type": "artifact_changed",
       "refId": "plan",
       "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
+    },
+    {
+      "at": "2026-05-12T16:53:50.057Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
     }
   ],
   "stats": {
@@ -201,8 +208,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-12T16:39:24.651Z",
-    "bodyHash": "sha256:67635467c7605f3147c883b533d5798d834cdbc54da8430b2f46cc7c783df1bf"
+    "generatedAt": "2026-05-12T16:53:50.057Z",
+    "bodyHash": "sha256:728ae4ee4f277ebdaff0ed807789f425c15a6e987c2a86c0a7b2bc4df0a10ba6"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
