@@ -33,6 +33,11 @@
         css: 'modules/variable-update/style.css',
         script: 'modules/variable-update/index.js',
       },
+      {
+        id: 'mvu-status',
+        css: 'modules/mvu-status/style.css',
+        script: 'modules/mvu-status/index.js',
+      },
     ],
   };
 

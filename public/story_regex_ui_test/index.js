@@ -384,12 +384,42 @@
     return block;
   }
 
+  function getModulePlaceholderConfig(module) {
+    if (!module || typeof module !== 'object') return null;
+    const placeholder = module.placeholder;
+    if (typeof placeholder === 'string' && placeholder.trim()) {
+      return { text: placeholder.trim() };
+    }
+    if (
+      placeholder &&
+      typeof placeholder === 'object' &&
+      typeof placeholder.text === 'string' &&
+      placeholder.text.trim()
+    ) {
+      return { text: placeholder.text.trim() };
+    }
+    return null;
+  }
+
   function extractModuleContent(module, rawText) {
     const block = getModuleBlockConfig(module);
-    if (!block) return null;
-
-    const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
+    const placeholder = getModulePlaceholderConfig(module);
     const source = String(rawText || '').replace(/\r\n?/g, '\n');
+
+    if (placeholder) {
+      const start = source.indexOf(placeholder.text);
+      if (start < 0) return null;
+      return {
+        fullMatch: placeholder.text,
+        content: '',
+        placeholder,
+        start,
+        end: start + placeholder.text.length,
+      };
+    }
+
+    if (!block) return null;
+    const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
     const match = source.match(pattern);
     if (!match) return null;
 
@@ -397,6 +427,8 @@
       fullMatch: match[0],
       content: String(match[1] || '').trim(),
       block,
+      start: match.index ?? source.indexOf(match[0]),
+      end: (match.index ?? source.indexOf(match[0])) + match[0].length,
     };
   }
 
@@ -435,14 +467,10 @@
   function findNextModuleMatch(modules, rawText, startIndex) {
     let best = null;
     modules.forEach(module => {
-      const block = getModuleBlockConfig(module);
-      if (!block) return;
-      const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
-      const slice = String(rawText || '').slice(startIndex);
-      const match = slice.match(pattern);
-      if (!match || match.index === undefined) return;
-      const absoluteStart = startIndex + match.index;
-      const absoluteEnd = absoluteStart + match[0].length;
+      const extracted = extractModuleContent(module, String(rawText || '').slice(startIndex));
+      if (!extracted) return;
+      const absoluteStart = startIndex + (extracted.start || 0);
+      const absoluteEnd = startIndex + (extracted.end || 0);
       if (
         !best ||
         absoluteStart < best.start ||
@@ -450,11 +478,9 @@
       ) {
         best = {
           module,
-          block,
           start: absoluteStart,
           end: absoluteEnd,
-          fullMatch: match[0],
-          content: String(match[1] || '').trim(),
+          ...extracted,
         };
       }
     });
@@ -486,6 +512,7 @@
       if (moduleHtml) {
         html += `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${match.module.id}">${moduleHtml}</section>`;
         mounted.push(match.module.id);
+        mounted.push({ id: match.module.id, match });
       } else {
         html += renderPlainTextSegment(match.fullMatch, messageId);
       }
@@ -516,9 +543,23 @@
     const { html, mounted } = renderMessageHtmlByModules(messageId, rawText, modules);
     textElement.innerHTML = html;
     textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
+    mounted.forEach(item => {
+      if (!item || typeof item !== 'object') return;
+      const root = textElement.querySelector(`.story-ui-root[data-story-ui-module="${item.id}"]`);
+      if (root)
+        registry.safelyCall(
+          modules.find(module => module.id === item.id),
+          'mount',
+          root,
+          { kind: 'rebuilt', rawText, messageId, match: item.match },
+        );
+    });
 
     if (mounted.length > 0) {
-      mountedModulesByMessage.set(messageId, mounted);
+      mountedModulesByMessage.set(
+        messageId,
+        mounted.map(item => (typeof item === 'string' ? item : item.id)),
+      );
       return true;
     }
 

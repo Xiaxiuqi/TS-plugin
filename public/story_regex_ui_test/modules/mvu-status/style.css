@@ -1,0 +1,870 @@
+.story-ui-mvu {
+  width: 100%;
+  color: var(--mvu-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Microsoft YaHei', serif;
+}
+
+.story-ui-mvu,
+.story-ui-mvu * {
+  box-sizing: border-box;
+}
+
+.story-ui-mvu .mvu-root {
+  width: 100%;
+  margin: 0 auto 10px;
+  padding: 2px 0;
+  display: grid;
+  gap: 8px;
+}
+
+.story-ui-mvu .mvu-panel {
+  width: 100%;
+  overflow: hidden;
+}
+
+.story-ui-mvu .mvu-header {
+  min-height: 38px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.story-ui-mvu .mvu-mark {
+  width: 25px;
+  height: 25px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.story-ui-mvu .mvu-title {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.story-ui-mvu .mvu-subtitle {
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.story-ui-mvu .toggle-icon {
+  transition: transform 0.24s ease;
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.story-ui-mvu .toggle-icon.collapsed {
+  transform: rotate(-90deg);
+}
+
+.story-ui-mvu .mvu-body {
+  padding: 9px 10px 10px;
+}
+
+.story-ui-mvu .mvu-world-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.story-ui-mvu .mvu-world-card,
+.story-ui-mvu .mvu-stat-card,
+.story-ui-mvu .character-card,
+.story-ui-mvu .sex-row {
+  min-width: 0;
+  border: none;
+}
+
+.story-ui-mvu .mvu-world-card {
+  padding: 9px 10px;
+  display: grid;
+  gap: 2px;
+}
+
+.story-ui-mvu .mvu-label,
+.story-ui-mvu .stat-label,
+.story-ui-mvu .c-lbl,
+.story-ui-mvu .mvu-section-label {
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.story-ui-mvu .mvu-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.story-ui-mvu .mvu-value {
+  font-size: 13px;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.story-ui-mvu .mvu-hero {
+  margin-bottom: 8px;
+}
+
+.story-ui-mvu .mvu-profile-main {
+  display: grid;
+  grid-template-columns: minmax(126px, 0.7fr) minmax(0, 1.5fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.story-ui-mvu .mvu-rank-title {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.story-ui-mvu .mvu-rank-value {
+  margin-top: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 900;
+  word-break: break-word;
+}
+
+.story-ui-mvu .mvu-rank-meters,
+.story-ui-mvu .mvu-section-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.story-ui-mvu .mvu-rank-meter,
+.story-ui-mvu .mvu-mini-grid {
+  min-width: 0;
+  display: grid;
+}
+
+.story-ui-mvu .mvu-rank-meter {
+  gap: 4px;
+}
+
+.story-ui-mvu .mvu-rank-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.story-ui-mvu .mvu-rank-meter-head span:last-child {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.story-ui-mvu .mvu-rank-meter-track,
+.story-ui-mvu .bar-bg,
+.story-ui-mvu .lust-bar-bg {
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.story-ui-mvu .mvu-rank-meter-track {
+  height: 7px;
+}
+
+.story-ui-mvu .mvu-rank-meter-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.28s ease;
+}
+
+.story-ui-mvu .mvu-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.story-ui-mvu .mvu-stat-card {
+  padding: 7px 9px;
+  display: grid;
+  gap: 2px;
+}
+
+.story-ui-mvu .mvu-stat-name {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.story-ui-mvu .mvu-stat-value {
+  font-size: 13px;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.story-ui-mvu .mvu-info-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.story-ui-mvu .stat-line {
+  min-width: 0;
+  padding: 7px 9px;
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.story-ui-mvu .profile-tags,
+.story-ui-mvu .clothes-line,
+.story-ui-mvu .fame-line,
+.story-ui-mvu .fame-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+}
+
+.story-ui-mvu .profile-tag,
+.story-ui-mvu .cloth-chip,
+.story-ui-mvu .fame-score,
+.story-ui-mvu .fame-tag {
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.story-ui-mvu .cloth-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.story-ui-mvu .cloth-slot {
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.story-ui-mvu .cloth-empty,
+.story-ui-mvu .muted-empty {
+  opacity: 0.78;
+}
+
+.story-ui-mvu .mvu-mini-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 7px;
+}
+
+.story-ui-mvu .mvu-mini-card {
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.story-ui-mvu .mvu-mini-title {
+  font-size: 12px;
+  font-weight: 900;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  word-break: break-word;
+}
+
+.story-ui-mvu .mvu-mini-body,
+.story-ui-mvu .sub-content,
+.story-ui-mvu .item-content,
+.story-ui-mvu .reward-content {
+  font-size: 12.2px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.story-ui-mvu .sub-toggle-header,
+.story-ui-mvu .item-toggle-header,
+.story-ui-mvu .reward-toggle-header {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.story-ui-mvu .sub-toggle-header {
+  padding: 7px 9px;
+  font-size: 12.6px;
+  font-weight: 900;
+}
+
+.story-ui-mvu .item-toggle-header,
+.story-ui-mvu .reward-toggle-header {
+  padding: 6px 8px;
+  font-size: 12.4px;
+}
+
+.story-ui-mvu .sub-content,
+.story-ui-mvu .item-content,
+.story-ui-mvu .reward-content {
+  display: none;
+  margin-left: 3px;
+  padding: 7px 9px 8px 12px;
+}
+
+.story-ui-mvu .reward-section {
+  margin: 6px 0;
+  overflow: hidden;
+}
+
+.story-ui-mvu .jujutsu-container,
+.story-ui-mvu .pink-container {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+}
+
+.story-ui-mvu .jujutsu-container {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.story-ui-mvu .pink-container {
+  flex-direction: column;
+}
+
+.story-ui-mvu .character-card {
+  flex: 0 0 182px;
+  width: 182px;
+  min-height: 154px;
+  padding: 9px 10px 10px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.story-ui-mvu .character-card:hover {
+  transform: translateY(-1px);
+}
+
+.story-ui-mvu .char-name {
+  max-width: 100%;
+  margin-bottom: 7px;
+  padding-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.story-ui-mvu .stat-row {
+  display: flex;
+  flex-direction: column;
+  margin-top: 7px;
+  gap: 3px;
+}
+
+.story-ui-mvu .stat-label {
+  font-size: 10px;
+}
+
+.story-ui-mvu .stat-value {
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.story-ui-mvu .bar-bg {
+  width: 100%;
+  height: 7px;
+  margin-top: 2px;
+  position: relative;
+}
+
+.story-ui-mvu .bar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  z-index: 2;
+}
+
+.story-ui-mvu .bar-fill,
+.story-ui-mvu .lust-bar-fill {
+  position: absolute;
+  height: 100%;
+  border-radius: 999px;
+  transition:
+    width 0.3s ease,
+    left 0.3s ease,
+    right 0.3s ease;
+}
+
+.story-ui-mvu .sex-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 54px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+}
+
+.story-ui-mvu .sex-char-name,
+.story-ui-mvu .lust-value-text {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.story-ui-mvu.story-ui-day {
+  --mvu-bg: #f7f1e6;
+  --mvu-panel: rgba(251, 247, 238, 0.97);
+  --mvu-card: rgba(255, 253, 247, 0.86);
+  --mvu-card-2: rgba(236, 226, 207, 0.46);
+  --mvu-text: #4a4038;
+  --mvu-muted: #7a6f64;
+  --mvu-faint: #a69a8c;
+  --mvu-sage: #7f927c;
+  --mvu-blue: #748b9d;
+  --mvu-rose: #a07e74;
+  --mvu-gold: #b79a62;
+  --mvu-line: rgba(117, 107, 96, 0.13);
+  --mvu-shadow: 0 4px 10px rgba(71, 58, 42, 0.07);
+  --mvu-shadow-soft: 0 2px 6px rgba(71, 58, 42, 0.045);
+}
+
+.story-ui-mvu.story-ui-day .mvu-panel {
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.58), transparent 32%),
+    radial-gradient(circle at top left, rgba(127, 146, 124, 0.12), transparent 34%), var(--mvu-panel);
+  box-shadow: var(--mvu-shadow);
+}
+
+.story-ui-mvu.story-ui-day .mvu-header {
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
+  box-shadow: inset 3px 0 0 rgba(183, 154, 98, 0.45);
+}
+
+.story-ui-mvu.story-ui-day .mvu-header:hover,
+.story-ui-mvu.story-ui-day .sub-toggle-header:hover,
+.story-ui-mvu.story-ui-day .item-toggle-header:hover,
+.story-ui-mvu.story-ui-day .reward-toggle-header:hover,
+.story-ui-mvu.story-ui-day .character-card:hover {
+  background: rgba(255, 253, 247, 0.94);
+}
+
+.story-ui-mvu.story-ui-day .mvu-mark {
+  color: var(--mvu-gold);
+  background: rgba(255, 253, 247, 0.62);
+  box-shadow: 0 2px 5px rgba(71, 58, 42, 0.045);
+  cursor: pointer;
+}
+
+.story-ui-mvu.story-ui-day .mvu-title,
+.story-ui-mvu.story-ui-day .mvu-value,
+.story-ui-mvu.story-ui-day .mvu-rank-value,
+.story-ui-mvu.story-ui-day .mvu-stat-value,
+.story-ui-mvu.story-ui-day .stat-line .val,
+.story-ui-mvu.story-ui-day .mvu-mini-body,
+.story-ui-mvu.story-ui-day .stat-value {
+  color: var(--mvu-text);
+}
+
+.story-ui-mvu.story-ui-day .mvu-subtitle,
+.story-ui-mvu.story-ui-day .mvu-label,
+.story-ui-mvu.story-ui-day .stat-label,
+.story-ui-mvu.story-ui-day .c-lbl,
+.story-ui-mvu.story-ui-day .mvu-stat-name,
+.story-ui-mvu.story-ui-day .mvu-rank-title,
+.story-ui-mvu.story-ui-day .mvu-rank-meter-head,
+.story-ui-mvu.story-ui-day .stat-line .lbl,
+.story-ui-mvu.story-ui-day .cloth-slot {
+  color: var(--mvu-muted);
+}
+
+.story-ui-mvu.story-ui-day .toggle-icon,
+.story-ui-mvu.story-ui-day .reward-toggle-header,
+.story-ui-mvu.story-ui-day .mvu-task-header {
+  color: var(--mvu-gold);
+}
+
+.story-ui-mvu.story-ui-day .mvu-world-card,
+.story-ui-mvu.story-ui-day .mvu-stat-card,
+.story-ui-mvu.story-ui-day .character-card,
+.story-ui-mvu.story-ui-day .sex-row {
+  border-radius: 7px;
+  background: rgba(255, 253, 247, 0.82);
+  box-shadow:
+    inset 3px 0 0 rgba(116, 139, 157, 0.5),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-day .mvu-profile-card,
+.story-ui-mvu.story-ui-day .sub-toggle-header,
+.story-ui-mvu.story-ui-day .item-toggle-header,
+.story-ui-mvu.story-ui-day .reward-toggle-header,
+.story-ui-mvu.story-ui-day .mvu-mini-card,
+.story-ui-mvu.story-ui-day .mvu-info-list,
+.story-ui-mvu.story-ui-day .reward-section {
+  box-shadow: var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-day .mvu-profile-card {
+  border-radius: 8px;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(183, 154, 98, 0.12), transparent 42%), rgba(255, 253, 247, 0.82);
+}
+
+.story-ui-mvu.story-ui-day .mvu-rank-card {
+  border-radius: 7px;
+  padding: 10px;
+  background: rgba(236, 226, 207, 0.42);
+  box-shadow: inset 0 3px 0 rgba(183, 154, 98, 0.42);
+}
+
+.story-ui-mvu.story-ui-day .mvu-rank-meter-track,
+.story-ui-mvu.story-ui-day .bar-bg {
+  background: rgba(117, 107, 96, 0.14);
+  box-shadow: inset 0 1px 2px rgba(71, 58, 42, 0.12);
+}
+
+.story-ui-mvu.story-ui-day .mvu-rank-meter.exp .mvu-rank-meter-fill,
+.story-ui-mvu.story-ui-day .lust-bar-fill {
+  background: linear-gradient(90deg, rgba(183, 154, 98, 0.62), rgba(205, 189, 141, 0.92));
+}
+
+.story-ui-mvu.story-ui-day .mvu-rank-meter.sp .mvu-rank-meter-fill {
+  background: linear-gradient(90deg, rgba(116, 139, 157, 0.6), rgba(127, 146, 124, 0.88));
+}
+
+.story-ui-mvu.story-ui-day .mvu-stat-card {
+  background: rgba(255, 253, 247, 0.74);
+}
+
+.story-ui-mvu.story-ui-day .mvu-stat-card.rose,
+.story-ui-mvu.story-ui-day .pink-wrapper .mvu-header,
+.story-ui-mvu.story-ui-day .sex-row,
+.story-ui-mvu.story-ui-day .innate-ct-header {
+  box-shadow:
+    inset 3px 0 0 rgba(160, 126, 116, 0.5),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-day .mvu-stat-card.gold {
+  box-shadow:
+    inset 3px 0 0 rgba(183, 154, 98, 0.5),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-day .mvu-stat-card.sage,
+.story-ui-mvu.story-ui-day .sub-toggle-header {
+  box-shadow:
+    inset 3px 0 0 rgba(127, 146, 124, 0.48),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-day .item-toggle-header,
+.story-ui-mvu.story-ui-day .profile-tag,
+.story-ui-mvu.story-ui-day .character-card:hover,
+.story-ui-mvu.story-ui-day .mvu-mini-card {
+  box-shadow:
+    inset 3px 0 0 rgba(116, 139, 157, 0.44),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-day .mvu-info-list {
+  border-radius: 7px;
+  background: rgba(255, 253, 247, 0.54);
+}
+
+.story-ui-mvu.story-ui-day .stat-line {
+  box-shadow: inset 0 -1px 0 var(--mvu-line);
+}
+
+.story-ui-mvu.story-ui-day .profile-tag {
+  color: var(--mvu-blue);
+  background: rgba(116, 139, 157, 0.12);
+}
+
+.story-ui-mvu.story-ui-day .cloth-chip,
+.story-ui-mvu.story-ui-day .fame-score,
+.story-ui-mvu.story-ui-day .fame-tag {
+  background: rgba(255, 253, 247, 0.72);
+  box-shadow: 0 2px 5px rgba(71, 58, 42, 0.045);
+}
+
+.story-ui-mvu.story-ui-day .fame-tag.pos {
+  color: #6f876d;
+  background: rgba(127, 146, 124, 0.14);
+}
+
+.story-ui-mvu.story-ui-day .fame-tag.neg,
+.story-ui-mvu.story-ui-day .sex-char-name,
+.story-ui-mvu.story-ui-day .lust-value-text {
+  color: var(--mvu-rose);
+}
+
+.story-ui-mvu.story-ui-day .pink-wrapper {
+  display: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.62), transparent 30%),
+    radial-gradient(circle at top left, rgba(160, 126, 116, 0.16), transparent 35%), var(--mvu-panel);
+}
+
+.story-ui-mvu.story-ui-day .lust-bar-bg {
+  background: rgba(160, 126, 116, 0.16);
+}
+
+.story-ui-mvu.story-ui-day .bar-center {
+  background: rgba(52, 47, 41, 0.58);
+}
+
+.story-ui-mvu.story-ui-day .jujutsu-container {
+  scrollbar-color: rgba(183, 154, 98, 0.62) rgba(236, 226, 207, 0.46);
+}
+
+.story-ui-mvu.story-ui-night {
+  --mvu-space: #171b22;
+  --mvu-panel: rgba(29, 35, 44, 0.97);
+  --mvu-card: rgba(255, 255, 255, 0.055);
+  --mvu-card-2: rgba(255, 255, 255, 0.082);
+  --mvu-text: #ede7dc;
+  --mvu-muted: #b8afa1;
+  --mvu-faint: #807d78;
+  --mvu-sage: #88aeb8;
+  --mvu-blue: #8091ad;
+  --mvu-rose: #b9877e;
+  --mvu-gold: #c8a86c;
+  --mvu-line: rgba(255, 255, 255, 0.08);
+  --mvu-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+  --mvu-shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.story-ui-mvu.story-ui-night .mvu-panel {
+  position: relative;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(200, 168, 108, 0.1), transparent 22%),
+    radial-gradient(circle at 90% 0%, rgba(136, 174, 184, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--mvu-panel), var(--mvu-space));
+  box-shadow: var(--mvu-shadow);
+}
+
+.story-ui-mvu.story-ui-night .mvu-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.26), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.14)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 72px);
+  opacity: 0.62;
+  z-index: 0;
+}
+
+.story-ui-mvu.story-ui-night .mvu-header,
+.story-ui-mvu.story-ui-night .mvu-body,
+.story-ui-mvu.story-ui-night .jujutsu-container,
+.story-ui-mvu.story-ui-night .pink-container {
+  position: relative;
+  z-index: 1;
+}
+
+.story-ui-mvu.story-ui-night .mvu-header {
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent),
+    rgba(255, 255, 255, 0.035);
+  box-shadow: inset 3px 0 0 rgba(200, 168, 108, 0.58);
+}
+
+.story-ui-mvu.story-ui-night .mvu-header:hover,
+.story-ui-mvu.story-ui-night .sub-toggle-header:hover,
+.story-ui-mvu.story-ui-night .item-toggle-header:hover,
+.story-ui-mvu.story-ui-night .reward-toggle-header:hover,
+.story-ui-mvu.story-ui-night .character-card:hover {
+  background: var(--mvu-card-2);
+}
+
+.story-ui-mvu.story-ui-night .mvu-mark {
+  color: var(--mvu-gold);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.story-ui-mvu.story-ui-night .mvu-title,
+.story-ui-mvu.story-ui-night .mvu-value,
+.story-ui-mvu.story-ui-night .mvu-rank-value,
+.story-ui-mvu.story-ui-night .mvu-stat-value,
+.story-ui-mvu.story-ui-night .stat-line .val,
+.story-ui-mvu.story-ui-night .mvu-mini-body,
+.story-ui-mvu.story-ui-night .stat-value {
+  color: var(--mvu-text);
+}
+
+.story-ui-mvu.story-ui-night .mvu-subtitle,
+.story-ui-mvu.story-ui-night .mvu-label,
+.story-ui-mvu.story-ui-night .stat-label,
+.story-ui-mvu.story-ui-night .c-lbl,
+.story-ui-mvu.story-ui-night .mvu-stat-name,
+.story-ui-mvu.story-ui-night .mvu-rank-title,
+.story-ui-mvu.story-ui-night .mvu-rank-meter-head,
+.story-ui-mvu.story-ui-night .stat-line .lbl,
+.story-ui-mvu.story-ui-night .cloth-slot {
+  color: var(--mvu-muted);
+}
+
+.story-ui-mvu.story-ui-night .toggle-icon,
+.story-ui-mvu.story-ui-night .reward-toggle-header,
+.story-ui-mvu.story-ui-night .mvu-task-header,
+.story-ui-mvu.story-ui-night .mvu-mark {
+  color: var(--mvu-gold);
+}
+
+.story-ui-mvu.story-ui-night .mvu-world-card,
+.story-ui-mvu.story-ui-night .mvu-stat-card,
+.story-ui-mvu.story-ui-night .character-card,
+.story-ui-mvu.story-ui-night .sex-row,
+.story-ui-mvu.story-ui-night .sub-toggle-header,
+.story-ui-mvu.story-ui-night .item-toggle-header,
+.story-ui-mvu.story-ui-night .reward-toggle-header,
+.story-ui-mvu.story-ui-night .mvu-mini-card {
+  border-radius: 5px;
+  background: var(--mvu-card);
+  box-shadow:
+    inset 3px 0 0 rgba(136, 174, 184, 0.5),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .mvu-profile-card {
+  border-radius: 6px;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(200, 168, 108, 0.13), transparent 42%), rgba(255, 255, 255, 0.045);
+  box-shadow: var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .mvu-rank-card {
+  border-radius: 5px;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(200, 168, 108, 0.1), transparent 52%), rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 3px 0 rgba(200, 168, 108, 0.45),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .mvu-rank-meter-track,
+.story-ui-mvu.story-ui-night .bar-bg,
+.story-ui-mvu.story-ui-night .lust-bar-bg {
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.story-ui-mvu.story-ui-night .mvu-rank-meter.exp .mvu-rank-meter-fill,
+.story-ui-mvu.story-ui-night .lust-bar-fill {
+  background: linear-gradient(90deg, rgba(200, 168, 108, 0.64), rgba(237, 213, 149, 0.92));
+  box-shadow: 0 0 12px rgba(200, 168, 108, 0.22);
+}
+
+.story-ui-mvu.story-ui-night .mvu-rank-meter.sp .mvu-rank-meter-fill {
+  background: linear-gradient(90deg, rgba(128, 145, 173, 0.62), rgba(136, 174, 184, 0.92));
+  box-shadow: 0 0 12px rgba(136, 174, 184, 0.22);
+}
+
+.story-ui-mvu.story-ui-night .mvu-stat-card.rose,
+.story-ui-mvu.story-ui-night .pink-wrapper .mvu-header,
+.story-ui-mvu.story-ui-night .sex-row,
+.story-ui-mvu.story-ui-night .innate-ct-header {
+  box-shadow:
+    inset 3px 0 0 rgba(185, 135, 126, 0.52),
+    var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .mvu-info-list {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: var(--mvu-shadow-soft);
+}
+
+.story-ui-mvu.story-ui-night .stat-line {
+  box-shadow: inset 0 -1px 0 var(--mvu-line);
+}
+
+.story-ui-mvu.story-ui-night .profile-tag {
+  color: var(--mvu-sage);
+  background: rgba(136, 174, 184, 0.11);
+}
+
+.story-ui-mvu.story-ui-night .cloth-chip,
+.story-ui-mvu.story-ui-night .fame-score,
+.story-ui-mvu.story-ui-night .fame-tag {
+  background: rgba(255, 255, 255, 0.052);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.story-ui-mvu.story-ui-night .fame-tag.pos {
+  color: #8eaa91;
+  background: rgba(126, 153, 130, 0.13);
+}
+
+.story-ui-mvu.story-ui-night .fame-tag.neg,
+.story-ui-mvu.story-ui-night .sex-char-name,
+.story-ui-mvu.story-ui-night .lust-value-text {
+  color: var(--mvu-rose);
+}
+
+.story-ui-mvu.story-ui-night .pink-wrapper {
+  display: none;
+  background:
+    linear-gradient(135deg, rgba(185, 135, 126, 0.11), transparent 24%),
+    radial-gradient(circle at 90% 0%, rgba(200, 168, 108, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--mvu-panel), var(--mvu-space));
+}
+
+.story-ui-mvu.story-ui-night .mvu-mini-title,
+.story-ui-mvu.story-ui-night .char-name {
+  color: var(--mvu-sage);
+}
+
+.story-ui-mvu.story-ui-night .bar-center {
+  background: rgba(237, 231, 220, 0.54);
+}
+
+.story-ui-mvu.story-ui-night .jujutsu-container {
+  scrollbar-color: rgba(200, 168, 108, 0.62) rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 640px) {
+  .story-ui-mvu .mvu-world-grid,
+  .story-ui-mvu .mvu-profile-main {
+    grid-template-columns: 1fr;
+  }
+
+  .story-ui-mvu .mvu-body,
+  .story-ui-mvu .jujutsu-container,
+  .story-ui-mvu .pink-container {
+    padding: 8px;
+  }
+
+  .story-ui-mvu .stat-line {
+    grid-template-columns: 76px 1fr;
+  }
+
+  .story-ui-mvu .sex-row {
+    grid-template-columns: 72px 1fr 48px;
+  }
+}
