@@ -3,6 +3,7 @@
   const dom = ui.dom;
 
   const PLACEHOLDER_PATTERN = /<StatusPlaceHolderImpl\s*\/>/i;
+  const PLACEHOLDER_ELEMENT_SELECTOR = 'statusplaceholderimpl, StatusPlaceHolderImpl';
 
   function findPlaceholderNodes(root) {
     const matches = [];
@@ -19,9 +20,19 @@
       matches.push({
         node,
         rawText: node.nodeValue || '',
+        kind: 'text',
       });
       node = walker.nextNode();
     }
+
+    root.querySelectorAll?.(PLACEHOLDER_ELEMENT_SELECTOR).forEach(element => {
+      if (dom?.isProcessed(element) || element.closest?.('.story-ui-root')) return;
+      matches.push({
+        node: element,
+        rawText: '<StatusPlaceHolderImpl/>',
+        kind: 'element',
+      });
+    });
 
     return matches;
   }
@@ -85,7 +96,6 @@
           <summary class="story-ui-mvu-head">
             <span class="story-ui-mvu-mark">✦</span>
             <span class="story-ui-mvu-title">新变量状态栏 · MVU / BP 热切换</span>
-            <button class="story-ui-mvu-theme story-ui-theme-toggle" type="button" data-story-ui-theme-toggle>日 / 夜</button>
           </summary>
 
           <div class="story-ui-mvu-body">
@@ -126,7 +136,10 @@
   function render(match) {
     const wrapper = dom.createElement('span', {
       className: 'story-ui-mvu-fragment',
-      html: match.rawText.replace(PLACEHOLDER_PATTERN, renderStatusShell()),
+      html:
+        match.kind === 'element'
+          ? renderStatusShell()
+          : match.rawText.replace(PLACEHOLDER_PATTERN, renderStatusShell()),
     });
 
     return wrapper;
@@ -151,7 +164,7 @@
 
   ui.registry?.register?.({
     id: 'mvu-status',
-    version: '0.1.0-test-new-vars',
+    version: '0.1.1-test-new-vars',
     priority: 80,
     detect: findPlaceholderNodes,
     render,
