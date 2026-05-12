@@ -547,13 +547,23 @@
         const panel = node.querySelector?.('.story-ui-mvu');
         if (!panel) return;
         const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
+        const nextPanel =
+          ui.theme?.rerenderWithPreservedDetails?.(panel, () => {
+            const fresh = document.createElement('div');
+            fresh.innerHTML = renderStatusShell(messageId);
+            return fresh.firstElementChild || null;
+          }) || null;
+        if (nextPanel) {
+          bindToggleHandlers(nextPanel);
+          return;
+        }
         const fresh = document.createElement('div');
         fresh.innerHTML = renderStatusShell(messageId);
-        const nextPanel = fresh.firstElementChild;
-        if (!nextPanel) return;
-        panel.replaceWith(nextPanel);
-        ui.theme?.applyThemeToRoot?.(nextPanel);
-        bindToggleHandlers(nextPanel);
+        const fallbackPanel = fresh.firstElementChild;
+        if (!fallbackPanel) return;
+        panel.replaceWith(fallbackPanel);
+        ui.theme?.applyThemeToRoot?.(fallbackPanel);
+        bindToggleHandlers(fallbackPanel);
       });
     }
 

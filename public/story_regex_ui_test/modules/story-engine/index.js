@@ -365,13 +365,22 @@
     const root = node?.querySelector?.('.story-ui-se') || node?.querySelector?.('.story-ui-root.story-ui-se');
     if (!root) return;
     const content = root.dataset.storyUiStoryEngineRaw ?? '';
-    const fresh = document.createElement('div');
-    fresh.innerHTML = renderShell(content);
-    const nextRoot = fresh.firstElementChild;
-    if (!nextRoot) return;
-    nextRoot.dataset.storyUiStoryEngineRaw = content;
-    root.replaceWith(nextRoot);
-    ui.theme?.applyThemeToRoot?.(nextRoot);
+    ui.theme?.rerenderWithPreservedDetails?.(root, () => {
+      const fresh = document.createElement('div');
+      fresh.innerHTML = renderShell(content);
+      const nextRoot = fresh.firstElementChild;
+      if (nextRoot) nextRoot.dataset.storyUiStoryEngineRaw = content;
+      return nextRoot || null;
+    }) ||
+      (() => {
+        const fresh = document.createElement('div');
+        fresh.innerHTML = renderShell(content);
+        const nextRoot = fresh.firstElementChild;
+        if (!nextRoot) return;
+        nextRoot.dataset.storyUiStoryEngineRaw = content;
+        root.replaceWith(nextRoot);
+        ui.theme?.applyThemeToRoot?.(nextRoot);
+      })();
   }
 
   function mount(node) {

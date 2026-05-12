@@ -58,12 +58,19 @@
     const root = node?.querySelector?.('.story-ui-vu') || node?.querySelector?.('.story-ui-root.story-ui-vu');
     if (!root) return;
     const content = root.querySelector('.vu-content')?.textContent || '';
-    const fresh = document.createElement('div');
-    fresh.innerHTML = renderShell(content);
-    const nextRoot = fresh.firstElementChild;
-    if (!nextRoot) return;
-    root.replaceWith(nextRoot);
-    ui.theme?.applyThemeToRoot?.(nextRoot);
+    ui.theme?.rerenderWithPreservedDetails?.(root, () => {
+      const fresh = document.createElement('div');
+      fresh.innerHTML = renderShell(content);
+      return fresh.firstElementChild || null;
+    }) ||
+      (() => {
+        const fresh = document.createElement('div');
+        fresh.innerHTML = renderShell(content);
+        const nextRoot = fresh.firstElementChild;
+        if (!nextRoot) return;
+        root.replaceWith(nextRoot);
+        ui.theme?.applyThemeToRoot?.(nextRoot);
+      })();
   }
 
   function mount(node) {

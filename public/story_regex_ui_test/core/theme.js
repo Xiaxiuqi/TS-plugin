@@ -45,6 +45,35 @@
     }
   }
 
+  function captureDetailsState(scope) {
+    if (!scope?.querySelectorAll) return [];
+    return Array.from(scope.querySelectorAll('details')).map((details, index) => ({
+      index,
+      open: Boolean(details.open),
+    }));
+  }
+
+  function restoreDetailsState(scope, stateList = []) {
+    if (!scope?.querySelectorAll || !Array.isArray(stateList)) return;
+    const detailsList = Array.from(scope.querySelectorAll('details'));
+    stateList.forEach(state => {
+      const details = detailsList[state.index];
+      if (!details) return;
+      details.open = Boolean(state.open);
+    });
+  }
+
+  function rerenderWithPreservedDetails(oldRoot, buildNextRoot) {
+    if (!oldRoot || typeof buildNextRoot !== 'function') return null;
+    const detailsState = captureDetailsState(oldRoot);
+    const nextRoot = buildNextRoot();
+    if (!nextRoot) return null;
+    restoreDetailsState(nextRoot, detailsState);
+    oldRoot.replaceWith(nextRoot);
+    applyThemeToRoot(nextRoot);
+    return nextRoot;
+  }
+
   function setTheme(theme, options = {}) {
     currentTheme = normalizeTheme(theme);
     if (options.save !== false) {
@@ -95,6 +124,9 @@
     setTheme,
     toggleTheme,
     applyTheme,
+    captureDetailsState,
+    restoreDetailsState,
+    rerenderWithPreservedDetails,
     applyThemeToRoot,
   };
 })();
