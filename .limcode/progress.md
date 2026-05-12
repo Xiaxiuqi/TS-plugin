@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-12T15:02:38.418Z
+- Updated At: 2026-05-12T16:39:24.651Z
 - Status: active
 - Phase: implementation
 
@@ -56,6 +56,8 @@
 - 2026-05-12T12:43:48.581Z | milestone_recorded | 完成故事 UI 从正则引导到 public 双环境酒馆助手入口的实现，并通过本地 JS 语法检查。
 - 2026-05-12T14:48:24.499Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T15:02:38.418Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
+- 2026-05-12T16:24:47.041Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
+- 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -65,7 +67,7 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-12T15:02:38.418Z",
+  "updatedAt": "2026-05-12T16:39:24.651Z",
   "status": "active",
   "phase": "implementation",
   "currentFocus": "故事 UI 已迁移为 public 双环境酒馆助手入口，并完成咒回前端管理界面首版实现",
@@ -174,6 +176,18 @@
       "type": "artifact_changed",
       "refId": "plan",
       "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
+    },
+    {
+      "at": "2026-05-12T16:24:47.041Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
+    },
+    {
+      "at": "2026-05-12T16:39:24.651Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
     }
   ],
   "stats": {
@@ -187,8 +201,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-12T15:02:38.418Z",
-    "bodyHash": "sha256:42c52f598556e184a345fc03da4d54b3116ca73cc42b902bec2439cabfa856ad"
+    "generatedAt": "2026-05-12T16:39:24.651Z",
+    "bodyHash": "sha256:67635467c7605f3147c883b533d5798d834cdbc54da8430b2f46cc7c783df1bf"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

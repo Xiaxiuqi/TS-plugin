@@ -4,30 +4,10 @@
 
   const MODULE_ID = 'variable-update';
   const MODULE_VERSION = '0.2.0-test-rebuild';
-  const RAW_BLOCK_PATTERN = /<UpdateVariable>([\s\S]*?)<\/UpdateVariable>/i;
-  const RAW_BLOCK_PATTERN_GLOBAL = /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi;
-
-  function normalizeLineEndings(text) {
-    return String(text || '').replace(/\r\n?/g, '\n');
-  }
-
-  function extractRawBlock(rawText) {
-    const source = normalizeLineEndings(rawText);
-    const match = source.match(RAW_BLOCK_PATTERN);
-    if (!match) return null;
-    return {
-      fullMatch: match[0],
-      content: (match[1] || '').trim(),
-    };
-  }
-
-  function matchesRawText(rawText) {
-    return Boolean(extractRawBlock(rawText));
-  }
-
-  function stripRawText(rawText) {
-    return normalizeLineEndings(rawText).replace(RAW_BLOCK_PATTERN_GLOBAL, '').trim();
-  }
+  const BLOCK = {
+    open: '<UpdateVariable>',
+    close: '</UpdateVariable>',
+  };
 
   function renderContent(content) {
     return dom.escapeHtml(content);
@@ -62,36 +42,25 @@
     `;
   }
 
-  function fromRawText(rawText) {
-    const block = extractRawBlock(rawText);
-    if (!block) return null;
-
+  function renderContentNode(content) {
     const wrapper = dom.createElement('div', {
       className: 'story-ui-vu-wrapper',
-      html: renderShell(block.content),
+      html: renderShell(content),
     });
 
     return wrapper.firstElementChild || null;
-  }
-
-  function render(match) {
-    return fromRawText(match?.rawText || '');
   }
 
   ui.registry?.register?.({
     id: MODULE_ID,
     version: MODULE_VERSION,
     priority: 40,
-    matchesRawText,
-    fromRawText,
-    stripRawText,
-    render,
+    block: BLOCK,
+    renderContent: renderContentNode,
   });
 
   ui.variableUpdate = {
-    matchesRawText,
-    fromRawText,
-    stripRawText,
-    extractRawBlock,
+    block: BLOCK,
+    renderContent: renderContentNode,
   };
 })();

@@ -367,40 +367,6 @@
     );
   }
 
-  function sanitizeRawTextForDisplay(rawText) {
-    const ui = getUi();
-    const registry = ui?.registry;
-    if (!registry) return String(rawText || '');
-
-    return registry.list().reduce(
-      (text, module) => {
-        const matches = registry.safelyCall(module, 'matchesRawText', text);
-        if (!matches) return text;
-        const stripped = registry.safelyCall(module, 'stripRawText', text);
-        return stripped === undefined ? text : stripped;
-      },
-      String(rawText || ''),
-    );
-  }
-
-  function updateDisplayedMessageText(messageId, rawText, messageElement) {
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) {
-      lastError = `未找到可写回的正文节点：message_id=${messageId}`;
-      return;
-    }
-
-    const sanitizedRawText = sanitizeRawTextForDisplay(rawText);
-    const html = window.formatAsDisplayedMessage?.(sanitizedRawText, { message_id: messageId });
-    if (typeof html === 'string') {
-      textElement.innerHTML = html;
-    } else {
-      textElement.textContent = sanitizedRawText;
-    }
-
-    lastError = '';
-  }
-
   function insertMountedNode(messageElement, moduleId, node) {
     if (!messageElement || !node) return null;
     const container = createElementInHost('section');
@@ -417,11 +383,65 @@
     return Boolean(messageElement.querySelector?.('[data-story-ui-raw-mount="true"]'));
   }
 
+  function escapeRegex(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function getModuleBlockConfig(module) {
+    if (!module || typeof module !== 'object') return null;
+    const block = module.block;
+    if (!block || typeof block !== 'object') return null;
+    if (typeof block.open !== 'string' || typeof block.close !== 'string') return null;
+    return block;
+  }
+
+  function extractModuleContent(module, rawText) {
+    const block = getModuleBlockConfig(module);
+    if (!block) return null;
+
+    const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
+    const source = String(rawText || '').replace(/\r\n?/g, '\n');
+    const match = source.match(pattern);
+    if (!match) return null;
+
+    return {
+      fullMatch: match[0],
+      content: String(match[1] || '').trim(),
+      block,
+    };
+  }
+
+  function moduleMatchesRawText(module, rawText) {
+    return Boolean(extractModuleContent(module, rawText));
+  }
+
+  function buildNodeForModule(module, rawText, context) {
+    const extracted = extractModuleContent(module, rawText);
+    if (!extracted) return null;
+    return getUi()?.registry?.safelyCall(module, 'renderContent', extracted.content, {
+      ...context,
+      extracted,
+      rawText,
+    });
+  }
+
+  function hideDisplayedSourceForModule(messageElement, module, rawText) {
+    if (!messageElement || !module) return;
+    if (!moduleMatchesRawText(module, rawText)) return;
+
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return;
+    if (textElement.dataset.storyUiSourceHidden === module.id) return;
+
+    textElement.dataset.storyUiSourceHidden = module.id;
+    textElement.dataset.storyUiSourceDisplay = textElement.style.display || '';
+    textElement.style.display = 'none';
+  }
+
   function mountModulesForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
 
-    updateDisplayedMessageText(messageId, rawText, messageElement);
     clearMountedStoryUi(messageElement);
 
     const ui = getUi();
@@ -430,10 +450,10 @@
     if (!registry) return false;
 
     registry.list().forEach(module => {
-      const matches = registry.safelyCall(module, 'matchesRawText', rawText);
+      const matches = moduleMatchesRawText(module, rawText);
       if (!matches) return;
 
-      const builtNode = registry.safelyCall(module, 'fromRawText', rawText, {
+      const builtNode = buildNodeForModule(module, rawText, {
         messageId,
         messageElement,
         theme: ui?.theme?.getTheme?.() || 'day',
@@ -445,6 +465,7 @@
       const mountHost = insertMountedNode(messageElement, module.id, builtNode);
       if (mountHost) {
         mounted.push(module.id);
+        hideDisplayedSourceForModule(messageElement, module, rawText);
         registry.safelyCall(module, 'mount', builtNode, { kind: 'raw', rawText, messageId, node: messageElement });
       }
     });
