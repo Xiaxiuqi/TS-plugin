@@ -604,6 +604,190 @@
   margin-top: 4px;
   color: var(--se-text);
 }
+.story-ui-se-combat-layout {
+  display: grid;
+  gap: 10px;
+}
+
+.story-ui-se-combat-section {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-section {
+  border-radius: 8px;
+  background: rgba(255, 253, 247, 0.7);
+  box-shadow:
+    inset 3px 0 0 rgba(160, 126, 116, 0.22),
+    var(--se-shadow-soft);
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-section {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.038);
+  box-shadow:
+    inset 3px 0 0 rgba(185, 135, 126, 0.28),
+    var(--se-shadow-soft);
+}
+
+.story-ui-se-combat-section-head {
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-section-head {
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.56), rgba(255, 253, 247, 0.3));
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-section-head {
+  background: linear-gradient(90deg, rgba(185, 135, 126, 0.12), rgba(200, 168, 108, 0.06), transparent);
+}
+
+.story-ui-se-combat-section-index {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-section-index {
+  border-radius: 6px;
+  color: var(--se-rose);
+  background: rgba(160, 126, 116, 0.12);
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-section-index {
+  border-radius: 5px;
+  color: var(--se-gold);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 2px 0 0 rgba(200, 168, 108, 0.34);
+}
+
+.story-ui-se-combat-section-title {
+  color: var(--se-text);
+  font-size: 12.2px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.story-ui-se-combat-meta-grid {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.story-ui-se-combat-meta-card {
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-meta-card {
+  border-radius: 7px;
+  background: rgba(255, 253, 247, 0.82);
+  box-shadow:
+    inset 2px 0 0 rgba(183, 154, 98, 0.36),
+    var(--se-shadow-soft);
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-meta-card {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.052);
+  box-shadow:
+    inset 2px 0 0 rgba(200, 168, 108, 0.34),
+    var(--se-shadow-soft);
+}
+
+.story-ui-se-combat-meta-label {
+  color: var(--se-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.story-ui-se-combat-meta-value {
+  color: var(--se-text);
+  font-size: 12.4px;
+  line-height: 1.58;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.story-ui-se-combat-note {
+  margin: 0 10px 10px;
+  padding: 9px 10px;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-note {
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(160, 126, 116, 0.08), rgba(255, 253, 247, 0.82));
+  box-shadow:
+    inset 2px 0 0 rgba(160, 126, 116, 0.34),
+    var(--se-shadow-soft);
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-note {
+  border-radius: 5px;
+  background: linear-gradient(135deg, rgba(185, 135, 126, 0.08), rgba(255, 255, 255, 0.045));
+  box-shadow:
+    inset 2px 0 0 rgba(185, 135, 126, 0.34),
+    var(--se-shadow-soft);
+}
+
+.story-ui-se-combat-note-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--se-gold);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.story-ui-se-combat-note-body,
+.story-ui-se-combat-rich-text,
+.story-ui-se-combat-raw,
+.story-ui-se-combat-empty {
+  color: var(--se-text);
+  font-size: 12.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.story-ui-se-combat-rich-text {
+  padding: 10px;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-rich-text {
+  background: rgba(255, 253, 247, 0.38);
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-rich-text {
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.story-ui-se-combat-raw {
+  padding: 10px;
+}
+
+.story-ui-se-combat-empty {
+  padding: 2px 0;
+}
+
+.story-ui-se.story-ui-day .story-ui-se-combat-empty {
+  color: var(--se-muted);
+}
+
+.story-ui-se.story-ui-night .story-ui-se-combat-empty {
+  color: var(--se-muted);
+}
 
 .story-ui-se.story-ui-day .story-ui-se-combat-body {
   background: linear-gradient(135deg, rgba(160, 126, 116, 0.08), transparent 46%), rgba(255, 253, 247, 0.62);

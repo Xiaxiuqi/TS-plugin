@@ -78,6 +78,60 @@
     }));
   }
 
+  function parseCombatDriver(source) {
+    const text = normalizeText(source);
+    if (!text || text === '无') {
+      return {
+        mode: 'empty',
+        raw: text || '无',
+      };
+    }
+
+    const structuredPattern =
+      /━━\s*1[.．、]\s*初始化\s*━━\s*([\s\S]*?)\s*━━\s*2[.．、]\s*修正计算(?:\(Calc\))?\s*━━\s*([\s\S]*?)\s*━━\s*3[.．、]\s*对抗判定(?:\(Resolve\))?\s*━━\s*([\s\S]*)/i;
+    const match = text.match(structuredPattern);
+
+    if (!match) {
+      return {
+        mode: 'raw',
+        raw: text,
+      };
+    }
+
+    const initText = normalizeText(match[1]);
+    const calcText = normalizeText(match[2]);
+    const resolveText = normalizeText(match[3]);
+
+    const extractField = (block, label, nextLabels = []) => {
+      const startPattern = new RegExp(`${label}\\s*`, 'i');
+      const startMatch = block.match(startPattern);
+      if (!startMatch || startMatch.index === undefined) return '';
+      const from = startMatch.index + startMatch[0].length;
+      let end = block.length;
+      nextLabels.forEach(nextLabel => {
+        const nextPattern = new RegExp(nextLabel, 'i');
+        const slice = block.slice(from);
+        const nextMatch = slice.match(nextPattern);
+        if (nextMatch && nextMatch.index !== undefined) {
+          end = Math.min(end, from + nextMatch.index);
+        }
+      });
+      return normalizeText(block.slice(from, end));
+    };
+
+    return {
+      mode: 'structured',
+      raw: text,
+      initText,
+      calcText,
+      resolveText,
+      matchup: extractField(initText, '对战双方:', ['Player_Base_BP:', 'Enemy_Base_BP:', '硬性检查:']),
+      playerBaseBp: extractField(initText, 'Player_Base_BP:', ['Enemy_Base_BP:', '硬性检查:']),
+      enemyBaseBp: extractField(initText, 'Enemy_Base_BP:', ['硬性检查:']),
+      hardCheck: extractField(initText, '硬性检查:'),
+    };
+  }
+
   function parseStoryDriver(content) {
     const match = normalizeText(content).match(STORY_DRIVER_INNER_PATTERN);
 
@@ -170,6 +224,47 @@
       .join('');
   }
 
+  function renderCombatDriver(combat, theme) {
+    const parsed = parseCombatDriver(combat);
+
+    if (parsed.mode === 'empty') {
+      return '<div class="story-ui-se-combat-empty">无</div>';
+    }
+
+    if (parsed.mode === 'raw') {
+      return `<div class="story-ui-se-combat-raw">${escapeHtml(parsed.raw)}</div>`;
+    }
+
+    const headLabels =
+      theme === 'night'
+        ? { matchup: 'MATCHUP', player: 'PLAYER BP', enemy: 'ENEMY BP', check: 'CHECK' }
+        : { matchup: '对战双方', player: 'Player BP', enemy: 'Enemy BP', check: '硬性检查' };
+
+    return `
+      <div class="story-ui-se-combat-layout">
+        <section class="story-ui-se-combat-section init">
+          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-index">01</span><span class="story-ui-se-combat-section-title">初始化</span></div>
+          <div class="story-ui-se-combat-meta-grid">
+            <div class="story-ui-se-combat-meta-card"><div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.matchup)}</div><div class="story-ui-se-combat-meta-value">${escapeHtml(parsed.matchup || '无')}</div></div>
+            <div class="story-ui-se-combat-meta-card"><div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.player)}</div><div class="story-ui-se-combat-meta-value">${escapeHtml(parsed.playerBaseBp || '无')}</div></div>
+            <div class="story-ui-se-combat-meta-card"><div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.enemy)}</div><div class="story-ui-se-combat-meta-value">${escapeHtml(parsed.enemyBaseBp || '无')}</div></div>
+          </div>
+          <div class="story-ui-se-combat-note"><span class="story-ui-se-combat-note-label">${escapeHtml(headLabels.check)}</span><div class="story-ui-se-combat-note-body">${escapeHtml(parsed.hardCheck || '无')}</div></div>
+        </section>
+
+        <section class="story-ui-se-combat-section calc">
+          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-index">02</span><span class="story-ui-se-combat-section-title">修正计算 · Calc</span></div>
+          <div class="story-ui-se-combat-rich-text">${escapeHtml(parsed.calcText || '无')}</div>
+        </section>
+
+        <section class="story-ui-se-combat-section resolve">
+          <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-index">03</span><span class="story-ui-se-combat-section-title">对抗判定 · Resolve</span></div>
+          <div class="story-ui-se-combat-rich-text">${escapeHtml(parsed.resolveText || '无')}</div>
+        </section>
+      </div>
+    `;
+  }
+
   function renderShell(content) {
     const data = parseStoryDriver(content);
     const theme = ui.theme?.getTheme?.() || 'day';
@@ -234,7 +329,7 @@
 
                 <article class="story-ui-se-card story-ui-se-card-combat">
                   <div class="story-ui-se-card-head"><span class="story-ui-se-card-dot"></span><span class="story-ui-se-card-title">${isNight ? 'COMBAT DRIVER' : '战斗驱动'}</span></div>
-                  <div class="story-ui-se-card-body story-ui-se-combat-body">${escapeHtml(data.combat)}</div>
+                  <div class="story-ui-se-card-body story-ui-se-combat-body">${renderCombatDriver(data.combat, theme)}</div>
                 </article>
 
                 <article class="story-ui-se-card story-ui-se-card-final">
