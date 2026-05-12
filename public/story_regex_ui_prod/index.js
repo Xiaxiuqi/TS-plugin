@@ -3,6 +3,8 @@
     env: 'prod',
     displayEnv: '正式版',
     version: '1.0.0',
+    publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_prod/',
+    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_prod/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
@@ -17,7 +19,32 @@
 
   const state = (window.__jjksStoryUiIndexState = window.__jjksStoryUiIndexState || {});
   const currentScript = document.currentScript;
-  const baseUrl = currentScript?.src ? new URL('.', currentScript.src).href : './';
+  function normalizeBaseUrl(value) {
+    try {
+      return new URL('.', value).href;
+    } catch {
+      return '';
+    }
+  }
+
+  function detectBaseUrl() {
+    const current = normalizeBaseUrl(currentScript?.src || '');
+    if (current) return current;
+
+    const scriptSrc = Array.from(document.scripts)
+      .map(script => script.src)
+      .find(src => src.includes('/story_regex_ui_prod/index.js'));
+    const fromScriptList = normalizeBaseUrl(scriptSrc || '');
+    if (fromScriptList) return fromScriptList;
+
+    try {
+      return new URL(CONFIG.localBasePath, window.location.origin).href;
+    } catch {
+      return CONFIG.publicBaseUrl;
+    }
+  }
+
+  const baseUrl = detectBaseUrl();
   let loaderPromise = null;
   let loaderStatus = 'idle';
   let lastError = '';
@@ -50,9 +77,18 @@
   }
 
   function toUrl(path) {
-    const url = new URL(path, baseUrl);
-    url.searchParams.set('v', CONFIG.version);
-    return url.href;
+    const errors = [];
+    for (const base of [baseUrl, CONFIG.publicBaseUrl]) {
+      try {
+        const url = new URL(path, base);
+        url.searchParams.set('v', CONFIG.version);
+        return url.href;
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+
+    throw new TypeError(`${logPrefix} 无法构造资源 URL：path=${path}, baseUrl=${baseUrl || '(empty)'}`);
   }
 
   function getUi() {
