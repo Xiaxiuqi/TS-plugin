@@ -346,7 +346,25 @@
 
   function getDisplayedMessageTextElement(messageElement) {
     if (!messageElement) return null;
-    return messageElement.querySelector?.('.mes_text, .custom-mes_text') || null;
+
+    const candidates = Array.from(messageElement.querySelectorAll?.('.mes_text, .custom-mes_text') || []);
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    return (
+      candidates
+        .map(node => ({
+          node,
+          textLength: (node.textContent || '').trim().length,
+          depth: node.closest?.('.mes_block') ? 1 : 0,
+        }))
+        .sort((lhs, rhs) => {
+          if (rhs.textLength !== lhs.textLength) return rhs.textLength - lhs.textLength;
+          return rhs.depth - lhs.depth;
+        })[0]?.node ||
+      candidates[candidates.length - 1] ||
+      null
+    );
   }
 
   function sanitizeRawTextForDisplay(rawText) {
@@ -367,14 +385,20 @@
 
   function updateDisplayedMessageText(messageId, rawText, messageElement) {
     const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return;
+    if (!textElement) {
+      lastError = `未找到可写回的正文节点：message_id=${messageId}`;
+      return;
+    }
+
     const sanitizedRawText = sanitizeRawTextForDisplay(rawText);
     const html = window.formatAsDisplayedMessage?.(sanitizedRawText, { message_id: messageId });
-    if (typeof html === 'string' && html.length > 0) {
+    if (typeof html === 'string') {
       textElement.innerHTML = html;
     } else {
       textElement.textContent = sanitizedRawText;
     }
+
+    lastError = '';
   }
 
   function insertMountedNode(messageElement, moduleId, node) {
