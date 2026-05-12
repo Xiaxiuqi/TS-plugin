@@ -41,12 +41,40 @@
     return candidates;
   }
 
+  function scoreHostWindow(candidate) {
+    if (!candidate) return -1;
+
+    let score = 0;
+    try {
+      if (candidate === window) score += 1;
+      if (candidate !== window) score += 3;
+      if (candidate.document?.body) score += 2;
+      if (candidate.document?.head) score += 1;
+      if (candidate.SillyTavern) score += 20;
+      if (candidate.TavernHelper) score += 20;
+      if (candidate.document?.querySelector?.('#send_textarea')) score += 8;
+      if (candidate.document?.querySelector?.('#extensions_settings')) score += 8;
+    } catch {
+      return -1;
+    }
+
+    return score;
+  }
+
   function findHostWindow() {
-    return getCandidateWindows().find(candidate => candidate?.document?.body) || window;
+    return (
+      getCandidateWindows()
+        .map(candidate => ({ candidate, score: scoreHostWindow(candidate) }))
+        .sort((lhs, rhs) => rhs.score - lhs.score)[0]?.candidate || window
+    );
   }
 
   const hostWindow = findHostWindow();
   const hostDocument = hostWindow.document || document;
+
+  function createElementInHost(tagName) {
+    return hostDocument.createElement(tagName);
+  }
 
   const state = (window.__jjksStoryUiIndexState = window.__jjksStoryUiIndexState || {});
   const currentScript = document.currentScript;
@@ -93,6 +121,7 @@
     version: CONFIG.version,
     baseUrl,
     hostEqualsWindow: hostWindow === window,
+    hostHasTavernHelper: Boolean(hostWindow?.TavernHelper),
     hostLocation: hostWindow?.location?.href || '',
     startedAt: new Date().toISOString(),
   };
@@ -270,8 +299,8 @@
     const modules = ui?.registry?.list?.() || [];
     const otherEnv = CONFIG.env === 'test' ? 'prod' : 'test';
     const otherState = state[otherEnv] || null;
-    const storyRoots = document.querySelectorAll('.story-ui-root').length;
-    const managerExists = Boolean(document.getElementById(CONFIG.managerRootId));
+    const storyRoots = hostDocument.querySelectorAll('.story-ui-root').length;
+    const managerExists = Boolean(hostDocument.getElementById(CONFIG.managerRootId));
     const loaderUrl = toUrl('loader.js');
 
     lastDiagnosis = {
@@ -289,6 +318,8 @@
       已注册模块: modules.map(module => `${module.id}@${module.version || 'unknown'}`),
       故事UI节点数: storyRoots,
       管理界面已创建: managerExists,
+      宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
+      宿主命中SillyTavern: Boolean(hostWindow?.SillyTavern),
       另一个环境状态: otherState,
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
@@ -308,8 +339,8 @@
   }
 
   function injectManagerStyle() {
-    if (document.querySelector(`style[data-jjks-manager-style="${STYLE_MARK}"]`)) return;
-    const style = document.createElement('style');
+    if (hostDocument.querySelector(`style[data-jjks-manager-style="${STYLE_MARK}"]`)) return;
+    const style = createElementInHost('style');
     style.dataset.jjksManagerStyle = STYLE_MARK;
     style.textContent = `
       .jjks-manager-mask{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(16,13,10,.42);backdrop-filter:blur(5px);font-family:"Noto Serif SC","Microsoft YaHei",serif;}
@@ -344,11 +375,11 @@
       .jjks-manager-warning[data-visible="true"]{display:block;}
       @media (max-width:720px){.jjks-manager-body{grid-template-columns:1fr}.jjks-manager-panel{border-radius:18px}.jjks-manager-head{padding:18px}.jjks-manager-head h2{font-size:21px}}
     `;
-    document.head.appendChild(style);
+    (hostDocument.head || hostDocument.body).appendChild(style);
   }
 
   function createButton(text, attrs = {}) {
-    const button = document.createElement('button');
+    const button = createElementInHost('button');
     button.type = 'button';
     button.className = 'jjks-manager-button';
     button.textContent = text;
@@ -367,7 +398,7 @@
     root.dataset.jjksManagerRoot = CONFIG.env;
     root.dataset.open = 'false';
 
-    const panel = document.createElement('section');
+    const panel = createElementInHost('section');
     panel.className = 'jjks-manager-panel';
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
@@ -440,9 +471,12 @@
       }
     });
 
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && root.dataset.open === 'true') closeManager();
-    });
+    if (!hostDocument.documentElement.dataset.jjksStoryUiEscBound) {
+      hostDocument.documentElement.dataset.jjksStoryUiEscBound = CONFIG.env;
+      hostDocument.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && root.dataset.open === 'true') closeManager();
+      });
+    }
 
     applyManagerTheme();
     refreshManagerState();
@@ -645,6 +679,9 @@
     window.JJKSStoryUiManager[CONFIG.env] = api;
     hostWindow.JJKSStoryUiManager = hostWindow.JJKSStoryUiManager || {};
     hostWindow.JJKSStoryUiManager[CONFIG.env] = api;
+    hostDocument.documentElement.dataset.jjksStoryUiHost = CONFIG.env;
+    hostDocument.documentElement.dataset.jjksStoryUiHostEqualsWindow = hostWindow === window ? 'true' : 'false';
+    hostDocument.documentElement.dataset.jjksStoryUiHostLocation = hostWindow?.location?.href || '';
   }
 
   exposeManagerApi();
