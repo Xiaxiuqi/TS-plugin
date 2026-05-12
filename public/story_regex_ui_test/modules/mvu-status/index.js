@@ -158,6 +158,12 @@
     return wrapper;
   }
 
+  function stripRawText(rawText) {
+    return String(rawText || '')
+      .replace(PLACEHOLDER_PATTERN, '')
+      .trim();
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
 
@@ -184,7 +190,8 @@
     mount,
     matchesRawText,
     fromRawText,
+    stripRawText,
   });
 
-  ui.mvuStatus = { matchesRawText, fromRawText };
+  ui.mvuStatus = { matchesRawText, fromRawText, stripRawText };
 })();

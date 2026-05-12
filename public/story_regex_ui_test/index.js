@@ -111,6 +111,7 @@
   const mountedModulesByMessage = new Map();
   const recentScannedMessageIds = [];
   let renderedWindowSize = 0;
+  let recentScanRetryTimer = null;
   let lastScanMode = 'dom';
   let lastError = '';
   let scanQueued = false;
@@ -343,6 +344,39 @@
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
   }
 
+  function getDisplayedMessageTextElement(messageElement) {
+    if (!messageElement) return null;
+    return messageElement.querySelector?.('.mes_text, .custom-mes_text') || null;
+  }
+
+  function sanitizeRawTextForDisplay(rawText) {
+    const ui = getUi();
+    const registry = ui?.registry;
+    if (!registry) return String(rawText || '');
+
+    return registry.list().reduce(
+      (text, module) => {
+        const matches = registry.safelyCall(module, 'matchesRawText', text);
+        if (!matches) return text;
+        const stripped = registry.safelyCall(module, 'stripRawText', text);
+        return stripped === undefined ? text : stripped;
+      },
+      String(rawText || ''),
+    );
+  }
+
+  function updateDisplayedMessageText(messageId, rawText, messageElement) {
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return;
+    const sanitizedRawText = sanitizeRawTextForDisplay(rawText);
+    const html = window.formatAsDisplayedMessage?.(sanitizedRawText, { message_id: messageId });
+    if (typeof html === 'string' && html.length > 0) {
+      textElement.innerHTML = html;
+    } else {
+      textElement.textContent = sanitizedRawText;
+    }
+  }
+
   function insertMountedNode(messageElement, moduleId, node) {
     if (!messageElement || !node) return null;
     const container = createElementInHost('section');
@@ -363,6 +397,7 @@
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
 
+    updateDisplayedMessageText(messageId, rawText, messageElement);
     clearMountedStoryUi(messageElement);
 
     const ui = getUi();
@@ -460,6 +495,17 @@
         console.error(`${logPrefix} 扫描失败`, error);
       }
     });
+  }
+
+  function queueRetryRecentScan(delay = 600) {
+    if (recentScanRetryTimer) {
+      window.clearTimeout(recentScanRetryTimer);
+    }
+
+    recentScanRetryTimer = window.setTimeout(() => {
+      recentScanRetryTimer = null;
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+    }, delay);
   }
 
   function diagnose() {
@@ -803,14 +849,25 @@
       return;
     }
 
-    on(events.APP_READY, () => queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT)));
+    on(events.APP_READY, () => {
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      queueRetryRecentScan();
+    });
     on(events.USER_MESSAGE_RENDERED, messageId => queueScan(messageId));
     on(events.CHARACTER_MESSAGE_RENDERED, messageId => queueScan(messageId));
     on(events.MESSAGE_UPDATED, messageId => queueScan(messageId));
     on(events.MESSAGE_EDITED, messageId => queueScan(messageId));
     on(events.MESSAGE_SWIPED, messageId => queueScan(messageId));
-    on(events.MORE_MESSAGES_LOADED, () => queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT)));
-    on(events.CHAT_CHANGED, () => window.setTimeout(() => queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT)), 300));
+    on(events.MORE_MESSAGES_LOADED, () => {
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      queueRetryRecentScan();
+    });
+    on(events.CHAT_CHANGED, () =>
+      window.setTimeout(() => {
+        queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+        queueRetryRecentScan();
+      }, 300),
+    );
   }
 
   function registerManagerButton() {
@@ -903,6 +960,7 @@
     .then(() => {
       notify('故事 UI 外置资源加载完成。', 'success');
       queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      queueRetryRecentScan();
     })
     .catch(error => console.error(`${logPrefix} 初始化失败`, error));
 })();

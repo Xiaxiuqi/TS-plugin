@@ -71,6 +71,12 @@
     });
   }
 
+  function stripRawText(rawText) {
+    return String(rawText || '')
+      .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gi, '')
+      .trim();
+  }
+
   function extractLines(rawText) {
     return String(rawText || '')
       .split(/\r?\n/)
@@ -114,7 +120,8 @@
     render,
     matchesRawText,
     fromRawText,
+    stripRawText,
   });
 
-  ui.variableUpdate = { matchesRawText, fromRawText };
+  ui.variableUpdate = { matchesRawText, fromRawText, stripRawText };
 })();

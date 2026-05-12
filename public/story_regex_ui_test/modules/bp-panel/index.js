@@ -216,6 +216,12 @@
     return wrapper.firstElementChild || wrapper;
   }
 
+  function stripRawText(rawText) {
+    return String(rawText || '')
+      .replace(BP_PANEL_PATTERN, '')
+      .trim();
+  }
+
   function renderPanel(rawText) {
     const match = rawText.match(BP_PANEL_PATTERN);
     if (!match) return null;
@@ -265,7 +271,8 @@
     render,
     matchesRawText,
     fromRawText,
+    stripRawText,
   });
 
-  ui.bpPanel = { matchesRawText, fromRawText };
+  ui.bpPanel = { matchesRawText, fromRawText, stripRawText };
 })();
