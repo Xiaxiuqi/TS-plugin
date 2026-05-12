@@ -101,6 +101,7 @@
   background: rgba(160, 126, 116, 0.12);
   font-size: 15px;
   font-weight: 900;
+  cursor: pointer;
 }
 
 .story-ui-vu.story-ui-day .vu-summary-text {
@@ -143,44 +144,14 @@
   gap: 9px;
 }
 
-.story-ui-vu.story-ui-day .vu-card {
-  min-width: 0;
-  border-radius: 8px;
-  border: none;
-  background: var(--vu-card);
-  box-shadow: var(--vu-shadow-soft);
-  overflow: hidden;
-}
-
-.story-ui-vu.story-ui-day .vu-card-head {
-  padding: 8px 10px 7px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, rgba(236, 226, 207, 0.52), transparent);
-}
-
-.story-ui-vu.story-ui-day .vu-card-dot {
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  flex: 0 0 auto;
-  background: var(--vu-rose);
-}
-
-.story-ui-vu.story-ui-day .vu-card-title {
-  color: var(--vu-text);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
 .story-ui-vu.story-ui-day .vu-content {
   max-height: 320px;
   overflow-y: auto;
   padding: 9px 10px 10px;
   color: var(--vu-text);
-  background: rgba(255, 253, 247, 0.42);
+  border-radius: 8px;
+  background: var(--vu-card);
+  box-shadow: var(--vu-shadow-soft);
   font-size: 12.5px;
   line-height: 1.64;
   scrollbar-width: thin;
@@ -289,6 +260,7 @@
   background: rgba(255, 255, 255, 0.06);
   font-size: 15px;
   font-weight: 900;
+  cursor: pointer;
 }
 
 .story-ui-vu.story-ui-night .vu-summary-text {
@@ -336,59 +308,14 @@
   gap: 8px;
 }
 
-.story-ui-vu.story-ui-night .vu-card {
-  min-width: 0;
-  border-radius: 6px;
-  border: none;
-  background: var(--vu-panel-2);
-  box-shadow: var(--vu-shadow-soft);
-  overflow: hidden;
-  position: relative;
-}
-
-.story-ui-vu.story-ui-night .vu-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--vu-rose);
-  opacity: 0.72;
-}
-
-.story-ui-vu.story-ui-night .vu-card-head {
-  padding: 8px 10px 7px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
-  position: relative;
-  z-index: 1;
-}
-
-.story-ui-vu.story-ui-night .vu-card-dot {
-  width: 14px;
-  height: 2px;
-  border-radius: 2px;
-  flex: 0 0 auto;
-  background: var(--vu-gold);
-  box-shadow: 10px 0 0 rgba(200, 168, 108, 0.32);
-}
-
-.story-ui-vu.story-ui-night .vu-card-title {
-  color: var(--vu-text);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.11em;
-}
-
 .story-ui-vu.story-ui-night .vu-content {
   max-height: 320px;
   overflow-y: auto;
   padding: 9px 10px 10px 12px;
   color: var(--vu-text);
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: 6px;
+  background: var(--vu-panel-2);
+  box-shadow: var(--vu-shadow-soft);
   font-size: 12.5px;
   line-height: 1.64;
   scrollbar-width: thin;

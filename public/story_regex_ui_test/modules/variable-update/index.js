@@ -19,7 +19,7 @@
       <section class="story-ui-root story-ui-vu story-ui-day" data-story-ui-module="${MODULE_ID}">
         <details>
           <summary class="vu-summary" aria-label="展开或收起变量更新">
-            <span class="vu-toggle-icon">✦</span>
+            <span class="vu-toggle-icon" data-story-ui-theme-toggle title="切换日夜主题">✦</span>
             <span class="vu-summary-text">
               <span class="vu-toggle-title">变量更新</span>
               <span class="vu-toggle-subtitle">本回合变量变动记录</span>
@@ -29,10 +29,7 @@
 
           <section class="vu-panel">
             <div class="vu-body">
-              <article class="vu-card">
-                <div class="vu-card-head"><span class="vu-card-dot"></span><span class="vu-card-title">更新明细</span></div>
-                <div class="vu-content">${safeContent}</div>
-              </article>
+              <div class="vu-content">${safeContent}</div>
             </div>
 
             <footer class="vu-panel-foot">✧ VARIABLE UPDATE LOG ✧</footer>
