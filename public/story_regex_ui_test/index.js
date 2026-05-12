@@ -111,7 +111,7 @@
   let lastDiagnosis = null;
 
   if (window[INDEX_FLAG]) {
-    window[CONFIG.globalKey]?.scanner?.scan?.(document);
+    hostWindow[CONFIG.globalKey]?.scanner?.scan?.(hostDocument);
     return;
   }
   window[INDEX_FLAG] = true;
@@ -154,7 +154,15 @@
   }
 
   function getUi() {
-    return window[CONFIG.globalKey] || null;
+    return hostWindow[CONFIG.globalKey] || window[CONFIG.globalKey] || null;
+  }
+
+  function getStoryDocument() {
+    return hostDocument;
+  }
+
+  function getUiSource() {
+    return hostWindow[CONFIG.globalKey] ? 'hostWindow' : window[CONFIG.globalKey] ? 'localWindow' : 'missing';
   }
 
   function getTheme() {
@@ -189,11 +197,13 @@
     if (themeApi?.setTheme) {
       themeApi.setTheme(nextTheme);
     } else {
-      document.querySelectorAll('.story-ui-root').forEach(root => {
-        root.classList.toggle('story-ui-night', nextTheme === 'night');
-        root.classList.toggle('story-ui-day', nextTheme !== 'night');
-        root.dataset.storyUiTheme = nextTheme;
-      });
+      getStoryDocument()
+        .querySelectorAll('.story-ui-root')
+        .forEach(root => {
+          root.classList.toggle('story-ui-night', nextTheme === 'night');
+          root.classList.toggle('story-ui-day', nextTheme !== 'night');
+          root.dataset.storyUiTheme = nextTheme;
+        });
     }
 
     applyManagerTheme(nextTheme);
@@ -213,7 +223,7 @@
     const src = toUrl('loader.js');
 
     loaderPromise = new Promise((resolve, reject) => {
-      const existed = document.querySelector(`script[data-jjks-story-ui-loader="${LOADER_MARK}"]`);
+      const existed = hostDocument.querySelector(`script[data-jjks-story-ui-loader="${LOADER_MARK}"]`);
       if (existed) {
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
@@ -256,7 +266,7 @@
         loaderPromise = null;
         reject(new Error(lastError));
       };
-      document.head.appendChild(script);
+      (hostDocument.head || hostDocument.body).appendChild(script);
     }).catch(error => {
       loaderStatus = 'failed';
       lastError = error?.message || String(error);
@@ -270,16 +280,16 @@
   }
 
   function getMessageScope(messageId) {
-    if (messageId === undefined || messageId === null) return document;
+    if (messageId === undefined || messageId === null) return getStoryDocument();
     try {
       const node = window.retrieveDisplayedMessage?.(messageId)?.[0];
-      return node || document;
+      return node || getStoryDocument();
     } catch {
-      return document;
+      return getStoryDocument();
     }
   }
 
-  function queueScan(scope = document) {
+  function queueScan(scope = getStoryDocument()) {
     if (scanQueued) return;
     scanQueued = true;
     requestAnimationFrame(async () => {
@@ -319,6 +329,7 @@
       故事UI节点数: storyRoots,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
+      UI实例来源: getUiSource(),
       宿主命中SillyTavern: Boolean(hostWindow?.SillyTavern),
       另一个环境状态: otherState,
       最近错误: lastError || '无',
@@ -343,37 +354,49 @@
     const style = createElementInHost('style');
     style.dataset.jjksManagerStyle = STYLE_MARK;
     style.textContent = `
-      .jjks-manager-mask{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(16,13,10,.42);backdrop-filter:blur(5px);font-family:"Noto Serif SC","Microsoft YaHei",serif;}
+      .jjks-manager-mask{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,20,.58);backdrop-filter:blur(18px);font-family:"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;}
       .jjks-manager-mask[data-open="true"]{display:flex;}
-      .jjks-manager-panel{width:min(860px,calc(100vw - 32px));max-height:min(760px,calc(100vh - 32px));overflow:hidden;border-radius:24px;box-shadow:0 24px 80px rgba(0,0,0,.34);border:1px solid;position:relative;}
-      .jjks-manager-panel:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;background:radial-gradient(circle at 14% 0%,rgba(222,184,104,.28),transparent 32%),radial-gradient(circle at 86% 18%,rgba(114,88,187,.18),transparent 30%);}
-      .jjks-manager-day .jjks-manager-panel{background:linear-gradient(145deg,#fff8e8 0%,#f4e4c3 48%,#ead0a0 100%);border-color:rgba(158,112,43,.36);color:#3d2a16;}
-      .jjks-manager-night .jjks-manager-panel{background:linear-gradient(145deg,#111827 0%,#171225 50%,#090b12 100%);border-color:rgba(217,178,94,.34);color:#f5e9c9;box-shadow:0 24px 90px rgba(0,0,0,.62),0 0 36px rgba(99,102,241,.22);}
-      .jjks-manager-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 24px 18px;border-bottom:1px solid rgba(142,102,42,.22);}
-      .jjks-manager-night .jjks-manager-head{border-bottom-color:rgba(217,178,94,.2);}
-      .jjks-manager-eyebrow{display:inline-block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.72;margin-bottom:4px;}
-      .jjks-manager-head h2{margin:0;font-size:25px;letter-spacing:.08em;font-weight:800;}
-      .jjks-manager-close{width:38px;height:38px;border-radius:999px;border:1px solid rgba(130,91,34,.35);background:rgba(255,255,255,.34);color:inherit;font-size:24px;line-height:1;cursor:pointer;}
-      .jjks-manager-night .jjks-manager-close{background:rgba(255,255,255,.07);border-color:rgba(217,178,94,.26);}
-      .jjks-manager-body{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 20px 22px;overflow:auto;max-height:calc(min(760px,calc(100vh - 32px)) - 86px);}
-      .jjks-manager-card{border:1px solid rgba(155,112,48,.24);border-radius:18px;padding:16px;background:rgba(255,252,243,.58);box-shadow:0 10px 30px rgba(115,75,25,.08);}
-      .jjks-manager-night .jjks-manager-card{background:rgba(18,24,38,.68);border-color:rgba(217,178,94,.18);box-shadow:0 10px 30px rgba(0,0,0,.28);}
-      .jjks-manager-card h3{margin:0 0 12px;font-size:16px;letter-spacing:.08em;}
-      .jjks-manager-status{display:grid;gap:9px;margin:0;}
-      .jjks-manager-status div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed rgba(128,92,40,.2);padding-bottom:7px;}
-      .jjks-manager-status dt{opacity:.66;}
-      .jjks-manager-status dd{margin:0;font-weight:700;text-align:right;}
+      .jjks-manager-panel{width:min(1120px,calc(100vw - 40px));max-height:min(860px,calc(100vh - 40px));overflow:hidden;border-radius:28px;box-shadow:0 30px 90px rgba(0,0,0,.45);border:1px solid;position:relative;}
+      .jjks-manager-panel:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.75;background:radial-gradient(circle at 14% 0%,rgba(112,170,255,.18),transparent 32%),radial-gradient(circle at 86% 18%,rgba(158,114,255,.16),transparent 30%),linear-gradient(180deg,rgba(255,255,255,.05),transparent 32%);}
+      .jjks-manager-day .jjks-manager-panel{background:linear-gradient(180deg,#f4f8ff 0%,#edf4ff 46%,#e5ecfa 100%);border-color:rgba(107,133,179,.24);color:#152033;}
+      .jjks-manager-night .jjks-manager-panel{background:linear-gradient(180deg,#0b1220 0%,#12182a 46%,#0d1424 100%);border-color:rgba(106,136,198,.28);color:#edf4ff;box-shadow:0 32px 96px rgba(0,0,0,.58),0 0 42px rgba(96,130,255,.16);}
+      .jjks-manager-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:26px 28px 22px;border-bottom:1px solid rgba(124,147,189,.16);}
+      .jjks-manager-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.78;margin-bottom:8px;}
+      .jjks-manager-eyebrow:before{content:"";width:32px;height:1px;background:currentColor;opacity:.46;display:inline-block;}
+      .jjks-manager-head h2{margin:0;font-size:28px;letter-spacing:.03em;font-weight:800;}
+      .jjks-manager-head p{margin:10px 0 0;font-size:13px;line-height:1.7;opacity:.72;max-width:620px;}
+      .jjks-manager-close{width:42px;height:42px;border-radius:14px;border:1px solid rgba(120,146,193,.22);background:rgba(255,255,255,.08);color:inherit;font-size:24px;line-height:1;cursor:pointer;backdrop-filter:blur(10px);transition:transform .16s ease,background .16s ease,border-color .16s ease;}
+      .jjks-manager-close:hover{transform:translateY(-1px);background:rgba(255,255,255,.14);border-color:rgba(120,146,193,.38);}
+      .jjks-manager-body{position:relative;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px;padding:22px 24px 26px;overflow:auto;max-height:calc(min(860px,calc(100vh - 40px)) - 110px);}
+      .jjks-manager-column{display:grid;gap:18px;align-content:start;min-width:0;}
+      .jjks-manager-card{border:1px solid rgba(116,139,184,.16);border-radius:22px;padding:18px;background:rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(31,55,96,.08);backdrop-filter:blur(12px);}
+      .jjks-manager-night .jjks-manager-card{background:rgba(17,24,39,.72);border-color:rgba(120,146,193,.18);box-shadow:0 14px 36px rgba(0,0,0,.24);}
+      .jjks-manager-card h3{margin:0 0 14px;font-size:15px;letter-spacing:.08em;text-transform:uppercase;opacity:.88;}
+      .jjks-manager-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+      .jjks-manager-metric{padding:14px 15px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.64),rgba(210,224,255,.38));border:1px solid rgba(116,139,184,.14);}
+      .jjks-manager-night .jjks-manager-metric{background:linear-gradient(180deg,rgba(36,51,81,.88),rgba(20,30,49,.78));border-color:rgba(120,146,193,.16);}
+      .jjks-manager-metric span{display:block;font-size:12px;opacity:.64;margin-bottom:8px;letter-spacing:.04em;}
+      .jjks-manager-metric strong{display:block;font-size:18px;line-height:1.3;word-break:break-word;}
+      .jjks-manager-status{display:grid;gap:10px;margin:0;}
+      .jjks-manager-status div{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:10px 0;border-bottom:1px dashed rgba(118,140,184,.18);}
+      .jjks-manager-status div:last-child{border-bottom:none;padding-bottom:0;}
+      .jjks-manager-status dt{opacity:.66;font-size:13px;}
+      .jjks-manager-status dd{margin:0;font-weight:700;text-align:right;max-width:58%;word-break:break-word;}
       .jjks-manager-actions{display:flex;flex-wrap:wrap;gap:10px;}
-      .jjks-manager-button{border:1px solid rgba(146,103,35,.32);border-radius:999px;padding:9px 14px;background:linear-gradient(180deg,rgba(255,255,255,.64),rgba(236,202,135,.38));color:inherit;cursor:pointer;font-weight:700;letter-spacing:.04em;transition:transform .16s ease,box-shadow .16s ease,background .16s ease;}
-      .jjks-manager-button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(120,78,24,.16);}
-      .jjks-manager-night .jjks-manager-button{background:linear-gradient(180deg,rgba(250,224,159,.16),rgba(76,70,141,.2));border-color:rgba(217,178,94,.28);}
-      .jjks-manager-button[data-active="true"]{background:linear-gradient(135deg,#c89438,#f4d58b);color:#2b1a08;box-shadow:0 0 0 2px rgba(255,255,255,.25) inset;}
+      .jjks-manager-button{border:1px solid rgba(110,136,187,.2);border-radius:14px;padding:10px 14px;background:linear-gradient(180deg,rgba(255,255,255,.84),rgba(222,234,255,.64));color:inherit;cursor:pointer;font-weight:700;font-size:13px;letter-spacing:.03em;transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease;}
+      .jjks-manager-button:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(52,86,146,.14);border-color:rgba(100,130,192,.34);}
+      .jjks-manager-night .jjks-manager-button{background:linear-gradient(180deg,rgba(39,53,83,.92),rgba(22,33,54,.88));border-color:rgba(120,146,193,.2);}
+      .jjks-manager-button[data-active="true"]{background:linear-gradient(135deg,#78a7ff,#a88bff);border-color:transparent;color:#081120;box-shadow:0 10px 24px rgba(120,167,255,.28);}
       .jjks-manager-log{grid-column:1 / -1;}
-      .jjks-manager-log pre{white-space:pre-wrap;word-break:break-word;margin:0;min-height:128px;max-height:260px;overflow:auto;border-radius:14px;padding:13px;background:rgba(68,45,18,.08);font-family:"Consolas","Microsoft YaHei",monospace;font-size:12px;line-height:1.55;}
-      .jjks-manager-night .jjks-manager-log pre{background:rgba(0,0,0,.28);color:#e9ddbd;}
-      .jjks-manager-warning{display:none;margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(186,72,45,.14);border:1px solid rgba(186,72,45,.26);font-size:13px;}
+      .jjks-manager-log pre{white-space:pre-wrap;word-break:break-word;margin:0;min-height:180px;max-height:360px;overflow:auto;border-radius:18px;padding:16px;background:rgba(11,20,38,.06);font-family:"Consolas","SFMono-Regular","Microsoft YaHei",monospace;font-size:12px;line-height:1.66;border:1px solid rgba(116,139,184,.12);}
+      .jjks-manager-night .jjks-manager-log pre{background:rgba(6,10,19,.56);color:#dbe8ff;border-color:rgba(120,146,193,.14);}
+      .jjks-manager-warning{display:none;margin:0 0 14px;padding:12px 14px;border-radius:16px;background:rgba(255,179,71,.16);border:1px solid rgba(255,179,71,.24);font-size:13px;line-height:1.65;}
       .jjks-manager-warning[data-visible="true"]{display:block;}
-      @media (max-width:720px){.jjks-manager-body{grid-template-columns:1fr}.jjks-manager-panel{border-radius:18px}.jjks-manager-head{padding:18px}.jjks-manager-head h2{font-size:21px}}
+      .jjks-manager-chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+      .jjks-manager-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(120,167,255,.14);border:1px solid rgba(120,167,255,.18);font-size:12px;font-weight:600;}
+      .jjks-manager-night .jjks-manager-chip{background:rgba(120,167,255,.12);border-color:rgba(120,167,255,.22);}
+      @media (max-width:860px){.jjks-manager-body{grid-template-columns:1fr}.jjks-manager-overview{grid-template-columns:1fr 1fr}}
+      @media (max-width:640px){.jjks-manager-panel{border-radius:20px}.jjks-manager-head{padding:22px 20px 18px}.jjks-manager-head h2{font-size:22px}.jjks-manager-body{padding:18px}.jjks-manager-overview{grid-template-columns:1fr}}
     `;
     (hostDocument.head || hostDocument.body).appendChild(style);
   }
@@ -409,34 +432,50 @@
         <div>
           <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${CONFIG.displayEnv}</span>
           <h2>咒回前端管理</h2>
+          <p>统一查看 Story UI 模块装载、扫描结果与前端主题状态。当前面板已按 MVU 状态栏的视觉语言重构。</p>
         </div>
         <button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button>
       </header>
       <main class="jjks-manager-body">
-        <section class="jjks-manager-card">
-          <h3>运行状态</h3>
-          <p class="jjks-manager-warning" data-jjks-warning></p>
-          <dl class="jjks-manager-status">
-            <div><dt>当前环境</dt><dd data-jjks-status="env">${CONFIG.displayEnv}</dd></div>
-            <div><dt>入口版本</dt><dd data-jjks-status="version">${CONFIG.version}</dd></div>
-            <div><dt>资源状态</dt><dd data-jjks-status="loader">${loaderStatus}</dd></div>
-            <div><dt>当前主题</dt><dd data-jjks-status="theme">${getTheme()}</dd></div>
-            <div><dt>模块数量</dt><dd data-jjks-status="modules">0</dd></div>
-            <div><dt>UI 节点</dt><dd data-jjks-status="roots">0</dd></div>
-          </dl>
-        </section>
-        <section class="jjks-manager-card">
-          <h3>日夜模式</h3>
-          <div class="jjks-manager-actions" data-jjks-theme-actions></div>
-        </section>
-        <section class="jjks-manager-card">
-          <h3>维护工具</h3>
-          <div class="jjks-manager-actions" data-jjks-maintenance-actions></div>
-        </section>
-        <section class="jjks-manager-card jjks-manager-log">
-          <h3>诊断信息</h3>
-          <pre data-jjks-diagnosis>等待诊断...</pre>
-        </section>
+        <div class="jjks-manager-column">
+          <section class="jjks-manager-card">
+            <h3>运行总览</h3>
+            <div class="jjks-manager-overview">
+              <article class="jjks-manager-metric"><span>当前环境</span><strong data-jjks-status="env">${CONFIG.displayEnv}</strong></article>
+              <article class="jjks-manager-metric"><span>资源状态</span><strong data-jjks-status="loader">${loaderStatus}</strong></article>
+              <article class="jjks-manager-metric"><span>模块数量</span><strong data-jjks-status="modules">0</strong></article>
+              <article class="jjks-manager-metric"><span>故事 UI 节点</span><strong data-jjks-status="roots">0</strong></article>
+            </div>
+          </section>
+          <section class="jjks-manager-card jjks-manager-log">
+            <h3>诊断信息</h3>
+            <pre data-jjks-diagnosis>等待诊断...</pre>
+          </section>
+        </div>
+        <div class="jjks-manager-column">
+          <section class="jjks-manager-card">
+            <h3>状态细节</h3>
+            <p class="jjks-manager-warning" data-jjks-warning></p>
+            <dl class="jjks-manager-status">
+              <div><dt>入口版本</dt><dd data-jjks-status="version">${CONFIG.version}</dd></div>
+              <div><dt>当前主题</dt><dd data-jjks-status="theme">${getTheme()}</dd></div>
+              <div><dt>UI 实例来源</dt><dd data-jjks-status="ui-source">-</dd></div>
+              <div><dt>宿主页面</dt><dd data-jjks-status="host">-</dd></div>
+            </dl>
+          </section>
+          <section class="jjks-manager-card">
+            <h3>日夜模式</h3>
+            <div class="jjks-manager-actions" data-jjks-theme-actions></div>
+          </section>
+          <section class="jjks-manager-card">
+            <h3>维护工具</h3>
+            <div class="jjks-manager-actions" data-jjks-maintenance-actions></div>
+          </section>
+          <section class="jjks-manager-card">
+            <h3>模块状态标签</h3>
+            <div class="jjks-manager-chip-row" data-jjks-module-chips></div>
+          </section>
+        </div>
       </main>
     `;
 
@@ -510,8 +549,16 @@
     setText('version', data.入口版本);
     setText('loader', data.加载器状态);
     setText('theme', data.当前主题 === 'night' ? '暗色模式' : '米白模式');
+    setText('ui-source', data.UI实例来源 || '-');
+    setText('host', data.宿主命中SillyTavern ? 'SillyTavern 宿主已命中' : '未命中');
     setText('modules', modules.length);
     setText('roots', data.故事UI节点数);
+
+    const chips = root.querySelector('[data-jjks-module-chips]');
+    if (chips)
+      chips.innerHTML = modules.length
+        ? modules.map(item => `<span class="jjks-manager-chip">${item}</span>`).join('')
+        : '<span class="jjks-manager-chip">暂无已注册模块</span>';
 
     root.querySelectorAll('[data-jjks-theme]').forEach(button => {
       button.dataset.active = button.dataset.jjksTheme === data.当前主题 ? 'true' : 'false';
@@ -691,7 +738,7 @@
   ensureLoader()
     .then(() => {
       notify('故事 UI 外置资源加载完成。', 'success');
-      queueScan(document);
+      queueScan(hostDocument);
     })
     .catch(error => console.error(`${logPrefix} 初始化失败`, error));
 })();
