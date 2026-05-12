@@ -62,15 +62,16 @@
 }
 
 .story-ui-mvu-mark {
-  width: 25px;
-  height: 25px;
-  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   display: grid;
   place-items: center;
-  color: var(--mvu-gold);
-  background: rgba(255, 253, 247, 0.62);
-  box-shadow: 0 2px 5px rgba(71, 58, 42, 0.045);
-  font-size: 13px;
+  color: var(--mvu-rose);
+  background: rgba(160, 126, 116, 0.12);
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 900;
 }
 
 .story-ui-mvu-mark[data-story-ui-theme-toggle] {
@@ -852,8 +853,8 @@
 
 .story-ui-mvu.story-ui-night .story-ui-mvu-mark {
   color: var(--mvu-gold);
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
 }
 
 .story-ui-mvu.story-ui-night .story-ui-mvu-world-card,

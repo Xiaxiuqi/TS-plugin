@@ -122,6 +122,7 @@
   }
 
   function renderWorld(allVariables, subtitle) {
+    const markIcon = ui.theme?.getTheme?.() === 'night' ? '✧' : '✦';
     const sys = getVar(allVariables, 'stat_data.系统', {});
     const time = sys.时间 || {};
     const loc = sys.地点 || {};
@@ -131,7 +132,7 @@
     return `
       <section class="story-ui-mvu-panel">
         <div class="story-ui-mvu-header">
-          <span class="story-ui-mvu-mark" data-story-ui-theme-toggle title="切换日夜主题">✦</span>
+          <span class="story-ui-mvu-mark" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
           <div>
             <div class="story-ui-mvu-title">世界状态</div>
             <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>
