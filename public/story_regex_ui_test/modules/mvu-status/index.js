@@ -3,7 +3,7 @@
   const dom = ui.dom;
 
   const PLACEHOLDER_PATTERN = /<StatusPlaceHolderImpl\s*\/>/i;
-  const PLACEHOLDER_ELEMENT_SELECTOR = 'statusplaceholderimpl, StatusPlaceHolderImpl';
+  const PLACEHOLDER_ELEMENT_SELECTOR = 'statusplaceholderimpl, StatusPlaceHolderImpl, status-placeholder-impl';
 
   function findPlaceholderNodes(root) {
     const matches = [];

@@ -4,6 +4,7 @@
 
   const STRONG_MARKERS = ['<UpdateVariable>', '<update_variable>', '</UpdateVariable>', '</update_variable>', '_.set('];
   const TITLE_MARKERS = ['变量更新', '变量变更', '变量记录'];
+  const UPDATE_VARIABLE_ELEMENT_SELECTOR = 'updatevariable, UpdateVariable, update_variable';
 
   function hasStrongVariableMarker(text) {
     return STRONG_MARKERS.some(marker => text.includes(marker));
@@ -37,6 +38,18 @@
         candidates.push({
           node,
           rawText: text,
+        });
+      }
+    });
+
+    root.querySelectorAll?.(UPDATE_VARIABLE_ELEMENT_SELECTOR).forEach(node => {
+      if (dom?.isProcessed(node) || node.closest?.('.story-ui-root')) return;
+      const text = `<UpdateVariable>\n${node.textContent || ''}\n</UpdateVariable>`;
+      if (isLikelyVariableBlock(node, text)) {
+        candidates.push({
+          node,
+          rawText: text,
+          kind: 'element',
         });
       }
     });

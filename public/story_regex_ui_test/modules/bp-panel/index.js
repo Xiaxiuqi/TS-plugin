@@ -8,6 +8,7 @@
     String.raw`^\s*-\s*名称:\s*([^|\n]+?)\s*\|\s*总BP:\s*([+-]?\d+(?:\.\d+)?)\s*\|\s*战力等级:\s*([^|\n]+?)\s*\|\s*咒术评级:\s*([^\n]+?)\s*\n\s*HP:\s*([^|\n]+?)\s*/\s*([^|\n]+?)\s*\|\s*防御:\s*([^|\n]+?)\s*\|\s*伤害补正:\s*([^\n]+?)\s*\n\s*咒力:\s*当前([^/\n]+?)\s*/\s*有效([^/\n]+?)\s*/\s*原始([^|\n]+?)\s*\|\s*精度([^|\n]+?)\s*\|\s*回复([^|\n]+?)\s*\|\s*消耗倍率([^\n]+?)\s*\n\s*肉体:\s*总肉体值_BPA\s*([^|\n]+?)\s*\|\s*基础([^|\n]+?)\s*\|\s*武艺([^|\n]+?)\s*\|\s*阶段([^|\n]+?)\s*\|\s*输出([^|\n]+?)\s*\|\s*防御系数([^\n]+?)\s*\n\s*术式:\s*术式强度_BPB\s*([^|\n]+?)\s*\|\s*名称([^|\n]+?)\s*\|\s*潜力([^(|\n]+?)\(([^)\n]*?)\)\s*\|\s*精通([^(|\n]+?)\(([^)\n]*?)\)\s*\|\s*基础强度([^|\n]+?)\s*\|\s*当前强度([^\n]+?)\s*\n\s*攻击:\s*咒术([^|\n]+?)\s*\|\s*物理([^|\n]+?)\s*\|\s*咒具([^\n]+?)\s*\n\s*反转:\s*掌握([^|\n]+?)\s*\|\s*等级([^|\n]+?)\s*\|\s*回复([^|\n]+?)\s*\|\s*治疗消耗([^|\n]+?)\s*\|\s*熔断修复消耗([^\n]+?)\s*\n\s*熔断:\s*状态([^|\n]+?)\s*\|\s*大脑重置([^|\n]+?)\s*\|\s*回复惩罚([^|\n]+?)\s*\|\s*强度惩罚([^\n]+?)\s*\n\s*特性备注:\s*\n((?:[ \t]*(?:-\s*)?【[^】\n]+】[:：].+(?:\n|$))*)`,
     'gm',
   );
+  const BP_PANEL_ELEMENT_SELECTOR = 'bp_panel, BP_PANEL';
 
   function findBpTextNodes(root) {
     const matches = [];
@@ -30,6 +31,23 @@
     }
 
     return matches;
+  }
+
+  function findBpElementNodes(root) {
+    const matches = [];
+    root.querySelectorAll?.(BP_PANEL_ELEMENT_SELECTOR).forEach(element => {
+      if (dom?.isProcessed(element) || element.closest?.('.story-ui-root')) return;
+      matches.push({
+        node: element,
+        rawText: `<bp_panel>${element.innerHTML}</bp_panel>`,
+        kind: 'element',
+      });
+    });
+    return matches;
+  }
+
+  function findBpNodes(root) {
+    return [...findBpTextNodes(root), ...findBpElementNodes(root)];
   }
 
   function safe(value) {
@@ -217,7 +235,10 @@
   function render(match) {
     const wrapper = dom.createElement('span', {
       className: 'story-ui-bp-fragment',
-      html: match.rawText.replace(BP_PANEL_PATTERN, renderPanel(match.rawText)),
+      html:
+        match.kind === 'element'
+          ? renderPanel(match.rawText)
+          : match.rawText.replace(BP_PANEL_PATTERN, renderPanel(match.rawText)),
     });
 
     return wrapper;
@@ -227,7 +248,7 @@
     id: 'bp-panel',
     version: '0.1.0-test-new-vars',
     priority: 60,
-    detect: findBpTextNodes,
+    detect: findBpNodes,
     render,
   });
 })();
