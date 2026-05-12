@@ -280,16 +280,16 @@
         <div class="story-ui-se-widget ${isNight ? 'story-ui-se-hsr-ui' : 'story-ui-se-compact-ui'}">
           <details>
             <summary class="story-ui-se-orb" aria-label="展开故事引擎面板">
-              <span class="story-ui-se-orb-mark" data-story-ui-theme-toggle title="切换日夜主题">${isNight ? '✧' : '✦'}</span>
+              <span class="story-ui-se-orb-mark">${isNight ? '✧' : '✦'}</span>
               <span class="story-ui-se-orb-title">${isNight ? 'STORY TERMINAL' : 'STORY ENGINE'}</span>
             </summary>
 
             <section class="story-ui-se-panel">
               <header class="story-ui-se-panel-head">
-                <div class="story-ui-se-head-icon">${isNight ? '✧' : '✦'}</div>
+                <div class="story-ui-se-head-icon" data-story-ui-theme-toggle title="切换日夜主题">${isNight ? '✧' : '✦'}</div>
                 <div>
                   <h3 class="story-ui-se-title">${isNight ? '故事引擎调度终端' : '故事引擎调度记录'}</h3>
-                  <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · NO SCRIPT PIPELINE' : '紧凑信息仪表盘'}</div>
+                  <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · NO SCRIPT PIPELINE' : '紧凑信息仪表盘 · 无脚本渲染'}</div>
                 </div>
                 <div class="story-ui-se-corner">✦ ✧</div>
               </header>
@@ -343,7 +343,7 @@
                 </article>
               </div>
 
-              <footer class="story-ui-se-panel-foot">✧ STORY DRIVER VISUALIZED ✧</footer>
+              <footer class="story-ui-se-panel-foot">${isNight ? '✧ STORY DRIVER TERMINAL ✧' : '✧ STORY DRIVER VISUALIZED ✧'}</footer>
             </section>
           </details>
         </div>
