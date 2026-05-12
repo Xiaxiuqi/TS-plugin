@@ -280,13 +280,13 @@
         <div class="story-ui-se-widget ${isNight ? 'story-ui-se-hsr-ui' : 'story-ui-se-compact-ui'}">
           <details>
             <summary class="story-ui-se-orb" aria-label="展开故事引擎面板">
-              <span class="story-ui-se-orb-mark">✦</span>
+              <span class="story-ui-se-orb-mark" data-story-ui-theme-toggle title="切换日夜主题">${isNight ? '✧' : '✦'}</span>
               <span class="story-ui-se-orb-title">${isNight ? 'STORY TERMINAL' : 'STORY ENGINE'}</span>
             </summary>
 
             <section class="story-ui-se-panel">
               <header class="story-ui-se-panel-head">
-                <div class="story-ui-se-head-icon">✦</div>
+                <div class="story-ui-se-head-icon">${isNight ? '✧' : '✦'}</div>
                 <div>
                   <h3 class="story-ui-se-title">${isNight ? '故事引擎调度终端' : '故事引擎调度记录'}</h3>
                   <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · NO SCRIPT PIPELINE' : '紧凑信息仪表盘'}</div>
@@ -356,7 +356,39 @@
       className: 'story-ui-se-wrapper',
       html: renderShell(content),
     });
-    return wrapper.firstElementChild || null;
+    const root = wrapper.firstElementChild || null;
+    if (root) root.dataset.storyUiStoryEngineRaw = content;
+    return root;
+  }
+
+  function rerender(node) {
+    const root = node?.querySelector?.('.story-ui-se') || node?.querySelector?.('.story-ui-root.story-ui-se');
+    if (!root) return;
+    const content = root.dataset.storyUiStoryEngineRaw ?? '';
+    const fresh = document.createElement('div');
+    fresh.innerHTML = renderShell(content);
+    const nextRoot = fresh.firstElementChild;
+    if (!nextRoot) return;
+    nextRoot.dataset.storyUiStoryEngineRaw = content;
+    root.replaceWith(nextRoot);
+    ui.theme?.applyThemeToRoot?.(nextRoot);
+  }
+
+  function mount(node) {
+    ui.theme?.applyTheme?.(node);
+    const root = node?.querySelector?.('.story-ui-se') || node?.querySelector?.('.story-ui-root.story-ui-se');
+    if (!root) return;
+    if (!root.dataset.storyUiStoryEngineRaw) {
+      const contentHost = node?.querySelector?.('.story-ui-se-wrapper');
+      if (contentHost?.dataset?.storyUiStoryEngineRaw) {
+        root.dataset.storyUiStoryEngineRaw = contentHost.dataset.storyUiStoryEngineRaw;
+      }
+    }
+    if (node?.dataset?.storyUiSeThemeBound) return;
+    node.dataset.storyUiSeThemeBound = 'true';
+    document.addEventListener('story-ui-theme-changed', () => {
+      rerender(node);
+    });
   }
 
   ui.registry?.register?.({
@@ -365,5 +397,6 @@
     priority: 60,
     block: BLOCK,
     renderContent: renderContentNode,
+    mount,
   });
 })();

@@ -541,6 +541,22 @@
     const root = node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
     bindToggleHandlers(root);
 
+    if (!node.dataset.storyUiMvuThemeBound) {
+      node.dataset.storyUiMvuThemeBound = 'true';
+      document.addEventListener('story-ui-theme-changed', () => {
+        const panel = node.querySelector?.('.story-ui-mvu');
+        if (!panel) return;
+        const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
+        const fresh = document.createElement('div');
+        fresh.innerHTML = renderStatusShell(messageId);
+        const nextPanel = fresh.firstElementChild;
+        if (!nextPanel) return;
+        panel.replaceWith(nextPanel);
+        ui.theme?.applyThemeToRoot?.(nextPanel);
+        bindToggleHandlers(nextPanel);
+      });
+    }
+
     if (window.Mvu?.events?.VARIABLE_UPDATE_ENDED && window.eventOn && !node.dataset.storyUiMvuRefreshBound) {
       node.dataset.storyUiMvuRefreshBound = 'true';
       window.eventOn(window.Mvu.events.VARIABLE_UPDATE_ENDED, () => {

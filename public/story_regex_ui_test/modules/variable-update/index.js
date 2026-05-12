@@ -54,16 +54,39 @@
     return wrapper.firstElementChild || null;
   }
 
+  function rerender(node) {
+    const root = node?.querySelector?.('.story-ui-vu') || node?.querySelector?.('.story-ui-root.story-ui-vu');
+    if (!root) return;
+    const content = root.querySelector('.vu-content')?.textContent || '';
+    const fresh = document.createElement('div');
+    fresh.innerHTML = renderShell(content);
+    const nextRoot = fresh.firstElementChild;
+    if (!nextRoot) return;
+    root.replaceWith(nextRoot);
+    ui.theme?.applyThemeToRoot?.(nextRoot);
+  }
+
+  function mount(node) {
+    ui.theme?.applyTheme?.(node);
+    if (node?.dataset?.storyUiVuThemeBound) return;
+    node.dataset.storyUiVuThemeBound = 'true';
+    document.addEventListener('story-ui-theme-changed', () => {
+      rerender(node);
+    });
+  }
+
   ui.registry?.register?.({
     id: MODULE_ID,
     version: MODULE_VERSION,
     priority: 40,
     block: BLOCK,
     renderContent: renderContentNode,
+    mount,
   });
 
   ui.variableUpdate = {
     block: BLOCK,
     renderContent: renderContentNode,
+    mount,
   };
 })();
