@@ -245,8 +245,9 @@
         <section class="story-ui-se-combat-section init">
           <div class="story-ui-se-combat-section-head"><span class="story-ui-se-combat-section-mark">✦</span><span class="story-ui-se-combat-section-title">初始化</span></div>
           <div class="story-ui-se-combat-matchup-card">
-            <div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.matchup)}</div>
-            <div class="story-ui-se-combat-matchup-value">${escapeHtml(parsed.matchup || '无')}</div>
+            <span class="story-ui-se-combat-matchup-label">${escapeHtml(headLabels.matchup)}</span>
+            <span class="story-ui-se-combat-matchup-divider">：</span>
+            <span class="story-ui-se-combat-matchup-value">${escapeHtml(parsed.matchup || '无')}</span>
           </div>
           <div class="story-ui-se-combat-meta-grid story-ui-se-combat-bp-grid">
             <div class="story-ui-se-combat-meta-card"><div class="story-ui-se-combat-meta-label">${escapeHtml(headLabels.player)}</div><div class="story-ui-se-combat-meta-value">${escapeHtml(parsed.playerBaseBp || '无')}</div></div>

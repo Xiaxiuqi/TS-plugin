@@ -425,8 +425,8 @@
 
 .story-ui-se-summary-item {
   display: grid;
-  grid-template-columns: fit-content(52px) minmax(0, 1fr);
-  gap: 9px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
   min-width: 0;
   padding: 6px 0;
   background: transparent;
@@ -462,8 +462,8 @@
   min-width: 0;
   padding: 7px 9px;
   display: grid;
-  grid-template-columns: minmax(92px, 130px) 1fr;
-  gap: 9px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
 }
 
@@ -698,27 +698,28 @@
 
 .story-ui-se-combat-matchup-card {
   margin: 8px 8px 0;
-  padding: 7px 8px 8px;
+  padding: 2px 0 1px;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 2px;
+  text-align: center;
 }
 
-.story-ui-se.story-ui-day .story-ui-se-combat-matchup-card {
-  border-radius: 7px;
-  background: rgba(255, 253, 247, 0.72);
-  box-shadow: inset 2px 0 0 rgba(116, 139, 157, 0.34), var(--se-shadow-soft);
-}
-
-.story-ui-se.story-ui-night .story-ui-se-combat-matchup-card {
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.045);
-  box-shadow: inset 2px 0 0 rgba(136, 174, 184, 0.34), var(--se-shadow-soft);
-}
-
+.story-ui-se-combat-matchup-label,
+.story-ui-se-combat-matchup-divider,
 .story-ui-se-combat-matchup-value {
   color: var(--se-text);
   font-size: 12.6px;
-  font-weight: 700;
   line-height: 1.5;
-  white-space: pre-wrap;
+}
+
+.story-ui-se-combat-matchup-label {
+  color: var(--se-muted);
+}
+
+.story-ui-se-combat-matchup-value {
+  font-weight: 700;
   word-break: break-word;
 }
 
@@ -901,7 +902,7 @@
   }
 
   .story-ui-se-summary-item {
-    grid-template-columns: fit-content(44px) minmax(0, 1fr);
+    grid-template-columns: max-content minmax(0, 1fr);
   }
 
   .story-ui-se-event-card {
