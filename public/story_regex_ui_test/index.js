@@ -290,7 +290,7 @@
     if (messageId === undefined || messageId === null) return null;
     try {
       const byHelper = window.retrieveDisplayedMessage?.(messageId)?.[0];
-      if (byHelper) return byHelper;
+      if (byHelper) return byHelper.closest?.('.mes[mesid]') || byHelper;
     } catch {
       // ignore helper failures
     }
@@ -344,6 +344,18 @@
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
   }
 
+  function ensureSourceHideStyle() {
+    if (hostDocument.querySelector('style[data-story-ui-source-hide="true"]')) return;
+    const style = createElementInHost('style');
+    style.dataset.storyUiSourceHide = 'true';
+    style.textContent = `
+      .story-ui-source-hidden {
+        display: none !important;
+      }
+    `;
+    (hostDocument.head || hostDocument.body).appendChild(style);
+  }
+
   function getDisplayedMessageTextElement(messageElement) {
     if (!messageElement) return null;
 
@@ -374,7 +386,15 @@
     container.dataset.storyUiRawMount = 'true';
     container.dataset.storyUiModule = moduleId;
     container.appendChild(node);
-    messageElement.appendChild(container);
+
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    const messageBlock = messageElement.querySelector?.('.mes_block') || textElement?.parentElement || messageElement;
+    if (textElement?.parentElement === messageBlock) {
+      textElement.insertAdjacentElement('afterend', container);
+    } else {
+      messageBlock.appendChild(container);
+    }
+
     return container;
   }
 
@@ -389,7 +409,8 @@
 
     const styleHidden =
       getComputedStyle(textElement).display === 'none' || getComputedStyle(textElement).visibility === 'hidden';
-    const markerHidden = Boolean(textElement.dataset.storyUiSourceHidden);
+    const markerHidden =
+      textElement.classList.contains('story-ui-source-hidden') || Boolean(textElement.dataset.storyUiSourceHidden);
     return styleHidden || markerHidden;
   }
 
@@ -441,11 +462,13 @@
 
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return;
-    if (textElement.dataset.storyUiSourceHidden === module.id) return;
+
+    ensureSourceHideStyle();
 
     textElement.dataset.storyUiSourceHidden = module.id;
     textElement.dataset.storyUiSourceDisplay = textElement.style.display || '';
-    textElement.style.display = 'none';
+    textElement.classList.add('story-ui-source-hidden');
+    textElement.setAttribute('aria-hidden', 'true');
   }
 
   function mountModulesForMessage(messageId, rawText) {
