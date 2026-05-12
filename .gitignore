@@ -18,3 +18,5 @@ src/数据库前端/
 初始模板/
 src/ci_island_test/REFACTOR_PLAN.md
 src/ci_island_test/styles/README.md
+tmp/
+plans/

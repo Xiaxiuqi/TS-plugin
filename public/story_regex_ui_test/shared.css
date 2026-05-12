@@ -1,0 +1,70 @@
+:root {
+  --story-ui-font: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'Microsoft YaHei', serif;
+  --story-ui-day-bg: #f7f1e6;
+  --story-ui-day-panel: rgba(251, 247, 238, 0.97);
+  --story-ui-day-card: rgba(255, 253, 247, 0.86);
+  --story-ui-day-text: #342f29;
+  --story-ui-day-muted: #756b60;
+  --story-ui-day-faint: #a39889;
+  --story-ui-day-gold: #b79a62;
+  --story-ui-day-blue: #748b9d;
+  --story-ui-day-rose: #a07e74;
+  --story-ui-day-shadow: 0 4px 10px rgba(71, 58, 42, 0.07);
+  --story-ui-day-shadow-soft: 0 2px 6px rgba(71, 58, 42, 0.045);
+
+  --story-ui-night-bg: #171b22;
+  --story-ui-night-panel: rgba(29, 35, 44, 0.97);
+  --story-ui-night-card: rgba(38, 45, 56, 0.92);
+  --story-ui-night-text: #ede7dc;
+  --story-ui-night-muted: #b8afa1;
+  --story-ui-night-faint: #807d78;
+  --story-ui-night-gold: #c8a86c;
+  --story-ui-night-blue: #8091ad;
+  --story-ui-night-rose: #b9877e;
+  --story-ui-night-cyan: #88aeb8;
+  --story-ui-night-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+  --story-ui-night-shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.story-ui-root,
+.story-ui-root * {
+  box-sizing: border-box;
+}
+
+.story-ui-root {
+  width: 100%;
+  margin: 0.8em auto;
+  color: var(--story-ui-day-text);
+  font-family: var(--story-ui-font);
+  line-height: 1.52;
+}
+
+.story-ui-root details,
+.story-ui-root summary {
+  list-style: none;
+}
+
+.story-ui-root summary::-webkit-details-marker {
+  display: none;
+}
+
+.story-ui-root.story-ui-night {
+  color: var(--story-ui-night-text);
+}
+
+.story-ui-theme-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.story-ui-hidden {
+  display: none !important;
+}
+
+.story-ui-muted {
+  color: var(--story-ui-day-faint);
+}
+
+.story-ui-root.story-ui-night .story-ui-muted {
+  color: var(--story-ui-night-faint);
+}
