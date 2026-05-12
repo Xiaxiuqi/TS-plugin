@@ -710,6 +710,65 @@
       .join('\n');
   }
 
+  function getManagerView() {
+    return (
+      hostWindow.JJKSStoryUiManagerView || window.JJKSStoryUiManagerView || globalThis.JJKSStoryUiManagerView || null
+    );
+  }
+
+  async function ensureManagerUiReady(timeout = 5000) {
+    if (getManagerView()) return true;
+
+    const styleHref = toUrl('modules/manager-ui/style.css');
+    if (!hostDocument.querySelector(`link[href="${styleHref}"]`)) {
+      const link = createElementInHost('link');
+      link.rel = 'stylesheet';
+      link.href = styleHref;
+      (hostDocument.head || hostDocument.body).appendChild(link);
+    }
+
+    const scriptSrc = toUrl('modules/manager-ui/index.js');
+    if (!hostDocument.querySelector(`script[src="${scriptSrc}"]`)) {
+      const script = createElementInHost('script');
+      script.src = scriptSrc;
+      script.async = false;
+      (hostDocument.head || hostDocument.body).appendChild(script);
+    }
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeout) {
+      if (getManagerView()) return true;
+      await new Promise(resolve => window.setTimeout(resolve, 50));
+    }
+
+    return Boolean(getManagerView());
+  }
+
+  function renderManagerPanel(root, panel) {
+    const managerView = getManagerView();
+    panel.innerHTML =
+      managerView?.buildPanelHtml?.({
+        displayEnv: CONFIG.displayEnv,
+        loaderStatus,
+        theme: getTheme(),
+      }) ||
+      '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
+    root.dataset.jjksManagerFallback = managerView ? 'false' : 'true';
+
+    const themeActions = root.querySelector('[data-jjks-theme-actions]');
+    if (themeActions && !themeActions.childElementCount) {
+      themeActions.appendChild(createButton('米白模式', { 'data-jjks-theme': 'day' }));
+      themeActions.appendChild(createButton('暗色模式', { 'data-jjks-theme': 'night' }));
+    }
+
+    const maintenanceActions = root.querySelector('[data-jjks-maintenance-actions]');
+    if (maintenanceActions && !maintenanceActions.childElementCount) {
+      maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
+      maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
+      maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
+    }
+  }
+
   function injectManagerStyle() {
     return;
   }
@@ -726,7 +785,13 @@
   function ensureManagerDom() {
     injectManagerStyle();
     let root = hostDocument.getElementById(CONFIG.managerRootId);
-    if (root) return root;
+    if (root) {
+      const panel = root.querySelector('.jjks-manager-panel');
+      if (panel && root.dataset.jjksManagerFallback === 'true' && getManagerView()) {
+        renderManagerPanel(root, panel);
+      }
+      return root;
+    }
 
     root = hostDocument.createElement('div');
     root.id = CONFIG.managerRootId;
@@ -739,26 +804,10 @@
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
     panel.setAttribute('aria-label', '咒回前端管理');
-    const managerView = hostWindow.JJKSStoryUiManagerView || window.JJKSStoryUiManagerView;
-    panel.innerHTML =
-      managerView?.buildPanelHtml?.({
-        displayEnv: CONFIG.displayEnv,
-        loaderStatus,
-        theme: getTheme(),
-      }) ||
-      '<main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
+    renderManagerPanel(root, panel);
 
     root.appendChild(panel);
     hostDocument.body.appendChild(root);
-
-    const themeActions = root.querySelector('[data-jjks-theme-actions]');
-    themeActions.appendChild(createButton('米白模式', { 'data-jjks-theme': 'day' }));
-    themeActions.appendChild(createButton('暗色模式', { 'data-jjks-theme': 'night' }));
-
-    const maintenanceActions = root.querySelector('[data-jjks-maintenance-actions]');
-    maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
-    maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
-    maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
 
     root.addEventListener('click', event => {
       const target = event.target;
@@ -791,7 +840,9 @@
     return root;
   }
 
-  function openManager() {
+  async function openManager() {
+    await ensureLoader();
+    await ensureManagerUiReady();
     const root = ensureManagerDom();
     refreshManagerState();
     root.dataset.open = 'true';
@@ -958,7 +1009,7 @@
             } catch {
               // ignore
             }
-            openManager();
+            openManager().catch(error => console.error(`${logPrefix} 打开管理面板失败`, error));
             console.info(`${logPrefix} 已通过宿主页面按钮兜底绑定打开管理面板。`);
           });
         });
@@ -967,7 +1018,13 @@
       const bindByEventApi = () => {
         const eventName = window.getButtonEvent?.(CONFIG.buttonName);
         if (eventName && window.eventOn) {
-          window.eventOn(eventName, openManager);
+          window.eventOn(eventName, () => {
+            openManager().catch(error => {
+              lastError = error?.message || String(error);
+              console.error(`${logPrefix} 通过事件 API 打开管理面板失败`, error);
+              notify(`打开管理界面失败：${lastError}`, 'error');
+            });
+          });
           return true;
         }
         return false;

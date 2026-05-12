@@ -55,5 +55,6 @@
     },
   };
 
+  globalThis.JJKSStoryUiManagerView = view;
   window.JJKSStoryUiManagerView = view;
 })();
