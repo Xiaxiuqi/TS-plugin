@@ -38,6 +38,11 @@
         css: 'modules/mvu-status/style.css',
         script: 'modules/mvu-status/index.js',
       },
+      {
+        id: 'story-engine',
+        css: 'modules/story-engine/style.css',
+        script: 'modules/story-engine/index.js',
+      },
     ],
   };
 
