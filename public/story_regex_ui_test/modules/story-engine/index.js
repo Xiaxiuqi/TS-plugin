@@ -289,7 +289,7 @@
                 <div class="story-ui-se-head-icon">✦</div>
                 <div>
                   <h3 class="story-ui-se-title">${isNight ? '故事引擎调度终端' : '故事引擎调度记录'}</h3>
-                  <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · NO SCRIPT PIPELINE' : '紧凑信息仪表盘 · 无脚本渲染'}</div>
+                  <div class="story-ui-se-subtitle">${isNight ? 'ASTRAL LOG · NO SCRIPT PIPELINE' : '紧凑信息仪表盘'}</div>
                 </div>
                 <div class="story-ui-se-corner">✦ ✧</div>
               </header>
