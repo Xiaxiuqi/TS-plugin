@@ -344,18 +344,6 @@
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
   }
 
-  function ensureSourceHideStyle() {
-    if (hostDocument.querySelector('style[data-story-ui-source-hide="true"]')) return;
-    const style = createElementInHost('style');
-    style.dataset.storyUiSourceHide = 'true';
-    style.textContent = `
-      .story-ui-source-hidden {
-        display: none !important;
-      }
-    `;
-    (hostDocument.head || hostDocument.body).appendChild(style);
-  }
-
   function getDisplayedMessageTextElement(messageElement) {
     if (!messageElement) return null;
 
@@ -379,35 +367,9 @@
     );
   }
 
-  function insertMountedNode(messageElement, moduleId, node) {
-    if (!messageElement || !node) return null;
-    const container = createElementInHost('section');
-    container.className = 'story-ui-raw-mount';
-    container.dataset.storyUiRawMount = 'true';
-    container.dataset.storyUiModule = moduleId;
-    container.appendChild(node);
-
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    const messageBlock = messageElement.querySelector?.('.mes_block') || textElement?.parentElement || messageElement;
-    if (textElement?.parentElement === messageBlock) {
-      textElement.insertAdjacentElement('afterend', container);
-    } else {
-      messageBlock.appendChild(container);
-    }
-
-    return container;
-  }
-
   function hasMountedStoryUi(messageElement) {
     if (!messageElement) return false;
     return Boolean(messageElement.querySelector?.('[data-story-ui-raw-mount="true"]'));
-  }
-
-  function isDisplayedSourceHidden(messageElement) {
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-
-    return Boolean(textElement.querySelector?.('[data-story-ui-source-fragment-hidden="true"]'));
   }
 
   function escapeRegex(value) {
@@ -452,96 +414,108 @@
     });
   }
 
-  function normalizeTextForCompare(text) {
-    return String(text || '')
-      .replace(/\s+/g, ' ')
-      .trim();
+  function nodeToHtml(node) {
+    if (!node) return '';
+    if (typeof node === 'string') return node;
+    if (node.outerHTML) return node.outerHTML;
+    const wrapper = createElementInHost('div');
+    wrapper.appendChild(node.cloneNode?.(true) || node);
+    return wrapper.innerHTML;
   }
 
-  function findDisplayedSourceFragments(textElement, extractedContent) {
-    if (!textElement) return [];
-    const normalizedContent = normalizeTextForCompare(extractedContent);
-    if (!normalizedContent) return [];
+  function renderPlainTextSegment(text, messageId) {
+    const source = String(text || '');
+    if (!source.trim()) return source;
+    if (typeof window.formatAsDisplayedMessage === 'function') {
+      return window.formatAsDisplayedMessage(source, { message_id: messageId });
+    }
+    return source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
 
-    const candidates = Array.from(
-      textElement.querySelectorAll?.('pre, code, ul, ol, li, blockquote, p, div, span') || [],
-    ).filter(node => !node.closest?.('.story-ui-root') && !node.closest?.('[data-story-ui-raw-mount="true"]'));
-
-    const directMatches = candidates.filter(node => {
-      const text = normalizeTextForCompare(node.textContent || '');
-      return text && (normalizedContent.includes(text) || text.includes(normalizedContent));
+  function findNextModuleMatch(modules, rawText, startIndex) {
+    let best = null;
+    modules.forEach(module => {
+      const block = getModuleBlockConfig(module);
+      if (!block) return;
+      const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
+      const slice = String(rawText || '').slice(startIndex);
+      const match = slice.match(pattern);
+      if (!match || match.index === undefined) return;
+      const absoluteStart = startIndex + match.index;
+      const absoluteEnd = absoluteStart + match[0].length;
+      if (
+        !best ||
+        absoluteStart < best.start ||
+        (absoluteStart === best.start && module.priority > best.module.priority)
+      ) {
+        best = {
+          module,
+          block,
+          start: absoluteStart,
+          end: absoluteEnd,
+          fullMatch: match[0],
+          content: String(match[1] || '').trim(),
+        };
+      }
     });
-    if (directMatches.length > 0) {
-      return directMatches.filter(node => !directMatches.some(other => other !== node && other.contains(node)));
+    return best;
+  }
+
+  function renderMessageHtmlByModules(messageId, rawText, modules) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    let cursor = 0;
+    let html = '';
+    const mounted = [];
+
+    while (cursor < text.length) {
+      const match = findNextModuleMatch(modules, text, cursor);
+      if (!match) {
+        html += renderPlainTextSegment(text.slice(cursor), messageId);
+        break;
+      }
+
+      html += renderPlainTextSegment(text.slice(cursor, match.start), messageId);
+
+      const rendered = getUi()?.registry?.safelyCall(match.module, 'renderContent', match.content, {
+        messageId,
+        rawText,
+        extracted: match,
+        theme: getUi()?.theme?.getTheme?.() || 'day',
+      });
+      const moduleHtml = nodeToHtml(rendered);
+      if (moduleHtml) {
+        html += `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${match.module.id}">${moduleHtml}</section>`;
+        mounted.push(match.module.id);
+      } else {
+        html += renderPlainTextSegment(match.fullMatch, messageId);
+      }
+
+      cursor = match.end;
     }
 
-    const keywordLines = String(extractedContent || '')
-      .split(/\r?\n/)
-      .map(line => normalizeTextForCompare(line))
-      .filter(line => line.length >= 12)
-      .slice(0, 12);
-
-    if (keywordLines.length === 0) return [];
-
-    const keywordMatches = candidates.filter(node => {
-      const text = normalizeTextForCompare(node.textContent || '');
-      return keywordLines.some(line => text.includes(line));
-    });
-
-    return keywordMatches.filter(node => !keywordMatches.some(other => other !== node && other.contains(node)));
-  }
-
-  function hideDisplayedSourceForModule(messageElement, module, rawText) {
-    if (!messageElement || !module) return;
-    const extracted = extractModuleContent(module, rawText);
-    if (!extracted) return;
-
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return;
-
-    ensureSourceHideStyle();
-
-    const fragments = findDisplayedSourceFragments(textElement, extracted.content);
-    fragments.forEach(fragment => {
-      fragment.dataset.storyUiSourceFragmentHidden = 'true';
-      fragment.dataset.storyUiSourceHidden = module.id;
-      fragment.dataset.storyUiSourceDisplay = fragment.style.display || '';
-      fragment.classList.add('story-ui-source-hidden');
-      fragment.setAttribute('aria-hidden', 'true');
-    });
+    return { html, mounted };
   }
 
   function mountModulesForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
 
-    clearMountedStoryUi(messageElement);
-
     const ui = getUi();
     const registry = ui?.registry;
-    const mounted = [];
     if (!registry) return false;
 
-    registry.list().forEach(module => {
-      const matches = moduleMatchesRawText(module, rawText);
-      if (!matches) return;
+    const modules = registry.list().filter(module => moduleMatchesRawText(module, rawText));
+    if (modules.length === 0) {
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
 
-      const builtNode = buildNodeForModule(module, rawText, {
-        messageId,
-        messageElement,
-        theme: ui?.theme?.getTheme?.() || 'day',
-      });
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return false;
 
-      if (!builtNode) return;
-      builtNode.classList?.add?.('story-ui-root');
-      ui?.theme?.applyThemeToRoot?.(builtNode);
-      const mountHost = insertMountedNode(messageElement, module.id, builtNode);
-      if (mountHost) {
-        mounted.push(module.id);
-        hideDisplayedSourceForModule(messageElement, module, rawText);
-        registry.safelyCall(module, 'mount', builtNode, { kind: 'raw', rawText, messageId, node: messageElement });
-      }
-    });
+    const { html, mounted } = renderMessageHtmlByModules(messageId, rawText, modules);
+    textElement.innerHTML = html;
+    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
@@ -564,13 +538,7 @@
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (
-        previousSignature === signature &&
-        hasDisplayHost &&
-        hasMountedUi &&
-        isDisplayedSourceHidden(getDisplayedMessageElement(messageId))
-      )
-        return;
+      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
