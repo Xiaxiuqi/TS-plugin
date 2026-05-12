@@ -404,6 +404,10 @@
     return Boolean(extractModuleContent(module, rawText));
   }
 
+  function moduleMatchesSingleTag(module, rawText) {
+    return Boolean(module?.singleTag) && String(rawText || '').includes(module.singleTag);
+  }
+
   function buildNodeForModule(module, rawText, context) {
     if (typeof module?.renderContent === 'function' && module?.singleTag === '<StatusPlaceHolderImpl/>') {
       return getUi()?.registry?.safelyCall(module, 'renderContent', '', {
@@ -533,7 +537,7 @@
 
     const modules = registry
       .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || module?.singleTag === '<StatusPlaceHolderImpl/>');
+      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
     if (modules.length === 0) {
       mountedModulesByMessage.delete(messageId);
       return false;

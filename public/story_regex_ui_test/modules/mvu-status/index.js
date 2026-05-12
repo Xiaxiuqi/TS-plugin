@@ -6,10 +6,25 @@
   const MODULE_VERSION = '0.1.0-test-single-tag';
   const SINGLE_TAG = '<StatusPlaceHolderImpl/>';
 
-  function getVar(path, fallback = '') {
+  function getMvuDataForMessage(messageId) {
     try {
-      const variables = window.getAllVariables?.() || {};
-      const parts = path.split('.');
+      if (window.Mvu?.getMvuData && Number.isFinite(messageId)) {
+        return window.Mvu.getMvuData({ type: 'message', message_id: messageId }) || {};
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      return window.getAllVariables?.() || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function getVar(variables, path, fallback = '') {
+    try {
+      const parts = String(path || '').split('.');
       let current = variables;
       for (const part of parts) {
         current = current?.[part];
@@ -38,11 +53,12 @@
     `;
   }
 
-  function renderStatusShell() {
-    const user = getVar('stat_data.user', {});
-    const sys = getVar('stat_data.系统', {});
-    const tasksModule = getVar('stat_data.任务系统', {});
-    const npcs = getVar('stat_data.人际档案', {});
+  function renderStatusShell(messageId) {
+    const variables = getMvuDataForMessage(messageId);
+    const user = getVar(variables, 'stat_data.user', {});
+    const sys = getVar(variables, 'stat_data.系统', {});
+    const tasksModule = getVar(variables, 'stat_data.任务系统', {});
+    const npcs = getVar(variables, 'stat_data.人际档案', {});
 
     const time = sys.时间 || {};
     const loc = sys.地点 || {};
@@ -56,9 +72,15 @@
     const worldTime = `${time.年 || 2018}年${time.月日 || ''} ${time.时分 || ''} (${time.星期 || ''})`;
     const worldLoc = `${loc.国家 || ''} ${loc.地域 || ''} ${loc.场所 || ''} ${loc.具体位置 || ''}`.trim() || '未知位置';
 
-    const positiveTitles = (Array.isArray(pw.称号) ? pw.称号 : String(pw.称号 || '寂寂无名的路人').split(/[、,，]/)).filter(Boolean);
-    const negativeTitles = (Array.isArray(ew.称号) ? ew.称号 : String(ew.称号 || '无人知晓的普通人').split(/[、,，]/)).filter(Boolean);
-    const identityTags = (Array.isArray(user.公开身份) ? user.公开身份 : String(user.公开身份 || '').split(/[、,，]/)).filter(Boolean);
+    const positiveTitles = (
+      Array.isArray(pw.称号) ? pw.称号 : String(pw.称号 || '寂寂无名的路人').split(/[、,，]/)
+    ).filter(Boolean);
+    const negativeTitles = (
+      Array.isArray(ew.称号) ? ew.称号 : String(ew.称号 || '无人知晓的普通人').split(/[、,，]/)
+    ).filter(Boolean);
+    const identityTags = (
+      Array.isArray(user.公开身份) ? user.公开身份 : String(user.公开身份 || '').split(/[、,，]/)
+    ).filter(Boolean);
 
     const clothes = user.当前服装 || {};
     const clothesHtml = [
@@ -67,7 +89,10 @@
       ['下装', clothes.下装 || '无'],
       ['足具', clothes.足具 || '无'],
     ]
-      .map(([slot, value]) => `<span class="story-ui-mvu-cloth-chip ${value === '无' ? 'is-empty' : ''}"><span class="story-ui-mvu-cloth-slot">${dom.escapeHtml(slot)}</span>${dom.escapeHtml(value)}</span>`)
+      .map(
+        ([slot, value]) =>
+          `<span class="story-ui-mvu-cloth-chip ${value === '无' ? 'is-empty' : ''}"><span class="story-ui-mvu-cloth-slot">${dom.escapeHtml(slot)}</span>${dom.escapeHtml(value)}</span>`,
+      )
       .join('');
 
     const participants = Array.isArray(sex.参与者) ? sex.参与者 : [];
@@ -84,19 +109,23 @@
               <span class="story-ui-mvu-toggle-icon">▼</span>
             </div>
             <div class="story-ui-mvu-pink-container">
-              ${participants.length === 0 ? '<div class="story-ui-mvu-muted-empty">正在感受爱意...</div>' : participants
-                .map(name => {
-                  const npcData = npcs[name] || {};
-                  const lust = Math.max(0, Math.min(100, Number(npcData.欲望值 || 0)));
-                  return `
+              ${
+                participants.length === 0
+                  ? '<div class="story-ui-mvu-muted-empty">正在感受爱意...</div>'
+                  : participants
+                      .map(name => {
+                        const npcData = npcs[name] || {};
+                        const lust = Math.max(0, Math.min(100, Number(npcData.欲望值 || 0)));
+                        return `
                     <div class="story-ui-mvu-sex-row">
                       <span class="story-ui-mvu-sex-char-name">${dom.escapeHtml(name)}</span>
                       <div class="story-ui-mvu-lust-bar-bg"><div class="story-ui-mvu-lust-bar-fill" style="width:${lust}%"></div></div>
                       <span class="story-ui-mvu-lust-value-text">${dom.escapeHtml(lust)} / 100</span>
                     </div>
                   `;
-                })
-                .join('')}
+                      })
+                      .join('')
+              }
             </div>
           </section>
         `
@@ -110,12 +139,14 @@
             const stage = data?.关系阶段 || '未知';
             const affinityWidth = (Math.min(Math.abs(affinity), 100) / 100) * 50;
             const trustWidth = (Math.min(Math.abs(trust), 100) / 100) * 50;
-            const affinityStyle = affinity >= 0
-              ? `left:50%;width:${affinityWidth}%;background:linear-gradient(90deg,#d0b8a9,#a07e74);`
-              : `right:50%;width:${affinityWidth}%;background:#9a9389;`;
-            const trustStyle = trust >= 0
-              ? `left:50%;width:${trustWidth}%;background:linear-gradient(90deg,#cdbd8d,#b79a62);`
-              : `right:50%;width:${trustWidth}%;background:#9a9389;`;
+            const affinityStyle =
+              affinity >= 0
+                ? `left:50%;width:${affinityWidth}%;background:linear-gradient(90deg,#d0b8a9,#a07e74);`
+                : `right:50%;width:${affinityWidth}%;background:#9a9389;`;
+            const trustStyle =
+              trust >= 0
+                ? `left:50%;width:${trustWidth}%;background:linear-gradient(90deg,#cdbd8d,#b79a62);`
+                : `right:50%;width:${trustWidth}%;background:#9a9389;`;
             return `
               <div class="story-ui-mvu-character-card">
                 <div class="story-ui-mvu-char-name" title="${dom.escapeHtml(name)}">✦ ${dom.escapeHtml(name)}</div>
@@ -225,10 +256,10 @@
     `;
   }
 
-  function renderContentNode() {
+  function renderContentNode(_content, context = {}) {
     const wrapper = dom.createElement('div', {
       className: 'story-ui-mvu-wrapper',
-      html: renderStatusShell(),
+      html: renderStatusShell(context.messageId),
     });
 
     return wrapper.firstElementChild || null;
@@ -236,6 +267,26 @@
 
   function mount(node) {
     ui.theme?.applyTheme?.(node);
+
+    if (
+      !node.dataset.storyUiMvuInitPending &&
+      typeof window.waitGlobalInitialized === 'function' &&
+      !window.Mvu?.getMvuData
+    ) {
+      node.dataset.storyUiMvuInitPending = 'true';
+      window
+        .waitGlobalInitialized('Mvu')
+        .then(() => {
+          const panel = node.querySelector?.('.story-ui-mvu');
+          if (!panel) return;
+          const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
+          const fresh = document.createElement('div');
+          fresh.innerHTML = renderStatusShell(messageId);
+          const nextPanel = fresh.firstElementChild;
+          if (nextPanel) panel.replaceWith(nextPanel);
+        })
+        .catch(() => {});
+    }
 
     const root = node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
     if (root && !root.dataset.storyUiMvuBound) {
@@ -259,8 +310,9 @@
       window.eventOn(window.Mvu.events.VARIABLE_UPDATE_ENDED, () => {
         const panel = node.querySelector?.('.story-ui-mvu');
         if (!panel) return;
+        const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
         const fresh = document.createElement('div');
-        fresh.innerHTML = renderStatusShell();
+        fresh.innerHTML = renderStatusShell(messageId);
         const nextPanel = fresh.firstElementChild;
         if (!nextPanel) return;
         panel.replaceWith(nextPanel);
