@@ -107,7 +107,7 @@
   }
 
   function buildItemList(dataObj, mark, title, renderContentFn) {
-    let html = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>${escapeHtml(mark)} ${escapeHtml(title)} <span class="story-ui-mvu-toggle-icon">▼</span></div><div class="story-ui-mvu-sub-content">`;
+    let html = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>${escapeHtml(mark)} ${escapeHtml(title)} <span class="story-ui-mvu-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-sub-content">`;
     if (!dataObj || dataObj === '待初始化' || (typeof dataObj === 'object' && Object.keys(dataObj).length === 0)) {
       html += emptyText();
     } else {
@@ -216,7 +216,7 @@
     const ew = fw.邪道 || {};
 
     const vows = user.束缚 || {};
-    let vowHtml = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>✦ 束缚 <span class="story-ui-mvu-toggle-icon">▼</span></div><div class="story-ui-mvu-sub-content">`;
+    let vowHtml = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>✦ 束缚 <span class="story-ui-mvu-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-sub-content">`;
     if (!vows || vows === '待初始化' || Object.keys(vows).length === 0) {
       vowHtml += emptyText();
     } else {
@@ -258,7 +258,7 @@
       });
     }
 
-    let finalCtHtml = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>✦ 术式 <span class="story-ui-mvu-toggle-icon">▼</span></div><div class="story-ui-mvu-sub-content">`;
+    let finalCtHtml = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>✦ 术式 <span class="story-ui-mvu-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-sub-content">`;
     finalCtHtml +=
       allCtsItemsHtml !== '' ? `<div class="story-ui-mvu-mini-grid">${allCtsItemsHtml}</div>` : emptyText();
     finalCtHtml += `</div>`;
@@ -270,7 +270,7 @@
     });
 
     const tasks = tasksModule || {};
-    let taskHtml = `<div class="story-ui-mvu-sub-toggle-header story-ui-mvu-task-header" data-story-ui-mvu-toggle-next>✦ 当前任务 <span class="story-ui-mvu-toggle-icon">▼</span></div><div class="story-ui-mvu-sub-content">`;
+    let taskHtml = `<div class="story-ui-mvu-sub-toggle-header story-ui-mvu-task-header" data-story-ui-mvu-toggle-next>✦ 当前任务 <span class="story-ui-mvu-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-sub-content">`;
     if (!tasks || tasks === '待初始化' || Object.keys(tasks).length === 0) {
       taskHtml += emptyText('暂无任务');
     } else {

@@ -549,6 +549,12 @@
   letter-spacing: 0.06em;
 }
 
+.story-ui-mvu-sub-toggle-header .story-ui-mvu-toggle-icon,
+.story-ui-mvu-item-toggle-header .story-ui-mvu-toggle-icon,
+.story-ui-mvu-reward-toggle-header .story-ui-mvu-toggle-icon {
+  font-size: 10px;
+}
+
 .story-ui-mvu-item-toggle-header {
   margin-top: 5px;
   padding: 6px 8px;
