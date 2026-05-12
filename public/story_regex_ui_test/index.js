@@ -492,6 +492,21 @@
     return best;
   }
 
+  function findNextRenderableMatch(modules, rawText, startIndex) {
+    const placeholderMatch = findStatusPlaceholderMatch(modules, rawText, startIndex);
+    const blockMatch = findNextModuleMatch(modules, rawText, startIndex);
+
+    if (!placeholderMatch) return blockMatch;
+    if (!blockMatch) return placeholderMatch;
+
+    if (placeholderMatch.start < blockMatch.start) return placeholderMatch;
+    if (blockMatch.start < placeholderMatch.start) return blockMatch;
+
+    return (placeholderMatch.module?.priority || 0) >= (blockMatch.module?.priority || 0)
+      ? placeholderMatch
+      : blockMatch;
+  }
+
   function renderMessageHtmlByModules(messageId, rawText, modules) {
     const text = String(rawText || '').replace(/\r\n?/g, '\n');
     let cursor = 0;
@@ -499,7 +514,7 @@
     const mounted = [];
 
     while (cursor < text.length) {
-      const match = findStatusPlaceholderMatch(modules, text, cursor) || findNextModuleMatch(modules, text, cursor);
+      const match = findNextRenderableMatch(modules, text, cursor);
 
       if (!match) {
         html += renderPlainTextSegment(text.slice(cursor), messageId);
