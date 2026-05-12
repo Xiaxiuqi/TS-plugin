@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-12T16:53:50.057Z
+- Updated At: 2026-05-12T22:35:00.389Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：故事 UI 已迁移为 public 双环境酒馆助手入口，并完成咒回前端管理界面首版实现
-- 最新结论：测试版与正式版 index.js 已创建；不再依赖正则；管理按钮、管理界面、主题切换、资源重载、诊断、重扫以及模块兼容修正均已完成本地静态检查。
-- 下一步：请在酒馆中分别启用 public/story_regex_ui_test/index.js 与 public/story_regex_ui_prod/index.js 做真实环境验证。
+- 当前焦点：修正文档并继续载入世界运行报告 wlog 模块，统一接入主题切换重渲染与展开状态保留
+- 最新结论：已完成 variable-update、mvu-status、story-engine 的主题切换与状态保留基础修正，当前准备新增世界运行报告模块。
+- 下一步：实现并接入 wlog 模块，修复现有 ESLint 表达式告警，并验证 loader/scanner 集成。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -59,6 +59,7 @@
 - 2026-05-12T16:24:47.041Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:53:50.057Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
+- 2026-05-12T22:35:00.389Z | updated | 记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -68,13 +69,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-12T16:53:50.057Z",
+  "updatedAt": "2026-05-12T22:35:00.389Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "故事 UI 已迁移为 public 双环境酒馆助手入口，并完成咒回前端管理界面首版实现",
-  "latestConclusion": "测试版与正式版 index.js 已创建；不再依赖正则；管理按钮、管理界面、主题切换、资源重载、诊断、重扫以及模块兼容修正均已完成本地静态检查。",
+  "currentFocus": "修正文档并继续载入世界运行报告 wlog 模块，统一接入主题切换重渲染与展开状态保留",
+  "latestConclusion": "已完成 variable-update、mvu-status、story-engine 的主题切换与状态保留基础修正，当前准备新增世界运行报告模块。",
   "currentBlocker": null,
-  "nextAction": "请在酒馆中分别启用 public/story_regex_ui_test/index.js 与 public/story_regex_ui_prod/index.js 做真实环境验证。",
+  "nextAction": "实现并接入 wlog 模块，修复现有 ESLint 表达式告警，并验证 loader/scanner 集成。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
@@ -195,6 +196,11 @@
       "type": "artifact_changed",
       "refId": "plan",
       "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
+    },
+    {
+      "at": "2026-05-12T22:35:00.389Z",
+      "type": "updated",
+      "message": "记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。"
     }
   ],
   "stats": {
@@ -208,8 +214,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-12T16:53:50.057Z",
-    "bodyHash": "sha256:728ae4ee4f277ebdaff0ed807789f425c15a6e987c2a86c0a7b2bc4df0a10ba6"
+    "generatedAt": "2026-05-12T22:35:00.389Z",
+    "bodyHash": "sha256:e584ced63a83f611eef3f7e96f3b580d0f1d85472f9a57d99eadc37f85817f9d"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
