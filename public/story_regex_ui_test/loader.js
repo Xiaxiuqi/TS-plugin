@@ -34,6 +34,11 @@
         script: 'modules/variable-update/index.js',
       },
       {
+        id: 'bp-panel',
+        css: 'modules/bp-panel/style.css',
+        script: 'modules/bp-panel/index.js',
+      },
+      {
         id: 'mvu-status',
         css: 'modules/mvu-status/style.css',
         script: 'modules/mvu-status/index.js',
