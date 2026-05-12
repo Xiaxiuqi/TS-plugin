@@ -688,15 +688,7 @@
   flex-direction: column;
   margin-top: 7px;
   gap: 3px;
-  .story-ui-mvu.story-ui-night .story-ui-mvu-c-lbl,
-  .story-ui-mvu.story-ui-night .story-ui-mvu-stat-line .lbl {
-    color: var(--mvu-sage);
-  }
-
-  .story-ui-mvu.story-ui-night .story-ui-mvu-kp-tooltip {
-    color: var(--mvu-gold);
-    border-bottom-color: rgba(200, 168, 108, 0.72);
-  }
+}
 
   .story-ui-mvu.story-ui-night .story-ui-mvu-mini-card {
     border-radius: 5px;
@@ -912,7 +904,14 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
-.story-ui-mvu.story-ui-night .story-ui-mvu-stat-line,
+.story-ui-mvu.story-ui-night .story-ui-mvu-stat-line {
+  box-shadow: inset 0 -1px 0 var(--mvu-line);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-stat-line:last-child {
+  box-shadow: none;
+}
+
 .story-ui-mvu.story-ui-night .story-ui-mvu-char-name {
   box-shadow: inset 0 -1px 0 var(--mvu-line);
 }
@@ -927,6 +926,21 @@
 .story-ui-mvu.story-ui-night .story-ui-mvu-profile-tag {
   color: var(--mvu-sage);
   background: rgba(136, 174, 184, 0.11);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-c-lbl,
+.story-ui-mvu.story-ui-night .story-ui-mvu-stat-line .lbl {
+  color: var(--mvu-sage);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-kp-tooltip {
+  color: var(--mvu-gold);
+  border-bottom-color: rgba(200, 168, 108, 0.72);
+}
+
+.story-ui-mvu.story-ui-night .story-ui-mvu-cloth-empty {
+  color: var(--mvu-faint);
+  opacity: 0.78;
 }
 
 .story-ui-mvu.story-ui-night .story-ui-mvu-fame-tag.pos {
