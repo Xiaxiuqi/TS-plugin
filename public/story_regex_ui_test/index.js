@@ -1132,11 +1132,13 @@
     return false;
   }
 
-  async function scanMessageIds(messageIds, mode = 'incremental') {
+  async function scanMessageIds(messageIds, mode = 'incremental', options = {}) {
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
-    await refreshRenderedMessagesForNativeRender(uniqueIds);
+    if (options.refreshNative === true) {
+      await refreshRenderedMessagesForNativeRender(uniqueIds);
+    }
 
     const activeSet = new Set(uniqueIds);
     const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
@@ -1540,7 +1542,7 @@
       });
     }
 
-    await scanMessageIds(ids, 'window');
+    await scanMessageIds(ids, 'window', { refreshNative: false });
   }
 
   function getExclusiveModuleId(moduleId) {
