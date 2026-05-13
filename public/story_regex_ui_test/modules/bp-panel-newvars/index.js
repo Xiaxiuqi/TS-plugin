@@ -243,7 +243,6 @@ ${targets.length ? targets.map(renderTargetCard).join('') : `<div class="bp-targ
 
   function renderContentNode(content, context = {}) {
     const rawText = context?.rawText || `${BLOCK.open}${content}${BLOCK.close}`;
-    if (!/总BP:/.test(rawText) || !/总肉体值_BPA/.test(rawText)) return null;
 
     const wrapper = dom.createElement('div', {
       className: 'story-ui-bp-newvars-wrapper',
