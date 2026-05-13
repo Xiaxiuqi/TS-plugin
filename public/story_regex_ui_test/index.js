@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'test',
     displayEnv: '测试版',
-    version: 'test-20260513-module-content-v3',
+    version: 'test',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_test/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_test/',
     globalKey: 'StoryRegexUI',
@@ -121,8 +121,6 @@
   const messageSignatures = new Map();
   const mountedModulesByMessage = new Map();
   const recentScannedMessageIds = [];
-  const messageRenderStates = new Map();
-  const collapsedMessageSignatures = new Map();
   let renderedWindowSize = 0;
   let recentScanRetryTimer = null;
   let lastScanMode = 'dom';
@@ -314,13 +312,8 @@
 
   function getDisplayedMessageElement(messageId) {
     if (messageId === undefined || messageId === null) return null;
-    const retrieveDisplayedMessage =
-      hostWindow.TavernHelper?.retrieveDisplayedMessage ||
-      hostWindow.retrieveDisplayedMessage ||
-      window.TavernHelper?.retrieveDisplayedMessage ||
-      window.retrieveDisplayedMessage;
     try {
-      const byHelper = retrieveDisplayedMessage?.(messageId)?.[0];
+      const byHelper = window.retrieveDisplayedMessage?.(messageId)?.[0];
       if (byHelper) return byHelper.closest?.('.mes[mesid]') || byHelper;
     } catch {
       // ignore helper failures
@@ -348,13 +341,8 @@
   }
 
   function readRawMessage(messageId) {
-    const getChatMessages =
-      hostWindow.TavernHelper?.getChatMessages ||
-      hostWindow.getChatMessages ||
-      window.TavernHelper?.getChatMessages ||
-      window.getChatMessages;
     try {
-      return getChatMessages?.(messageId)?.[0] || null;
+      return window.getChatMessages?.(messageId)?.[0] || null;
     } catch {
       return null;
     }
@@ -380,78 +368,16 @@
     }
   }
 
-  function updateMessageRenderState(messageId, patch = {}) {
-    if (!Number.isFinite(messageId)) return;
-    const previous = messageRenderStates.get(messageId) || {
-      mounted: [],
-      avoided: [],
-      collapsed: [],
-      details: [],
-      cleared: false,
-      signature: '',
-      updatedAt: '',
-    };
-    const next = {
-      ...previous,
-      ...patch,
-      mounted: Array.isArray(patch.mounted) ? patch.mounted.slice() : previous.mounted,
-      avoided: Array.isArray(patch.avoided) ? patch.avoided.slice() : previous.avoided,
-      collapsed: Array.isArray(patch.collapsed) ? patch.collapsed.slice() : previous.collapsed,
-      details: Array.isArray(patch.details) ? patch.details.slice() : previous.details,
-      cleared: typeof patch.cleared === 'boolean' ? patch.cleared : previous.cleared,
-      updatedAt: new Date().toLocaleString(),
-    };
-    messageRenderStates.set(messageId, next);
-  }
-
-  function clearMessageRenderState(messageId) {
-    if (!Number.isFinite(messageId)) return;
-    messageRenderStates.delete(messageId);
-  }
-
   function clearMountedStoryUi(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
-    messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(restoreHiddenSourceNode);
   }
 
-  function clearCollapsedPlaceholders(messageElement) {
-    if (!messageElement) return;
-    messageElement.querySelectorAll?.('[data-story-ui-code-placeholder="true"]').forEach(node => node.remove());
-  }
-
-  function hasCollapsedPlaceholder(messageElement) {
-    return Boolean(messageElement?.querySelector?.('[data-story-ui-code-placeholder="true"]'));
-  }
-
-  function getRetrievedDisplayedMessageNode(messageId) {
-    if (messageId === undefined || messageId === null) return null;
-    const retrieveDisplayedMessage =
-      hostWindow.TavernHelper?.retrieveDisplayedMessage ||
-      hostWindow.retrieveDisplayedMessage ||
-      window.TavernHelper?.retrieveDisplayedMessage ||
-      window.retrieveDisplayedMessage;
-    try {
-      return retrieveDisplayedMessage?.(messageId)?.[0] || null;
-    } catch {
-      return null;
-    }
-  }
-
-  function getDisplayedMessageTextElement(messageElement, messageId) {
+  function getDisplayedMessageTextElement(messageElement) {
     if (!messageElement) return null;
 
-    const helperNode = getRetrievedDisplayedMessageNode(messageId);
-    if (helperNode) {
-      const helperTextLength = String(helperNode.innerText || helperNode.textContent || '').trim().length;
-      const helperHasMountedArea = Boolean(helperNode.querySelector?.('[data-story-ui-raw-mount="true"]'));
-      if (helperTextLength > 0 || helperHasMountedArea) {
-        return helperNode.closest?.('.mes_text, .custom-mes_text') || helperNode;
-      }
-    }
-
     const candidates = Array.from(messageElement.querySelectorAll?.('.mes_text, .custom-mes_text') || []);
-    if (candidates.length === 0) return helperNode || null;
+    if (candidates.length === 0) return null;
     if (candidates.length === 1) return candidates[0];
 
     return (
@@ -466,7 +392,6 @@
           return rhs.depth - lhs.depth;
         })[0]?.node ||
       candidates[candidates.length - 1] ||
-      helperNode ||
       null
     );
   }
@@ -530,8 +455,7 @@
     return getUi()?.registry?.safelyCall(module, 'renderContent', extracted.content, {
       ...context,
       extracted,
-      rawText: extracted.fullMatch,
-      messageRawText: rawText,
+      rawText,
     });
   }
 
@@ -548,10 +472,10 @@
     const source = String(text || '');
     if (!source.trim()) return source;
     const formatAsDisplayedMessage =
-      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
       hostWindow.formatAsDisplayedMessage ||
-      window.TavernHelper?.formatAsDisplayedMessage ||
-      window.formatAsDisplayedMessage;
+      window.formatAsDisplayedMessage ||
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage;
     if (typeof formatAsDisplayedMessage === 'function') {
       return formatAsDisplayedMessage(source, { message_id: messageId });
     }
@@ -559,21 +483,13 @@
   }
 
   function findNextModuleMatch(modules, rawText, startIndex) {
-    const source = String(rawText || '').replace(/\r\n?/g, '\n');
     let best = null;
     modules.forEach(module => {
       const block = getModuleBlockConfig(module);
       if (!block) return;
       const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
-      const slice = source.slice(startIndex);
-      let match = slice.match(pattern);
-
-      if (!match && module?.id === 'story-engine') {
-        match = slice.match(
-          /<story_driver>[\s\S]*?(?:<combat_driver>[\s\S]*?<\/combat_driver>[\s\S]*?)?(?:━━\s*3[.．、]\s*最终修正\s*━━[\s\S]*)?/i,
-        );
-      }
-
+      const slice = String(rawText || '').slice(startIndex);
+      const match = slice.match(pattern);
       if (!match || match.index === undefined) return;
       const absoluteStart = startIndex + match.index;
       const absoluteEnd = absoluteStart + match[0].length;
@@ -588,8 +504,7 @@
           start: absoluteStart,
           end: absoluteEnd,
           fullMatch: match[0],
-          content: String(match[1] || match[0] || '').trim(),
-          kind: 'block',
+          content: String(match[1] || '').trim(),
         };
       }
     });
@@ -637,10 +552,10 @@
     const mounted = [];
     const replacements = [];
     const formatAsDisplayedMessage =
-      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
       hostWindow.formatAsDisplayedMessage ||
-      window.TavernHelper?.formatAsDisplayedMessage ||
-      window.formatAsDisplayedMessage;
+      window.formatAsDisplayedMessage ||
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage;
 
     const replaceMountToken = (sourceHtml, token, replacementHtml) => {
       const escapedToken = escapeRegex(token);
@@ -667,9 +582,7 @@
         theme: getUi()?.theme?.getTheme?.() || 'day',
       });
       const moduleHtml = nodeToHtml(rendered);
-      if (match.module.enabled === false) {
-        textWithPlaceholders += '';
-      } else if (moduleHtml) {
+      if (moduleHtml) {
         const token = `JJKSSTORYUIMOUNT${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
         textWithPlaceholders += token;
         replacements.push({
@@ -678,7 +591,7 @@
         });
         mounted.push(match.module.id);
       } else {
-        textWithPlaceholders += '';
+        textWithPlaceholders += match.fullMatch;
       }
 
       cursor = match.end;
@@ -700,62 +613,6 @@
     });
 
     return { html, mounted };
-  }
-
-  function renderCollapsedHtmlByModules(messageId, rawText, modules) {
-    const text = String(rawText || '').replace(/\r\n?/g, '\n');
-    let cursor = 0;
-    let textWithPlaceholders = '';
-    const collapsed = [];
-    const replacements = [];
-    const formatAsDisplayedMessage =
-      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
-      hostWindow.formatAsDisplayedMessage ||
-      window.TavernHelper?.formatAsDisplayedMessage ||
-      window.formatAsDisplayedMessage;
-
-    const replaceMountToken = (sourceHtml, token, replacementHtml) => {
-      const escapedToken = escapeRegex(token);
-      return String(sourceHtml || '')
-        .replace(new RegExp(`<p[^>]*>\\s*${escapedToken}\\s*</p>`, 'g'), replacementHtml)
-        .replace(new RegExp(`<span[^>]*>\\s*${escapedToken}\\s*</span>`, 'g'), replacementHtml)
-        .split(token)
-        .join(replacementHtml)
-        .split(escapeHtml(token))
-        .join(replacementHtml);
-    };
-
-    while (cursor < text.length) {
-      const match = findNextRenderableMatch(modules, text, cursor);
-      if (!match) {
-        textWithPlaceholders += text.slice(cursor);
-        break;
-      }
-
-      textWithPlaceholders += text.slice(cursor, match.start);
-      const token = `JJKSSTORYUICOLLAPSED${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
-      const title = MODULE_LABELS[match.module.id] ? `显示代码块 · ${MODULE_LABELS[match.module.id]}` : '显示代码块';
-      textWithPlaceholders += token;
-      replacements.push({
-        token,
-        html: `<section class="story-ui-code-placeholder-host" data-story-ui-code-placeholder="true">${renderCollapsedBlock(match.fullMatch.trim(), title)}</section>`,
-      });
-      collapsed.push(match.module.id);
-      cursor = match.end;
-    }
-
-    let html =
-      typeof formatAsDisplayedMessage === 'function'
-        ? formatAsDisplayedMessage(textWithPlaceholders, { message_id: messageId })
-        : textWithPlaceholders
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>');
-    replacements.forEach(({ token, html: replacementHtml }) => {
-      html = replaceMountToken(html, token, replacementHtml);
-    });
-    return { html, collapsed };
   }
 
   function getRenderableMatchesInOrder(modules, rawText) {
@@ -789,14 +646,7 @@
       acceptNode(node) {
         const parent = node.parentElement;
         if (!parent) return nodeFilter.FILTER_REJECT;
-        if (
-          parent.closest?.(
-            '[data-story-ui-raw-mount="true"], [data-story-ui-hidden-source="true"], [data-story-ui-code-placeholder="true"], script, style, template, noscript',
-          )
-        ) {
-          return nodeFilter.FILTER_REJECT;
-        }
-        if (parent.hidden || parent.getAttribute?.('aria-hidden') === 'true') return nodeFilter.FILTER_REJECT;
+        if (parent.closest?.('[data-story-ui-raw-mount="true"]')) return nodeFilter.FILTER_REJECT;
         return nodeFilter.FILTER_ACCEPT;
       },
     });
@@ -810,7 +660,15 @@
     const target = String(sourceText || '').replace(/\r\n?/g, '\n');
     if (!target) return null;
 
-    const { combined, chunks } = buildTextIndex(root);
+    const nodes = collectTextNodes(root);
+    const chunks = [];
+    let combined = '';
+    nodes.forEach(node => {
+      const raw = node.textContent || '';
+      const normalized = raw.replace(/\r\n?/g, '\n');
+      chunks.push({ node, raw, normalized, start: combined.length, end: combined.length + normalized.length });
+      combined += normalized;
+    });
 
     const startIndex = combined.indexOf(target);
     const endIndex = startIndex >= 0 ? startIndex + target.length : -1;
@@ -822,25 +680,6 @@
       return null;
     }
 
-    return createRangeFromTextOffsets(chunks, startIndex, endIndex);
-  }
-
-  function buildTextIndex(root) {
-    const nodes = collectTextNodes(root);
-    const chunks = [];
-    let combined = '';
-    nodes.forEach(node => {
-      const raw = node.textContent || '';
-      const normalized = raw.replace(/\r\n?/g, '\n');
-      chunks.push({ node, raw, normalized, start: combined.length, end: combined.length + normalized.length });
-      combined += normalized;
-    });
-
-    return { combined, chunks };
-  }
-
-  function createRangeFromTextOffsets(chunks, startIndex, endIndex) {
-    if (!Array.isArray(chunks) || startIndex < 0 || endIndex <= startIndex) return null;
     const startChunk = chunks.find(chunk => startIndex >= chunk.start && startIndex <= chunk.end);
     const endChunk = chunks.find(chunk => endIndex >= chunk.start && endIndex <= chunk.end);
     if (!startChunk || !endChunk) return null;
@@ -851,324 +690,16 @@
     return range;
   }
 
-  function replaceRawTextWithNodeHost(textElement, rawSource, hostNode) {
+  function replaceRawTextWithMountHost(textElement, rawSource, mountHost) {
     const candidates = [String(rawSource || ''), String(rawSource || '').trim()].filter(Boolean);
     for (const candidate of candidates) {
       const range = findTextRange(textElement, candidate);
       if (!range) continue;
-      const hidden = createHiddenSourcePlaceholder('legacy-replace', candidate);
-      const fragment = range.extractContents();
-      hidden.appendChild(fragment);
-      range.insertNode(hostNode);
-      range.insertNode(hidden);
+      range.deleteContents();
+      range.insertNode(mountHost);
       return true;
     }
     return false;
-  }
-
-  function createCollapsedPlaceholderHost(title, blockText) {
-    const host = createElementInHost('section');
-    host.className = 'story-ui-code-placeholder-host';
-    host.dataset.storyUiCodePlaceholder = 'true';
-    host.innerHTML = renderCollapsedBlock(blockText, title);
-    return host;
-  }
-
-  function normalizeAnchorText(value) {
-    return String(value || '')
-      .replace(/\r\n?/g, '\n')
-      .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
-      .replace(/[ \t\f\v]+/g, ' ')
-      .replace(/\n\s+/g, '\n')
-      .replace(/\s+\n/g, '\n')
-      .trim();
-  }
-
-  function isUsefulAnchorCandidate(value, minLength = 6) {
-    const text = String(value || '').trim();
-    if (text.length < minLength) return false;
-    if (/^[\s\-_=—─━*✦✧◆◇<>/\\|:：.．、，,。;；()[\]{}]+$/.test(text)) return false;
-    if (/^(无|未知|正文|true|false|null|undefined)$/i.test(text)) return false;
-    return /[\p{L}\p{N}\u4e00-\u9fff]/u.test(text);
-  }
-
-  function pushCandidate(candidates, value, minLength = 6) {
-    const candidate = normalizeAnchorText(value);
-    if (!isUsefulAnchorCandidate(candidate, minLength)) return;
-    if (!candidates.includes(candidate)) candidates.push(candidate);
-  }
-
-  function getModuleDisplayConfig(module) {
-    const display = module?.display;
-    return display && typeof display === 'object' ? display : {};
-  }
-
-  function resolveDisplayAnchorValues(match, type) {
-    const display = getModuleDisplayConfig(match?.module);
-    const value = type === 'end' ? display.endAnchors : display.startAnchors;
-    if (typeof value === 'function') {
-      try {
-        return value(match?.content || '', match) || [];
-      } catch (error) {
-        console.warn(`${logPrefix} 模块显示锚点生成失败: ${match?.module?.id || 'unknown'}`, error);
-        return [];
-      }
-    }
-    return Array.isArray(value) ? value : [];
-  }
-
-  function buildAnchorCandidates(match) {
-    const candidates = [];
-    resolveDisplayAnchorValues(match, 'start').forEach(anchor => pushCandidate(candidates, anchor, 4));
-    const sources = [match?.content, match?.fullMatch].map(normalizeAnchorText).filter(Boolean);
-    sources.forEach(source => {
-      [160, 120, 80, 48, 32].forEach(size => pushCandidate(candidates, source.slice(0, size), 12));
-      const firstMeaningfulLine = source
-        .split('\n')
-        .map(line => line.trim())
-        .find(line => isUsefulAnchorCandidate(line, 8));
-      pushCandidate(candidates, firstMeaningfulLine, 8);
-    });
-    if (match?.singleTag) pushCandidate(candidates, String(match.singleTag), 4);
-    return candidates;
-  }
-
-  function buildMatchStartCandidates(match) {
-    if (!match) return [];
-    const candidates = [];
-    resolveDisplayAnchorValues(match, 'start').forEach(anchor => pushCandidate(candidates, anchor, 4));
-    if (match.singleTag) pushCandidate(candidates, String(match.singleTag), 4);
-
-    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
-    sources.forEach(source => {
-      source
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => isUsefulAnchorCandidate(line, 8))
-        .slice(0, 8)
-        .forEach(line => pushCandidate(candidates, line, 8));
-      [160, 120, 80, 48, 32].forEach(size => pushCandidate(candidates, source.slice(0, size), 12));
-    });
-    return candidates;
-  }
-
-  function buildMatchEndCandidates(match) {
-    if (!match) return [];
-    const candidates = [];
-    resolveDisplayAnchorValues(match, 'end').forEach(anchor => pushCandidate(candidates, anchor, 4));
-    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
-    sources.forEach(source => {
-      source
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => isUsefulAnchorCandidate(line, 8))
-        .slice(-12)
-        .reverse()
-        .forEach(line => pushCandidate(candidates, line, 8));
-      [240, 180, 120, 80, 48, 32].forEach(size => {
-        pushCandidate(candidates, source.slice(Math.max(0, source.length - size)), 12);
-      });
-    });
-    return candidates;
-  }
-
-  function findFirstCandidateIndex(combined, candidates, fromIndex = 0) {
-    return (
-      (candidates || [])
-        .map(candidate => ({ candidate, index: combined.indexOf(candidate, fromIndex) }))
-        .filter(item => item.index >= 0)
-        .sort((lhs, rhs) => lhs.index - rhs.index || rhs.candidate.length - lhs.candidate.length)[0] || null
-    );
-  }
-
-  function findLastCandidateEnd(combined, candidates, fromIndex = 0) {
-    return (
-      (candidates || [])
-        .map(candidate => ({ candidate, index: combined.indexOf(candidate, fromIndex) }))
-        .filter(item => item.index >= 0)
-        .map(item => ({ ...item, end: item.index + item.candidate.length }))
-        .sort((lhs, rhs) => rhs.end - lhs.end || rhs.candidate.length - lhs.candidate.length)[0] || null
-    );
-  }
-
-  function findAnchorRange(textElement, candidates) {
-    for (const candidate of candidates) {
-      const range = findTextRange(textElement, candidate);
-      if (range) return { range, candidate };
-    }
-    return null;
-  }
-
-  function isSafeHiddenRange(match, startIndex, endIndex, sourceText) {
-    if (!match || endIndex <= startIndex) return false;
-    const visibleLength = endIndex - startIndex;
-    const normalizedSourceLength = Math.max(normalizeAnchorText(match.fullMatch || match.content || '').length, 1);
-    if (match.singleTag) return visibleLength <= Math.max(80, normalizedSourceLength * 4);
-    const hardLimit = Math.max(320, normalizedSourceLength * 1.8);
-    if (visibleLength > hardLimit) return false;
-    const source = String(sourceText || '');
-    const nextLineCount = source.slice(startIndex, endIndex).split('\n').length;
-    return nextLineCount <= 120;
-  }
-
-  function findExactVisibleRangeForMatch(textElement, match) {
-    if (!textElement || !match) return null;
-    const { combined, chunks } = buildTextIndex(textElement);
-    const sources = [match.fullMatch, match.content]
-      .map(value => String(value || '').replace(/\r\n?/g, '\n').trim())
-      .filter(value => value.length >= 6);
-
-    const candidates = [];
-    sources.forEach(source => {
-      if (!candidates.includes(source)) candidates.push(source);
-      const withoutTags = normalizeAnchorText(source);
-      if (withoutTags.length >= 6 && !candidates.includes(withoutTags)) candidates.push(withoutTags);
-    });
-
-    for (const candidate of candidates.sort((lhs, rhs) => rhs.length - lhs.length)) {
-      const startIndex = combined.indexOf(candidate);
-      if (startIndex < 0) continue;
-      const endIndex = startIndex + candidate.length;
-      if (!isSafeHiddenRange(match, startIndex, endIndex, combined)) continue;
-      const range = createRangeFromTextOffsets(chunks, startIndex, endIndex);
-      if (!range) continue;
-      return {
-        range,
-        anchor: combined.slice(startIndex, Math.min(startIndex + 120, endIndex)),
-        mode: 'exact-source',
-      };
-    }
-
-    return null;
-  }
-
-  function findVisibleSourceRangeForMatch(textElement, match, nextMatch) {
-    const exactRange = findExactVisibleRangeForMatch(textElement, match);
-    if (exactRange?.range) return exactRange;
-
-    const { combined, chunks } = buildTextIndex(textElement);
-    const startCandidates = buildMatchStartCandidates(match);
-    const start = findFirstCandidateIndex(combined, startCandidates);
-    if (!start) return null;
-
-    const ownEnd = findLastCandidateEnd(
-      combined,
-      buildMatchEndCandidates(match),
-      start.index + start.candidate.length,
-    );
-    const nextStart = findFirstCandidateIndex(
-      combined,
-      buildMatchStartCandidates(nextMatch),
-      start.index + start.candidate.length,
-    );
-
-    let endIndex = ownEnd?.end ?? -1;
-    let mode = 'own-end';
-    if (endIndex <= start.index && nextStart?.index > start.index) {
-      endIndex = nextStart.index;
-      mode = 'next-start';
-    }
-
-    if (endIndex <= start.index) return null;
-    if (!isSafeHiddenRange(match, start.index, endIndex, combined)) return null;
-
-    const range = createRangeFromTextOffsets(chunks, start.index, endIndex);
-    return range
-      ? {
-          range,
-          anchor: combined.slice(start.index, Math.min(start.index + 120, endIndex)),
-          mode,
-        }
-      : null;
-  }
-
-  function createHiddenSourcePlaceholder(moduleId, anchorText) {
-    const hidden = createElementInHost('span');
-    hidden.dataset.storyUiHiddenSource = 'true';
-    hidden.dataset.storyUiModule = moduleId || '';
-    hidden.dataset.storyUiAnchorPreview = String(anchorText || '').slice(0, 120);
-    hidden.hidden = true;
-    hidden.setAttribute('aria-hidden', 'true');
-    return hidden;
-  }
-
-  function restoreHiddenSourceNode(hiddenNode) {
-    if (!hiddenNode) return;
-    const children = Array.from(hiddenNode.childNodes || []);
-    if (children.length > 0) {
-      hiddenNode.replaceWith(...children);
-    } else {
-      hiddenNode.remove();
-    }
-  }
-
-  function hideRangeWithMountHost(range, moduleId, anchorText, mountHost) {
-    const hidden = createHiddenSourcePlaceholder(moduleId, anchorText);
-    const fragment = range.extractContents();
-    hidden.appendChild(fragment);
-    range.insertNode(hidden);
-    hidden.after(mountHost);
-    return { mode: 'anchor-hidden', anchor: anchorText || '' };
-  }
-
-  function clearStoryUiInjectedNodes(messageElement) {
-    if (!messageElement) return;
-    messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
-    messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(restoreHiddenSourceNode);
-  }
-
-  function hideAnchorOnlyRangeWithMountHost(textElement, match, mountHost) {
-    const candidates = buildAnchorCandidates(match);
-    const found = findAnchorRange(textElement, candidates);
-    if (!found?.range) return null;
-
-    const hidden = createHiddenSourcePlaceholder(match?.module?.id, found.candidate);
-    const fragment = found.range.extractContents();
-    hidden.appendChild(fragment);
-    found.range.insertNode(hidden);
-    hidden.after(mountHost);
-    return { mode: 'anchor-token-hidden', anchor: found.candidate };
-  }
-
-  function insertMountHostNearAnchor(textElement, match, mountHost, nextMatch) {
-    const sourceRange = findVisibleSourceRangeForMatch(textElement, match, nextMatch);
-    if (sourceRange?.range) {
-      return hideRangeWithMountHost(sourceRange.range, match.module.id, sourceRange.anchor, mountHost);
-    }
-
-    const anchorHidden = hideAnchorOnlyRangeWithMountHost(textElement, match, mountHost);
-    if (anchorHidden) return anchorHidden;
-
-    textElement.appendChild(mountHost);
-    return { mode: 'append-fallback', anchor: '' };
-  }
-
-  function mountSingleModuleNonDestructively({ match, nextMatch, rawText, messageId, messageElement, textElement }) {
-    if (!match?.module || match.module.enabled === false) {
-      return { status: 'skipped', moduleId: match?.module?.id || '', reason: 'disabled' };
-    }
-
-    const rendered = buildNodeForModule(match.module, rawText, {
-      messageId,
-      messageElement,
-      theme: getUi()?.theme?.getTheme?.() || 'day',
-      match,
-    });
-    const moduleHtml = nodeToHtml(rendered);
-    if (!moduleHtml) {
-      return { status: 'skipped', moduleId: match.module.id, reason: 'empty-render' };
-    }
-
-    const mountHost = createRawMountHost(match.module, moduleHtml);
-    const inserted = insertMountHostNearAnchor(textElement, match, mountHost, nextMatch);
-    return {
-      status: inserted.mode === 'anchor-hidden' ? 'mounted' : 'anchor-fallback',
-      mode: inserted.mode,
-      moduleId: match.module.id,
-      anchor: inserted.anchor,
-      mountHost,
-    };
   }
 
   function mountStoryUiHosts(textElement, registry, rawText, messageId) {
@@ -1196,88 +727,47 @@
     if (!registry) return false;
 
     const modules = registry
-      .list({ includeDisabled: true })
+      .list()
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    const signature = computeSignature(rawText);
-    clearCollapsedPlaceholders(messageElement);
-    collapsedMessageSignatures.delete(messageId);
     if (modules.length === 0) {
-      const hadMounted = hasMountedStoryUi(messageElement);
-      clearMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
-      updateMessageRenderState(messageId, {
-        mounted: [],
-        avoided: [],
-        collapsed: [],
-        cleared: hadMounted,
-        signature: signature,
-      });
       return false;
     }
 
-    const textElement = getDisplayedMessageTextElement(messageElement, messageId);
-    if (!textElement) {
-      clearMountedStoryUi(messageElement);
-      mountedModulesByMessage.delete(messageId);
-      updateMessageRenderState(messageId, { mounted: [], avoided: [], collapsed: [], cleared: true, signature });
-      return false;
-    }
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return false;
 
-    clearStoryUiInjectedNodes(messageElement);
+    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
 
     const mounted = [];
-    const anchorFallback = [];
-    const skipped = [];
-    const details = [];
-    const renderableMatches = getRenderableMatchesInOrder(modules, rawText);
-    renderableMatches.forEach((match, index) => {
-      const result = mountSingleModuleNonDestructively({
-        match,
-        nextMatch: renderableMatches[index + 1] || null,
-        rawText,
+    const fallbackHosts = [];
+    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
+      const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
         messageElement,
-        textElement,
+        theme: getUi()?.theme?.getTheme?.() || 'day',
       });
-      if (result.status === 'mounted') mounted.push(result.moduleId);
-      if (result.status === 'anchor-fallback') {
-        mounted.push(result.moduleId);
-        anchorFallback.push(`${result.moduleId}:${result.mode || 'fallback'}`);
+      const moduleHtml = nodeToHtml(rendered);
+      if (!moduleHtml) return;
+
+      const mountHost = createRawMountHost(match.module, moduleHtml);
+      const replaced = replaceRawTextWithMountHost(textElement, match.fullMatch, mountHost);
+      if (!replaced) {
+        fallbackHosts.push(mountHost);
+        console.warn(`${logPrefix} 未能在当前原生渲染 DOM 中定位模块原文，已追加挂载: ${match.module.id}`);
       }
-      if (result.status === 'skipped') skipped.push(`${result.moduleId}:${result.reason}`);
-      details.push({
-        moduleId: result.moduleId,
-        status: result.status,
-        mode: result.mode || '',
-        anchor: String(result.anchor || '').slice(0, 80),
-        reason: result.reason || '',
-      });
+      mounted.push(match.module.id);
     });
 
+    fallbackHosts.forEach(host => textElement.appendChild(host));
     mountStoryUiHosts(textElement, registry, rawText, messageId);
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
-      updateMessageRenderState(messageId, {
-        mounted,
-        avoided: anchorFallback,
-        collapsed: skipped,
-        details,
-        cleared: false,
-        signature,
-      });
       return true;
     }
 
     mountedModulesByMessage.delete(messageId);
-    updateMessageRenderState(messageId, {
-      mounted: [],
-      avoided: anchorFallback,
-      collapsed: skipped,
-      details,
-      cleared: false,
-      signature,
-    });
     return false;
   }
 
@@ -1297,41 +787,38 @@
   function mountCollapsedPlaceholderForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
-    if (!collapseOldMessagesEnabled) {
-      collapsedMessageSignatures.delete(messageId);
-      return false;
-    }
-    const textElement = getDisplayedMessageTextElement(messageElement, messageId);
+    if (!collapseOldMessagesEnabled) return false;
+    const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return false;
-    const signature = computeSignature(rawText);
-    if (collapsedMessageSignatures.get(messageId) === signature && hasCollapsedPlaceholder(messageElement)) return true;
 
     const registry = getUi()?.registry;
     if (!registry) return false;
     const modules = registry
-      .list({ includeDisabled: true })
+      .list()
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) {
-      collapsedMessageSignatures.delete(messageId);
-      return false;
-    }
+    if (modules.length === 0) return false;
 
-    // 非破坏式挂载模型下，旧消息折叠不能再重写原版正则 DOM。
-    // 折叠功能后续只应作用于脚本自己的挂载区；这里先记录可折叠模块，不改正文。
-    const collapsed = getRenderableMatchesInOrder(modules, rawText).map(match => match.module.id);
-    collapsedMessageSignatures.set(messageId, signature);
-    updateMessageRenderState(messageId, { collapsed, signature });
-    return false;
+    let html = String(rawText || '').replace(/\r\n?/g, '\n');
+    modules.forEach(module => {
+      const extracted = extractModuleContent(module, rawText);
+      if (!extracted?.fullMatch) return;
+      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
+      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
+    });
+
+    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
+    if (typeof window.formatAsDisplayedMessage === 'function') {
+      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
+    } else {
+      textElement.innerHTML = html;
+    }
+    return true;
   }
 
-  async function scanMessageIds(messageIds, mode = 'incremental', options = {}) {
+  function scanMessageIds(messageIds, mode = 'incremental') {
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
-    if (options.refreshNative === true) {
-      await refreshRenderedMessagesForNativeRender(uniqueIds);
-    }
-
     const activeSet = new Set(uniqueIds);
     const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
 
@@ -1342,7 +829,7 @@
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (options.force !== true && previousSignature === signature && hasDisplayHost && hasMountedUi) return;
+      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
@@ -1383,12 +870,10 @@
       scanQueued = false;
       try {
         await ensureLoader();
-        await scanMessageIds(messageIds, Array.isArray(scope) || typeof scope === 'number' ? 'message_ids' : 'window');
+        scanMessageIds(messageIds, Array.isArray(scope) || typeof scope === 'number' ? 'message_ids' : 'window');
         refreshManagerState();
       } catch (error) {
-        lastError = error?.message || String(error);
         console.error(`${logPrefix} 扫描失败`, error);
-        refreshManagerState();
       }
     });
   }
@@ -1437,18 +922,6 @@
       最近扫描窗口: renderedWindowSize,
       最近扫描楼层: recentScannedMessageIds.slice(),
       扫描模式: lastScanMode,
-      最近楼层渲染状态: recentScannedMessageIds
-        .slice(-5)
-        .reverse()
-        .map(messageId => ({
-          messageId,
-          ...(messageRenderStates.get(messageId) || {
-            mounted: [],
-            avoided: [],
-            collapsed: [],
-            cleared: false,
-          }),
-        })),
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
     };
@@ -1601,13 +1074,9 @@
 
   function clearModuleMountedDom(moduleId) {
     hostDocument.querySelectorAll(`[data-story-ui-module="${moduleId}"]`).forEach(node => {
-      if (node.matches?.('[data-story-ui-hidden-source="true"]')) return;
       const mountHost = node.closest?.('[data-story-ui-raw-mount="true"]') || node;
       mountHost.remove();
     });
-    hostDocument
-      .querySelectorAll(`[data-story-ui-hidden-source="true"][data-story-ui-module="${moduleId}"]`)
-      .forEach(restoreHiddenSourceNode);
   }
 
   function clearModuleCaches(moduleId) {
@@ -1718,27 +1187,11 @@
       .join('');
   }
 
-  async function rerenderAllVisibleMessages() {
-    const ids = getRecentMessageIds(INITIAL_SCAN_LIMIT);
-    const refreshed = await refreshRenderedMessagesForNativeRender(ids);
-    if (refreshed) {
-      await new Promise(resolve => window.setTimeout(resolve, 120));
-    }
-
+  function rerenderAllVisibleMessages() {
+    const ids = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
     messageSignatures.clear();
     mountedModulesByMessage.clear();
-    collapsedMessageSignatures.clear();
-    recentScannedMessageIds.length = 0;
-
-    if (!refreshed) {
-      ids.forEach(messageId => {
-        const messageElement = getDisplayedMessageElement(messageId);
-        clearMountedStoryUi(messageElement);
-        clearCollapsedPlaceholders(messageElement);
-      });
-    }
-
-    await scanMessageIds(ids, 'window', { refreshNative: false });
+    scanMessageIds(ids, 'window');
   }
 
   function getExclusiveModuleId(moduleId) {
@@ -1789,7 +1242,7 @@
     syncExclusiveModuleState(moduleId, enabled);
     registry.setEnabled(moduleId, enabled);
     await new Promise(resolve => window.setTimeout(resolve, 60));
-    await rerenderAllVisibleMessages();
+    rerenderAllVisibleMessages();
     refreshManagerState();
     notify(`${MODULE_LABELS[moduleId] || moduleId}${enabled ? ' 已开启' : ' 已关闭'}`, 'success');
 
@@ -1908,16 +1361,12 @@
       const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
       messageSignatures.clear();
       mountedModulesByMessage.clear();
-      collapsedMessageSignatures.clear();
       recentScannedMessageIds.length = 0;
       const refreshed = await refreshRenderedMessagesForNativeRender(messageIds);
       if (refreshed) {
         await new Promise(resolve => window.setTimeout(resolve, 120));
       }
-      await scanMessageIds(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT), 'window', {
-        refreshNative: false,
-        force: true,
-      });
+      queueScan(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
@@ -1931,18 +1380,7 @@
 
   function handleManagerAction(action) {
     if (action === 'scan') {
-      (async () => {
-        const ids = getRecentMessageIds(INITIAL_SCAN_LIMIT);
-        await scanMessageIds(ids, 'message_ids', {
-          refreshNative: true,
-          force: true,
-        });
-        refreshManagerState();
-      })().catch(error => {
-        lastError = error?.message || String(error);
-        console.error(`${logPrefix} 手动重扫失败`, error);
-        refreshManagerState();
-      });
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('已触发手动重扫', 'success');
       return;
     }
@@ -1961,8 +1399,8 @@
       collapseOldMessagesEnabled = !collapseOldMessagesEnabled;
       persistCollapseOldMessages(collapseOldMessagesEnabled);
       refreshManagerState();
-      window.setTimeout(async () => {
-        await rerenderAllVisibleMessages();
+      window.setTimeout(() => {
+        rerenderAllVisibleMessages();
         collapseOldMessagesBusy = false;
         refreshManagerState();
       }, 80);

@@ -32,25 +32,11 @@
     return `${Math.max(0, Math.min(100, (num / maxNum) * 100))}%`;
   }
 
-  function extractLooseSection(source, startLabel, endLabels = []) {
-    const text = normalizeText(source);
-    const startIndex = text.indexOf(startLabel);
-    if (startIndex < 0) return '';
-    const from = startIndex + startLabel.length;
-    let end = text.length;
-    endLabels.forEach(label => {
-      const next = text.indexOf(label, from);
-      if (next >= 0) end = Math.min(end, next);
-    });
-    return normalizeText(text.slice(from, end).replace(/^[:：\s]+/, ''));
-  }
-
   function parseOuter(rawText) {
-    const source = String(rawText || '');
-    const match = source.match(OUTER_PATTERN);
+    const match = String(rawText || '').match(OUTER_PATTERN);
     return {
-      scanText: normalizeText(match?.[1] || extractLooseSection(source, '【扫描状态】', ['【已扫描目标】', '</bp_panel>'])),
-      targetsRaw: normalizeText(match?.[2] || extractLooseSection(source, '【已扫描目标】', ['</bp_panel>'])),
+      scanText: normalizeText(match?.[1] || ''),
+      targetsRaw: normalizeText(match?.[2] || ''),
     };
   }
 
@@ -307,10 +293,6 @@ ${targets.length ? targets.map(renderTargetCard).join('') : `<div class="bp-targ
     priority: 49,
     enabled: false,
     block: BLOCK,
-    display: {
-      startAnchors: ['BP战力雷达', '实时战力评估', 'NEW VARIABLE BATTLE POINT', '<bp_panel>'],
-      endAnchors: ['NEW VARIABLE BATTLE POINT RADAR', 'NEW VARIABLE BATTLE POINT RADAR TERMINAL', '</bp_panel>'],
-    },
     renderContent: renderContentNode,
     mount,
   });

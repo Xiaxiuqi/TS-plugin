@@ -59,24 +59,10 @@
       .filter(Boolean);
   }
 
-  function extractLooseSection(source, startLabel, endLabels = []) {
-    const text = normalizeText(source);
-    const startIndex = text.indexOf(startLabel);
-    if (startIndex < 0) return '';
-    const from = startIndex + startLabel.length;
-    let end = text.length;
-    endLabels.forEach(label => {
-      const next = text.indexOf(label, from);
-      if (next >= 0) end = Math.min(end, next);
-    });
-    return normalizeText(text.slice(from, end).replace(/^[:：\s]+/, ''));
-  }
-
   function parseBpPanel(rawText) {
-    const source = String(rawText || '');
-    const match = source.match(OUTER_PATTERN);
-    const scanText = normalizeText(match?.[1] || extractLooseSection(source, '【扫描状态】', ['【已扫描目标】', '</bp_panel>']));
-    const targetsSource = normalizeText(match?.[2] || extractLooseSection(source, '【已扫描目标】', ['</bp_panel>']));
+    const match = String(rawText || '').match(OUTER_PATTERN);
+    const scanText = normalizeText(match?.[1] || '');
+    const targetsSource = normalizeText(match?.[2] || '');
     const targets = [];
 
     splitTargetBlocks(targetsSource).forEach(block => {
@@ -258,10 +244,6 @@
     version: MODULE_VERSION,
     priority: 50,
     block: BLOCK,
-    display: {
-      startAnchors: ['BP战力雷达', '扫描状态', '已扫描目标', 'BATTLE POINT', '<bp_panel>'],
-      endAnchors: ['BATTLE POINT RADAR', 'BATTLE POINT RADAR TERMINAL', '</bp_panel>'],
-    },
     renderContent: renderContentNode,
     mount,
   });

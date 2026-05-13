@@ -412,10 +412,6 @@
     version: MODULE_VERSION,
     priority: 60,
     block: BLOCK,
-    display: {
-      startAnchors: ['STORY ENGINE', 'STORY TERMINAL', '故事引擎', '全域锚定', '<story_driver>'],
-      endAnchors: ['STORY DRIVER VISUALIZED', 'STORY DRIVER TERMINAL', '最终修正', '</story_driver>'],
-    },
     renderContent: renderContentNode,
     mount,
   });
