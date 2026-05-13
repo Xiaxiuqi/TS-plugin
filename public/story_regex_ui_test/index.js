@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'test',
     displayEnv: '测试版',
-    version: 'test-raw-token-mode-20260514',
+    version: 'test-native-skip-20260514',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_test/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_test/',
     globalKey: 'StoryRegexUI',
@@ -127,6 +127,12 @@
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
+  let lastScanStats = {
+    messageIds: [],
+    hasScriptModeMatch: false,
+    skippedNativeOrOffOnly: [],
+    scriptRewritten: [],
+  };
   let collapseOldMessagesEnabled = true;
   let collapseOldMessagesBusy = false;
   let managerActionBusy = false;
@@ -572,7 +578,10 @@
       : blockMatch;
   }
 
-  function renderMessageHtmlByModules(messageId, rawText, modules) {
+  function renderMessageHtmlByModules(messageId, rawText, modules, registry) {
+    const scriptModules = (modules || []).filter(module => (registry?.getMode?.(module.id) || 'script') === 'script');
+    if (scriptModules.length === 0) return { html: '', mounted: [] };
+
     const text = String(rawText || '').replace(/\r\n?/g, '\n');
     let cursor = 0;
     let textWithPlaceholders = '';
@@ -596,7 +605,7 @@
     };
 
     while (cursor < text.length) {
-      const match = findNextRenderableMatch(modules, text, cursor);
+      const match = findNextRenderableMatch(scriptModules, text, cursor);
       if (!match) {
         textWithPlaceholders += text.slice(cursor);
         break;
@@ -758,6 +767,22 @@
       .list({ includeDisabled: true })
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
     if (modules.length === 0) {
+      clearMountedStoryUi(messageElement);
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
+
+    const matchedModules = modules.map(module => ({
+      id: module.id,
+      mode: registry.getMode?.(module.id) || (module.enabled === false ? 'off' : 'script'),
+    }));
+    const scriptModules = modules.filter(module => (registry.getMode?.(module.id) || 'script') === 'script');
+    const hasScriptModeMatch = scriptModules.length > 0;
+    messageElement.dataset.storyUiHasScriptModeMatch = hasScriptModeMatch ? 'true' : 'false';
+    messageElement.dataset.storyUiMatchedModes = matchedModules.map(item => `${item.id}:${item.mode}`).join('|');
+
+    if (!hasScriptModeMatch) {
+      clearMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
       return false;
     }
@@ -766,6 +791,11 @@
     if (!textElement) return false;
 
     const rendered = renderMessageHtmlByModules(messageId, rawText, modules, registry);
+    if (!rendered.mounted.length) {
+      clearMountedStoryUi(messageElement);
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
     textElement.innerHTML = rendered.html;
     mountStoryUiHosts(textElement, registry, rawText, messageId);
 
@@ -792,34 +822,9 @@
   }
 
   function mountCollapsedPlaceholderForMessage(messageId, rawText) {
-    const messageElement = getDisplayedMessageElement(messageId);
-    if (!messageElement) return false;
-    if (!collapseOldMessagesEnabled) return false;
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-
-    const registry = getUi()?.registry;
-    if (!registry) return false;
-    const modules = registry
-      .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) return false;
-
-    let html = String(rawText || '').replace(/\r\n?/g, '\n');
-    modules.forEach(module => {
-      const extracted = extractModuleContent(module, rawText);
-      if (!extracted?.fullMatch) return;
-      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
-      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
-    });
-
-    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
-    } else {
-      textElement.innerHTML = html;
-    }
-    return true;
+    void messageId;
+    void rawText;
+    return false;
   }
 
   function scanMessageIds(messageIds, mode = 'incremental') {
@@ -828,20 +833,42 @@
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const activeSet = new Set(uniqueIds);
     const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+    const scanStats = {
+      messageIds: uniqueIds.slice(),
+      hasScriptModeMatch: false,
+      skippedNativeOrOffOnly: [],
+      scriptRewritten: [],
+    };
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       const registry = getUi()?.registry;
       const modules = registry?.list?.({ includeDisabled: true }) || [];
-      const modeSignature = modules.map(module => `${module.id}:${registry.getMode?.(module.id) || 'script'}`).join('|');
+      const matchedModules = modules.filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+      const matchedScriptModules = matchedModules.filter(module => (registry?.getMode?.(module.id) || 'script') === 'script');
+      const matchedNativeOrOffModules = matchedModules.filter(module => (registry?.getMode?.(module.id) || 'script') !== 'script');
+      if (matchedScriptModules.length > 0) scanStats.hasScriptModeMatch = true;
+      if (matchedModules.length > 0 && matchedScriptModules.length === 0) {
+        scanStats.skippedNativeOrOffOnly.push({
+          messageId,
+          modules: matchedNativeOrOffModules.map(module => `${module.id}:${registry?.getMode?.(module.id) || 'script'}`),
+        });
+      }
+
+      const modeSignature = modules.map(module => `${module.id}:${registry?.getMode?.(module.id) || 'script'}`).join('|');
       const signature = `${computeSignature(rawText)}|modes:${modeSignature}`;
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
       if (previousSignature === signature && hasDisplayHost) return;
 
       messageSignatures.set(messageId, signature);
-      mountModulesForMessage(messageId, rawText);
+      if (mountModulesForMessage(messageId, rawText)) {
+        scanStats.scriptRewritten.push({
+          messageId,
+          modules: matchedScriptModules.map(module => module.id),
+        });
+      }
     });
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
@@ -852,6 +879,7 @@
       mountCollapsedPlaceholderForMessage(messageId, rawText);
     });
 
+    lastScanStats = scanStats;
     rememberRecentScannedMessageIds(uniqueIds);
   }
 
@@ -935,6 +963,9 @@
       最近扫描窗口: renderedWindowSize,
       最近扫描楼层: recentScannedMessageIds.slice(),
       扫描模式: lastScanMode,
+      最近扫描包含脚本接管模块: Boolean(lastScanStats.hasScriptModeMatch),
+      最近跳过原生或关闭楼层: lastScanStats.skippedNativeOrOffOnly.slice(-8),
+      最近脚本重写楼层: lastScanStats.scriptRewritten.slice(-8),
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
     };
@@ -1223,10 +1254,14 @@
       .join('');
   }
 
-  function rerenderAllVisibleMessages() {
+  async function rerenderAllVisibleMessages() {
     const ids = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
     messageSignatures.clear();
     mountedModulesByMessage.clear();
+    const refreshed = await refreshRenderedMessagesForNativeRender(ids);
+    if (refreshed) {
+      await new Promise(resolve => window.setTimeout(resolve, 80));
+    }
     scanMessageIds(ids, 'window');
   }
 
@@ -1269,7 +1304,7 @@
     syncExclusiveModuleMode(moduleId, mode);
     registry.setMode(moduleId, mode);
     await new Promise(resolve => window.setTimeout(resolve, 60));
-    rerenderAllVisibleMessages();
+    await rerenderAllVisibleMessages();
     refreshManagerState();
     notify(`${MODULE_LABELS[moduleId] || moduleId} 已切换为${mode === 'script' ? '脚本显示' : mode === 'native' ? '原生显示' : '关闭'}`, 'success');
 
@@ -1433,9 +1468,12 @@
       persistCollapseOldMessages(collapseOldMessagesEnabled);
       refreshManagerState();
       window.setTimeout(() => {
-        rerenderAllVisibleMessages();
-        collapseOldMessagesBusy = false;
-        refreshManagerState();
+        rerenderAllVisibleMessages()
+          .catch(error => console.error(`${logPrefix} 重渲染可见楼层失败`, error))
+          .finally(() => {
+            collapseOldMessagesBusy = false;
+            refreshManagerState();
+          });
       }, 80);
       return;
     }
