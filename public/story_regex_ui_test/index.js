@@ -121,6 +121,7 @@
   const messageSignatures = new Map();
   const mountedModulesByMessage = new Map();
   const recentScannedMessageIds = [];
+  const messageRenderStates = new Map();
   const collapsedMessageSignatures = new Map();
   let renderedWindowSize = 0;
   let recentScanRetryTimer = null;
@@ -367,6 +368,33 @@
     while (recentScannedMessageIds.length > 10) {
       recentScannedMessageIds.shift();
     }
+  }
+
+  function updateMessageRenderState(messageId, patch = {}) {
+    if (!Number.isFinite(messageId)) return;
+    const previous = messageRenderStates.get(messageId) || {
+      mounted: [],
+      avoided: [],
+      collapsed: [],
+      cleared: false,
+      signature: '',
+      updatedAt: '',
+    };
+    const next = {
+      ...previous,
+      ...patch,
+      mounted: Array.isArray(patch.mounted) ? patch.mounted.slice() : previous.mounted,
+      avoided: Array.isArray(patch.avoided) ? patch.avoided.slice() : previous.avoided,
+      collapsed: Array.isArray(patch.collapsed) ? patch.collapsed.slice() : previous.collapsed,
+      cleared: typeof patch.cleared === 'boolean' ? patch.cleared : previous.cleared,
+      updatedAt: new Date().toLocaleString(),
+    };
+    messageRenderStates.set(messageId, next);
+  }
+
+  function clearMessageRenderState(messageId) {
+    if (!Number.isFinite(messageId)) return;
+    messageRenderStates.delete(messageId);
   }
 
   function clearMountedStoryUi(messageElement) {
@@ -750,8 +778,16 @@
     clearCollapsedPlaceholders(messageElement);
     collapsedMessageSignatures.delete(messageId);
     if (modules.length === 0) {
+      const hadMounted = hasMountedStoryUi(messageElement);
       clearMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
+      updateMessageRenderState(messageId, {
+        mounted: [],
+        avoided: [],
+        collapsed: [],
+        cleared: hadMounted,
+        signature: signature,
+      });
       return false;
     }
 
@@ -759,12 +795,14 @@
     if (!textElement) {
       clearMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
+      updateMessageRenderState(messageId, { mounted: [], avoided: [], collapsed: [], cleared: true, signature });
       return false;
     }
 
     textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
 
     const mounted = [];
+    const avoided = [];
     getRenderableMatchesInOrder(modules, rawText).forEach(match => {
       const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
@@ -778,6 +816,7 @@
       const replaced = replaceRawTextWithNodeHost(textElement, match.fullMatch, mountHost);
       if (!replaced) {
         console.info(`${logPrefix} 检测到当前楼层原文已不可定位，脚本模块已避让原生渲染: ${match.module.id}`);
+        avoided.push(match.module.id);
         mountHost.remove();
         return;
       }
@@ -788,10 +827,12 @@
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
+      updateMessageRenderState(messageId, { mounted, avoided, collapsed: [], cleared: false, signature });
       return true;
     }
 
     mountedModulesByMessage.delete(messageId);
+    updateMessageRenderState(messageId, { mounted: [], avoided, collapsed: [], cleared: false, signature });
     return false;
   }
 
@@ -831,13 +872,17 @@
     }
 
     let replacedAny = false;
+    const collapsedModules = [];
     modules.forEach(module => {
       const extracted = extractModuleContent(module, rawText);
       if (!extracted?.fullMatch) return;
       const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
       const placeholderHost = createCollapsedPlaceholderHost(title, extracted.fullMatch.trim());
       const replaced = replaceRawTextWithNodeHost(textElement, extracted.fullMatch, placeholderHost);
-      if (replaced) replacedAny = true;
+      if (replaced) {
+        replacedAny = true;
+        collapsedModules.push(module.id);
+      }
     });
 
     if (!replacedAny) {
@@ -846,6 +891,7 @@
     }
 
     collapsedMessageSignatures.set(messageId, signature);
+    updateMessageRenderState(messageId, { collapsed: collapsedModules, signature });
     return true;
   }
 
@@ -956,6 +1002,18 @@
       最近扫描窗口: renderedWindowSize,
       最近扫描楼层: recentScannedMessageIds.slice(),
       扫描模式: lastScanMode,
+      最近楼层渲染状态: recentScannedMessageIds
+        .slice(-5)
+        .reverse()
+        .map(messageId => ({
+          messageId,
+          ...(messageRenderStates.get(messageId) || {
+            mounted: [],
+            avoided: [],
+            collapsed: [],
+            cleared: false,
+          }),
+        })),
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
     };
@@ -1222,7 +1280,7 @@
   }
 
   async function rerenderAllVisibleMessages() {
-    const ids = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
+    const ids = getRecentMessageIds(INITIAL_SCAN_LIMIT);
     const refreshed = await refreshRenderedMessagesForNativeRender(ids);
     if (refreshed) {
       await new Promise(resolve => window.setTimeout(resolve, 120));
@@ -1408,7 +1466,7 @@
     loaderPromise = null;
     try {
       await ensureLoader();
-      const messageIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
+      const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
       messageSignatures.clear();
       mountedModulesByMessage.clear();
       collapsedMessageSignatures.clear();
@@ -1417,7 +1475,7 @@
       if (refreshed) {
         await new Promise(resolve => window.setTimeout(resolve, 120));
       }
-      queueScan(messageIds.length ? messageIds : getRenderedMessageIds(Number.MAX_SAFE_INTEGER));
+      queueScan(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
@@ -1560,57 +1618,6 @@
       bindButtonClickFallback(CONFIG.buttonName);
       bindButtonClickFallback(CONFIG.reloadButtonName);
 
-      if (!bound) {
-        console.warn(`${logPrefix} 脚本按钮事件 API 不可用，已启用点击兜底绑定。`);
-        window.setTimeout(() => {
-          bindButtonClickFallback(CONFIG.buttonName);
-          bindButtonClickFallback(CONFIG.reloadButtonName);
-        }, 500);
-      } else {
-        console.info(`${logPrefix} 已通过酒馆按钮事件 API 绑定管理按钮与快捷重载按钮。`);
-      }
-
-      notify('咒回前端管理已导入，点击按钮可打开管理界面。', 'success');
-    } catch (error) {
-      console.error(`${logPrefix} 注册管理按钮失败`, error);
-      notify(`咒回前端管理初始化失败：${error?.message || error}`, 'error');
-    }
-  }
-
-  function exposeManagerApi() {
-    const api = {
-      ensureLoader,
-      queueScan,
-      openManager,
-      closeManager,
-      diagnose,
-      reloadResources,
-      setTheme,
-      toggleManagerModule,
-      hostWindow,
-      hostDocument,
-    };
-
-    window.JJKSStoryUiManager = window.JJKSStoryUiManager || {};
-    window.JJKSStoryUiManager[CONFIG.env] = api;
-    hostWindow.JJKSStoryUiManager = hostWindow.JJKSStoryUiManager || {};
-    hostWindow.JJKSStoryUiManager[CONFIG.env] = api;
-    hostDocument.documentElement.dataset.jjksStoryUiHost = CONFIG.env;
-    hostDocument.documentElement.dataset.jjksStoryUiHostEqualsWindow = hostWindow === window ? 'true' : 'false';
-    hostDocument.documentElement.dataset.jjksStoryUiHostLocation = hostWindow?.location?.href || '';
-  }
-
-  exposeManagerApi();
-  registerManagerButton();
-  bindEvents();
-  ensureLoader()
-    .then(() => {
-      loaderStatus = 'ready';
-    })
-    .catch(error => {
-      console.error(`${logPrefix} 初始化 loader 失败`, error);
-    });
-})();
       if (!bound) {
         console.warn(`${logPrefix} 脚本按钮事件 API 不可用，已启用点击兜底绑定。`);
         window.setTimeout(() => {
