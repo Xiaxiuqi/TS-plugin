@@ -78,8 +78,17 @@
     return `<div class="story-ui-mvu-newvars-profile-tags">${deduped.map(item => `<span class="story-ui-mvu-newvars-profile-tag">${escapeHtml(item)}</span>`).join('')}</div>`;
   }
 
+  function renderFameLine(score, titles, type, fallback) {
+    const list = [...new Set(normalizeList(titles, fallback))];
+    const scoreText = Number(score || 0);
+    const tagHtml = list
+      .map(item => `<span class="story-ui-mvu-newvars-fame-tag ${type}">${escapeHtml(item)}</span>`)
+      .join('');
+    return `<div class="story-ui-mvu-newvars-fame-line"><span class="story-ui-mvu-newvars-fame-score">名望 ${escapeHtml(scoreText)}</span><span class="story-ui-mvu-newvars-fame-tags">${tagHtml}</span></div>`;
+  }
+
   function buildItemList(dataObj, mark, title, renderContentFn, extraClass = '') {
-    let html = `<div class="story-ui-mvu-newvars-sub-toggle-header ${extraClass}" data-story-ui-mvu-newvars-toggle-next>${escapeHtml(mark)} ${escapeHtml(title)} <span class="story-ui-mvu-newvars-toggle-icon">▼</span></div><div class="story-ui-mvu-newvars-sub-content">`;
+    let html = `<div class="story-ui-mvu-newvars-sub-toggle-header ${extraClass}" data-story-ui-mvu-newvars-toggle-next>${escapeHtml(mark)} ${escapeHtml(title)} <span class="story-ui-mvu-newvars-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-newvars-sub-content">`;
     if (!dataObj || dataObj === '待初始化' || (typeof dataObj === 'object' && Object.keys(dataObj).length === 0)) {
       html += emptyText();
     } else {
@@ -185,7 +194,7 @@
     const spValue = Number(energy.当前值 ?? energy.总量 ?? 0);
     const spMax = Number(energy.有效总量 || energy.总量 || 0);
 
-    let vowHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header" data-story-ui-mvu-newvars-toggle-next>✦ 束缚 <span class="story-ui-mvu-newvars-toggle-icon">▼</span></div><div class="story-ui-mvu-newvars-sub-content">`;
+    let vowHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header" data-story-ui-mvu-newvars-toggle-next>✦ 束缚 <span class="story-ui-mvu-newvars-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-newvars-sub-content">`;
     const vows = user.束缚 || {};
     if (!vows || vows === '待初始化' || Object.keys(vows).length === 0) {
       vowHtml += emptyText();
@@ -236,6 +245,10 @@
     finalCtHtml +=
       allCtsItemsHtml !== '' ? `<div class="story-ui-mvu-newvars-mini-grid">${allCtsItemsHtml}</div>` : emptyText();
     finalCtHtml += `</div>`;
+    finalCtHtml = finalCtHtml.replace(
+      'story-ui-mvu-newvars-toggle-icon">▼',
+      'story-ui-mvu-newvars-toggle-icon collapsed">▼',
+    );
 
     const specialHtml = buildItemList(user.特殊体质, '✧', '特殊体质', v => `<p>${escapeHtml(v)}</p>`);
     const spiritsHtml = buildItemList(user.咒灵操术, '✧', '咒灵操术', v => `<p>${escapeHtml(v)}</p>`);
@@ -244,7 +257,7 @@
     });
 
     const tasks = tasksModule || {};
-    let taskHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header story-ui-mvu-newvars-task-header" data-story-ui-mvu-newvars-toggle-next>✦ 当前任务 <span class="story-ui-mvu-newvars-toggle-icon">▼</span></div><div class="story-ui-mvu-newvars-sub-content">`;
+    let taskHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header story-ui-mvu-newvars-task-header" data-story-ui-mvu-newvars-toggle-next>✦ 当前任务 <span class="story-ui-mvu-newvars-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-newvars-sub-content">`;
     if (!tasks || tasks === '待初始化' || Object.keys(tasks).length === 0) {
       taskHtml += emptyText('暂无任务');
     } else {
@@ -362,8 +375,8 @@
           <div class="story-ui-mvu-newvars-info-list">
             <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">当前服装</span><span class="val">${renderClothes(user.当前服装 || {})}</span></div>
             <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">身份</span><span class="val">${renderIdentityTags(user.公开身份 || [])}</span></div>
-            <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">正道名望</span><span class="val">${escapeHtml(pw.数值 || 0)}，${escapeHtml(pTitle)}</span></div>
-            <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">邪道名望</span><span class="val">${escapeHtml(ew.数值 || 0)}，${escapeHtml(eTitle)}</span></div>
+            <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">正道名望</span><span class="val">${renderFameLine(pw.数值, pw.称号, 'pos', '寂寂无名的路人')}</span></div>
+            <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">邪道名望</span><span class="val">${renderFameLine(ew.数值, ew.称号, 'neg', '无人知晓的普通人')}</span></div>
             <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">金钱</span><span class="val">${escapeHtml(user.持有金钱 || 0)}</span></div>
             <div class="story-ui-mvu-newvars-stat-line"><span class="lbl">居住</span><span class="val">${escapeHtml(user.居住地 || '未知')}</span></div>
           </div>

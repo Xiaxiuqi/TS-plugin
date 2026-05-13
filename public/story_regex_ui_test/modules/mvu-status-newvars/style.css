@@ -133,31 +133,25 @@
 }
 
 .story-ui-mvu-newvars-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 900;
 }
 
 .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-mark {
-  width: 25px;
-  height: 25px;
-  border-radius: 999px;
-  color: var(--mvu-gold);
-  background: rgba(255, 253, 247, 0.62);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.76),
-    0 4px 10px rgba(71, 58, 42, 0.08);
+  color: var(--mvu-rose);
+  background: rgba(160, 126, 116, 0.12);
+  box-shadow: none;
 }
 
 .story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-mark {
-  width: 25px;
-  height: 25px;
-  border-radius: 999px;
-  color: var(--mvu-gold);
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow:
-    0 0 0 1px rgba(200, 168, 108, 0.16),
-    0 6px 14px rgba(0, 0, 0, 0.18);
+  color: var(--mvu-rose);
+  background: rgba(160, 126, 116, 0.12);
+  box-shadow: none;
 }
 
 .story-ui-mvu-newvars-title {
@@ -648,17 +642,17 @@
   min-width: 0;
   padding: 7px 9px;
   display: grid;
-  gap: 8px;
+  gap: 12px;
   align-items: baseline;
   color: var(--mvu-text);
   font-size: 12.5px;
 }
 .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-line {
-  grid-template-columns: 86px 1fr;
+  grid-template-columns: max-content minmax(0, 1fr);
   box-shadow: inset 0 -1px 0 var(--mvu-line);
 }
 .story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-stat-line {
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: max-content minmax(0, 1fr);
   box-shadow: inset 0 -1px 0 var(--mvu-line);
 }
 .story-ui-mvu-newvars-stat-line:last-child {
@@ -668,6 +662,9 @@
   font-weight: 800;
   letter-spacing: 0.07em;
   color: var(--mvu-muted);
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
 }
 .story-ui-mvu-newvars-stat-line .val {
   font-weight: 700;
@@ -678,7 +675,9 @@
   margin: 0 4px;
 }
 .story-ui-mvu-newvars-profile-tags,
-.story-ui-mvu-newvars-clothes-line {
+.story-ui-mvu-newvars-clothes-line,
+.story-ui-mvu-newvars-fame-line,
+.story-ui-mvu-newvars-fame-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
@@ -711,6 +710,45 @@
 .story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-profile-tag {
   color: var(--mvu-sage);
   background: rgba(136, 174, 184, 0.11);
+}
+.story-ui-mvu-newvars-fame-score {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--mvu-muted);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-fame-score {
+  background: rgba(236, 226, 207, 0.46);
+  box-shadow: 0 2px 5px rgba(71, 58, 42, 0.045);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-fame-score {
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.story-ui-mvu-newvars-fame-tag {
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 800;
+  word-break: break-word;
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-fame-tag {
+  box-shadow: 0 2px 5px rgba(71, 58, 42, 0.045);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-fame-tag {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.story-ui-mvu-newvars-fame-tag.pos {
+  color: #6f876d;
+  background: rgba(127, 146, 124, 0.14);
+}
+.story-ui-mvu-newvars-fame-tag.neg {
+  color: #a17a72;
+  background: rgba(160, 126, 116, 0.13);
 }
 .story-ui-mvu-newvars-cloth-slot {
   font-weight: 800;
@@ -805,6 +843,16 @@
   font-size: 12.6px;
   font-weight: 900;
   letter-spacing: 0.06em;
+}
+
+.story-ui-mvu-newvars-sub-toggle-header .story-ui-mvu-newvars-toggle-icon,
+.story-ui-mvu-newvars-item-toggle-header .story-ui-mvu-newvars-toggle-icon,
+.story-ui-mvu-newvars-reward-toggle-header .story-ui-mvu-newvars-toggle-icon {
+  font-size: 10px;
+}
+
+.story-ui-mvu-newvars-attr-toggle .story-ui-mvu-newvars-toggle-icon {
+  font-size: 10px;
 }
 .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-sub-toggle-header {
   border-radius: 6px;
@@ -1112,11 +1160,10 @@
   .story-ui-mvu-newvars-pink-container {
     padding: 8px;
   }
-  .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-line {
-    grid-template-columns: 76px 1fr;
-  }
+  .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-line,
   .story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-stat-line {
-    grid-template-columns: 84px 1fr;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 10px;
   }
   .story-ui-mvu-newvars-sex-row {
     grid-template-columns: 72px 1fr 48px;

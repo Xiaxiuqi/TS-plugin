@@ -36,12 +36,12 @@
 
           <div class="jjks-manager-panel-stack">
             <section class="jjks-manager-card jjks-manager-panel-theme-tools">
-              <h3>${title('日夜模式')}</h3>
+              <h3>${title('主题模式')}</h3>
               <div class="jjks-manager-actions jjks-manager-actions-theme" data-jjks-theme-actions></div>
             </section>
             <section class="jjks-manager-card jjks-manager-panel-theme-tools">
               <h3>${title('维护工具')}</h3>
-              <p class="jjks-manager-tool-note">初次加载需要点击一次手动重扫和重载资源</p>
+              <p class="jjks-manager-tool-note">初次加载需要点击一次手动重扫和重载资源，如果美化消失，可以点击重载资源进行重新挂载</p>
               <div class="jjks-manager-actions jjks-manager-actions-tools" data-jjks-maintenance-actions></div>
             </section>
           </div>

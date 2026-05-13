@@ -126,6 +126,7 @@
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
+  let collapseOldMessagesEnabled = true;
   let managerActionBusy = false;
   const moduleToggleBusy = new Set();
 
@@ -144,6 +145,12 @@
     hostLocation: hostWindow?.location?.href || '',
     startedAt: new Date().toISOString(),
   };
+
+  try {
+    collapseOldMessagesEnabled = localStorage.getItem('jjks_story_ui_collapse_old_messages') !== 'false';
+  } catch {
+    collapseOldMessagesEnabled = true;
+  }
 
   function notify(message, type = 'info') {
     try {
@@ -290,7 +297,6 @@
       lastError = error?.message || String(error);
       loaderPromise = null;
       console.error(`${logPrefix} 启动失败`, error);
-      notify(`资源加载失败：${lastError}`, 'error');
       throw error;
     });
 
@@ -614,6 +620,7 @@
   function mountCollapsedPlaceholderForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
+    if (!collapseOldMessagesEnabled) return false;
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return false;
 
@@ -761,9 +768,18 @@
       .map(([key, value]) => {
         if (Array.isArray(value)) return `${key}: ${value.length ? value.join(', ') : '无'}`;
         if (value && typeof value === 'object') return `${key}: ${JSON.stringify(value, null, 2)}`;
+        if (typeof value === 'boolean') {
+          return `${key}: <span class="jjks-manager-bool ${value ? 'is-true' : 'is-false'}">${value}</span>`;
+        }
         return `${key}: ${value}`;
       })
       .join('\n');
+  }
+
+  function persistCollapseOldMessages(enabled) {
+    try {
+      localStorage.setItem('jjks_story_ui_collapse_old_messages', enabled ? 'true' : 'false');
+    } catch {}
   }
 
   function getManagerView() {
@@ -821,6 +837,12 @@
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
       maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
+      maintenanceActions.appendChild(
+        createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {
+          'data-jjks-action': 'toggle-old-collapse',
+          'data-jjks-toggle-state': collapseOldMessagesEnabled ? 'on' : 'off',
+        }),
+      );
     }
   }
 
@@ -1052,6 +1074,11 @@
       button.dataset.active = button.dataset.jjksTheme === data.当前主题 ? 'true' : 'false';
     });
 
+    root.querySelectorAll('[data-jjks-toggle-state]').forEach(button => {
+      button.dataset.jjksToggleState = collapseOldMessagesEnabled ? 'on' : 'off';
+      button.textContent = collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠';
+    });
+
     renderManagerModuleList(root);
 
     const warning = root.querySelector('[data-jjks-warning]');
@@ -1064,7 +1091,7 @@
     }
 
     const diagnosis = root.querySelector('[data-jjks-diagnosis]');
-    if (diagnosis) diagnosis.textContent = formatDiagnosis(data);
+    if (diagnosis) diagnosis.innerHTML = formatDiagnosis(data);
     applyManagerTheme(data.当前主题);
   }
 
@@ -1129,6 +1156,13 @@
     }
     if (action === 'reload') {
       reloadResources();
+      return;
+    }
+    if (action === 'toggle-old-collapse') {
+      collapseOldMessagesEnabled = !collapseOldMessagesEnabled;
+      persistCollapseOldMessages(collapseOldMessagesEnabled);
+      rerenderAllVisibleMessages();
+      refreshManagerState();
     }
   }
 
