@@ -1208,6 +1208,8 @@
       if (!refreshed) {
         console.warn(`${logPrefix} 未找到 refreshOneMessage，已跳过当前楼层刷新。`);
       }
+      await new Promise(resolve => window.setTimeout(resolve, refreshed ? 120 : 0));
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
