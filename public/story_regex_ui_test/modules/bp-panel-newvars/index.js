@@ -269,15 +269,22 @@ ${targets.length ? targets.map(renderTargetCard).join('') : `<div class="bp-targ
     if (rerendered) return;
   }
 
+  function rerenderAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('bp-panel-newvars');
+    (hosts || []).forEach(host => {
+      rerender(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
     const root =
       node?.querySelector?.('.story-ui-bp-newvars') || node?.querySelector?.('.story-ui-root.story-ui-bp-newvars');
     if (!root) return;
-    if (node?.dataset?.storyUiBpNewvarsThemeBound) return;
-    node.dataset.storyUiBpNewvarsThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiBpNewvarsThemeBound === 'true') return;
+    document.documentElement.dataset.storyUiBpNewvarsThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
-      rerender(node);
+      rerenderAll();
     });
   }
 

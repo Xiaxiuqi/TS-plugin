@@ -512,6 +512,24 @@
     });
   }
 
+  function remountAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('mvu-status');
+    (hosts || []).forEach(host => {
+      const currentPanel = host.querySelector?.('.story-ui-mvu');
+      if (!currentPanel) return;
+      const messageId = Number(host.closest?.('.mes[mesid]')?.getAttribute('mesid'));
+      const nextPanel =
+        ui.theme?.rerenderWithPreservedDetails?.(currentPanel, () => {
+          const fresh = document.createElement('div');
+          fresh.innerHTML = renderStatusShell(messageId);
+          return fresh.firstElementChild || null;
+        }) || null;
+      if (nextPanel) {
+        bindToggleHandlers(nextPanel);
+      }
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
 
@@ -541,29 +559,10 @@
     const root = node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
     bindToggleHandlers(root);
 
-    if (!node.dataset.storyUiMvuThemeBound) {
-      node.dataset.storyUiMvuThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiMvuThemeBound !== 'true') {
+      document.documentElement.dataset.storyUiMvuThemeBound = 'true';
       document.addEventListener('story-ui-theme-changed', () => {
-        const panel = node.querySelector?.('.story-ui-mvu');
-        if (!panel) return;
-        const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
-        const nextPanel =
-          ui.theme?.rerenderWithPreservedDetails?.(panel, () => {
-            const fresh = document.createElement('div');
-            fresh.innerHTML = renderStatusShell(messageId);
-            return fresh.firstElementChild || null;
-          }) || null;
-        if (nextPanel) {
-          bindToggleHandlers(nextPanel);
-          return;
-        }
-        const fresh = document.createElement('div');
-        fresh.innerHTML = renderStatusShell(messageId);
-        const fallbackPanel = fresh.firstElementChild;
-        if (!fallbackPanel) return;
-        panel.replaceWith(fallbackPanel);
-        ui.theme?.applyThemeToRoot?.(fallbackPanel);
-        bindToggleHandlers(fallbackPanel);
+        remountAll();
       });
     }
 

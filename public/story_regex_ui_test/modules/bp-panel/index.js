@@ -221,14 +221,21 @@
     ui.theme?.applyThemeToRoot?.(nextRoot);
   }
 
+  function rerenderAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('bp-panel');
+    (hosts || []).forEach(host => {
+      rerender(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
     const root = node?.querySelector?.('.story-ui-bp') || node?.querySelector?.('.story-ui-root.story-ui-bp');
     if (!root) return;
-    if (node?.dataset?.storyUiBpThemeBound) return;
-    node.dataset.storyUiBpThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiBpThemeBound === 'true') return;
+    document.documentElement.dataset.storyUiBpThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
-      rerender(node);
+      rerenderAll();
     });
   }
 

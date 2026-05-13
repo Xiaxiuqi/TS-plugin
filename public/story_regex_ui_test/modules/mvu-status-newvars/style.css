@@ -750,7 +750,14 @@
   color: #a17a72;
   background: rgba(160, 126, 116, 0.13);
 }
+.story-ui-mvu-newvars-cloth-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
 .story-ui-mvu-newvars-cloth-slot {
+  color: var(--mvu-muted);
   font-weight: 800;
   font-size: 10px;
   letter-spacing: 0.05em;

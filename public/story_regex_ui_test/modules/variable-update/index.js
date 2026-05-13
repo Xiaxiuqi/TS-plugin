@@ -73,12 +73,19 @@
     ui.theme?.applyThemeToRoot?.(nextRoot);
   }
 
+  function rerenderAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('variable-update');
+    (hosts || []).forEach(host => {
+      rerender(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
-    if (node?.dataset?.storyUiVuThemeBound) return;
-    node.dataset.storyUiVuThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiVuThemeBound === 'true') return;
+    document.documentElement.dataset.storyUiVuThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
-      rerender(node);
+      rerenderAll();
     });
   }
 

@@ -127,6 +127,7 @@
   let scanQueued = false;
   let lastDiagnosis = null;
   let collapseOldMessagesEnabled = true;
+  let collapseOldMessagesBusy = false;
   let managerActionBusy = false;
   const moduleToggleBusy = new Set();
 
@@ -145,6 +146,11 @@
     hostLocation: hostWindow?.location?.href || '',
     startedAt: new Date().toISOString(),
   };
+
+  const bootstrapUi = window[CONFIG.globalKey] || (window[CONFIG.globalKey] = {});
+  bootstrapUi.runtime = bootstrapUi.runtime || {};
+  bootstrapUi.runtime.renderDepth = INITIAL_SCAN_LIMIT;
+  bootstrapUi.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
 
   try {
     collapseOldMessagesEnabled = localStorage.getItem('jjks_story_ui_collapse_old_messages') !== 'false';
@@ -320,6 +326,11 @@
     const ids = nodes.map(node => Number(node.getAttribute('mesid'))).filter(Number.isFinite);
 
     renderedWindowSize = ids.length;
+    const activeUi = getUi();
+    if (activeUi?.runtime) {
+      activeUi.runtime.renderDepth = limit;
+      activeUi.runtime.themeRerenderLimit = limit;
+    }
     if (ids.length <= limit) return ids;
     return ids.slice(-limit);
   }
@@ -779,7 +790,9 @@
   function persistCollapseOldMessages(enabled) {
     try {
       localStorage.setItem('jjks_story_ui_collapse_old_messages', enabled ? 'true' : 'false');
-    } catch {}
+    } catch {
+      // ignore persistence failures
+    }
   }
 
   function getManagerView() {
@@ -1076,7 +1089,14 @@
 
     root.querySelectorAll('[data-jjks-toggle-state]').forEach(button => {
       button.dataset.jjksToggleState = collapseOldMessagesEnabled ? 'on' : 'off';
-      button.textContent = collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠';
+      button.textContent = collapseOldMessagesBusy
+        ? collapseOldMessagesEnabled
+          ? '折叠切换中'
+          : '展开切换中'
+        : collapseOldMessagesEnabled
+          ? '旧消息折叠'
+          : '旧消息未折叠';
+      button.disabled = collapseOldMessagesBusy;
     });
 
     renderManagerModuleList(root);
@@ -1159,10 +1179,17 @@
       return;
     }
     if (action === 'toggle-old-collapse') {
+      if (collapseOldMessagesBusy) return;
+      collapseOldMessagesBusy = true;
       collapseOldMessagesEnabled = !collapseOldMessagesEnabled;
       persistCollapseOldMessages(collapseOldMessagesEnabled);
-      rerenderAllVisibleMessages();
       refreshManagerState();
+      window.setTimeout(() => {
+        rerenderAllVisibleMessages();
+        collapseOldMessagesBusy = false;
+        refreshManagerState();
+      }, 80);
+      return;
     }
   }
 

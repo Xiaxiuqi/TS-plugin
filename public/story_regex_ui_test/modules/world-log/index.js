@@ -129,14 +129,21 @@
     ui.theme?.applyThemeToRoot?.(nextRoot);
   }
 
+  function rerenderAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('world-log');
+    (hosts || []).forEach(host => {
+      rerender(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
     const root = node?.querySelector?.('.story-ui-wlog') || node?.querySelector?.('.story-ui-root.story-ui-wlog');
     if (!root) return;
-    if (node?.dataset?.storyUiWlogThemeBound) return;
-    node.dataset.storyUiWlogThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiWlogThemeBound === 'true') return;
+    document.documentElement.dataset.storyUiWlogThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
-      rerender(node);
+      rerenderAll();
     });
   }
 

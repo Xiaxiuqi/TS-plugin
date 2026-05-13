@@ -539,15 +539,22 @@
     bindToggleHandlers(fallbackPanel);
   }
 
+  function remountAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('mvu-status-newvars');
+    (hosts || []).forEach(host => {
+      remount(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
     const root =
       node.querySelector?.('.story-ui-mvu-newvars') || node.querySelector?.('.story-ui-root.story-ui-mvu-newvars');
     bindToggleHandlers(root);
 
-    if (!node.dataset.storyUiMvuNewvarsThemeBound) {
-      node.dataset.storyUiMvuNewvarsThemeBound = 'true';
-      document.addEventListener('story-ui-theme-changed', () => remount(node));
+    if (document.documentElement.dataset.storyUiMvuNewvarsThemeBound !== 'true') {
+      document.documentElement.dataset.storyUiMvuNewvarsThemeBound = 'true';
+      document.addEventListener('story-ui-theme-changed', () => remountAll());
     }
 
     if (window.Mvu?.events?.VARIABLE_UPDATE_ENDED && window.eventOn && !node.dataset.storyUiMvuNewvarsRefreshBound) {

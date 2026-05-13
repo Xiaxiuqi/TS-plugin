@@ -383,6 +383,13 @@
     ui.theme?.applyThemeToRoot?.(nextRoot);
   }
 
+  function rerenderAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('story-engine');
+    (hosts || []).forEach(host => {
+      rerender(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
     const root = node?.querySelector?.('.story-ui-se') || node?.querySelector?.('.story-ui-root.story-ui-se');
@@ -393,10 +400,10 @@
         root.dataset.storyUiStoryEngineRaw = contentHost.dataset.storyUiStoryEngineRaw;
       }
     }
-    if (node?.dataset?.storyUiSeThemeBound) return;
-    node.dataset.storyUiSeThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiSeThemeBound === 'true') return;
+    document.documentElement.dataset.storyUiSeThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
-      rerender(node);
+      rerenderAll();
     });
   }
 

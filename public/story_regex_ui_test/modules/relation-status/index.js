@@ -159,14 +159,21 @@
     ui.theme?.applyThemeToRoot?.(nextRoot);
   }
 
+  function rerenderAll() {
+    const hosts = ui.theme?.getModuleHostsForThemeRerender?.('relation-status');
+    (hosts || []).forEach(host => {
+      rerender(host);
+    });
+  }
+
   function mount(node) {
     ui.theme?.applyTheme?.(node);
     const root = node?.querySelector?.('.story-ui-rel') || node?.querySelector?.('.story-ui-root.story-ui-rel');
     if (!root) return;
-    if (node?.dataset?.storyUiRelThemeBound) return;
-    node.dataset.storyUiRelThemeBound = 'true';
+    if (document.documentElement.dataset.storyUiRelThemeBound === 'true') return;
+    document.documentElement.dataset.storyUiRelThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
-      rerender(node);
+      rerenderAll();
     });
   }
 

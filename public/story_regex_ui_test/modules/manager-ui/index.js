@@ -24,27 +24,28 @@
             </div>
           </section>
 
-          <section class="jjks-manager-card jjks-manager-panel-status">
-            <h3>${title('状态细节')}</h3>
-            <p class="jjks-manager-warning" data-jjks-warning></p>
-            <dl class="jjks-manager-status">
-              <div><dt>扫描器</dt><dd data-jjks-status="scanner">-</dd></div>
-              <div><dt>主题模块</dt><dd data-jjks-status="theme-ready">-</dd></div>
-              <div><dt>最近扫描窗口</dt><dd data-jjks-status="scan-window">-</dd></div>
-            </dl>
-          </section>
-
           <div class="jjks-manager-panel-stack">
-            <section class="jjks-manager-card jjks-manager-panel-theme-tools">
+            <section class="jjks-manager-card jjks-manager-panel-status">
+              <h3>${title('状态细节')}</h3>
+              <p class="jjks-manager-warning" data-jjks-warning></p>
+              <dl class="jjks-manager-status">
+                <div><dt>扫描器</dt><dd data-jjks-status="scanner">-</dd></div>
+                <div><dt>主题模块</dt><dd data-jjks-status="theme-ready">-</dd></div>
+                <div><dt>最近扫描窗口</dt><dd data-jjks-status="scan-window">-</dd></div>
+              </dl>
+            </section>
+            <section class="jjks-manager-card jjks-manager-panel-theme">
               <h3>${title('主题模式')}</h3>
               <div class="jjks-manager-actions jjks-manager-actions-theme" data-jjks-theme-actions></div>
             </section>
-            <section class="jjks-manager-card jjks-manager-panel-theme-tools">
-              <h3>${title('维护工具')}</h3>
-              <p class="jjks-manager-tool-note">初次加载需要点击一次手动重扫和重载资源，如果美化消失，可以点击重载资源进行重新挂载</p>
-              <div class="jjks-manager-actions jjks-manager-actions-tools" data-jjks-maintenance-actions></div>
-            </section>
           </div>
+
+          <section class="jjks-manager-card jjks-manager-panel-tools">
+            <h3>${title('维护工具')}</h3>
+            <p class="jjks-manager-tool-note">初次加载需要点击一次手动重扫和重载资源，如果美化消失，可以点击重载资源进行重新挂载</p>
+            <p class="jjks-manager-tool-note secondary">旧消息折叠是将超过渲染量的旧楼层美化相关标签内容折叠，如果关闭，旧楼层的美化内容会暴露出来。调整该选项后，需要点击重载资源进行重新挂载美化</p>
+            <div class="jjks-manager-actions jjks-manager-actions-tools" data-jjks-maintenance-actions></div>
+          </section>
 
           <section class="jjks-manager-card jjks-manager-row-full">
             <h3>${title('模块状态')}</h3>

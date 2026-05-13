@@ -45,6 +45,46 @@
     }
   }
 
+  function getThemeRerenderLimit() {
+    const runtimeLimit = Number(
+      ui?.runtime?.themeRerenderLimit || ui?.runtime?.renderDepth || ui?.runtime?.recentRenderLimit,
+    );
+    if (Number.isFinite(runtimeLimit) && runtimeLimit > 0) return Math.floor(runtimeLimit);
+    return 5;
+  }
+
+  function getRecentMessageElements(limit = getThemeRerenderLimit()) {
+    const messageNodes = Array.from(document.querySelectorAll('.mes[mesid]'));
+    if (!Number.isFinite(limit) || limit <= 0) return messageNodes;
+    return messageNodes.slice(-limit);
+  }
+
+  function getModuleHostsForThemeRerender(moduleId, fallbackSelector = '') {
+    const hostSet = new Set();
+    const roots = [];
+    const selector = fallbackSelector || `[data-story-ui-module="${moduleId}"]`;
+
+    getRecentMessageElements().forEach(messageNode => {
+      messageNode.querySelectorAll(selector).forEach(root => {
+        const host = root.closest?.('[data-story-ui-raw-mount="true"]') || root.parentElement;
+        if (!host || hostSet.has(host)) return;
+        hostSet.add(host);
+        roots.push(host);
+      });
+    });
+
+    if (roots.length > 0) return roots;
+
+    document.querySelectorAll(selector).forEach(root => {
+      const host = root.closest?.('[data-story-ui-raw-mount="true"]') || root.parentElement;
+      if (!host || hostSet.has(host)) return;
+      hostSet.add(host);
+      roots.push(host);
+    });
+
+    return roots;
+  }
+
   function captureDetailsState(scope) {
     if (!scope?.querySelectorAll) return [];
     return Array.from(scope.querySelectorAll('details')).map((details, index) => ({
@@ -127,6 +167,8 @@
     captureDetailsState,
     restoreDetailsState,
     rerenderWithPreservedDetails,
+    getThemeRerenderLimit,
+    getModuleHostsForThemeRerender,
     applyThemeToRoot,
   };
 })();
