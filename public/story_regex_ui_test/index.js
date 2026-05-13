@@ -9,6 +9,7 @@
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
+    reloadButtonName: '重载资源',
     managerRootId: 'jjks-story-ui-manager-test',
   };
 
@@ -829,6 +830,35 @@
     return Boolean(getManagerView());
   }
 
+  async function ensureManagerAssetsReady() {
+    await ensureLoader();
+    const styleHref = toUrl('modules/manager-ui/style.css');
+    let link = hostDocument.querySelector(`link[href="${styleHref}"]`);
+    if (!link) {
+      link = createElementInHost('link');
+      link.rel = 'stylesheet';
+      link.href = styleHref;
+      (hostDocument.head || hostDocument.body).appendChild(link);
+    }
+
+    if (!link.dataset.jjksReady) {
+      await new Promise(resolve => {
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          link.dataset.jjksReady = 'true';
+          resolve();
+        };
+        link.addEventListener('load', done, { once: true });
+        link.addEventListener('error', done, { once: true });
+        window.setTimeout(done, 300);
+      });
+    }
+
+    await ensureManagerUiReady();
+  }
+
   function renderManagerPanel(root, panel) {
     const managerView = getManagerView();
     panel.innerHTML =
@@ -848,8 +878,8 @@
     const maintenanceActions = panel.querySelector('[data-jjks-maintenance-actions]');
     if (maintenanceActions && !maintenanceActions.childElementCount) {
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
-      maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
       maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
+      maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
       maintenanceActions.appendChild(
         createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {
           'data-jjks-action': 'toggle-old-collapse',
@@ -967,8 +997,7 @@
   }
 
   async function openManager() {
-    await ensureLoader();
-    await ensureManagerUiReady();
+    await ensureManagerAssetsReady();
     const root = ensureManagerDom();
     refreshManagerState();
     root.dataset.open = 'true';
@@ -1115,6 +1144,13 @@
     applyManagerTheme(data.当前主题);
   }
 
+  async function runQuickReload() {
+    if (managerActionBusy) return;
+    queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+    await new Promise(resolve => window.setTimeout(resolve, 80));
+    await reloadResources();
+  }
+
   async function reloadResources() {
     if (managerActionBusy) return;
     managerActionBusy = true;
@@ -1225,15 +1261,21 @@
   function registerManagerButton() {
     try {
       if (window.appendInexistentScriptButtons) {
-        window.appendInexistentScriptButtons([{ name: CONFIG.buttonName, visible: true }]);
+        window.appendInexistentScriptButtons([
+          { name: CONFIG.buttonName, visible: true },
+          { name: CONFIG.reloadButtonName, visible: true },
+        ]);
       } else if (window.replaceScriptButtons) {
-        window.replaceScriptButtons([{ name: CONFIG.buttonName, visible: true }]);
+        window.replaceScriptButtons([
+          { name: CONFIG.buttonName, visible: true },
+          { name: CONFIG.reloadButtonName, visible: true },
+        ]);
       }
 
-      const bindButtonClickFallback = () => {
+      const bindButtonClickFallback = buttonName => {
         const candidates = Array.from(hostDocument.querySelectorAll('button')).filter(button => {
           const name = (button.textContent || '').trim();
-          return name === CONFIG.buttonName || name.includes(CONFIG.buttonName);
+          return name === buttonName || name.includes(buttonName);
         });
 
         candidates.forEach(button => {
@@ -1246,6 +1288,11 @@
             } catch {
               // ignore
             }
+            if (buttonName === CONFIG.reloadButtonName) {
+              runQuickReload().catch(error => console.error(`${logPrefix} 快捷重载失败`, error));
+              console.info(`${logPrefix} 已通过宿主页面按钮兜底绑定快捷重载。`);
+              return;
+            }
             openManager().catch(error => console.error(`${logPrefix} 打开管理面板失败`, error));
             console.info(`${logPrefix} 已通过宿主页面按钮兜底绑定打开管理面板。`);
           });
@@ -1254,6 +1301,8 @@
 
       const bindByEventApi = () => {
         const eventName = window.getButtonEvent?.(CONFIG.buttonName);
+        const reloadEventName = window.getButtonEvent?.(CONFIG.reloadButtonName);
+        let bound = false;
         if (eventName && window.eventOn) {
           window.eventOn(eventName, () => {
             openManager().catch(error => {
@@ -1262,21 +1311,33 @@
               notify(`打开管理界面失败：${lastError}`, 'error');
             });
           });
-          return true;
+          bound = true;
         }
-        return false;
+        if (reloadEventName && window.eventOn) {
+          window.eventOn(reloadEventName, () => {
+            runQuickReload().catch(error => {
+              lastError = error?.message || String(error);
+              console.error(`${logPrefix} 通过事件 API 快捷重载失败`, error);
+              notify(`快捷重载失败：${lastError}`, 'error');
+            });
+          });
+          bound = true;
+        }
+        return bound;
       };
 
       const bound = bindByEventApi();
-      bindButtonClickFallback();
+      bindButtonClickFallback(CONFIG.buttonName);
+      bindButtonClickFallback(CONFIG.reloadButtonName);
 
       if (!bound) {
         console.warn(`${logPrefix} 脚本按钮事件 API 不可用，已启用点击兜底绑定。`);
         window.setTimeout(() => {
-          bindButtonClickFallback();
+          bindButtonClickFallback(CONFIG.buttonName);
+          bindButtonClickFallback(CONFIG.reloadButtonName);
         }, 500);
       } else {
-        console.info(`${logPrefix} 已通过酒馆按钮事件 API 绑定管理按钮。`);
+        console.info(`${logPrefix} 已通过酒馆按钮事件 API 绑定管理按钮与快捷重载按钮。`);
       }
 
       notify('咒回前端管理已导入，点击按钮可打开管理界面。', 'success');
