@@ -293,6 +293,10 @@ ${targets.length ? targets.map(renderTargetCard).join('') : `<div class="bp-targ
     priority: 49,
     enabled: false,
     block: BLOCK,
+    display: {
+      startAnchors: ['BP战力雷达', '实时战力评估', 'NEW VARIABLE BATTLE POINT', '<bp_panel>'],
+      endAnchors: ['NEW VARIABLE BATTLE POINT RADAR', 'NEW VARIABLE BATTLE POINT RADAR TERMINAL', '</bp_panel>'],
+    },
     renderContent: renderContentNode,
     mount,
   });

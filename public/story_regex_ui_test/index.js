@@ -386,6 +386,7 @@
       mounted: [],
       avoided: [],
       collapsed: [],
+      details: [],
       cleared: false,
       signature: '',
       updatedAt: '',
@@ -396,6 +397,7 @@
       mounted: Array.isArray(patch.mounted) ? patch.mounted.slice() : previous.mounted,
       avoided: Array.isArray(patch.avoided) ? patch.avoided.slice() : previous.avoided,
       collapsed: Array.isArray(patch.collapsed) ? patch.collapsed.slice() : previous.collapsed,
+      details: Array.isArray(patch.details) ? patch.details.slice() : previous.details,
       cleared: typeof patch.cleared === 'boolean' ? patch.cleared : previous.cleared,
       updatedAt: new Date().toLocaleString(),
     };
@@ -410,6 +412,7 @@
   function clearMountedStoryUi(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+    messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(restoreHiddenSourceNode);
   }
 
   function clearCollapsedPlaceholders(messageElement) {
@@ -555,13 +558,21 @@
   }
 
   function findNextModuleMatch(modules, rawText, startIndex) {
+    const source = String(rawText || '').replace(/\r\n?/g, '\n');
     let best = null;
     modules.forEach(module => {
       const block = getModuleBlockConfig(module);
       if (!block) return;
       const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
-      const slice = String(rawText || '').slice(startIndex);
-      const match = slice.match(pattern);
+      const slice = source.slice(startIndex);
+      let match = slice.match(pattern);
+
+      if (!match && module?.id === 'story-engine') {
+        match = slice.match(
+          /<story_driver>[\s\S]*?(?:<combat_driver>[\s\S]*?<\/combat_driver>[\s\S]*?)?(?:━━\s*3[.．、]\s*最终修正\s*━━[\s\S]*)?/i,
+        );
+      }
+
       if (!match || match.index === undefined) return;
       const absoluteStart = startIndex + match.index;
       const absoluteEnd = absoluteStart + match[0].length;
@@ -576,7 +587,8 @@
           start: absoluteStart,
           end: absoluteEnd,
           fullMatch: match[0],
-          content: String(match[1] || '').trim(),
+          content: String(match[1] || match[0] || '').trim(),
+          kind: 'block',
         };
       }
     });
@@ -776,7 +788,14 @@
       acceptNode(node) {
         const parent = node.parentElement;
         if (!parent) return nodeFilter.FILTER_REJECT;
-        if (parent.closest?.('[data-story-ui-raw-mount="true"]')) return nodeFilter.FILTER_REJECT;
+        if (
+          parent.closest?.(
+            '[data-story-ui-raw-mount="true"], [data-story-ui-hidden-source="true"], [data-story-ui-code-placeholder="true"], script, style, template, noscript',
+          )
+        ) {
+          return nodeFilter.FILTER_REJECT;
+        }
+        if (parent.hidden || parent.getAttribute?.('aria-hidden') === 'true') return nodeFilter.FILTER_REJECT;
         return nodeFilter.FILTER_ACCEPT;
       },
     });
@@ -865,62 +884,89 @@
       .trim();
   }
 
+  function isUsefulAnchorCandidate(value, minLength = 6) {
+    const text = String(value || '').trim();
+    if (text.length < minLength) return false;
+    if (/^[\s\-_=—─━*✦✧◆◇<>/\\|:：.．、，,。;；()[\]{}]+$/.test(text)) return false;
+    if (/^(无|未知|正文|true|false|null|undefined)$/i.test(text)) return false;
+    return /[\p{L}\p{N}\u4e00-\u9fff]/u.test(text);
+  }
+
+  function pushCandidate(candidates, value, minLength = 6) {
+    const candidate = normalizeAnchorText(value);
+    if (!isUsefulAnchorCandidate(candidate, minLength)) return;
+    if (!candidates.includes(candidate)) candidates.push(candidate);
+  }
+
+  function getModuleDisplayConfig(module) {
+    const display = module?.display;
+    return display && typeof display === 'object' ? display : {};
+  }
+
+  function resolveDisplayAnchorValues(match, type) {
+    const display = getModuleDisplayConfig(match?.module);
+    const value = type === 'end' ? display.endAnchors : display.startAnchors;
+    if (typeof value === 'function') {
+      try {
+        return value(match?.content || '', match) || [];
+      } catch (error) {
+        console.warn(`${logPrefix} 模块显示锚点生成失败: ${match?.module?.id || 'unknown'}`, error);
+        return [];
+      }
+    }
+    return Array.isArray(value) ? value : [];
+  }
+
   function buildAnchorCandidates(match) {
-    const sources = [match?.content, match?.fullMatch].map(normalizeAnchorText).filter(Boolean);
     const candidates = [];
+    resolveDisplayAnchorValues(match, 'start').forEach(anchor => pushCandidate(candidates, anchor, 4));
+    const sources = [match?.content, match?.fullMatch].map(normalizeAnchorText).filter(Boolean);
     sources.forEach(source => {
-      [160, 120, 80, 48, 32].forEach(size => {
-        const candidate = source.slice(0, size).trim();
-        if (candidate.length >= 12 && !candidates.includes(candidate)) candidates.push(candidate);
-      });
+      [160, 120, 80, 48, 32].forEach(size => pushCandidate(candidates, source.slice(0, size), 12));
       const firstMeaningfulLine = source
         .split('\n')
         .map(line => line.trim())
-        .find(line => line.length >= 8);
-      if (firstMeaningfulLine && !candidates.includes(firstMeaningfulLine)) candidates.push(firstMeaningfulLine);
+        .find(line => isUsefulAnchorCandidate(line, 8));
+      pushCandidate(candidates, firstMeaningfulLine, 8);
     });
+    if (match?.singleTag) pushCandidate(candidates, String(match.singleTag), 4);
     return candidates;
   }
 
   function buildMatchStartCandidates(match) {
     if (!match) return [];
-    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
     const candidates = [];
+    resolveDisplayAnchorValues(match, 'start').forEach(anchor => pushCandidate(candidates, anchor, 4));
+    if (match.singleTag) pushCandidate(candidates, String(match.singleTag), 4);
+
+    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
     sources.forEach(source => {
       source
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length >= 2)
+        .filter(line => isUsefulAnchorCandidate(line, 8))
         .slice(0, 8)
-        .forEach(line => {
-          if (!candidates.includes(line)) candidates.push(line);
-        });
-      [160, 120, 80, 48, 32, 16].forEach(size => {
-        const candidate = source.slice(0, size).trim();
-        if (candidate.length >= 2 && !candidates.includes(candidate)) candidates.push(candidate);
-      });
+        .forEach(line => pushCandidate(candidates, line, 8));
+      [160, 120, 80, 48, 32].forEach(size => pushCandidate(candidates, source.slice(0, size), 12));
     });
-    if (match.singleTag && !candidates.includes(String(match.singleTag))) candidates.push(String(match.singleTag));
     return candidates;
   }
 
   function buildMatchEndCandidates(match) {
     if (!match) return [];
-    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
     const candidates = [];
+    resolveDisplayAnchorValues(match, 'end').forEach(anchor => pushCandidate(candidates, anchor, 4));
+    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
     sources.forEach(source => {
       source
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length >= 2)
+        .filter(line => isUsefulAnchorCandidate(line, 8))
         .slice(-12)
         .reverse()
-        .forEach(line => {
-          if (!candidates.includes(line)) candidates.push(line);
-        });
+        .forEach(line => pushCandidate(candidates, line, 8));
       [240, 180, 120, 80, 48, 32].forEach(size => {
-        const candidate = source.slice(Math.max(0, source.length - size)).trim();
-        if (candidate.length >= 2 && !candidates.includes(candidate)) candidates.push(candidate);
+        pushCandidate(candidates, source.slice(Math.max(0, source.length - size)), 12);
       });
     });
     return candidates;
@@ -953,34 +999,51 @@
     return null;
   }
 
+  function isSafeHiddenRange(match, startIndex, endIndex, sourceText) {
+    if (!match || endIndex <= startIndex) return false;
+    const visibleLength = endIndex - startIndex;
+    const normalizedSourceLength = Math.max(normalizeAnchorText(match.fullMatch || match.content || '').length, 1);
+    if (match.singleTag) return visibleLength <= Math.max(80, normalizedSourceLength * 4);
+    const hardLimit = Math.max(320, normalizedSourceLength * 1.8);
+    if (visibleLength > hardLimit) return false;
+    const source = String(sourceText || '');
+    const nextLineCount = source.slice(startIndex, endIndex).split('\n').length;
+    return nextLineCount <= 120;
+  }
+
   function findVisibleSourceRangeForMatch(textElement, match, nextMatch) {
     const { combined, chunks } = buildTextIndex(textElement);
-    const start = findFirstCandidateIndex(combined, buildMatchStartCandidates(match));
+    const startCandidates = buildMatchStartCandidates(match);
+    const start = findFirstCandidateIndex(combined, startCandidates);
     if (!start) return null;
 
+    const ownEnd = findLastCandidateEnd(
+      combined,
+      buildMatchEndCandidates(match),
+      start.index + start.candidate.length,
+    );
     const nextStart = findFirstCandidateIndex(
       combined,
       buildMatchStartCandidates(nextMatch),
       start.index + start.candidate.length,
     );
-    let endIndex = nextStart?.index ?? -1;
 
-    if (endIndex <= start.index) {
-      const ownEnd = findLastCandidateEnd(
-        combined,
-        buildMatchEndCandidates(match),
-        start.index + start.candidate.length,
-      );
-      endIndex = ownEnd?.end ?? -1;
+    let endIndex = ownEnd?.end ?? -1;
+    let mode = 'own-end';
+    if (endIndex <= start.index && nextStart?.index > start.index) {
+      endIndex = nextStart.index;
+      mode = 'next-start';
     }
 
     if (endIndex <= start.index) return null;
+    if (!isSafeHiddenRange(match, start.index, endIndex, combined)) return null;
 
     const range = createRangeFromTextOffsets(chunks, start.index, endIndex);
     return range
       ? {
           range,
           anchor: combined.slice(start.index, Math.min(start.index + 120, endIndex)),
+          mode,
         }
       : null;
   }
@@ -1009,8 +1072,8 @@
     const hidden = createHiddenSourcePlaceholder(moduleId, anchorText);
     const fragment = range.extractContents();
     hidden.appendChild(fragment);
-    range.insertNode(mountHost);
     range.insertNode(hidden);
+    hidden.after(mountHost);
     return { mode: 'anchor-hidden', anchor: anchorText || '' };
   }
 
@@ -1030,11 +1093,13 @@
     const found = findAnchorRange(textElement, candidates);
     if (found?.range) {
       const insertionRange = found.range.cloneRange();
-      return hideRangeWithMountHost(insertionRange, match?.module?.id, found.candidate, mountHost);
+      insertionRange.collapse(true);
+      insertionRange.insertNode(mountHost);
+      return { mode: 'anchor-insert', anchor: found.candidate };
     }
 
     textElement.appendChild(mountHost);
-    return { mode: 'fallback', anchor: '' };
+    return { mode: 'append-fallback', anchor: '' };
   }
 
   function mountSingleModuleNonDestructively({ match, nextMatch, rawText, messageId, messageElement, textElement }) {
@@ -1046,6 +1111,7 @@
       messageId,
       messageElement,
       theme: getUi()?.theme?.getTheme?.() || 'day',
+      match,
     });
     const moduleHtml = nodeToHtml(rendered);
     if (!moduleHtml) {
@@ -1056,6 +1122,7 @@
     const inserted = insertMountHostNearAnchor(textElement, match, mountHost, nextMatch);
     return {
       status: inserted.mode === 'anchor-hidden' ? 'mounted' : 'anchor-fallback',
+      mode: inserted.mode,
       moduleId: match.module.id,
       anchor: inserted.anchor,
       mountHost,
@@ -1119,6 +1186,7 @@
     const mounted = [];
     const anchorFallback = [];
     const skipped = [];
+    const details = [];
     const renderableMatches = getRenderableMatchesInOrder(modules, rawText);
     renderableMatches.forEach((match, index) => {
       const result = mountSingleModuleNonDestructively({
@@ -1132,9 +1200,16 @@
       if (result.status === 'mounted') mounted.push(result.moduleId);
       if (result.status === 'anchor-fallback') {
         mounted.push(result.moduleId);
-        anchorFallback.push(result.moduleId);
+        anchorFallback.push(`${result.moduleId}:${result.mode || 'fallback'}`);
       }
       if (result.status === 'skipped') skipped.push(`${result.moduleId}:${result.reason}`);
+      details.push({
+        moduleId: result.moduleId,
+        status: result.status,
+        mode: result.mode || '',
+        anchor: String(result.anchor || '').slice(0, 80),
+        reason: result.reason || '',
+      });
     });
 
     mountStoryUiHosts(textElement, registry, rawText, messageId);
@@ -1145,6 +1220,7 @@
         mounted,
         avoided: anchorFallback,
         collapsed: skipped,
+        details,
         cleared: false,
         signature,
       });
@@ -1156,6 +1232,7 @@
       mounted: [],
       avoided: anchorFallback,
       collapsed: skipped,
+      details,
       cleared: false,
       signature,
     });
@@ -1482,9 +1559,13 @@
 
   function clearModuleMountedDom(moduleId) {
     hostDocument.querySelectorAll(`[data-story-ui-module="${moduleId}"]`).forEach(node => {
+      if (node.matches?.('[data-story-ui-hidden-source="true"]')) return;
       const mountHost = node.closest?.('[data-story-ui-raw-mount="true"]') || node;
       mountHost.remove();
     });
+    hostDocument
+      .querySelectorAll(`[data-story-ui-hidden-source="true"][data-story-ui-module="${moduleId}"]`)
+      .forEach(restoreHiddenSourceNode);
   }
 
   function clearModuleCaches(moduleId) {

@@ -624,6 +624,10 @@
     version: MODULE_VERSION,
     priority: 80,
     singleTag: SINGLE_TAG,
+    display: {
+      startAnchors: ['世界状态', '个人状态档案', '咒术高专 · 羁绊档案', 'GLOBAL ANCHOR', '<StatusPlaceHolderImpl/>'],
+      endAnchors: ['咒术高专 · 羁绊档案', 'RELATION ARCHIVE', '<StatusPlaceHolderImpl/>'],
+    },
     renderContent: renderContentNode,
     mount,
   });

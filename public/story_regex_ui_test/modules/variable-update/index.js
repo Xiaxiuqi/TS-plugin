@@ -94,6 +94,10 @@
     version: MODULE_VERSION,
     priority: 40,
     block: BLOCK,
+    display: {
+      startAnchors: ['变量更新', '本回合变量变动记录', 'VARIABLE UPDATE', '<UpdateVariable>'],
+      endAnchors: ['VARIABLE UPDATE LOG', 'VARIABLE UPDATE TERMINAL', '</UpdateVariable>'],
+    },
     renderContent: renderContentNode,
     mount,
   });

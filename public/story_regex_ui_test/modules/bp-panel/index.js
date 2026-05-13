@@ -244,6 +244,10 @@
     version: MODULE_VERSION,
     priority: 50,
     block: BLOCK,
+    display: {
+      startAnchors: ['BP战力雷达', '扫描状态', '已扫描目标', 'BATTLE POINT', '<bp_panel>'],
+      endAnchors: ['BATTLE POINT RADAR', 'BATTLE POINT RADAR TERMINAL', '</bp_panel>'],
+    },
     renderContent: renderContentNode,
     mount,
   });

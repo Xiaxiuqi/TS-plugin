@@ -152,6 +152,10 @@
     version: MODULE_VERSION,
     priority: 70,
     block: BLOCK,
+    display: {
+      startAnchors: ['世界运行报告', 'WORLD LOG', '世界主线', '<wlog'],
+      endAnchors: ['WORLD LOG ARCHIVE', 'WORLD LOG TERMINAL', '死亡角色', '</wlog>'],
+    },
     renderContent: renderContentNode,
     mount,
   });
