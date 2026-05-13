@@ -615,6 +615,109 @@
     return { html, mounted };
   }
 
+  function getRenderableMatchesInOrder(modules, rawText) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    const matches = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const match = findNextRenderableMatch(modules, text, cursor);
+      if (!match) break;
+      matches.push(match);
+      cursor = Math.max(match.end, match.start + 1);
+    }
+
+    return matches;
+  }
+
+  function createRawMountHost(module, moduleHtml) {
+    const mountHost = createElementInHost('section');
+    mountHost.className = 'story-ui-raw-mount';
+    mountHost.dataset.storyUiRawMount = 'true';
+    mountHost.dataset.storyUiModule = module.id;
+    mountHost.innerHTML = moduleHtml;
+    return mountHost;
+  }
+
+  function collectTextNodes(root) {
+    const nodes = [];
+    const nodeFilter = hostWindow.NodeFilter || window.NodeFilter;
+    const walker = hostDocument.createTreeWalker(root, nodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent) return nodeFilter.FILTER_REJECT;
+        if (parent.closest?.('[data-story-ui-raw-mount="true"]')) return nodeFilter.FILTER_REJECT;
+        return nodeFilter.FILTER_ACCEPT;
+      },
+    });
+
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    return nodes;
+  }
+
+  function findTextRange(root, sourceText) {
+    const target = String(sourceText || '').replace(/\r\n?/g, '\n');
+    if (!target) return null;
+
+    const nodes = collectTextNodes(root);
+    const chunks = [];
+    let combined = '';
+    nodes.forEach(node => {
+      const raw = node.textContent || '';
+      const normalized = raw.replace(/\r\n?/g, '\n');
+      chunks.push({ node, raw, normalized, start: combined.length, end: combined.length + normalized.length });
+      combined += normalized;
+    });
+
+    const startIndex = combined.indexOf(target);
+    const endIndex = startIndex >= 0 ? startIndex + target.length : -1;
+    if (startIndex < 0) {
+      const compactCombined = combined.replace(/[ \t]+/g, ' ');
+      const compactTarget = target.replace(/[ \t]+/g, ' ');
+      const compactIndex = compactCombined.indexOf(compactTarget);
+      if (compactIndex < 0) return null;
+      return null;
+    }
+
+    const startChunk = chunks.find(chunk => startIndex >= chunk.start && startIndex <= chunk.end);
+    const endChunk = chunks.find(chunk => endIndex >= chunk.start && endIndex <= chunk.end);
+    if (!startChunk || !endChunk) return null;
+
+    const range = hostDocument.createRange();
+    range.setStart(startChunk.node, startIndex - startChunk.start);
+    range.setEnd(endChunk.node, endIndex - endChunk.start);
+    return range;
+  }
+
+  function replaceRawTextWithMountHost(textElement, rawSource, mountHost) {
+    const candidates = [String(rawSource || ''), String(rawSource || '').trim()].filter(Boolean);
+    for (const candidate of candidates) {
+      const range = findTextRange(textElement, candidate);
+      if (!range) continue;
+      range.deleteContents();
+      range.insertNode(mountHost);
+      return true;
+    }
+    return false;
+  }
+
+  function mountStoryUiHosts(textElement, registry, rawText, messageId) {
+    const ui = getUi();
+    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
+    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
+      const moduleId = mountHost.getAttribute('data-story-ui-module');
+      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
+      if (!module || module.enabled === false) return;
+      registry.safelyCall(module, 'mount', mountHost, {
+        kind: 'raw',
+        rawText,
+        messageId,
+        node: mountHost,
+      });
+    });
+  }
+
   function mountModulesForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
@@ -634,20 +737,30 @@
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return false;
 
-    const { html, mounted } = renderMessageHtmlByModules(messageId, rawText, modules);
-    textElement.innerHTML = html;
-    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
-    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
-      const moduleId = mountHost.getAttribute('data-story-ui-module');
-      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
-      if (!module || module.enabled === false) return;
-      registry.safelyCall(module, 'mount', mountHost, {
-        kind: 'raw',
-        rawText,
+    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+
+    const mounted = [];
+    const fallbackHosts = [];
+    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
+      const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
-        node: mountHost,
+        messageElement,
+        theme: getUi()?.theme?.getTheme?.() || 'day',
       });
+      const moduleHtml = nodeToHtml(rendered);
+      if (!moduleHtml) return;
+
+      const mountHost = createRawMountHost(match.module, moduleHtml);
+      const replaced = replaceRawTextWithMountHost(textElement, match.fullMatch, mountHost);
+      if (!replaced) {
+        fallbackHosts.push(mountHost);
+        console.warn(`${logPrefix} 未能在当前原生渲染 DOM 中定位模块原文，已追加挂载: ${match.module.id}`);
+      }
+      mounted.push(match.module.id);
     });
+
+    fallbackHosts.forEach(host => textElement.appendChild(host));
+    mountStoryUiHosts(textElement, registry, rawText, messageId);
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
@@ -1194,6 +1307,24 @@
     await reloadResources();
   }
 
+  async function refreshRenderedMessagesForNativeRender(messageIds) {
+    const refreshOneMessage =
+      hostWindow.refreshOneMessage ||
+      window.refreshOneMessage ||
+      hostWindow.TavernHelper?.refreshOneMessage ||
+      window.TavernHelper?.refreshOneMessage;
+    if (typeof refreshOneMessage !== 'function') return false;
+
+    for (const messageId of messageIds) {
+      try {
+        await refreshOneMessage(messageId);
+      } catch (error) {
+        console.warn(`${logPrefix} 刷新原生楼层渲染失败: ${messageId}`, error);
+      }
+    }
+    return true;
+  }
+
   async function reloadResources() {
     if (managerActionBusy) return;
     managerActionBusy = true;
@@ -1227,10 +1358,15 @@
     loaderPromise = null;
     try {
       await ensureLoader();
+      const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
       messageSignatures.clear();
       mountedModulesByMessage.clear();
       recentScannedMessageIds.length = 0;
-      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      const refreshed = await refreshRenderedMessagesForNativeRender(messageIds);
+      if (refreshed) {
+        await new Promise(resolve => window.setTimeout(resolve, 120));
+      }
+      queueScan(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
