@@ -790,15 +790,7 @@
     const target = String(sourceText || '').replace(/\r\n?/g, '\n');
     if (!target) return null;
 
-    const nodes = collectTextNodes(root);
-    const chunks = [];
-    let combined = '';
-    nodes.forEach(node => {
-      const raw = node.textContent || '';
-      const normalized = raw.replace(/\r\n?/g, '\n');
-      chunks.push({ node, raw, normalized, start: combined.length, end: combined.length + normalized.length });
-      combined += normalized;
-    });
+    const { combined, chunks } = buildTextIndex(root);
 
     const startIndex = combined.indexOf(target);
     const endIndex = startIndex >= 0 ? startIndex + target.length : -1;
@@ -810,6 +802,25 @@
       return null;
     }
 
+    return createRangeFromTextOffsets(chunks, startIndex, endIndex);
+  }
+
+  function buildTextIndex(root) {
+    const nodes = collectTextNodes(root);
+    const chunks = [];
+    let combined = '';
+    nodes.forEach(node => {
+      const raw = node.textContent || '';
+      const normalized = raw.replace(/\r\n?/g, '\n');
+      chunks.push({ node, raw, normalized, start: combined.length, end: combined.length + normalized.length });
+      combined += normalized;
+    });
+
+    return { combined, chunks };
+  }
+
+  function createRangeFromTextOffsets(chunks, startIndex, endIndex) {
+    if (!Array.isArray(chunks) || startIndex < 0 || endIndex <= startIndex) return null;
     const startChunk = chunks.find(chunk => startIndex >= chunk.start && startIndex <= chunk.end);
     const endChunk = chunks.find(chunk => endIndex >= chunk.start && endIndex <= chunk.end);
     if (!startChunk || !endChunk) return null;
@@ -876,6 +887,35 @@
     return null;
   }
 
+  function findStoryEngineVisibleBlockRange(textElement) {
+    const { combined, chunks } = buildTextIndex(textElement);
+    const startTokens = ['━━ 1.全域锚定 ━━', '[时空]:'];
+    const endTokens = [
+      '━━ 1.状态',
+      '━━ 1. 状态',
+      '━━ 1.世界状态',
+      '━━ 1. 世界状态',
+      'JSONPatch',
+      '<StatusPlaceHolderImpl/>',
+      'StatusPlaceHolderImpl',
+    ];
+
+    const startIndex = startTokens
+      .map(token => combined.indexOf(token))
+      .filter(index => index >= 0)
+      .sort((lhs, rhs) => lhs - rhs)[0];
+    if (startIndex === undefined) return null;
+
+    const endIndex = endTokens
+      .map(token => combined.indexOf(token, startIndex + 1))
+      .filter(index => index > startIndex)
+      .sort((lhs, rhs) => lhs - rhs)[0];
+    if (endIndex === undefined) return null;
+
+    const range = createRangeFromTextOffsets(chunks, startIndex, endIndex);
+    return range ? { range, anchor: combined.slice(startIndex, Math.min(startIndex + 120, endIndex)) } : null;
+  }
+
   function createHiddenSourcePlaceholder(moduleId, anchorText) {
     const hidden = createElementInHost('span');
     hidden.dataset.storyUiHiddenSource = 'true';
@@ -893,6 +933,16 @@
   }
 
   function insertMountHostNearAnchor(textElement, match, mountHost) {
+    if (match?.module?.id === 'story-engine') {
+      const storyBlock = findStoryEngineVisibleBlockRange(textElement);
+      if (storyBlock?.range) {
+        const hidden = createHiddenSourcePlaceholder(match.module.id, storyBlock.anchor);
+        storyBlock.range.deleteContents();
+        storyBlock.range.insertNode(mountHost);
+        storyBlock.range.insertNode(hidden);
+        return { mode: 'anchor-hidden', anchor: storyBlock.anchor };
+      }
+    }
     const candidates = buildAnchorCandidates(match);
     const found = findAnchorRange(textElement, candidates);
     if (found?.range) {
