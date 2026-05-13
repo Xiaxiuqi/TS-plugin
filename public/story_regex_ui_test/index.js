@@ -16,6 +16,14 @@
   const STYLE_MARK = `jjks-manager-style-${CONFIG.env}`;
   const LOADER_MARK = `jjks-story-ui-loader-${CONFIG.env}`;
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
+  const MODULE_LABELS = {
+    'story-engine': '故事引擎',
+    'bp-panel': 'BP战力雷达',
+    'world-log': '世界运行报告',
+    'relation-status': '角色羁绊档案',
+    'variable-update': '变量更新',
+    'mvu-status': 'MVU状态栏',
+  };
 
   function getCandidateWindows() {
     const candidates = [];
@@ -498,10 +506,8 @@
 
     if (!placeholderMatch) return blockMatch;
     if (!blockMatch) return placeholderMatch;
-
     if (placeholderMatch.start < blockMatch.start) return placeholderMatch;
     if (blockMatch.start < placeholderMatch.start) return blockMatch;
-
     return (placeholderMatch.module?.priority || 0) >= (blockMatch.module?.priority || 0)
       ? placeholderMatch
       : blockMatch;
@@ -515,14 +521,12 @@
 
     while (cursor < text.length) {
       const match = findNextRenderableMatch(modules, text, cursor);
-
       if (!match) {
         html += renderPlainTextSegment(text.slice(cursor), messageId);
         break;
       }
 
       html += renderPlainTextSegment(text.slice(cursor, match.start), messageId);
-
       const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
         messageElement: getDisplayedMessageElement(messageId),
@@ -566,8 +570,8 @@
     textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
     textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
       const moduleId = mountHost.getAttribute('data-story-ui-module');
-      const module = registry.list().find(item => item.id === moduleId);
-      if (!module) return;
+      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
+      if (!module || module.enabled === false) return;
       registry.safelyCall(module, 'mount', mountHost, {
         kind: 'raw',
         rawText,
@@ -583,6 +587,45 @@
 
     mountedModulesByMessage.delete(messageId);
     return false;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderCollapsedBlock(blockText, title) {
+    return `<details class="story-ui-code-placeholder"><summary>${escapeHtml(title)}</summary><pre>${escapeHtml(blockText)}</pre></details>`;
+  }
+
+  function mountCollapsedPlaceholderForMessage(messageId, rawText) {
+    const messageElement = getDisplayedMessageElement(messageId);
+    if (!messageElement) return false;
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return false;
+
+    const registry = getUi()?.registry;
+    if (!registry) return false;
+    const modules = registry
+      .list()
+      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+    if (modules.length === 0) return false;
+
+    let html = String(rawText || '').replace(/\r\n?/g, '\n');
+    modules.forEach(module => {
+      const extracted = extractModuleContent(module, rawText);
+      if (!extracted?.fullMatch) return;
+      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
+      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
+    });
+
+    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
+    textElement.innerHTML = renderPlainTextSegment('', messageId) + html;
+    return true;
   }
 
   function scanMessageIds(messageIds, mode = 'incremental') {
@@ -604,8 +647,6 @@
       mountModulesForMessage(messageId, rawText);
     });
 
-    // 对当前 DOM 中已经显示、但不在主渲染窗口内的旧楼层做轻量折叠占位。
-    // 这里不修改聊天数据、不隐藏楼层，只避免 Story UI 原始标签裸露出来。
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
       if (activeSet.has(messageId)) return;
       const chatMessage = readRawMessage(messageId);
@@ -615,46 +656,6 @@
     });
 
     rememberRecentScannedMessageIds(uniqueIds);
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function renderCollapsedCodePlaceholder(rawText, modules) {
-    const title = modules.length > 0 ? `显示代码块（${modules.length} 个模块片段）` : '显示代码块';
-    const code = escapeHtml(
-      String(rawText || '')
-        .replace(/\r\n?/g, '\n')
-        .trim(),
-    );
-    return `<section class="story-ui-raw-mount story-ui-code-placeholder-mount" data-story-ui-raw-mount="true" data-story-ui-module="raw-code-placeholder"><details class="story-ui-code-placeholder"><summary>${escapeHtml(title)}</summary><pre>${code}</pre></details></section>`;
-  }
-
-  function getRenderableModulesForRawText(rawText) {
-    const registry = getUi()?.registry;
-    if (!registry) return [];
-    return registry
-      .list()
-      .filter(module => module?.id !== 'manager-ui')
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-  }
-
-  function mountCollapsedPlaceholderForMessage(messageId, rawText) {
-    const messageElement = getDisplayedMessageElement(messageId);
-    if (!messageElement) return false;
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-    if (textElement.querySelector?.('.story-ui-code-placeholder-mount')) return true;
-    const modules = getRenderableModulesForRawText(rawText);
-    if (modules.length === 0) return false;
-    textElement.innerHTML = renderCollapsedCodePlaceholder(rawText, modules);
-    return true;
   }
 
   function normalizeScanTargets(input) {
@@ -671,16 +672,6 @@
 
     if (fromScope.length > 0) return fromScope;
     return getRecentMessageIds(INITIAL_SCAN_LIMIT);
-  }
-
-  function getMessageScope(messageId) {
-    if (messageId === undefined || messageId === null) return getStoryDocument();
-    try {
-      const node = window.retrieveDisplayedMessage?.(messageId)?.[0];
-      return node || getStoryDocument();
-    } catch {
-      return getStoryDocument();
-    }
   }
 
   function queueScan(scope = getStoryDocument()) {
@@ -712,7 +703,7 @@
 
   function diagnose() {
     const ui = getUi();
-    const modules = ui?.registry?.list?.() || [];
+    const modules = ui?.registry?.list({ includeDisabled: true }) || [];
     const otherEnv = CONFIG.env === 'test' ? 'prod' : 'test';
     const otherState = state[otherEnv] || null;
     const storyRoots = hostDocument.querySelectorAll('.story-ui-root').length;
@@ -731,7 +722,9 @@
       主题模块就绪: Boolean(ui?.theme),
       当前主题: getTheme(),
       主题键: CONFIG.themeKey,
-      已注册模块: modules.map(module => `${module.id}@${module.version || 'unknown'}`),
+      已注册模块: modules.map(
+        module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
+      ),
       故事UI节点数: storyRoots,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
@@ -750,7 +743,6 @@
 
   function formatDiagnosis(data) {
     const hiddenKeys = new Set(['环境', '环境标识', '入口版本', '入口目录', '加载器地址', 'UI实例来源']);
-
     return Object.entries(data)
       .filter(([key]) => !hiddenKeys.has(key))
       .map(([key, value]) => {
@@ -801,7 +793,6 @@
       managerView?.buildPanelHtml?.({
         displayEnv: CONFIG.displayEnv,
         loaderStatus,
-        theme: getTheme(),
       }) ||
       '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
     root.dataset.jjksManagerFallback = managerView ? 'false' : 'true';
@@ -876,6 +867,12 @@
       const actionButton = target.closest?.('[data-jjks-action]');
       if (actionButton) {
         handleManagerAction(actionButton.dataset.jjksAction);
+        return;
+      }
+
+      const moduleButton = target.closest?.('[data-jjks-module-toggle]');
+      if (moduleButton) {
+        toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'));
       }
     });
 
@@ -905,6 +902,46 @@
     if (root) root.dataset.open = 'false';
   }
 
+  function renderManagerModuleList(root) {
+    const listRoot = root.querySelector('[data-jjks-module-list]');
+    if (!listRoot) return;
+    const registry = getUi()?.registry;
+    const entries = Object.entries(MODULE_LABELS).map(([id, label]) => ({
+      id,
+      label,
+      enabled: registry?.isEnabled?.(id) !== false,
+    }));
+
+    listRoot.innerHTML = entries
+      .map(
+        item => `
+          <div class="jjks-manager-module-item">
+            <span class="jjks-manager-module-name">${escapeHtml(item.label)}</span>
+            <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}">${item.enabled ? '开启' : '关闭'}</button>
+          </div>
+        `,
+      )
+      .join('');
+  }
+
+  function rerenderAllVisibleMessages() {
+    const ids = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
+    messageSignatures.clear();
+    mountedModulesByMessage.clear();
+    scanMessageIds(ids, 'window');
+  }
+
+  function toggleManagerModule(moduleId) {
+    if (!moduleId) return;
+    const registry = getUi()?.registry;
+    if (!registry?.find?.(moduleId)) return;
+    const enabled = !registry.isEnabled(moduleId);
+    registry.setEnabled(moduleId, enabled);
+    rerenderAllVisibleMessages();
+    refreshManagerState();
+    notify(`${MODULE_LABELS[moduleId] || moduleId}${enabled ? ' 已开启' : ' 已关闭'}`, 'success');
+  }
+
   function refreshManagerState() {
     const root = hostDocument.getElementById(CONFIG.managerRootId);
     if (!root) return;
@@ -917,22 +954,17 @@
     };
 
     setText('loader', data.加载器状态);
-    setText('theme', data.当前主题 === 'night' ? '暗色模式' : '米白模式');
     setText('modules', modules.length);
     setText('roots', data.故事UI节点数);
     setText('scanner', data.扫描器就绪 ? '已就绪' : '未就绪');
     setText('theme-ready', data.主题模块就绪 ? '已就绪' : '未就绪');
     setText('scan-window', data.最近扫描窗口 || 0);
 
-    const chips = root.querySelector('[data-jjks-module-chips]');
-    if (chips)
-      chips.innerHTML = modules.length
-        ? modules.map(item => `<span class="jjks-manager-chip">${item}</span>`).join('')
-        : '<span class="jjks-manager-chip">暂无已注册模块</span>';
-
     root.querySelectorAll('[data-jjks-theme]').forEach(button => {
       button.dataset.active = button.dataset.jjksTheme === data.当前主题 ? 'true' : 'false';
     });
+
+    renderManagerModuleList(root);
 
     const warning = root.querySelector('[data-jjks-warning]');
     const otherState = data.另一个环境状态;
@@ -1108,6 +1140,7 @@
       diagnose,
       reloadResources,
       setTheme,
+      toggleManagerModule,
       hostWindow,
       hostDocument,
     };
@@ -1122,7 +1155,6 @@
   }
 
   exposeManagerApi();
-
   registerManagerButton();
   bindEvents();
   ensureLoader()
@@ -1131,5 +1163,7 @@
       queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
       queueRetryRecentScan();
     })
-    .catch(error => console.error(`${logPrefix} 初始化失败`, error));
+    .catch(error => {
+      console.error(`${logPrefix} 初始化 loader 失败`, error);
+    });
 })();
