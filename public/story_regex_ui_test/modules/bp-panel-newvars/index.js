@@ -3,13 +3,14 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'bp-panel-newvars';
-  const MODULE_VERSION = '0.1.0-test-newvars';
+  const MODULE_VERSION = '0.2.0-test-newvars-source-aligned';
   const BLOCK = {
     open: '<bp_panel>',
     close: '</bp_panel>',
   };
 
-  const OUTER_PATTERN = /<bp_panel>\s*【BP战力雷达】\s*【扫描状态】\s*([\s\S]*?)\s*【已扫描目标】\s*([\s\S]*?)\s*<\/bp_panel>/i;
+  const OUTER_PATTERN =
+    /<bp_panel>\s*【BP战力雷达】\s*【扫描状态】\s*([\s\S]*?)\s*【已扫描目标】\s*([\s\S]*?)\s*<\/bp_panel>/i;
   const TARGET_PATTERN =
     /^\s*-\s*名称:\s*([^|\n]+?)\s*\|\s*总BP:\s*([+-]?\d+(?:\.\d+)?)\s*\|\s*战力等级:\s*([^|\n]+?)\s*\|\s*咒术评级:\s*([^\n]+?)\s*\n\s*HP:\s*([^|\n]+?)\s*\/\s*([^|\n]+?)\s*\|\s*防御:\s*([^|\n]+?)\s*\|\s*伤害补正:\s*([^\n]+?)\s*\n\s*咒力:\s*当前([^\/\n]+?)\s*\/\s*有效([^\/\n]+?)\s*\/\s*原始([^|\n]+?)\s*\|\s*精度([^|\n]+?)\s*\|\s*回复([^|\n]+?)\s*\|\s*消耗倍率([^\n]+?)\s*\n\s*肉体:\s*总肉体值_BPA\s*([^|\n]+?)\s*\|\s*基础([^|\n]+?)\s*\|\s*武艺([^|\n]+?)\s*\|\s*阶段([^|\n]+?)\s*\|\s*输出([^|\n]+?)\s*\|\s*防御系数([^\n]+?)\s*\n\s*术式:\s*术式强度_BPB\s*([^|\n]+?)\s*\|\s*名称([^|\n]+?)\s*\|\s*潜力([^(|\n]+?)\(([^)\n]*?)\)\s*\|\s*精通([^(|\n]+?)\(([^)\n]*?)\)\s*\|\s*基础强度([^|\n]+?)\s*\|\s*当前强度([^\n]+?)\s*\n\s*攻击:\s*咒术([^|\n]+?)\s*\|\s*物理([^|\n]+?)\s*\|\s*咒具([^\n]+?)\s*\n\s*反转:\s*掌握([^|\n]+?)\s*\|\s*等级([^|\n]+?)\s*\|\s*回复([^|\n]+?)\s*\|\s*治疗消耗([^|\n]+?)\s*\|\s*熔断修复消耗([^\n]+?)\s*\n\s*熔断:\s*状态([^|\n]+?)\s*\|\s*大脑重置([^|\n]+?)\s*\|\s*回复惩罚([^|\n]+?)\s*\|\s*强度惩罚([^\n]+?)\s*\n\s*特性备注:\s*\n((?:[ \t]*(?:-\s*)?【[^】\n]+】[:：].+(?:\n|$))*)/gm;
   const TRAIT_PATTERN = /^[ \t]*(?:-\s*)?(【[^】\n]+】)[:：]\s*(.*?)\s*$/gm;
@@ -19,7 +20,16 @@
   }
 
   function normalizeText(value) {
-    return String(value || '').replace(/\r\n?/g, '\n').trim();
+    return String(value || '')
+      .replace(/\r\n?/g, '\n')
+      .trim();
+  }
+
+  function clampPercent(value, max) {
+    const num = Number(value);
+    const maxNum = Number(max);
+    if (!Number.isFinite(num) || !Number.isFinite(maxNum) || maxNum <= 0) return '0%';
+    return `${Math.max(0, Math.min(100, (num / maxNum) * 100))}%`;
   }
 
   function parseOuter(rawText) {
@@ -95,17 +105,16 @@
     return targets;
   }
 
-  function clampPercent(value, max) {
-    const num = Number(value);
-    const maxNum = Number(max);
-    if (!Number.isFinite(num) || !Number.isFinite(maxNum) || maxNum <= 0) return '0%';
-    return `${Math.max(0, Math.min(100, (num / maxNum) * 100))}%`;
-  }
-
   function renderTraitList(traits) {
-    if (!traits.length) return '<div class="bp-trait">暂无特性备注</div>';
+    if (!traits.length) {
+      return '<div class="bp-trait"><span class="bp-trait-name">【暂无特性】</span>：暂无特性备注</div>';
+    }
+
     return traits
-      .map(item => `<div class="bp-trait"><span class="bp-trait-name" data-trait="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>：${escapeHtml(item.content)}</div>`)
+      .map(
+        item =>
+          `<div class="bp-trait"><span class="bp-trait-name" data-trait="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>：${escapeHtml(item.content)}</div>`,
+      )
       .join('');
   }
 
@@ -116,24 +125,28 @@
           <span class="bp-target-name" data-rarity="${escapeHtml(target.battleTier)}">✦ ${escapeHtml(target.name)}</span>
           <span class="bp-tier-wrap"><span class="bp-tier"><span class="bp-rarity" data-rarity="${escapeHtml(target.battleTier)}">${escapeHtml(target.battleTier)}</span></span></span>
         </div>
+
         <div class="bp-game-face">
           <div class="bp-face-top">
             <div class="bp-meter-row">
               <div class="bp-meter-head"><span>总BP</span><span class="bp-meter-value">${escapeHtml(target.totalBp)}</span></div>
-              <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-bp" style="width:${clampPercent(target.totalBp, 3001)}"></span></div>
+              <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-bp" style="--bp-meter:${clampPercent(target.totalBp, 3001)};"></span></div>
             </div>
           </div>
+
           <div class="bp-meter-row">
             <div class="bp-meter-head"><span>HP 生命值</span><span class="bp-meter-value">${escapeHtml(target.hpCurrent)} / ${escapeHtml(target.hpMax)}</span></div>
-            <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-hp" style="width:${clampPercent(target.hpCurrent, target.hpMax)}"></span></div>
+            <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-hp" style="--bp-meter:${clampPercent(target.hpCurrent, target.hpMax)};"></span></div>
             <div class="bp-meter-sub">防御 ${escapeHtml(target.defense)} · 伤害补正 ${escapeHtml(target.damageFix)}</div>
           </div>
+
           <div class="bp-meter-row">
             <div class="bp-meter-head"><span>咒力资源</span><span class="bp-meter-value">${escapeHtml(target.ceCurrent)} / ${escapeHtml(target.ceEffective)}</span></div>
-            <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-ce" style="width:${clampPercent(target.ceCurrent, target.ceEffective)}"></span></div>
+            <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-ce" style="--bp-meter:${clampPercent(target.ceCurrent, target.ceEffective)};"></span></div>
             <div class="bp-meter-sub">原始 ${escapeHtml(target.ceRaw)} · 精度 ${escapeHtml(target.ceAccuracy)} · 每轮回复 +${escapeHtml(target.ceRecovery)} · 消耗倍率 ${escapeHtml(target.ceCostRate)}</div>
           </div>
         </div>
+
         <div class="bp-game-grid">
           <div class="bp-game-panel attack">
             <div class="bp-game-title">攻击输出</div>
@@ -143,6 +156,7 @@
               <div class="bp-game-line"><span>咒具值</span><b>${escapeHtml(target.toolValue)}</b></div>
             </div>
           </div>
+
           <div class="bp-game-panel">
             <div class="bp-game-title">肉体与武艺</div>
             <div class="bp-game-lines">
@@ -152,6 +166,7 @@
               <div class="bp-game-line"><span>输出 / 防御系数</span><b>${escapeHtml(target.martialOutput)} / ${escapeHtml(target.martialDefense)}</b></div>
             </div>
           </div>
+
           <div class="bp-game-panel tech">
             <div class="bp-game-title">术式强度</div>
             <div class="bp-game-lines">
@@ -162,6 +177,7 @@
               <div class="bp-game-line"><span>基础 / 当前</span><b>${escapeHtml(target.techniqueBasePower)} / ${escapeHtml(target.techniqueCurrentPower)}</b></div>
             </div>
           </div>
+
           <div class="bp-game-panel support">
             <div class="bp-game-title">反转术式 / 熔断</div>
             <div class="bp-game-lines">
@@ -173,22 +189,26 @@
             </div>
           </div>
         </div>
+
         <div class="bp-trait-title">特性备注</div>
-        <div class="bp-trait-list">${renderTraitList(target.traits)}</div>
+        <div class="bp-trait-list">
+${renderTraitList(target.traits)}
+        </div>
       </div>
     `;
   }
 
   function renderShell(rawText) {
-    const { scanText, targetsRaw } = parseOuter(rawText);
-    const targets = parseTargets(targetsRaw);
+    const data = parseOuter(rawText);
+    const targets = parseTargets(data.targetsRaw);
     const theme = ui.theme?.getTheme?.() || 'day';
     const isNight = theme === 'night';
+    const wrapperClass = isNight ? 'bp-hsr-ui' : 'bp-cream-ui';
     const subtitle = isNight ? 'NEW VARIABLE BATTLE POINT TERMINAL · BEFORE WLOG' : '实时战力评估 · 自动嵌入';
     const footer = isNight ? '✧ NEW VARIABLE BATTLE POINT RADAR TERMINAL ✧' : '✧ NEW VARIABLE BATTLE POINT RADAR ✧';
 
     return `
-      <section class="story-ui-root story-ui-bp story-ui-bp-newvars story-ui-${theme}" data-story-ui-module="${MODULE_ID}">
+      <div class="story-ui-root story-ui-bp story-ui-bp-newvars bp-radar-widget ${wrapperClass} bp-newvars-ui" data-story-ui-module="${MODULE_ID}">
         <details>
           <summary class="bp-summary" aria-label="展开或收起BP战力雷达">
             <span class="bp-toggle-icon">✦</span>
@@ -198,27 +218,33 @@
             </span>
             <span class="bp-toggle-state toggle-icon">▼</span>
           </summary>
+
           <section class="bp-panel">
             <div class="bp-body">
               <article class="bp-card">
                 <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">扫描状态</span></div>
-                <div class="bp-scan-text">${escapeHtml(scanText)}</div>
+                <div class="bp-scan-text">${escapeHtml(data.scanText)}</div>
               </article>
+
               <article class="bp-card">
                 <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">已扫描目标</span></div>
-                <div class="bp-target-grid">${targets.length ? targets.map(renderTargetCard).join('') : `<div class="bp-empty">${escapeHtml(targetsRaw || '暂无已扫描目标')}</div>`}</div>
+                <div class="bp-target-grid">
+${targets.length ? targets.map(renderTargetCard).join('') : `<div class="bp-target-card"><div class="bp-trait">${escapeHtml(data.targetsRaw || '暂无已扫描目标')}</div></div>`}
+                </div>
               </article>
             </div>
+
             <footer class="bp-panel-foot">${footer}</footer>
           </section>
         </details>
-      </section>
+      </div>
     `;
   }
 
   function renderContentNode(content, context = {}) {
     const rawText = context?.rawText || `${BLOCK.open}${content}${BLOCK.close}`;
     if (!/总BP:/.test(rawText) || !/总肉体值_BPA/.test(rawText)) return null;
+
     const wrapper = dom.createElement('div', {
       className: 'story-ui-bp-newvars-wrapper',
       html: renderShell(rawText),
@@ -229,7 +255,8 @@
   }
 
   function rerender(node) {
-    const root = node?.querySelector?.('.story-ui-bp-newvars') || node?.querySelector?.('.story-ui-root.story-ui-bp-newvars');
+    const root =
+      node?.querySelector?.('.story-ui-bp-newvars') || node?.querySelector?.('.story-ui-root.story-ui-bp-newvars');
     if (!root) return;
     const rawText = root.dataset.storyUiBpRaw ?? '';
     const rerendered = ui.theme?.rerenderWithPreservedDetails?.(root, () => {
@@ -244,9 +271,14 @@
 
   function mount(node) {
     ui.theme?.applyTheme?.(node);
+    const root =
+      node?.querySelector?.('.story-ui-bp-newvars') || node?.querySelector?.('.story-ui-root.story-ui-bp-newvars');
+    if (!root) return;
     if (node?.dataset?.storyUiBpNewvarsThemeBound) return;
     node.dataset.storyUiBpNewvarsThemeBound = 'true';
-    document.addEventListener('story-ui-theme-changed', () => rerender(node));
+    document.addEventListener('story-ui-theme-changed', () => {
+      rerender(node);
+    });
   }
 
   ui.registry?.register?.({
