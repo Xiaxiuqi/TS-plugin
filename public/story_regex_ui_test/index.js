@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'test',
     displayEnv: '测试版',
-    version: 'test',
+    version: 'test-20260513-raw-hide-v2',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_test/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_test/',
     globalKey: 'StoryRegexUI',
@@ -1117,20 +1117,27 @@
     messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(restoreHiddenSourceNode);
   }
 
+  function hideAnchorOnlyRangeWithMountHost(textElement, match, mountHost) {
+    const candidates = buildAnchorCandidates(match);
+    const found = findAnchorRange(textElement, candidates);
+    if (!found?.range) return null;
+
+    const hidden = createHiddenSourcePlaceholder(match?.module?.id, found.candidate);
+    const fragment = found.range.extractContents();
+    hidden.appendChild(fragment);
+    found.range.insertNode(hidden);
+    hidden.after(mountHost);
+    return { mode: 'anchor-token-hidden', anchor: found.candidate };
+  }
+
   function insertMountHostNearAnchor(textElement, match, mountHost, nextMatch) {
     const sourceRange = findVisibleSourceRangeForMatch(textElement, match, nextMatch);
     if (sourceRange?.range) {
       return hideRangeWithMountHost(sourceRange.range, match.module.id, sourceRange.anchor, mountHost);
     }
 
-    const candidates = buildAnchorCandidates(match);
-    const found = findAnchorRange(textElement, candidates);
-    if (found?.range) {
-      const insertionRange = found.range.cloneRange();
-      insertionRange.collapse(true);
-      insertionRange.insertNode(mountHost);
-      return { mode: 'anchor-insert', anchor: found.candidate };
-    }
+    const anchorHidden = hideAnchorOnlyRangeWithMountHost(textElement, match, mountHost);
+    if (anchorHidden) return anchorHidden;
 
     textElement.appendChild(mountHost);
     return { mode: 'append-fallback', anchor: '' };

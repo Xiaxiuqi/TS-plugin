@@ -24,7 +24,7 @@
 
   const state = {
     baseUrl,
-    version: 'test',
+    version: 'test-20260513-raw-hide-v2',
     loadedCss: new Set(),
     loadedScripts: new Set(),
     modules: [
