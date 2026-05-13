@@ -816,6 +816,80 @@
     return host;
   }
 
+  function normalizeAnchorText(value) {
+    return String(value || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
+      .replace(/[ \t\f\v]+/g, ' ')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .trim();
+  }
+
+  function buildAnchorCandidates(match) {
+    const sources = [match?.content, match?.fullMatch].map(normalizeAnchorText).filter(Boolean);
+    const candidates = [];
+    sources.forEach(source => {
+      [160, 120, 80, 48, 32].forEach(size => {
+        const candidate = source.slice(0, size).trim();
+        if (candidate.length >= 12 && !candidates.includes(candidate)) candidates.push(candidate);
+      });
+      const firstMeaningfulLine = source
+        .split('\n')
+        .map(line => line.trim())
+        .find(line => line.length >= 8);
+      if (firstMeaningfulLine && !candidates.includes(firstMeaningfulLine)) candidates.push(firstMeaningfulLine);
+    });
+    return candidates;
+  }
+
+  function findAnchorRange(textElement, candidates) {
+    for (const candidate of candidates) {
+      const range = findTextRange(textElement, candidate);
+      if (range) return { range, candidate };
+    }
+    return null;
+  }
+
+  function insertMountHostNearAnchor(textElement, match, mountHost) {
+    const candidates = buildAnchorCandidates(match);
+    const found = findAnchorRange(textElement, candidates);
+    if (found?.range) {
+      found.range.collapse(true);
+      found.range.insertNode(mountHost);
+      return { mode: 'anchor', anchor: found.candidate };
+    }
+
+    textElement.appendChild(mountHost);
+    return { mode: 'fallback', anchor: '' };
+  }
+
+  function mountSingleModuleNonDestructively({ match, rawText, messageId, messageElement, textElement }) {
+    if (!match?.module || match.module.enabled === false) {
+      return { status: 'skipped', moduleId: match?.module?.id || '', reason: 'disabled' };
+    }
+
+    const rendered = buildNodeForModule(match.module, rawText, {
+      messageId,
+      messageElement,
+      theme: getUi()?.theme?.getTheme?.() || 'day',
+    });
+    const moduleHtml = nodeToHtml(rendered);
+    if (!moduleHtml) {
+      return { status: 'skipped', moduleId: match.module.id, reason: 'empty-render' };
+    }
+
+    const mountHost = createRawMountHost(match.module, moduleHtml);
+    const inserted = insertMountHostNearAnchor(textElement, match, mountHost);
+    return {
+      status: inserted.mode === 'anchor' ? 'mounted' : 'anchor-fallback',
+      moduleId: match.module.id,
+      anchor: inserted.anchor,
+      mountHost,
+    };
+  }
+
   function mountStoryUiHosts(textElement, registry, rawText, messageId) {
     const ui = getUi();
     textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
@@ -868,19 +942,43 @@
       return false;
     }
 
-    const { html, mounted } = renderMessageHtmlByModules(messageId, rawText, modules);
-    textElement.innerHTML = html;
+    clearMountedStoryUi(messageElement);
+
+    const mounted = [];
+    const anchorFallback = [];
+    const skipped = [];
+    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
+      const result = mountSingleModuleNonDestructively({ match, rawText, messageId, messageElement, textElement });
+      if (result.status === 'mounted') mounted.push(result.moduleId);
+      if (result.status === 'anchor-fallback') {
+        mounted.push(result.moduleId);
+        anchorFallback.push(result.moduleId);
+      }
+      if (result.status === 'skipped') skipped.push(`${result.moduleId}:${result.reason}`);
+    });
 
     mountStoryUiHosts(textElement, registry, rawText, messageId);
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
-      updateMessageRenderState(messageId, { mounted, avoided: [], collapsed: [], cleared: false, signature });
+      updateMessageRenderState(messageId, {
+        mounted,
+        avoided: anchorFallback,
+        collapsed: skipped,
+        cleared: false,
+        signature,
+      });
       return true;
     }
 
     mountedModulesByMessage.delete(messageId);
-    updateMessageRenderState(messageId, { mounted: [], avoided: [], collapsed: [], cleared: false, signature });
+    updateMessageRenderState(messageId, {
+      mounted: [],
+      avoided: anchorFallback,
+      collapsed: skipped,
+      cleared: false,
+      signature,
+    });
     return false;
   }
 
@@ -919,17 +1017,12 @@
       return false;
     }
 
-    const { html, collapsed } = renderCollapsedHtmlByModules(messageId, rawText, modules);
-    textElement.innerHTML = html;
-
-    if (collapsed.length === 0) {
-      collapsedMessageSignatures.delete(messageId);
-      return false;
-    }
-
+    // 非破坏式挂载模型下，旧消息折叠不能再重写原版正则 DOM。
+    // 折叠功能后续只应作用于脚本自己的挂载区；这里先记录可折叠模块，不改正文。
+    const collapsed = getRenderableMatchesInOrder(modules, rawText).map(match => match.module.id);
     collapsedMessageSignatures.set(messageId, signature);
     updateMessageRenderState(messageId, { collapsed, signature });
-    return true;
+    return false;
   }
 
   function scanMessageIds(messageIds, mode = 'incremental') {
