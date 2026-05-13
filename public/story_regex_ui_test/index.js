@@ -882,6 +882,69 @@
     return candidates;
   }
 
+  function buildMatchStartCandidates(match) {
+    if (!match) return [];
+    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
+    const candidates = [];
+    sources.forEach(source => {
+      source
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length >= 2)
+        .slice(0, 8)
+        .forEach(line => {
+          if (!candidates.includes(line)) candidates.push(line);
+        });
+      [160, 120, 80, 48, 32, 16].forEach(size => {
+        const candidate = source.slice(0, size).trim();
+        if (candidate.length >= 2 && !candidates.includes(candidate)) candidates.push(candidate);
+      });
+    });
+    if (match.singleTag && !candidates.includes(String(match.singleTag))) candidates.push(String(match.singleTag));
+    return candidates;
+  }
+
+  function buildMatchEndCandidates(match) {
+    if (!match) return [];
+    const sources = [match.content, match.fullMatch].map(normalizeAnchorText).filter(Boolean);
+    const candidates = [];
+    sources.forEach(source => {
+      source
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length >= 2)
+        .slice(-12)
+        .reverse()
+        .forEach(line => {
+          if (!candidates.includes(line)) candidates.push(line);
+        });
+      [240, 180, 120, 80, 48, 32].forEach(size => {
+        const candidate = source.slice(Math.max(0, source.length - size)).trim();
+        if (candidate.length >= 2 && !candidates.includes(candidate)) candidates.push(candidate);
+      });
+    });
+    return candidates;
+  }
+
+  function findFirstCandidateIndex(combined, candidates, fromIndex = 0) {
+    return (
+      (candidates || [])
+        .map(candidate => ({ candidate, index: combined.indexOf(candidate, fromIndex) }))
+        .filter(item => item.index >= 0)
+        .sort((lhs, rhs) => lhs.index - rhs.index || rhs.candidate.length - lhs.candidate.length)[0] || null
+    );
+  }
+
+  function findLastCandidateEnd(combined, candidates, fromIndex = 0) {
+    return (
+      (candidates || [])
+        .map(candidate => ({ candidate, index: combined.indexOf(candidate, fromIndex) }))
+        .filter(item => item.index >= 0)
+        .map(item => ({ ...item, end: item.index + item.candidate.length }))
+        .sort((lhs, rhs) => rhs.end - lhs.end || rhs.candidate.length - lhs.candidate.length)[0] || null
+    );
+  }
+
   function findAnchorRange(textElement, candidates) {
     for (const candidate of candidates) {
       const range = findTextRange(textElement, candidate);
@@ -890,33 +953,36 @@
     return null;
   }
 
-  function findStoryEngineVisibleBlockRange(textElement) {
+  function findVisibleSourceRangeForMatch(textElement, match, nextMatch) {
     const { combined, chunks } = buildTextIndex(textElement);
-    const startTokens = ['━━ 1.全域锚定 ━━', '[时空]:'];
-    const endTokens = [
-      '━━ 1.状态',
-      '━━ 1. 状态',
-      '━━ 1.世界状态',
-      '━━ 1. 世界状态',
-      'JSONPatch',
-      '<StatusPlaceHolderImpl/>',
-      'StatusPlaceHolderImpl',
-    ];
+    const start = findFirstCandidateIndex(combined, buildMatchStartCandidates(match));
+    if (!start) return null;
 
-    const startIndex = startTokens
-      .map(token => combined.indexOf(token))
-      .filter(index => index >= 0)
-      .sort((lhs, rhs) => lhs - rhs)[0];
-    if (startIndex === undefined) return null;
+    const nextStart = findFirstCandidateIndex(
+      combined,
+      buildMatchStartCandidates(nextMatch),
+      start.index + start.candidate.length,
+    );
+    let endIndex = nextStart?.index ?? -1;
 
-    const endIndex = endTokens
-      .map(token => combined.indexOf(token, startIndex + 1))
-      .filter(index => index > startIndex)
-      .sort((lhs, rhs) => lhs - rhs)[0];
-    if (endIndex === undefined) return null;
+    if (endIndex <= start.index) {
+      const ownEnd = findLastCandidateEnd(
+        combined,
+        buildMatchEndCandidates(match),
+        start.index + start.candidate.length,
+      );
+      endIndex = ownEnd?.end ?? -1;
+    }
 
-    const range = createRangeFromTextOffsets(chunks, startIndex, endIndex);
-    return range ? { range, anchor: combined.slice(startIndex, Math.min(startIndex + 120, endIndex)) } : null;
+    if (endIndex <= start.index) return null;
+
+    const range = createRangeFromTextOffsets(chunks, start.index, endIndex);
+    return range
+      ? {
+          range,
+          anchor: combined.slice(start.index, Math.min(start.index + 120, endIndex)),
+        }
+      : null;
   }
 
   function createHiddenSourcePlaceholder(moduleId, anchorText) {
@@ -954,13 +1020,12 @@
     messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(restoreHiddenSourceNode);
   }
 
-  function insertMountHostNearAnchor(textElement, match, mountHost) {
-    if (match?.module?.id === 'story-engine') {
-      const storyBlock = findStoryEngineVisibleBlockRange(textElement);
-      if (storyBlock?.range) {
-        return hideRangeWithMountHost(storyBlock.range, match.module.id, storyBlock.anchor, mountHost);
-      }
+  function insertMountHostNearAnchor(textElement, match, mountHost, nextMatch) {
+    const sourceRange = findVisibleSourceRangeForMatch(textElement, match, nextMatch);
+    if (sourceRange?.range) {
+      return hideRangeWithMountHost(sourceRange.range, match.module.id, sourceRange.anchor, mountHost);
     }
+
     const candidates = buildAnchorCandidates(match);
     const found = findAnchorRange(textElement, candidates);
     if (found?.range) {
@@ -972,7 +1037,7 @@
     return { mode: 'fallback', anchor: '' };
   }
 
-  function mountSingleModuleNonDestructively({ match, rawText, messageId, messageElement, textElement }) {
+  function mountSingleModuleNonDestructively({ match, nextMatch, rawText, messageId, messageElement, textElement }) {
     if (!match?.module || match.module.enabled === false) {
       return { status: 'skipped', moduleId: match?.module?.id || '', reason: 'disabled' };
     }
@@ -988,7 +1053,7 @@
     }
 
     const mountHost = createRawMountHost(match.module, moduleHtml);
-    const inserted = insertMountHostNearAnchor(textElement, match, mountHost);
+    const inserted = insertMountHostNearAnchor(textElement, match, mountHost, nextMatch);
     return {
       status: inserted.mode === 'anchor-hidden' ? 'mounted' : 'anchor-fallback',
       moduleId: match.module.id,
@@ -1054,8 +1119,16 @@
     const mounted = [];
     const anchorFallback = [];
     const skipped = [];
-    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
-      const result = mountSingleModuleNonDestructively({ match, rawText, messageId, messageElement, textElement });
+    const renderableMatches = getRenderableMatchesInOrder(modules, rawText);
+    renderableMatches.forEach((match, index) => {
+      const result = mountSingleModuleNonDestructively({
+        match,
+        nextMatch: renderableMatches[index + 1] || null,
+        rawText,
+        messageId,
+        messageElement,
+        textElement,
+      });
       if (result.status === 'mounted') mounted.push(result.moduleId);
       if (result.status === 'anchor-fallback') {
         mounted.push(result.moduleId);
@@ -1150,7 +1223,7 @@
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
+      if (options.force !== true && previousSignature === signature && hasDisplayHost && hasMountedUi) return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
@@ -1718,7 +1791,10 @@
       if (refreshed) {
         await new Promise(resolve => window.setTimeout(resolve, 120));
       }
-      queueScan(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      await scanMessageIds(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT), 'window', {
+        refreshNative: false,
+        force: true,
+      });
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
@@ -1732,7 +1808,18 @@
 
   function handleManagerAction(action) {
     if (action === 'scan') {
-      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      (async () => {
+        const ids = getRecentMessageIds(INITIAL_SCAN_LIMIT);
+        await scanMessageIds(ids, 'message_ids', {
+          refreshNative: true,
+          force: true,
+        });
+        refreshManagerState();
+      })().catch(error => {
+        lastError = error?.message || String(error);
+        console.error(`${logPrefix} 手动重扫失败`, error);
+        refreshManagerState();
+      });
       notify('已触发手动重扫', 'success');
       return;
     }
