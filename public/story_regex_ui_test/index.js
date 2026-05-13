@@ -852,13 +852,32 @@
     return null;
   }
 
+  function createHiddenSourcePlaceholder(moduleId, anchorText) {
+    const hidden = createElementInHost('span');
+    hidden.dataset.storyUiHiddenSource = 'true';
+    hidden.dataset.storyUiModule = moduleId || '';
+    hidden.dataset.storyUiAnchorPreview = String(anchorText || '').slice(0, 120);
+    hidden.hidden = true;
+    hidden.setAttribute('aria-hidden', 'true');
+    return hidden;
+  }
+
+  function clearStoryUiInjectedNodes(messageElement) {
+    if (!messageElement) return;
+    messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+    messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(node => node.remove());
+  }
+
   function insertMountHostNearAnchor(textElement, match, mountHost) {
     const candidates = buildAnchorCandidates(match);
     const found = findAnchorRange(textElement, candidates);
     if (found?.range) {
-      found.range.collapse(true);
-      found.range.insertNode(mountHost);
-      return { mode: 'anchor', anchor: found.candidate };
+      const insertionRange = found.range.cloneRange();
+      const hidden = createHiddenSourcePlaceholder(match?.module?.id, found.candidate);
+      insertionRange.deleteContents();
+      insertionRange.insertNode(mountHost);
+      insertionRange.insertNode(hidden);
+      return { mode: 'anchor-hidden', anchor: found.candidate };
     }
 
     textElement.appendChild(mountHost);
@@ -883,7 +902,7 @@
     const mountHost = createRawMountHost(match.module, moduleHtml);
     const inserted = insertMountHostNearAnchor(textElement, match, mountHost);
     return {
-      status: inserted.mode === 'anchor' ? 'mounted' : 'anchor-fallback',
+      status: inserted.mode === 'anchor-hidden' ? 'mounted' : 'anchor-fallback',
       moduleId: match.module.id,
       anchor: inserted.anchor,
       mountHost,
@@ -942,7 +961,7 @@
       return false;
     }
 
-    clearMountedStoryUi(messageElement);
+    clearStoryUiInjectedNodes(messageElement);
 
     const mounted = [];
     const anchorFallback = [];
