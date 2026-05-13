@@ -630,7 +630,7 @@
         theme: getUi()?.theme?.getTheme?.() || 'day',
       });
       const moduleHtml = nodeToHtml(rendered);
-      if (module.enabled === false) {
+      if (match.module.enabled === false) {
         textWithPlaceholders += '';
       } else if (moduleHtml) {
         const token = `JJKSSTORYUIMOUNT${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
@@ -990,7 +990,9 @@
         scanMessageIds(messageIds, Array.isArray(scope) || typeof scope === 'number' ? 'message_ids' : 'window');
         refreshManagerState();
       } catch (error) {
+        lastError = error?.message || String(error);
         console.error(`${logPrefix} 扫描失败`, error);
+        refreshManagerState();
       }
     });
   }
