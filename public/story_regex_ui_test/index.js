@@ -557,6 +557,17 @@
       hostWindow.TavernHelper?.formatAsDisplayedMessage ||
       window.TavernHelper?.formatAsDisplayedMessage;
 
+    const replaceMountToken = (sourceHtml, token, replacementHtml) => {
+      const escapedToken = escapeRegex(token);
+      return String(sourceHtml || '')
+        .replace(new RegExp(`<p[^>]*>\\s*${escapedToken}\\s*</p>`, 'g'), replacementHtml)
+        .replace(new RegExp(`<span[^>]*>\\s*${escapedToken}\\s*</span>`, 'g'), replacementHtml)
+        .split(token)
+        .join(replacementHtml)
+        .split(escapeHtml(token))
+        .join(replacementHtml);
+    };
+
     while (cursor < text.length) {
       const match = findNextRenderableMatch(modules, text, cursor);
       if (!match) {
@@ -572,7 +583,7 @@
       });
       const moduleHtml = nodeToHtml(rendered);
       if (moduleHtml) {
-        const token = `__JJKS_STORY_UI_MOUNT_${CONFIG.env}_${messageId}_${replacements.length}__`;
+        const token = `JJKSSTORYUIMOUNT${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
         textWithPlaceholders += token;
         replacements.push({
           token,
@@ -598,7 +609,7 @@
     }
 
     replacements.forEach(({ token, html: replacementHtml }) => {
-      html = html.split(token).join(replacementHtml);
+      html = replaceMountToken(html, token, replacementHtml);
     });
 
     return { html, mounted };
