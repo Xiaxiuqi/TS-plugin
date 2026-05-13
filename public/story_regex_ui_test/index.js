@@ -836,8 +836,11 @@
     for (const candidate of candidates) {
       const range = findTextRange(textElement, candidate);
       if (!range) continue;
-      range.deleteContents();
+      const hidden = createHiddenSourcePlaceholder('legacy-replace', candidate);
+      const fragment = range.extractContents();
+      hidden.appendChild(fragment);
       range.insertNode(hostNode);
+      range.insertNode(hidden);
       return true;
     }
     return false;
@@ -926,32 +929,43 @@
     return hidden;
   }
 
+  function restoreHiddenSourceNode(hiddenNode) {
+    if (!hiddenNode) return;
+    const children = Array.from(hiddenNode.childNodes || []);
+    if (children.length > 0) {
+      hiddenNode.replaceWith(...children);
+    } else {
+      hiddenNode.remove();
+    }
+  }
+
+  function hideRangeWithMountHost(range, moduleId, anchorText, mountHost) {
+    const hidden = createHiddenSourcePlaceholder(moduleId, anchorText);
+    const fragment = range.extractContents();
+    hidden.appendChild(fragment);
+    range.insertNode(mountHost);
+    range.insertNode(hidden);
+    return { mode: 'anchor-hidden', anchor: anchorText || '' };
+  }
+
   function clearStoryUiInjectedNodes(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
-    messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(node => node.remove());
+    messageElement.querySelectorAll?.('[data-story-ui-hidden-source="true"]').forEach(restoreHiddenSourceNode);
   }
 
   function insertMountHostNearAnchor(textElement, match, mountHost) {
     if (match?.module?.id === 'story-engine') {
       const storyBlock = findStoryEngineVisibleBlockRange(textElement);
       if (storyBlock?.range) {
-        const hidden = createHiddenSourcePlaceholder(match.module.id, storyBlock.anchor);
-        storyBlock.range.deleteContents();
-        storyBlock.range.insertNode(mountHost);
-        storyBlock.range.insertNode(hidden);
-        return { mode: 'anchor-hidden', anchor: storyBlock.anchor };
+        return hideRangeWithMountHost(storyBlock.range, match.module.id, storyBlock.anchor, mountHost);
       }
     }
     const candidates = buildAnchorCandidates(match);
     const found = findAnchorRange(textElement, candidates);
     if (found?.range) {
       const insertionRange = found.range.cloneRange();
-      const hidden = createHiddenSourcePlaceholder(match?.module?.id, found.candidate);
-      insertionRange.deleteContents();
-      insertionRange.insertNode(mountHost);
-      insertionRange.insertNode(hidden);
-      return { mode: 'anchor-hidden', anchor: found.candidate };
+      return hideRangeWithMountHost(insertionRange, match?.module?.id, found.candidate, mountHost);
     }
 
     textElement.appendChild(mountHost);
@@ -1118,10 +1132,12 @@
     return false;
   }
 
-  function scanMessageIds(messageIds, mode = 'incremental') {
+  async function scanMessageIds(messageIds, mode = 'incremental') {
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
+    await refreshRenderedMessagesForNativeRender(uniqueIds);
+
     const activeSet = new Set(uniqueIds);
     const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
 
@@ -1173,7 +1189,7 @@
       scanQueued = false;
       try {
         await ensureLoader();
-        scanMessageIds(messageIds, Array.isArray(scope) || typeof scope === 'number' ? 'message_ids' : 'window');
+        await scanMessageIds(messageIds, Array.isArray(scope) || typeof scope === 'number' ? 'message_ids' : 'window');
         refreshManagerState();
       } catch (error) {
         lastError = error?.message || String(error);
@@ -1524,7 +1540,7 @@
       });
     }
 
-    scanMessageIds(ids, 'window');
+    await scanMessageIds(ids, 'window');
   }
 
   function getExclusiveModuleId(moduleId) {
