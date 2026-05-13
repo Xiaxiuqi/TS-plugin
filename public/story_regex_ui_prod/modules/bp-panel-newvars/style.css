@@ -1,0 +1,1278 @@
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui {
+  --bp-bg: #f7f1e6;
+  --bp-panel: rgba(251, 247, 238, 0.97);
+  --bp-card: rgba(255, 253, 247, 0.86);
+  --bp-card-2: rgba(236, 226, 207, 0.46);
+  --bp-text: #342f29;
+  --bp-muted: #756b60;
+  --bp-faint: #a39889;
+  --bp-sage: #7f927c;
+  --bp-blue: #748b9d;
+  --bp-rose: #a07e74;
+  --bp-gold: #b79a62;
+  --bp-green: #7f927c;
+  --bp-purple: #8a819d;
+  --bp-line: rgba(117, 107, 96, 0.13);
+  --bp-shadow: 0 4px 10px rgba(71, 58, 42, 0.07);
+  --bp-shadow-soft: 0 2px 6px rgba(71, 58, 42, 0.045);
+  width: 100%;
+  margin: 0.8em auto;
+  display: flex;
+  justify-content: center;
+  color: var(--bp-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+  line-height: 1.52;
+  box-sizing: border-box;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui,
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui * {
+  box-sizing: border-box;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui details {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    radial-gradient(circle at top left, rgba(160, 126, 116, 0.12), transparent 30%), var(--bp-panel);
+  box-shadow: var(--bp-shadow);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui summary {
+  list-style: none;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-summary {
+  width: 100%;
+  min-height: 38px;
+  cursor: pointer;
+  user-select: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--bp-text);
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
+  transition:
+    background 0.22s ease,
+    filter 0.22s ease;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-summary:hover {
+  filter: brightness(1.015);
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.86), rgba(255, 253, 247, 0.56));
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-toggle-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  color: var(--bp-rose);
+  background: rgba(160, 126, 116, 0.12);
+  font-size: 15px;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-summary-text {
+  min-width: 0;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-toggle-title {
+  display: block;
+  margin: 0;
+  color: var(--bp-text);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-toggle-subtitle {
+  display: block;
+  margin-top: 1px;
+  color: var(--bp-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .toggle-icon {
+  color: var(--bp-gold);
+  transition: transform 0.24s ease;
+  flex: 0 0 auto;
+  font-size: 12px;
+  letter-spacing: 0;
+  opacity: 1;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui details:not([open]) .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-panel {
+  margin: 0;
+  width: 100%;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-body {
+  padding: 10px 12px 12px;
+  display: grid;
+  gap: 9px;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-card {
+  min-width: 0;
+  border-radius: 8px;
+  border: none;
+  background: var(--bp-card);
+  box-shadow: var(--bp-shadow-soft);
+  overflow: hidden;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-card-head {
+  padding: 8px 10px 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.52), transparent);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-card-dot {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+  background: var(--bp-rose);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-card-title {
+  color: var(--bp-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-scan-text {
+  padding: 8px 10px 9px;
+  color: var(--bp-text);
+  background: rgba(255, 253, 247, 0.42);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  line-height: 1.62;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-grid {
+  padding: 8px 9px 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+  gap: 8px;
+  background: rgba(255, 253, 247, 0.32);
+  white-space: pre-wrap;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card {
+  min-width: 0;
+  padding: 8px 9px 9px;
+  border-radius: 7px;
+  color: var(--bp-text);
+  font-size: 12.1px;
+  line-height: 1.34;
+  background: rgba(255, 253, 247, 0.82);
+  border: none;
+  box-shadow:
+    inset 4px 0 0 rgba(160, 126, 116, 0.5),
+    var(--bp-shadow-soft);
+  white-space: normal;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 7px;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  box-shadow: inset 0 -1px 0 rgba(117, 107, 96, 0.12);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name {
+  min-width: 0;
+  color: var(--bp-blue);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-tier-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  align-items: center;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-tier {
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 10.8px;
+  font-weight: 800;
+  line-height: 1.32;
+  white-space: nowrap;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-face {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding: 7px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.62), transparent 46%), rgba(236, 226, 207, 0.34);
+  box-shadow:
+    inset 0 0 0 1px rgba(117, 107, 96, 0.075),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-face-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  align-items: start;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-row {
+  display: grid;
+  gap: 3px;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--bp-muted);
+  font-size: 10.6px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-value {
+  color: var(--bp-text);
+  font-size: 11.4px;
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(117, 107, 96, 0.14);
+  box-shadow: inset 0 1px 2px rgba(71, 58, 42, 0.12);
+  position: relative;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-fill {
+  display: block;
+  height: 100%;
+  width: var(--bp-meter);
+  border-radius: inherit;
+  position: relative;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+  opacity: 0.58;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-fill.bp-fill-bp {
+  background: linear-gradient(90deg, rgba(160, 126, 116, 0.62), rgba(183, 154, 98, 0.88));
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-fill.bp-fill-hp {
+  background: linear-gradient(90deg, rgba(160, 96, 88, 0.74), rgba(193, 126, 111, 0.86));
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-fill.bp-fill-ce {
+  background: linear-gradient(90deg, rgba(116, 139, 157, 0.72), rgba(127, 146, 124, 0.86));
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-meter-sub {
+  color: var(--bp-faint);
+  font-size: 10px;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel {
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.52), transparent 58%), rgba(255, 253, 247, 0.62);
+  box-shadow:
+    inset 2px 0 0 rgba(116, 139, 157, 0.36),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel.attack {
+  box-shadow:
+    inset 2px 0 0 rgba(160, 126, 116, 0.5),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel.tech {
+  box-shadow:
+    inset 2px 0 0 rgba(138, 129, 157, 0.42),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel.support {
+  box-shadow:
+    inset 2px 0 0 rgba(127, 146, 124, 0.46),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-title {
+  margin: -2px -3px 5px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  color: var(--bp-blue);
+  font-size: 10.4px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  background: linear-gradient(90deg, rgba(116, 139, 157, 0.16), rgba(255, 253, 247, 0.5), transparent);
+  box-shadow: inset 2px 0 0 rgba(116, 139, 157, 0.44);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-lines {
+  display: grid;
+  gap: 2px;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  align-items: baseline;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--bp-muted);
+  font-size: 10.6px;
+  line-height: 1.22;
+  background: rgba(236, 226, 207, 0.46);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-line:nth-child(even) {
+  background: rgba(255, 253, 247, 0.82);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-line b {
+  color: var(--bp-text);
+  font-size: 11.6px;
+  font-weight: 900;
+  text-align: right;
+  word-break: break-word;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-title {
+  margin: 5px 0 5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--bp-blue);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, rgba(116, 139, 157, 0.14), rgba(255, 253, 247, 0.5), transparent);
+  box-shadow: inset 2px 0 0 rgba(116, 139, 157, 0.46);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-list {
+  display: grid;
+  gap: 5px;
+  white-space: normal;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait {
+  padding: 6px 7px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(116, 139, 157, 0.08), rgba(255, 253, 247, 0.72));
+  box-shadow:
+    inset 2px 0 0 rgba(116, 139, 157, 0.34),
+    inset 0 0 0 1px rgba(117, 107, 96, 0.07);
+  font-size: 11.5px;
+  line-height: 1.48;
+  word-break: break-word;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-name {
+  display: inline;
+  margin-right: 2px;
+  padding: 0;
+  border-radius: 0;
+  color: var(--bp-muted);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-name[data-trait*='天与咒缚'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-name[data-trait*='六眼'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-name[data-trait*='黑闪眷顾者'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-name[data-trait*='九相图'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-trait-name[data-trait*='受肉体'] {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: var(--bp-blue);
+  background: rgba(116, 139, 157, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(116, 139, 157, 0.22);
+  font-weight: 900;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-weight: 900;
+  line-height: 1.28;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='S级·论外'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='出神入化'] {
+  color: #b54a4a;
+  background: rgba(181, 74, 74, 0.18);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='AA级·强特级'] {
+  color: #a6782a;
+  background: rgba(183, 154, 98, 0.25);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='A级·特级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='出类拔萃'] {
+  color: #8f5fa8;
+  background: rgba(138, 129, 157, 0.24);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='B级·一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='登堂入室'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='精通'] {
+  color: #527999;
+  background: rgba(116, 139, 157, 0.22);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='D级·二级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='E级·三级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='熟练'] {
+  color: #617f58;
+  background: rgba(127, 146, 124, 0.2);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='F级·四级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='入门'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='未入门'] {
+  color: #6f6255;
+  background: rgba(117, 107, 96, 0.14);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='S级·论外'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='出神入化'] {
+  box-shadow:
+    inset 4px 0 0 #b54a4a,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='AA级·强特级'] {
+  box-shadow:
+    inset 4px 0 0 #a6782a,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='A级·特级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='出类拔萃'] {
+  box-shadow:
+    inset 4px 0 0 #8f5fa8,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='B级·一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='登堂入室'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='精通'] {
+  box-shadow:
+    inset 4px 0 0 #527999,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='D级·二级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='E级·三级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='熟练'] {
+  box-shadow:
+    inset 4px 0 0 #617f58,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='F级·四级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='入门'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card[data-rarity='未入门'] {
+  box-shadow:
+    inset 4px 0 0 #6f6255,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='S级·论外'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='出神入化'] {
+  color: #b54a4a;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='AA级·强特级'] {
+  color: #a6782a;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='A级·特级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='出类拔萃'] {
+  color: #8f5fa8;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='B级·一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='登堂入室'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='精通'] {
+  color: #527999;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='D级·二级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='E级·三级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='熟练'] {
+  color: #617f58;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='F级·四级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='入门'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-name[data-rarity='未入门'] {
+  color: #6f6255;
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-panel-foot {
+  padding: 8px 14px 10px;
+  text-align: center;
+  color: var(--bp-faint);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  background: rgba(236, 226, 207, 0.42);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui {
+  --bp-space: #171b22;
+  --bp-panel: rgba(29, 35, 44, 0.97);
+  --bp-panel-2: rgba(38, 45, 56, 0.92);
+  --bp-row: rgba(255, 255, 255, 0.055);
+  --bp-row-2: rgba(255, 255, 255, 0.082);
+  --bp-text: #ede7dc;
+  --bp-muted: #b8afa1;
+  --bp-faint: #807d78;
+  --bp-gold: #c8a86c;
+  --bp-cyan: #88aeb8;
+  --bp-blue: #8091ad;
+  --bp-rose: #b9877e;
+  --bp-green: #9fbf9b;
+  --bp-purple: #a69bd0;
+  --bp-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+  --bp-shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.12);
+  width: 100%;
+  margin: 0.8em auto;
+  display: flex;
+  justify-content: center;
+  color: var(--bp-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Microsoft YaHei', serif;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui,
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui * {
+  box-sizing: border-box;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui details {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(200, 168, 108, 0.1), transparent 22%),
+    radial-gradient(circle at 90% 0%, rgba(136, 174, 184, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--bp-panel), var(--bp-space));
+  box-shadow: var(--bp-shadow);
+  position: relative;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui details::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.28), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 80px);
+  opacity: 0.58;
+  z-index: 0;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui summary {
+  list-style: none;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-summary {
+  width: 100%;
+  min-height: 38px;
+  cursor: pointer;
+  user-select: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--bp-text);
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent),
+    rgba(255, 255, 255, 0.035);
+  transition:
+    background 0.22s ease,
+    filter 0.22s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-summary:hover {
+  filter: brightness(1.08);
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.2), rgba(136, 174, 184, 0.1), transparent), rgba(255, 255, 255, 0.055);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-toggle-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--bp-gold);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 15px;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-summary-text {
+  min-width: 0;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-toggle-title {
+  display: block;
+  margin: 0;
+  color: var(--bp-text);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-toggle-subtitle {
+  display: block;
+  margin-top: 1px;
+  color: var(--bp-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .toggle-icon {
+  color: var(--bp-gold);
+  transition: transform 0.24s ease;
+  flex: 0 0 auto;
+  font-size: 12px;
+  letter-spacing: 0;
+  opacity: 1;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui details:not([open]) .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel {
+  margin: 0;
+  width: 100%;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  position: relative;
+  z-index: 1;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.34), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 80px);
+  opacity: 0.58;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel-foot {
+  position: relative;
+  z-index: 1;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-body {
+  padding: 10px 12px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card {
+  min-width: 0;
+  border-radius: 6px;
+  border: none;
+  background: var(--bp-panel-2);
+  box-shadow: var(--bp-shadow-soft);
+  overflow: hidden;
+  position: relative;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--bp-rose);
+  opacity: 0.72;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card-head {
+  padding: 8px 10px 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card-dot {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+  background: var(--bp-gold);
+  box-shadow: 10px 0 0 rgba(200, 168, 108, 0.32);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card-title {
+  color: var(--bp-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-scan-text {
+  padding: 8px 10px 9px 12px;
+  color: var(--bp-text);
+  background: rgba(255, 255, 255, 0.025);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  line-height: 1.62;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-grid {
+  padding: 8px 9px 10px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  white-space: pre-wrap;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card {
+  min-width: 0;
+  padding: 8px 9px 9px;
+  border-radius: 5px;
+  color: var(--bp-text);
+  font-size: 12.1px;
+  line-height: 1.34;
+  background: var(--bp-row);
+  border: none;
+  box-shadow:
+    inset 4px 0 0 rgba(185, 135, 126, 0.5),
+    var(--bp-shadow-soft);
+  position: relative;
+  white-space: normal;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 16px;
+  height: 1px;
+  background: rgba(200, 168, 108, 0.45);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 7px;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name {
+  min-width: 0;
+  color: var(--bp-cyan);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-tier-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  align-items: center;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-tier {
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 10.8px;
+  font-weight: 800;
+  line-height: 1.32;
+  white-space: nowrap;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-face {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding: 7px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(200, 168, 108, 0.08), transparent 44%), rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-face-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  align-items: start;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-row {
+  display: grid;
+  gap: 3px;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--bp-muted);
+  font-size: 10.6px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-value {
+  color: var(--bp-text);
+  font-size: 11.4px;
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.24);
+  position: relative;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill {
+  display: block;
+  height: 100%;
+  width: var(--bp-meter);
+  border-radius: inherit;
+  position: relative;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  opacity: 0.62;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill.bp-fill-bp {
+  background: linear-gradient(90deg, rgba(185, 135, 126, 0.72), rgba(200, 168, 108, 0.95));
+  box-shadow: 0 0 12px rgba(200, 168, 108, 0.22);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill.bp-fill-hp {
+  background: linear-gradient(90deg, rgba(161, 68, 68, 0.88), rgba(222, 116, 95, 0.94));
+  box-shadow: 0 0 11px rgba(185, 88, 80, 0.22);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill.bp-fill-ce {
+  background: linear-gradient(90deg, rgba(74, 127, 165, 0.88), rgba(136, 174, 184, 0.95));
+  box-shadow: 0 0 11px rgba(136, 174, 184, 0.22);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-sub {
+  color: var(--bp-faint);
+  font-size: 10px;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel {
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 58%), rgba(255, 255, 255, 0.045);
+  box-shadow:
+    inset 2px 0 0 rgba(136, 174, 184, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    var(--bp-shadow-soft);
+  overflow: hidden;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.attack {
+  box-shadow:
+    inset 2px 0 0 rgba(185, 135, 126, 0.6),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.tech {
+  box-shadow:
+    inset 2px 0 0 rgba(166, 155, 208, 0.5),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.support {
+  box-shadow:
+    inset 2px 0 0 rgba(159, 191, 155, 0.52),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-title {
+  margin: -2px -3px 5px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  color: var(--bp-cyan);
+  font-size: 10.4px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  background: linear-gradient(90deg, rgba(136, 174, 184, 0.15), rgba(255, 255, 255, 0.045), transparent);
+  box-shadow: inset 2px 0 0 rgba(136, 174, 184, 0.5);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-lines {
+  display: grid;
+  gap: 2px;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  align-items: baseline;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--bp-muted);
+  font-size: 10.6px;
+  line-height: 1.22;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-line:nth-child(even) {
+  background: rgba(255, 255, 255, 0.105);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-line b {
+  color: var(--bp-text);
+  font-size: 11.6px;
+  font-weight: 900;
+  text-align: right;
+  word-break: break-word;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-title {
+  margin: 5px 0 5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--bp-cyan);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, rgba(136, 174, 184, 0.14), rgba(255, 255, 255, 0.04), transparent);
+  box-shadow: inset 2px 0 0 rgba(136, 174, 184, 0.55);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-list {
+  display: grid;
+  gap: 5px;
+  white-space: normal;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait {
+  padding: 6px 7px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, rgba(136, 174, 184, 0.07), rgba(255, 255, 255, 0.045));
+  box-shadow:
+    inset 2px 0 0 rgba(136, 174, 184, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  font-size: 11.5px;
+  line-height: 1.48;
+  word-break: break-word;
+  position: relative;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name {
+  display: inline;
+  margin-right: 2px;
+  padding: 0;
+  border-radius: 0;
+  color: var(--bp-muted);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*='天与咒缚'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*='六眼'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*='黑闪眷顾者'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*='九相图'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*='受肉体'] {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: var(--bp-cyan);
+  background: rgba(136, 174, 184, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(136, 174, 184, 0.22);
+  font-weight: 900;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-weight: 900;
+  line-height: 1.28;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='S级·论外'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='出神入化'] {
+  color: #ff8f8f;
+  background: rgba(220, 86, 86, 0.24);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='AA级·强特级'] {
+  color: #f0ca75;
+  background: rgba(200, 168, 108, 0.24);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='A级·特级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='出类拔萃'] {
+  color: #d6c3ff;
+  background: rgba(166, 155, 208, 0.24);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='B级·一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='登堂入室'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='精通'] {
+  color: #9fd3df;
+  background: rgba(136, 174, 184, 0.2);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='D级·二级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='E级·三级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='熟练'] {
+  color: #b8dfb0;
+  background: rgba(159, 191, 155, 0.18);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='F级·四级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='入门'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='未入门'] {
+  color: #d2c7b8;
+  background: rgba(184, 175, 161, 0.14);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='S级·论外'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='出神入化'] {
+  box-shadow:
+    inset 4px 0 0 #ff8f8f,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='AA级·强特级'] {
+  box-shadow:
+    inset 4px 0 0 #f0ca75,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='A级·特级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='出类拔萃'] {
+  box-shadow:
+    inset 4px 0 0 #d6c3ff,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='B级·一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='登堂入室'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='精通'] {
+  box-shadow:
+    inset 4px 0 0 #9fd3df,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='D级·二级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='E级·三级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='熟练'] {
+  box-shadow:
+    inset 4px 0 0 #b8dfb0,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='F级·四级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='入门'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity='未入门'] {
+  box-shadow:
+    inset 4px 0 0 #d2c7b8,
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='S级·论外'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='出神入化'] {
+  color: #ff8f8f;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='AA级·强特级'] {
+  color: #f0ca75;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='A级·特级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='出类拔萃'] {
+  color: #d6c3ff;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='B级·一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='登堂入室'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='精通'] {
+  color: #9fd3df;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='D级·二级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='E级·三级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='熟练'] {
+  color: #b8dfb0;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='F级·四级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='入门'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity='未入门'] {
+  color: #d2c7b8;
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel-foot {
+  padding: 8px 14px 10px;
+  text-align: center;
+  color: var(--bp-faint);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+@media (max-width: 640px) {
+  .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-grid,
+  .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-grid,
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-grid,
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-top,
+  .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-face-top,
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-top,
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-face-top {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-tier-wrap,
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-tier-wrap {
+    justify-content: flex-start;
+  }
+}
