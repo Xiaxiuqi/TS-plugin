@@ -421,11 +421,34 @@
     return Boolean(messageElement?.querySelector?.('[data-story-ui-code-placeholder="true"]'));
   }
 
-  function getDisplayedMessageTextElement(messageElement) {
+  function getRetrievedDisplayedMessageNode(messageId) {
+    if (messageId === undefined || messageId === null) return null;
+    const retrieveDisplayedMessage =
+      hostWindow.TavernHelper?.retrieveDisplayedMessage ||
+      hostWindow.retrieveDisplayedMessage ||
+      window.TavernHelper?.retrieveDisplayedMessage ||
+      window.retrieveDisplayedMessage;
+    try {
+      return retrieveDisplayedMessage?.(messageId)?.[0] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getDisplayedMessageTextElement(messageElement, messageId) {
     if (!messageElement) return null;
 
+    const helperNode = getRetrievedDisplayedMessageNode(messageId);
+    if (helperNode) {
+      const helperTextLength = String(helperNode.innerText || helperNode.textContent || '').trim().length;
+      const helperHasMountedArea = Boolean(helperNode.querySelector?.('[data-story-ui-raw-mount="true"]'));
+      if (helperTextLength > 0 || helperHasMountedArea) {
+        return helperNode.closest?.('.mes_text, .custom-mes_text') || helperNode;
+      }
+    }
+
     const candidates = Array.from(messageElement.querySelectorAll?.('.mes_text, .custom-mes_text') || []);
-    if (candidates.length === 0) return null;
+    if (candidates.length === 0) return helperNode || null;
     if (candidates.length === 1) return candidates[0];
 
     return (
@@ -440,6 +463,7 @@
           return rhs.depth - lhs.depth;
         })[0]?.node ||
       candidates[candidates.length - 1] ||
+      helperNode ||
       null
     );
   }
@@ -953,7 +977,7 @@
       return false;
     }
 
-    const textElement = getDisplayedMessageTextElement(messageElement);
+    const textElement = getDisplayedMessageTextElement(messageElement, messageId);
     if (!textElement) {
       clearMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
@@ -1021,7 +1045,7 @@
       collapsedMessageSignatures.delete(messageId);
       return false;
     }
-    const textElement = getDisplayedMessageTextElement(messageElement);
+    const textElement = getDisplayedMessageTextElement(messageElement, messageId);
     if (!textElement) return false;
     const signature = computeSignature(rawText);
     if (collapsedMessageSignatures.get(messageId) === signature && hasCollapsedPlaceholder(messageElement)) return true;
