@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'test',
     displayEnv: '测试版',
-    version: 'test-native-skip-20260514',
+    version: 'test-after-native-20260514',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_test/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_test/',
     globalKey: 'StoryRegexUI',
@@ -26,6 +26,11 @@
     'variable-update': '变量更新',
     'mvu-status': 'MVU状态栏',
     'mvu-status-newvars': 'MVU状态栏（新变量）',
+  };
+  const AFTER_NATIVE_ANCHOR_NEEDLES = {
+    'bp-panel': ['已扫描目标', 'BP战力雷达', '扫描状态', 'BP总值', '总BP'],
+    'story-engine': ['最终修正', '全域锚定', 'STORY ENGINE', 'NPC驱动'],
+    'world-log': ['世界主线', 'Time passed:', '世界运行报告', '当前地点'],
   };
 
   function getCandidateWindows() {
@@ -130,8 +135,11 @@
   let lastScanStats = {
     messageIds: [],
     hasScriptModeMatch: false,
+    hasAfterNativeModeMatch: false,
     skippedNativeOrOffOnly: [],
     scriptRewritten: [],
+    afterNativeMounted: [],
+    afterNativeSkipped: [],
   };
   let collapseOldMessagesEnabled = true;
   let collapseOldMessagesBusy = false;
@@ -406,6 +414,16 @@
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
   }
 
+  function clearAfterNativeMountedStoryUi(messageElement) {
+    if (!messageElement) return;
+    messageElement.querySelectorAll?.('[data-story-ui-after-native-mount="true"]').forEach(node => node.remove());
+  }
+
+  function clearAllMountedStoryUi(messageElement) {
+    clearMountedStoryUi(messageElement);
+    clearAfterNativeMountedStoryUi(messageElement);
+  }
+
   function getDisplayedMessageTextElement(messageElement) {
     if (!messageElement) return null;
 
@@ -431,7 +449,9 @@
 
   function hasMountedStoryUi(messageElement) {
     if (!messageElement) return false;
-    return Boolean(messageElement.querySelector?.('[data-story-ui-raw-mount="true"]'));
+    return Boolean(
+      messageElement.querySelector?.('[data-story-ui-raw-mount="true"], [data-story-ui-after-native-mount="true"]'),
+    );
   }
 
   function escapeRegex(value) {
@@ -675,6 +695,45 @@
     return mountHost;
   }
 
+  function createAfterNativeMountHost(module, moduleHtml, messageId) {
+    const mountHost = createElementInHost('section');
+    mountHost.className = 'story-ui-after-native-mount';
+    mountHost.dataset.storyUiAfterNativeMount = 'true';
+    mountHost.dataset.storyUiModule = module.id;
+    mountHost.dataset.storyUiMessageId = String(messageId);
+    mountHost.innerHTML = moduleHtml;
+    return mountHost;
+  }
+
+  function normalizeTextForAnchor(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function findAfterNativeAnchor(textElement, moduleId) {
+    const needles = AFTER_NATIVE_ANCHOR_NEEDLES[moduleId] || [];
+    if (!textElement || needles.length === 0) return null;
+
+    const candidates = Array.from(textElement.querySelectorAll?.('*') || []).filter(node => {
+      if (node === textElement) return false;
+      if (node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return false;
+      const text = normalizeTextForAnchor(node.innerText || node.textContent || '');
+      if (!text || text.length > 2500) return false;
+      return needles.some(needle => text.includes(needle));
+    });
+
+    return (
+      candidates
+        .map(node => {
+          const text = normalizeTextForAnchor(node.innerText || node.textContent || '');
+          const childHits = Array.from(node.children || []).filter(child =>
+            needles.some(needle => normalizeTextForAnchor(child.innerText || child.textContent || '').includes(needle)),
+          ).length;
+          return { node, score: text.length + childHits * 600 };
+        })
+        .sort((a, b) => a.score - b.score)[0]?.node || null
+    );
+  }
+
   function collectTextNodes(root) {
     const nodes = [];
     const nodeFilter = hostWindow.NodeFilter || window.NodeFilter;
@@ -755,6 +814,54 @@
     });
   }
 
+  function mountAfterNativeModulesForMessage({ messageId, rawText, messageElement, textElement, modules, registry }) {
+    const ui = getUi();
+    const result = { mounted: [], skipped: [] };
+    clearAfterNativeMountedStoryUi(messageElement);
+
+    modules.forEach(module => {
+      const rendered = buildNodeForModule(module, rawText, {
+        kind: 'after-native',
+        mode: 'after-native',
+        messageId,
+        messageElement,
+        textElement,
+        theme: ui?.theme?.getTheme?.() || 'day',
+      });
+      const moduleHtml = nodeToHtml(rendered);
+      if (!moduleHtml) {
+        result.skipped.push({ moduleId: module.id, reason: 'render-empty-or-raw-not-matched' });
+        return;
+      }
+
+      const anchor = findAfterNativeAnchor(textElement, module.id);
+      if (!anchor) {
+        result.skipped.push({ moduleId: module.id, reason: 'anchor-not-found' });
+        return;
+      }
+
+      const mountHost = createAfterNativeMountHost(module, moduleHtml, messageId);
+      anchor.insertAdjacentElement('afterend', mountHost);
+      mountHost.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
+      registry.safelyCall(module, 'mount', mountHost, {
+        kind: 'after-native',
+        rawText,
+        messageId,
+        node: mountHost,
+        messageElement,
+        textElement,
+        mode: 'after-native',
+      });
+      result.mounted.push(module.id);
+    });
+
+    messageElement.dataset.storyUiAfterNativeMounted = result.mounted.join('|');
+    messageElement.dataset.storyUiAfterNativeSkipped = result.skipped
+      .map(item => `${item.moduleId}:${item.reason}`)
+      .join('|');
+    return result;
+  }
+
   function mountModulesForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
@@ -767,7 +874,7 @@
       .list({ includeDisabled: true })
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
     if (modules.length === 0) {
-      clearMountedStoryUi(messageElement);
+      clearAllMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
       return false;
     }
@@ -777,12 +884,15 @@
       mode: registry.getMode?.(module.id) || (module.enabled === false ? 'off' : 'script'),
     }));
     const scriptModules = modules.filter(module => (registry.getMode?.(module.id) || 'script') === 'script');
+    const afterNativeModules = modules.filter(module => (registry.getMode?.(module.id) || 'script') === 'after-native');
     const hasScriptModeMatch = scriptModules.length > 0;
+    const hasAfterNativeModeMatch = afterNativeModules.length > 0;
     messageElement.dataset.storyUiHasScriptModeMatch = hasScriptModeMatch ? 'true' : 'false';
+    messageElement.dataset.storyUiHasAfterNativeModeMatch = hasAfterNativeModeMatch ? 'true' : 'false';
     messageElement.dataset.storyUiMatchedModes = matchedModules.map(item => `${item.id}:${item.mode}`).join('|');
 
-    if (!hasScriptModeMatch) {
-      clearMountedStoryUi(messageElement);
+    if (!hasScriptModeMatch && !hasAfterNativeModeMatch) {
+      clearAllMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
       return false;
     }
@@ -790,22 +900,43 @@
     const textElement = getDisplayedMessageContentElement(messageId);
     if (!textElement) return false;
 
-    const rendered = renderMessageHtmlByModules(messageId, rawText, modules, registry);
-    if (!rendered.mounted.length) {
+    const mounted = [];
+    if (hasScriptModeMatch) {
+      const rendered = renderMessageHtmlByModules(messageId, rawText, modules, registry);
+      if (rendered.mounted.length) {
+        textElement.innerHTML = rendered.html;
+        mountStoryUiHosts(textElement, registry, rawText, messageId);
+        mounted.push(...rendered.mounted.map(moduleId => `${moduleId}:script`));
+      } else {
+        clearMountedStoryUi(messageElement);
+      }
+    } else {
       clearMountedStoryUi(messageElement);
-      mountedModulesByMessage.delete(messageId);
-      return false;
     }
-    textElement.innerHTML = rendered.html;
-    mountStoryUiHosts(textElement, registry, rawText, messageId);
 
-    if (rendered.mounted.length > 0) {
-      mountedModulesByMessage.set(messageId, rendered.mounted);
+    if (hasAfterNativeModeMatch) {
+      const afterNative = mountAfterNativeModulesForMessage({
+        messageId,
+        rawText,
+        messageElement,
+        textElement,
+        modules: afterNativeModules,
+        registry,
+      });
+      mounted.push(...afterNative.mounted.map(moduleId => `${moduleId}:after-native`));
+    } else {
+      clearAfterNativeMountedStoryUi(messageElement);
+      messageElement.dataset.storyUiAfterNativeMounted = '';
+      messageElement.dataset.storyUiAfterNativeSkipped = '';
+    }
+
+    if (mounted.length > 0) {
+      mountedModulesByMessage.set(messageId, mounted);
     } else {
       mountedModulesByMessage.delete(messageId);
     }
 
-    return true;
+    return mounted.length > 0;
   }
 
   function escapeHtml(value) {
@@ -836,8 +967,11 @@
     const scanStats = {
       messageIds: uniqueIds.slice(),
       hasScriptModeMatch: false,
+      hasAfterNativeModeMatch: false,
       skippedNativeOrOffOnly: [],
       scriptRewritten: [],
+      afterNativeMounted: [],
+      afterNativeSkipped: [],
     };
 
     uniqueIds.forEach(messageId => {
@@ -847,9 +981,16 @@
       const modules = registry?.list?.({ includeDisabled: true }) || [];
       const matchedModules = modules.filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
       const matchedScriptModules = matchedModules.filter(module => (registry?.getMode?.(module.id) || 'script') === 'script');
-      const matchedNativeOrOffModules = matchedModules.filter(module => (registry?.getMode?.(module.id) || 'script') !== 'script');
+      const matchedAfterNativeModules = matchedModules.filter(
+        module => (registry?.getMode?.(module.id) || 'script') === 'after-native',
+      );
+      const matchedNativeOrOffModules = matchedModules.filter(module => {
+        const moduleMode = registry?.getMode?.(module.id) || 'script';
+        return moduleMode !== 'script' && moduleMode !== 'after-native';
+      });
       if (matchedScriptModules.length > 0) scanStats.hasScriptModeMatch = true;
-      if (matchedModules.length > 0 && matchedScriptModules.length === 0) {
+      if (matchedAfterNativeModules.length > 0) scanStats.hasAfterNativeModeMatch = true;
+      if (matchedModules.length > 0 && matchedScriptModules.length === 0 && matchedAfterNativeModules.length === 0) {
         scanStats.skippedNativeOrOffOnly.push({
           messageId,
           modules: matchedNativeOrOffModules.map(module => `${module.id}:${registry?.getMode?.(module.id) || 'script'}`),
@@ -864,10 +1005,27 @@
 
       messageSignatures.set(messageId, signature);
       if (mountModulesForMessage(messageId, rawText)) {
-        scanStats.scriptRewritten.push({
-          messageId,
-          modules: matchedScriptModules.map(module => module.id),
-        });
+        const messageElement = getDisplayedMessageElement(messageId);
+        if (matchedScriptModules.length > 0) {
+          scanStats.scriptRewritten.push({
+            messageId,
+            modules: matchedScriptModules.map(module => module.id),
+          });
+        }
+        if (matchedAfterNativeModules.length > 0) {
+          const mounted = String(messageElement?.dataset?.storyUiAfterNativeMounted || '')
+            .split('|')
+            .filter(Boolean);
+          const skipped = String(messageElement?.dataset?.storyUiAfterNativeSkipped || '')
+            .split('|')
+            .filter(Boolean);
+          if (mounted.length > 0) {
+            scanStats.afterNativeMounted.push({ messageId, modules: mounted });
+          }
+          if (skipped.length > 0) {
+            scanStats.afterNativeSkipped.push({ messageId, modules: skipped });
+          }
+        }
       }
     });
 
@@ -964,8 +1122,11 @@
       最近扫描楼层: recentScannedMessageIds.slice(),
       扫描模式: lastScanMode,
       最近扫描包含脚本接管模块: Boolean(lastScanStats.hasScriptModeMatch),
+      最近扫描包含共存增强模块: Boolean(lastScanStats.hasAfterNativeModeMatch),
       最近跳过原生或关闭楼层: lastScanStats.skippedNativeOrOffOnly.slice(-8),
       最近脚本重写楼层: lastScanStats.scriptRewritten.slice(-8),
+      最近共存增强挂载楼层: lastScanStats.afterNativeMounted.slice(-8),
+      最近共存增强跳过楼层: lastScanStats.afterNativeSkipped.slice(-8),
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
     };
@@ -1118,14 +1279,14 @@
 
   function clearModuleMountedDom(moduleId) {
     hostDocument.querySelectorAll(`[data-story-ui-module="${moduleId}"]`).forEach(node => {
-      const mountHost = node.closest?.('[data-story-ui-raw-mount="true"]') || node;
+      const mountHost = node.closest?.('[data-story-ui-raw-mount="true"], [data-story-ui-after-native-mount="true"]') || node;
       mountHost.remove();
     });
   }
 
   function clearModuleCaches(moduleId) {
     mountedModulesByMessage.forEach((mounted, messageId) => {
-      if (Array.isArray(mounted) && mounted.includes(moduleId)) {
+      if (Array.isArray(mounted) && mounted.some(item => item === moduleId || String(item).startsWith(`${moduleId}:`))) {
         mountedModulesByMessage.delete(messageId);
         messageSignatures.delete(messageId);
       }
@@ -1226,6 +1387,7 @@
     const modes = [
       ['script', '脚本显示'],
       ['native', '原生显示'],
+      ['after-native', '共存增强'],
       ['off', '关闭'],
     ];
     const entries = Object.entries(MODULE_LABELS).map(([id, label]) => ({
@@ -1290,7 +1452,7 @@
     if (!moduleId) return;
     const registry = getUi()?.registry;
     if (!registry?.find?.(moduleId) || typeof registry.setMode !== 'function') return;
-    if (!['script', 'native', 'off'].includes(mode)) return;
+    if (!['script', 'native', 'after-native', 'off'].includes(mode)) return;
     if (moduleToggleBusy.has(moduleId)) return;
 
     const currentMode = registry.getMode?.(moduleId) || 'script';
@@ -1306,7 +1468,10 @@
     await new Promise(resolve => window.setTimeout(resolve, 60));
     await rerenderAllVisibleMessages();
     refreshManagerState();
-    notify(`${MODULE_LABELS[moduleId] || moduleId} 已切换为${mode === 'script' ? '脚本显示' : mode === 'native' ? '原生显示' : '关闭'}`, 'success');
+    notify(
+      `${MODULE_LABELS[moduleId] || moduleId} 已切换为${mode === 'script' ? '脚本显示' : mode === 'native' ? '原生显示' : mode === 'after-native' ? '共存增强' : '关闭'}`,
+      'success',
+    );
 
     moduleToggleBusy.delete(moduleId);
     setManagerButtonBusy(button, '', false);

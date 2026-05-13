@@ -3,7 +3,7 @@
   const modules = [];
   const STORAGE_KEY = 'jjks_story_ui_module_enabled_state';
   const MODE_STORAGE_KEY = 'jjks_story_ui_module_modes';
-  const VALID_MODES = new Set(['script', 'native', 'off']);
+  const VALID_MODES = new Set(['script', 'native', 'after-native', 'off']);
   const DEFAULT_MODE = 'script';
   const enabledState = readEnabledState();
   const modeState = readModeState();
