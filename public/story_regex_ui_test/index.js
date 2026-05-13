@@ -1151,6 +1151,22 @@
     await reloadResources();
   }
 
+  async function refreshRenderedMessagesAfterReload() {
+    const refreshOneMessage = hostWindow.refreshOneMessage || window.refreshOneMessage;
+    const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
+    if (typeof refreshOneMessage !== 'function' || messageIds.length === 0) return false;
+
+    for (const messageId of messageIds) {
+      try {
+        await refreshOneMessage(messageId);
+      } catch (error) {
+        console.warn(`${logPrefix} 刷新楼层渲染失败: ${messageId}`, error);
+      }
+    }
+
+    return true;
+  }
+
   async function reloadResources() {
     if (managerActionBusy) return;
     managerActionBusy = true;
@@ -1187,7 +1203,10 @@
       messageSignatures.clear();
       mountedModulesByMessage.clear();
       recentScannedMessageIds.length = 0;
-      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      const refreshed = await refreshRenderedMessagesAfterReload();
+      if (!refreshed) {
+        console.warn(`${logPrefix} 未找到 refreshOneMessage，已跳过当前楼层刷新。`);
+      }
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
