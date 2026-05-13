@@ -60,8 +60,7 @@
   color: var(--jm-text);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
-    radial-gradient(circle at top left, rgba(160, 126, 116, 0.1), transparent 30%),
-    var(--jm-panel);
+    radial-gradient(circle at top left, rgba(160, 126, 116, 0.1), transparent 30%), var(--jm-panel);
   box-shadow: var(--jm-shadow);
 }
 
@@ -106,8 +105,7 @@
 
 .jjks-manager-night .jjks-manager-head {
   background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent),
-    rgba(255, 255, 255, 0.03);
+    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent), rgba(255, 255, 255, 0.03);
 }
 
 .jjks-manager-eyebrow {
@@ -268,13 +266,17 @@
 .jjks-manager-day .jjks-manager-metric {
   border-radius: 7px;
   background: rgba(255, 253, 247, 0.82);
-  box-shadow: inset 3px 0 0 rgba(116, 139, 157, 0.42), var(--jm-shadow-soft);
+  box-shadow:
+    inset 3px 0 0 rgba(116, 139, 157, 0.42),
+    var(--jm-shadow-soft);
 }
 
 .jjks-manager-night .jjks-manager-metric {
   border-radius: 5px;
   background: var(--jm-card-2);
-  box-shadow: inset 3px 0 0 rgba(136, 174, 184, 0.42), var(--jm-shadow-soft);
+  box-shadow:
+    inset 3px 0 0 rgba(136, 174, 184, 0.42),
+    var(--jm-shadow-soft);
 }
 
 .jjks-manager-metric span {
@@ -353,7 +355,14 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.jjks-manager-button:active {
+  transform: none;
 }
 
 .jjks-manager-day .jjks-manager-button {
@@ -364,12 +373,20 @@
   box-shadow: none;
 }
 
+.jjks-manager-day .jjks-manager-button:active {
+  background: rgba(236, 226, 207, 0.96);
+}
+
 .jjks-manager-night .jjks-manager-button {
   color: var(--jm-text);
   border-radius: 5px;
   border: 1px solid rgba(136, 174, 184, 0.16);
   background: rgba(255, 255, 255, 0.06);
   box-shadow: none;
+}
+
+.jjks-manager-night .jjks-manager-button:active {
+  background: rgba(200, 168, 108, 0.14);
 }
 
 .jjks-manager-day .jjks-manager-button[data-active='true'] {
@@ -399,6 +416,19 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 8px 0;
+}
+
+.jjks-manager-day .jjks-manager-module-item {
+  box-shadow: inset 0 -1px 0 rgba(117, 107, 96, 0.11);
+}
+
+.jjks-manager-night .jjks-manager-module-item {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.jjks-manager-module-item:last-child {
+  box-shadow: none;
 }
 
 .jjks-manager-module-name {

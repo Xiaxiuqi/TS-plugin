@@ -124,6 +124,8 @@
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
+  let managerActionBusy = false;
+  const moduleToggleBusy = new Set();
 
   if (window[INDEX_FLAG]) {
     hostWindow[CONFIG.globalKey]?.scanner?.scan?.(hostDocument);
@@ -396,14 +398,20 @@
     const block = getModuleBlockConfig(module);
     if (!block) return null;
 
-    const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
     const source = String(rawText || '').replace(/\r\n?/g, '\n');
-    const match = source.match(pattern);
+    let match = source.match(new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i'));
+
+    if (!match && module?.id === 'story-engine') {
+      match = source.match(
+        /<story_driver>[\s\S]*?(?:<combat_driver>[\s\S]*?<\/combat_driver>[\s\S]*?)?(?:━━\s*3[.．、]\s*最终修正\s*━━[\s\S]*)?/i,
+      );
+    }
+
     if (!match) return null;
 
     return {
       fullMatch: match[0],
-      content: String(match[1] || '').trim(),
+      content: String(match[1] || match[0] || '').trim(),
       block,
     };
   }
@@ -624,7 +632,11 @@
     });
 
     if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
-    textElement.innerHTML = renderPlainTextSegment('', messageId) + html;
+    if (typeof window.formatAsDisplayedMessage === 'function') {
+      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
+    } else {
+      textElement.innerHTML = html;
+    }
     return true;
   }
 
@@ -824,6 +836,36 @@
     return button;
   }
 
+  function setManagerButtonBusy(button, busyText, busy) {
+    if (!button) return;
+    if (busy) {
+      if (!button.dataset.jjksOriginalText) button.dataset.jjksOriginalText = button.textContent || '';
+      button.textContent = busyText;
+      button.disabled = true;
+      button.dataset.busy = 'true';
+      return;
+    }
+    button.textContent = button.dataset.jjksOriginalText || button.textContent || '';
+    button.disabled = false;
+    button.dataset.busy = 'false';
+  }
+
+  function clearModuleMountedDom(moduleId) {
+    hostDocument.querySelectorAll(`[data-story-ui-module="${moduleId}"]`).forEach(node => {
+      const mountHost = node.closest?.('[data-story-ui-raw-mount="true"]') || node;
+      mountHost.remove();
+    });
+  }
+
+  function clearModuleCaches(moduleId) {
+    mountedModulesByMessage.forEach((mounted, messageId) => {
+      if (Array.isArray(mounted) && mounted.includes(moduleId)) {
+        mountedModulesByMessage.delete(messageId);
+        messageSignatures.delete(messageId);
+      }
+    });
+  }
+
   function ensureManagerDom() {
     injectManagerStyle();
     let root = hostDocument.getElementById(CONFIG.managerRootId);
@@ -872,7 +914,7 @@
 
       const moduleButton = target.closest?.('[data-jjks-module-toggle]');
       if (moduleButton) {
-        toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'));
+        toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'), moduleButton);
       }
     });
 
@@ -931,15 +973,29 @@
     scanMessageIds(ids, 'window');
   }
 
-  function toggleManagerModule(moduleId) {
+  async function toggleManagerModule(moduleId, button) {
     if (!moduleId) return;
     const registry = getUi()?.registry;
     if (!registry?.find?.(moduleId)) return;
+    if (moduleToggleBusy.has(moduleId)) return;
+
     const enabled = !registry.isEnabled(moduleId);
+    moduleToggleBusy.add(moduleId);
+    setManagerButtonBusy(button, enabled ? '开启中' : '关闭中', true);
+
+    if (!enabled) {
+      clearModuleMountedDom(moduleId);
+      clearModuleCaches(moduleId);
+    }
+
     registry.setEnabled(moduleId, enabled);
+    await new Promise(resolve => window.setTimeout(resolve, 60));
     rerenderAllVisibleMessages();
     refreshManagerState();
     notify(`${MODULE_LABELS[moduleId] || moduleId}${enabled ? ' 已开启' : ' 已关闭'}`, 'success');
+
+    moduleToggleBusy.delete(moduleId);
+    setManagerButtonBusy(button, '', false);
   }
 
   function refreshManagerState() {
@@ -981,6 +1037,12 @@
   }
 
   async function reloadResources() {
+    if (managerActionBusy) return;
+    managerActionBusy = true;
+    const root = hostDocument.getElementById(CONFIG.managerRootId);
+    const reloadButton = root?.querySelector?.('[data-jjks-action="reload"]');
+    setManagerButtonBusy(reloadButton, '重挂载中', true);
+
     loaderStatus = 'loading';
     lastError = '';
     refreshManagerState();
@@ -1016,6 +1078,8 @@
       console.error(`${logPrefix} 重载资源失败`, error);
       notify(`资源重载失败：${error?.message || error}`, 'error');
     } finally {
+      managerActionBusy = false;
+      setManagerButtonBusy(reloadButton, '', false);
       refreshManagerState();
     }
   }
@@ -1067,8 +1131,6 @@
 
   function registerManagerButton() {
     try {
-      notify('咒回前端管理正在载入，请稍候…', 'info');
-
       if (window.appendInexistentScriptButtons) {
         window.appendInexistentScriptButtons([{ name: CONFIG.buttonName, visible: true }]);
       } else if (window.replaceScriptButtons) {
@@ -1124,7 +1186,7 @@
         console.info(`${logPrefix} 已通过酒馆按钮事件 API 绑定管理按钮。`);
       }
 
-      notify('咒回前端管理已就绪，点击按钮可打开管理界面。', 'success');
+      notify('咒回前端管理已导入，点击按钮可打开管理界面。', 'success');
     } catch (error) {
       console.error(`${logPrefix} 注册管理按钮失败`, error);
       notify(`咒回前端管理初始化失败：${error?.message || error}`, 'error');
@@ -1159,9 +1221,7 @@
   bindEvents();
   ensureLoader()
     .then(() => {
-      notify('故事 UI 外置资源加载完成。', 'success');
-      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
-      queueRetryRecentScan();
+      loaderStatus = 'ready';
     })
     .catch(error => {
       console.error(`${logPrefix} 初始化 loader 失败`, error);
