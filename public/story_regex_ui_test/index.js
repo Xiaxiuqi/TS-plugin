@@ -616,6 +616,59 @@
     return false;
   }
 
+  function getRenderableMatchesInOrder(modules, rawText) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    const matches = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const match = findNextRenderableMatch(modules, text, cursor);
+      if (!match) break;
+      matches.push(match);
+      cursor = Math.max(match.end, match.start + 1);
+    }
+
+    return matches;
+  }
+
+  function buildModuleMountHtml(module, rawText, context) {
+    const rendered = buildNodeForModule(module, rawText, context);
+    const moduleHtml = nodeToHtml(rendered);
+    if (!moduleHtml) return '';
+    return `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${module.id}">${moduleHtml}</section>`;
+  }
+
+  function getNativeRenderedSourceCandidates(sourceText, messageId) {
+    const source = String(sourceText || '').replace(/\r\n?/g, '\n');
+    const candidates = [source, escapeHtml(source)];
+
+    try {
+      if (typeof window.formatAsDisplayedMessage === 'function') {
+        candidates.push(window.formatAsDisplayedMessage(source, { message_id: messageId }));
+      }
+    } catch {
+      // ignore formatting failures
+    }
+
+    candidates.push(source.replace(/\n/g, '<br>'));
+    candidates.push(escapeHtml(source).replace(/\n/g, '<br>'));
+    candidates.push(escapeHtml(source).replace(/\n/g, '<br />'));
+
+    return Array.from(new Set(candidates.filter(Boolean))).sort((lhs, rhs) => rhs.length - lhs.length);
+  }
+
+  function replaceFirstCandidate(html, candidates, replacement) {
+    for (const candidate of candidates) {
+      const index = html.indexOf(candidate);
+      if (index < 0) continue;
+      return {
+        html: `${html.slice(0, index)}${replacement}${html.slice(index + candidate.length)}`,
+        replaced: true,
+      };
+    }
+    return { html, replaced: false };
+  }
+
   function mountModulesForMessagePreservingNativeRender(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
@@ -638,23 +691,21 @@
     textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
 
     const mounted = [];
-    const fragment = hostDocument.createDocumentFragment();
-    modules.forEach(module => {
-      const rendered = buildNodeForModule(module, rawText, {
+    let html = textElement.innerHTML;
+    const fallbackHtml = [];
+    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
+      const mountHtml = buildModuleMountHtml(match.module, rawText, {
         messageId,
         messageElement,
         theme: getUi()?.theme?.getTheme?.() || 'day',
       });
-      const moduleHtml = nodeToHtml(rendered);
-      if (!moduleHtml) return;
+      if (!mountHtml) return;
 
-      const mountHost = createElementInHost('section');
-      mountHost.className = 'story-ui-raw-mount';
-      mountHost.dataset.storyUiRawMount = 'true';
-      mountHost.dataset.storyUiModule = module.id;
-      mountHost.innerHTML = moduleHtml;
-      fragment.appendChild(mountHost);
-      mounted.push(module.id);
+      const candidates = getNativeRenderedSourceCandidates(match.fullMatch, messageId);
+      const result = replaceFirstCandidate(html, candidates, mountHtml);
+      html = result.html;
+      if (!result.replaced) fallbackHtml.push(mountHtml);
+      mounted.push(match.module.id);
     });
 
     if (mounted.length === 0) {
@@ -662,7 +713,7 @@
       return false;
     }
 
-    textElement.appendChild(fragment);
+    textElement.innerHTML = html + fallbackHtml.join('');
     textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
     textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
       const moduleId = mountHost.getAttribute('data-story-ui-module');
