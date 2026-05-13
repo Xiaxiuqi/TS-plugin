@@ -26,22 +26,37 @@
     return escapeHtml(normalizeText(value)).replace(/&lt;br\s*\/??&gt;/gi, '<br>');
   }
 
+  function extractLooseSection(source, startLabel, endLabels = []) {
+    const text = normalizeText(source);
+    const startIndex = text.indexOf(startLabel);
+    if (startIndex < 0) return '';
+    const from = startIndex + startLabel.length;
+    let end = text.length;
+    endLabels.forEach(label => {
+      const next = text.indexOf(label, from);
+      if (next >= 0) end = Math.min(end, next);
+    });
+    return normalizeText(text.slice(from, end).replace(/^[:：\s*]+/, '').replace(/\*{3,}\s*$/g, ''));
+  }
+
   function parseWlog(rawText) {
-    const match = String(rawText || '').match(WLOG_PATTERN);
-    if (!match) {
+    const source = String(rawText || '');
+    const match = source.match(WLOG_PATTERN);
+    if (match) {
       return {
-        time: '',
-        worldLine: '',
-        convention: '',
-        deaths: '',
+        time: normalizeText(match[1]),
+        worldLine: normalizeText(match[2]),
+        convention: normalizeText(match[3]),
+        deaths: normalizeText(match[4]),
       };
     }
 
+    const timeMatch = source.match(/<wlog\s+time="(?:[^"：:]*[:：]\s*)?([^"]*)"/i);
     return {
-      time: normalizeText(match[1]),
-      worldLine: normalizeText(match[2]),
-      convention: normalizeText(match[3]),
-      deaths: normalizeText(match[4]),
+      time: normalizeText(timeMatch?.[1] || ''),
+      worldLine: extractLooseSection(source, '【世界主线】', ['【重要约定】', '【死亡角色】', '</wlog>']),
+      convention: extractLooseSection(source, '【重要约定】', ['【死亡角色】', '</wlog>']),
+      deaths: extractLooseSection(source, '【死亡角色】', ['</wlog>']),
     };
   }
 

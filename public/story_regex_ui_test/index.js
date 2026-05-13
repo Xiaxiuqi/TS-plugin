@@ -1011,7 +1011,41 @@
     return nextLineCount <= 120;
   }
 
+  function findExactVisibleRangeForMatch(textElement, match) {
+    if (!textElement || !match) return null;
+    const { combined, chunks } = buildTextIndex(textElement);
+    const sources = [match.fullMatch, match.content]
+      .map(value => String(value || '').replace(/\r\n?/g, '\n').trim())
+      .filter(value => value.length >= 6);
+
+    const candidates = [];
+    sources.forEach(source => {
+      if (!candidates.includes(source)) candidates.push(source);
+      const withoutTags = normalizeAnchorText(source);
+      if (withoutTags.length >= 6 && !candidates.includes(withoutTags)) candidates.push(withoutTags);
+    });
+
+    for (const candidate of candidates.sort((lhs, rhs) => rhs.length - lhs.length)) {
+      const startIndex = combined.indexOf(candidate);
+      if (startIndex < 0) continue;
+      const endIndex = startIndex + candidate.length;
+      if (!isSafeHiddenRange(match, startIndex, endIndex, combined)) continue;
+      const range = createRangeFromTextOffsets(chunks, startIndex, endIndex);
+      if (!range) continue;
+      return {
+        range,
+        anchor: combined.slice(startIndex, Math.min(startIndex + 120, endIndex)),
+        mode: 'exact-source',
+      };
+    }
+
+    return null;
+  }
+
   function findVisibleSourceRangeForMatch(textElement, match, nextMatch) {
+    const exactRange = findExactVisibleRangeForMatch(textElement, match);
+    if (exactRange?.range) return exactRange;
+
     const { combined, chunks } = buildTextIndex(textElement);
     const startCandidates = buildMatchStartCandidates(match);
     const start = findFirstCandidateIndex(combined, startCandidates);

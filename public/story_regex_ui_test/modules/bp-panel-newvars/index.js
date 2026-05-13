@@ -32,11 +32,25 @@
     return `${Math.max(0, Math.min(100, (num / maxNum) * 100))}%`;
   }
 
+  function extractLooseSection(source, startLabel, endLabels = []) {
+    const text = normalizeText(source);
+    const startIndex = text.indexOf(startLabel);
+    if (startIndex < 0) return '';
+    const from = startIndex + startLabel.length;
+    let end = text.length;
+    endLabels.forEach(label => {
+      const next = text.indexOf(label, from);
+      if (next >= 0) end = Math.min(end, next);
+    });
+    return normalizeText(text.slice(from, end).replace(/^[:：\s]+/, ''));
+  }
+
   function parseOuter(rawText) {
-    const match = String(rawText || '').match(OUTER_PATTERN);
+    const source = String(rawText || '');
+    const match = source.match(OUTER_PATTERN);
     return {
-      scanText: normalizeText(match?.[1] || ''),
-      targetsRaw: normalizeText(match?.[2] || ''),
+      scanText: normalizeText(match?.[1] || extractLooseSection(source, '【扫描状态】', ['【已扫描目标】', '</bp_panel>'])),
+      targetsRaw: normalizeText(match?.[2] || extractLooseSection(source, '【已扫描目标】', ['</bp_panel>'])),
     };
   }
 
