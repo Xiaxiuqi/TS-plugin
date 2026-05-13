@@ -616,121 +616,6 @@
     return false;
   }
 
-  function getRenderableMatchesInOrder(modules, rawText) {
-    const text = String(rawText || '').replace(/\r\n?/g, '\n');
-    const matches = [];
-    let cursor = 0;
-
-    while (cursor < text.length) {
-      const match = findNextRenderableMatch(modules, text, cursor);
-      if (!match) break;
-      matches.push(match);
-      cursor = Math.max(match.end, match.start + 1);
-    }
-
-    return matches;
-  }
-
-  function buildModuleMountHtml(module, rawText, context) {
-    const rendered = buildNodeForModule(module, rawText, context);
-    const moduleHtml = nodeToHtml(rendered);
-    if (!moduleHtml) return '';
-    return `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${module.id}">${moduleHtml}</section>`;
-  }
-
-  function getNativeRenderedSourceCandidates(sourceText, messageId) {
-    const source = String(sourceText || '').replace(/\r\n?/g, '\n');
-    const candidates = [source, escapeHtml(source)];
-
-    try {
-      if (typeof window.formatAsDisplayedMessage === 'function') {
-        candidates.push(window.formatAsDisplayedMessage(source, { message_id: messageId }));
-      }
-    } catch {
-      // ignore formatting failures
-    }
-
-    candidates.push(source.replace(/\n/g, '<br>'));
-    candidates.push(escapeHtml(source).replace(/\n/g, '<br>'));
-    candidates.push(escapeHtml(source).replace(/\n/g, '<br />'));
-
-    return Array.from(new Set(candidates.filter(Boolean))).sort((lhs, rhs) => rhs.length - lhs.length);
-  }
-
-  function replaceFirstCandidate(html, candidates, replacement) {
-    for (const candidate of candidates) {
-      const index = html.indexOf(candidate);
-      if (index < 0) continue;
-      return {
-        html: `${html.slice(0, index)}${replacement}${html.slice(index + candidate.length)}`,
-        replaced: true,
-      };
-    }
-    return { html, replaced: false };
-  }
-
-  function mountModulesForMessagePreservingNativeRender(messageId, rawText) {
-    const messageElement = getDisplayedMessageElement(messageId);
-    if (!messageElement) return false;
-
-    const ui = getUi();
-    const registry = ui?.registry;
-    if (!registry) return false;
-
-    const modules = registry
-      .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) {
-      mountedModulesByMessage.delete(messageId);
-      return false;
-    }
-
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-
-    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
-
-    const mounted = [];
-    let html = textElement.innerHTML;
-    const fallbackHtml = [];
-    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
-      const mountHtml = buildModuleMountHtml(match.module, rawText, {
-        messageId,
-        messageElement,
-        theme: getUi()?.theme?.getTheme?.() || 'day',
-      });
-      if (!mountHtml) return;
-
-      const candidates = getNativeRenderedSourceCandidates(match.fullMatch, messageId);
-      const result = replaceFirstCandidate(html, candidates, mountHtml);
-      html = result.html;
-      if (!result.replaced) fallbackHtml.push(mountHtml);
-      mounted.push(match.module.id);
-    });
-
-    if (mounted.length === 0) {
-      mountedModulesByMessage.delete(messageId);
-      return false;
-    }
-
-    textElement.innerHTML = html + fallbackHtml.join('');
-    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
-    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
-      const moduleId = mountHost.getAttribute('data-story-ui-module');
-      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
-      if (!module || module.enabled === false) return;
-      registry.safelyCall(module, 'mount', mountHost, {
-        kind: 'raw-preserve-native',
-        rawText,
-        messageId,
-        node: mountHost,
-      });
-    });
-
-    mountedModulesByMessage.set(messageId, mounted);
-    return true;
-  }
-
   function escapeHtml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -780,7 +665,6 @@
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const activeSet = new Set(uniqueIds);
-    const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
@@ -796,7 +680,7 @@
     });
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
-      if (activeSet.has(messageId) || recentRenderedSet.has(messageId)) return;
+      if (activeSet.has(messageId)) return;
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       if (!rawText) return;
@@ -1267,36 +1151,6 @@
     await reloadResources();
   }
 
-  function remountRecentModulesPreservingNativeRender() {
-    const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
-    messageSignatures.clear();
-    mountedModulesByMessage.clear();
-    recentScannedMessageIds.length = 0;
-    messageIds.forEach(messageId => {
-      const chatMessage = readRawMessage(messageId);
-      const rawText = chatMessage?.message || '';
-      if (!rawText) return;
-      mountModulesForMessagePreservingNativeRender(messageId, rawText);
-    });
-    rememberRecentScannedMessageIds(messageIds);
-  }
-
-  async function refreshRenderedMessagesAfterReload() {
-    const refreshOneMessage = hostWindow.refreshOneMessage || window.refreshOneMessage;
-    const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
-    if (typeof refreshOneMessage !== 'function' || messageIds.length === 0) return false;
-
-    for (const messageId of messageIds) {
-      try {
-        await refreshOneMessage(messageId);
-      } catch (error) {
-        console.warn(`${logPrefix} 刷新楼层渲染失败: ${messageId}`, error);
-      }
-    }
-
-    return true;
-  }
-
   async function reloadResources() {
     if (managerActionBusy) return;
     managerActionBusy = true;
@@ -1333,12 +1187,7 @@
       messageSignatures.clear();
       mountedModulesByMessage.clear();
       recentScannedMessageIds.length = 0;
-      const refreshed = await refreshRenderedMessagesAfterReload();
-      if (!refreshed) {
-        console.warn(`${logPrefix} 未找到 refreshOneMessage，已跳过当前楼层刷新。`);
-      }
-      await new Promise(resolve => window.setTimeout(resolve, refreshed ? 120 : 0));
-      remountRecentModulesPreservingNativeRender();
+      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
