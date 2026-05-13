@@ -167,9 +167,18 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.94fr);
   gap: 12px;
-  padding: 12px 14px 14px;
+  padding: 12px 14px 18px;
   overflow: auto;
   max-height: calc(min(var(--jjks-manager-max-height), calc(100vh - 36px)) - 74px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.jjks-manager-body::-webkit-scrollbar,
+.jjks-manager-log pre::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .jjks-manager-row-full {
@@ -468,6 +477,8 @@
   min-height: 170px;
   max-height: 320px;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: 'Consolas', 'SFMono-Regular', 'Microsoft YaHei', monospace;

@@ -39,6 +39,11 @@
         script: 'modules/bp-panel/index.js',
       },
       {
+        id: 'bp-panel-newvars',
+        css: 'modules/bp-panel-newvars/style.css',
+        script: 'modules/bp-panel-newvars/index.js',
+      },
+      {
         id: 'mvu-status',
         css: 'modules/mvu-status/style.css',
         script: 'modules/mvu-status/index.js',

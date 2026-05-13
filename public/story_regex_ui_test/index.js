@@ -19,6 +19,7 @@
   const MODULE_LABELS = {
     'story-engine': '故事引擎',
     'bp-panel': 'BP战力雷达',
+    'bp-panel-newvars': 'BP战力雷达（新变量）',
     'world-log': '世界运行报告',
     'relation-status': '角色羁绊档案',
     'variable-update': '变量更新',
@@ -973,6 +974,24 @@
     scanMessageIds(ids, 'window');
   }
 
+  function getExclusiveModuleId(moduleId) {
+    if (moduleId === 'bp-panel') return 'bp-panel-newvars';
+    if (moduleId === 'bp-panel-newvars') return 'bp-panel';
+    return '';
+  }
+
+  function syncExclusiveModuleState(moduleId, enabled) {
+    const exclusiveId = getExclusiveModuleId(moduleId);
+    if (!exclusiveId) return;
+    const registry = getUi()?.registry;
+    if (!registry?.find?.(exclusiveId)) return;
+    if (enabled) {
+      registry.setEnabled(exclusiveId, false);
+      clearModuleMountedDom(exclusiveId);
+      clearModuleCaches(exclusiveId);
+    }
+  }
+
   async function toggleManagerModule(moduleId, button) {
     if (!moduleId) return;
     const registry = getUi()?.registry;
@@ -980,6 +999,16 @@
     if (moduleToggleBusy.has(moduleId)) return;
 
     const enabled = !registry.isEnabled(moduleId);
+    const exclusiveId = getExclusiveModuleId(moduleId);
+    if (enabled && exclusiveId && registry.isEnabled(exclusiveId)) {
+      notify(
+        `请先关闭${MODULE_LABELS[exclusiveId] || exclusiveId}，再开启${MODULE_LABELS[moduleId] || moduleId}`,
+        'info',
+      );
+      refreshManagerState();
+      return;
+    }
+
     moduleToggleBusy.add(moduleId);
     setManagerButtonBusy(button, enabled ? '开启中' : '关闭中', true);
 
@@ -988,6 +1017,7 @@
       clearModuleCaches(moduleId);
     }
 
+    syncExclusiveModuleState(moduleId, enabled);
     registry.setEnabled(moduleId, enabled);
     await new Promise(resolve => window.setTimeout(resolve, 60));
     rerenderAllVisibleMessages();
