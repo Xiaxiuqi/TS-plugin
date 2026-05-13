@@ -27,16 +27,15 @@
 
 .jjks-manager-day {
   --jm-panel: rgba(251, 247, 238, 0.98);
-  --jm-card: rgba(255, 253, 247, 0.86);
-  --jm-card-2: rgba(236, 226, 207, 0.42);
+  --jm-card: rgba(255, 253, 247, 0.88);
+  --jm-card-2: rgba(236, 226, 207, 0.46);
   --jm-text: #342f29;
   --jm-muted: #756b60;
   --jm-faint: #a39889;
-  --jm-sage: #7f927c;
   --jm-blue: #748b9d;
   --jm-rose: #a07e74;
   --jm-gold: #b79a62;
-  --jm-shadow: 0 10px 28px rgba(71, 58, 42, 0.14);
+  --jm-shadow: 0 10px 28px rgba(71, 58, 42, 0.12);
   --jm-shadow-soft: 0 2px 6px rgba(71, 58, 42, 0.045);
 }
 
@@ -61,7 +60,8 @@
   color: var(--jm-text);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
-    radial-gradient(circle at top left, rgba(127, 146, 124, 0.12), transparent 30%), var(--jm-panel);
+    radial-gradient(circle at top left, rgba(160, 126, 116, 0.1), transparent 30%),
+    var(--jm-panel);
   box-shadow: var(--jm-shadow);
 }
 
@@ -81,7 +81,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.28), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.16)),
+    linear-gradient(90deg, rgba(200, 168, 108, 0.24), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.14)),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 84px);
   opacity: 0.62;
 }
@@ -106,18 +106,19 @@
 
 .jjks-manager-night .jjks-manager-head {
   background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent), rgba(255, 255, 255, 0.03);
+    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent),
+    rgba(255, 255, 255, 0.03);
 }
 
 .jjks-manager-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 6px;
+  color: var(--jm-muted);
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  margin-bottom: 6px;
-  color: var(--jm-muted);
 }
 
 .jjks-manager-eyebrow::before {
@@ -139,9 +140,9 @@
 .jjks-manager-head p {
   margin: 6px 0 0;
   max-width: 520px;
+  color: var(--jm-muted);
   font-size: 12px;
   line-height: 1.62;
-  color: var(--jm-muted);
 }
 
 .jjks-manager-close {
@@ -149,8 +150,6 @@
   height: 34px;
   border: none;
   border-radius: 8px;
-  background: transparent;
-  color: var(--jm-gold);
   cursor: pointer;
   font-size: 20px;
   line-height: 1;
@@ -168,7 +167,7 @@
 
 .jjks-manager-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(270px, 0.82fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(270px, 0.88fr);
   gap: 12px;
   padding: 12px 14px 14px;
   overflow: auto;
@@ -180,6 +179,10 @@
   gap: 12px;
   align-content: start;
   min-width: 0;
+}
+
+.jjks-manager-log-full {
+  grid-column: 1 / -1;
 }
 
 .jjks-manager-card {
@@ -229,6 +232,20 @@
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
 }
 
+.jjks-manager-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jjks-manager-title-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  flex: 0 0 auto;
+  color: var(--jm-gold);
+}
+
 .jjks-manager-overview {
   padding: 8px 10px 10px;
   display: grid;
@@ -243,17 +260,13 @@
 .jjks-manager-day .jjks-manager-metric {
   border-radius: 7px;
   background: rgba(255, 253, 247, 0.82);
-  box-shadow:
-    inset 3px 0 0 rgba(116, 139, 157, 0.42),
-    var(--jm-shadow-soft);
+  box-shadow: inset 3px 0 0 rgba(116, 139, 157, 0.42), var(--jm-shadow-soft);
 }
 
 .jjks-manager-night .jjks-manager-metric {
   border-radius: 5px;
   background: var(--jm-card-2);
-  box-shadow:
-    inset 3px 0 0 rgba(136, 174, 184, 0.42),
-    var(--jm-shadow-soft);
+  box-shadow: inset 3px 0 0 rgba(136, 174, 184, 0.42), var(--jm-shadow-soft);
 }
 
 .jjks-manager-metric span {
@@ -277,7 +290,6 @@
   margin: 0;
   padding: 8px 10px 10px;
   display: grid;
-  gap: 0;
 }
 
 .jjks-manager-status div {
@@ -320,8 +332,15 @@
 .jjks-manager-chip-row {
   padding: 8px 10px 10px;
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
+}
+
+.jjks-manager-actions {
+  flex-wrap: nowrap;
+}
+
+.jjks-manager-chip-row {
+  flex-wrap: wrap;
 }
 
 .jjks-manager-button,
@@ -339,54 +358,68 @@
 
 .jjks-manager-button {
   cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-.jjks-manager-day .jjks-manager-button,
-.jjks-manager-day .jjks-manager-chip {
-  border-radius: 6px;
-  color: var(--jm-text);
-  background: rgba(255, 253, 247, 0.82);
-  box-shadow:
-    inset 3px 0 0 rgba(116, 139, 157, 0.42),
-    var(--jm-shadow-soft);
+.jjks-manager-button:hover {
+  transform: translateY(-1px);
 }
 
-.jjks-manager-night .jjks-manager-button,
-.jjks-manager-night .jjks-manager-chip {
-  border-radius: 4px;
+.jjks-manager-day .jjks-manager-button {
   color: var(--jm-text);
-  background: rgba(136, 174, 184, 0.12);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(255, 253, 247, 0.96), rgba(236, 226, 207, 0.82));
+  border: 1px solid rgba(183, 154, 98, 0.18);
+  box-shadow: var(--jm-shadow-soft);
+}
+
+.jjks-manager-night .jjks-manager-button {
+  color: var(--jm-text);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(49, 58, 73, 0.92), rgba(30, 37, 47, 0.96));
+  border: 1px solid rgba(136, 174, 184, 0.16);
+  box-shadow: var(--jm-shadow-soft);
 }
 
 .jjks-manager-day .jjks-manager-button[data-active='true'] {
   color: #342f29;
-  background: linear-gradient(90deg, rgba(236, 226, 207, 0.92), rgba(255, 253, 247, 0.98));
-  box-shadow:
-    inset 3px 0 0 rgba(183, 154, 98, 0.62),
-    var(--jm-shadow-soft);
+  background: linear-gradient(180deg, rgba(255, 253, 247, 1), rgba(236, 226, 207, 0.92));
+  border-color: rgba(183, 154, 98, 0.42);
+  box-shadow: 0 0 0 1px rgba(183, 154, 98, 0.12), var(--jm-shadow-soft);
 }
 
 .jjks-manager-night .jjks-manager-button[data-active='true'] {
   color: var(--jm-text);
-  background: linear-gradient(90deg, rgba(200, 168, 108, 0.18), rgba(136, 174, 184, 0.12), rgba(255, 255, 255, 0.06));
-  box-shadow:
-    inset 3px 0 0 rgba(200, 168, 108, 0.62),
-    var(--jm-shadow-soft);
+  background: linear-gradient(180deg, rgba(61, 72, 89, 0.98), rgba(38, 46, 58, 0.96));
+  border-color: rgba(200, 168, 108, 0.42);
+  box-shadow: 0 0 0 1px rgba(200, 168, 108, 0.12), var(--jm-shadow-soft);
 }
 
-.jjks-manager-actions-theme .jjks-manager-button {
-  min-width: 92px;
-}
-
+.jjks-manager-actions-theme .jjks-manager-button,
 .jjks-manager-actions-tools .jjks-manager-button {
-  flex: 1 1 calc(50% - 8px);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.jjks-manager-day .jjks-manager-chip {
+  border-radius: 999px;
+  color: var(--jm-blue);
+  background: rgba(236, 226, 207, 0.68);
+  box-shadow: none;
+}
+
+.jjks-manager-night .jjks-manager-chip {
+  border-radius: 999px;
+  color: var(--jm-cyan);
+  background: rgba(136, 174, 184, 0.08);
+  border: 1px solid rgba(136, 174, 184, 0.18);
 }
 
 .jjks-manager-log pre {
   margin: 0;
   padding: 8px 10px 10px;
-  min-height: 190px;
-  max-height: 360px;
+  min-height: 170px;
+  max-height: 320px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -428,17 +461,9 @@
   background: rgba(200, 168, 108, 0.12);
 }
 
-.jjks-manager-column-side {
-  grid-template-columns: 1fr;
-}
-
 @media (max-width: 920px) {
   .jjks-manager-body {
     grid-template-columns: 1fr;
-  }
-
-  .jjks-manager-actions-tools .jjks-manager-button {
-    flex: 1 1 calc(33.333% - 8px);
   }
 }
 
@@ -456,9 +481,12 @@
     padding: 12px 12px 10px;
   }
 
+  .jjks-manager-actions {
+    flex-wrap: wrap;
+  }
+
   .jjks-manager-actions-tools .jjks-manager-button,
   .jjks-manager-actions-theme .jjks-manager-button {
     flex: 1 1 100%;
-    min-width: 0;
   }
 }

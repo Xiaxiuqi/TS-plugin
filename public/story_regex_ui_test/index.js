@@ -589,6 +589,7 @@
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
+    const activeSet = new Set(uniqueIds);
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
@@ -603,7 +604,57 @@
       mountModulesForMessage(messageId, rawText);
     });
 
+    // 对当前 DOM 中已经显示、但不在主渲染窗口内的旧楼层做轻量折叠占位。
+    // 这里不修改聊天数据、不隐藏楼层，只避免 Story UI 原始标签裸露出来。
+    getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
+      if (activeSet.has(messageId)) return;
+      const chatMessage = readRawMessage(messageId);
+      const rawText = chatMessage?.message || '';
+      if (!rawText) return;
+      mountCollapsedPlaceholderForMessage(messageId, rawText);
+    });
+
     rememberRecentScannedMessageIds(uniqueIds);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderCollapsedCodePlaceholder(rawText, modules) {
+    const title = modules.length > 0 ? `显示代码块（${modules.length} 个模块片段）` : '显示代码块';
+    const code = escapeHtml(
+      String(rawText || '')
+        .replace(/\r\n?/g, '\n')
+        .trim(),
+    );
+    return `<section class="story-ui-raw-mount story-ui-code-placeholder-mount" data-story-ui-raw-mount="true" data-story-ui-module="raw-code-placeholder"><details class="story-ui-code-placeholder"><summary>${escapeHtml(title)}</summary><pre>${code}</pre></details></section>`;
+  }
+
+  function getRenderableModulesForRawText(rawText) {
+    const registry = getUi()?.registry;
+    if (!registry) return [];
+    return registry
+      .list()
+      .filter(module => module?.id !== 'manager-ui')
+      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+  }
+
+  function mountCollapsedPlaceholderForMessage(messageId, rawText) {
+    const messageElement = getDisplayedMessageElement(messageId);
+    if (!messageElement) return false;
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return false;
+    if (textElement.querySelector?.('.story-ui-code-placeholder-mount')) return true;
+    const modules = getRenderableModulesForRawText(rawText);
+    if (modules.length === 0) return false;
+    textElement.innerHTML = renderCollapsedCodePlaceholder(rawText, modules);
+    return true;
   }
 
   function normalizeScanTargets(input) {
@@ -872,7 +923,6 @@
     setText('scanner', data.扫描器就绪 ? '已就绪' : '未就绪');
     setText('theme-ready', data.主题模块就绪 ? '已就绪' : '未就绪');
     setText('scan-window', data.最近扫描窗口 || 0);
-    setText('scan-mode', data.扫描模式 || '-');
 
     const chips = root.querySelector('[data-jjks-module-chips]');
     if (chips)

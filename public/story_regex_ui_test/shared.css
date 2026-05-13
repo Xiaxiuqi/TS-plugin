@@ -68,3 +68,44 @@
 .story-ui-root.story-ui-night .story-ui-muted {
   color: var(--story-ui-night-faint);
 }
+
+.story-ui-code-placeholder-mount {
+  width: 100%;
+}
+
+.story-ui-code-placeholder {
+  width: min(96%, 960px);
+  margin: 0.55em auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--story-ui-day-panel);
+  box-shadow: var(--story-ui-day-shadow-soft);
+}
+
+.story-ui-code-placeholder summary {
+  padding: 9px 12px;
+  cursor: pointer;
+  color: var(--story-ui-day-text);
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.story-ui-code-placeholder pre {
+  margin: 0;
+  padding: 10px 12px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--story-ui-day-text);
+  background: rgba(255, 253, 247, 0.42);
+  font-family: 'Consolas', 'SFMono-Regular', 'Microsoft YaHei', monospace;
+  font-size: 11.5px;
+  line-height: 1.62;
+}
+
+.story-ui-root.story-ui-night .story-ui-code-placeholder,
+.story-ui-code-placeholder.story-ui-night {
+  background: var(--story-ui-night-panel);
+  box-shadow: var(--story-ui-night-shadow-soft);
+}

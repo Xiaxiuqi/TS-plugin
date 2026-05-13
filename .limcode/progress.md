@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-12T23:21:47.537Z
+- Updated At: 2026-05-13T00:15:49.307Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：拆分咒回前端管理界面为独立模块，并重做为与 MVU/故事引擎一致的米白/暗色可调尺寸管理面板
-- 最新结论：已将咒回前端管理界面的模板与样式迁移到 manager-ui 模块，并改为统一的米白/暗色视觉语言与可调尺寸结构。
-- 下一步：验证 manager-ui 模块的打开/关闭、主题切换、尺寸输入、诊断刷新和按钮交互表现。
+- 当前焦点：重做 manager-ui 视觉结构，并为超出主渲染窗口的旧楼层增加轻量代码块折叠占位
+- 最新结论：已修复 manager-ui 当前语法错误，并重构管理界面标题、按钮、标签与诊断区布局；同时接入 DOM 级旧楼层“显示代码块”折叠占位，避免直接暴露 Story UI 原始内容。
+- 下一步：验证 manager-ui 新布局与按钮样式；确认旧楼层在超出主渲染窗口后显示为可展开代码块占位而非原文裸露。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -63,6 +63,7 @@
 - 2026-05-12T22:51:33.225Z | updated | 新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。
 - 2026-05-12T22:59:59.914Z | updated | 新增 bp-panel 模块，将 BP系统米白/暗色三条正则收敛为外置渲染模块。
 - 2026-05-12T23:21:47.537Z | updated | 拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。
+- 2026-05-13T00:15:49.307Z | updated | 重构 manager-ui 的标题/按钮/诊断布局，并为超出主渲染窗口的旧楼层增加代码块折叠占位。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -72,13 +73,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-12T23:21:47.537Z",
+  "updatedAt": "2026-05-13T00:15:49.307Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "拆分咒回前端管理界面为独立模块，并重做为与 MVU/故事引擎一致的米白/暗色可调尺寸管理面板",
-  "latestConclusion": "已将咒回前端管理界面的模板与样式迁移到 manager-ui 模块，并改为统一的米白/暗色视觉语言与可调尺寸结构。",
+  "currentFocus": "重做 manager-ui 视觉结构，并为超出主渲染窗口的旧楼层增加轻量代码块折叠占位",
+  "latestConclusion": "已修复 manager-ui 当前语法错误，并重构管理界面标题、按钮、标签与诊断区布局；同时接入 DOM 级旧楼层“显示代码块”折叠占位，避免直接暴露 Story UI 原始内容。",
   "currentBlocker": null,
-  "nextAction": "验证 manager-ui 模块的打开/关闭、主题切换、尺寸输入、诊断刷新和按钮交互表现。",
+  "nextAction": "验证 manager-ui 新布局与按钮样式；确认旧楼层在超出主渲染窗口后显示为可展开代码块占位而非原文裸露。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
@@ -219,6 +220,11 @@
       "at": "2026-05-12T23:21:47.537Z",
       "type": "updated",
       "message": "拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。"
+    },
+    {
+      "at": "2026-05-13T00:15:49.307Z",
+      "type": "updated",
+      "message": "重构 manager-ui 的标题/按钮/诊断布局，并为超出主渲染窗口的旧楼层增加代码块折叠占位。"
     }
   ],
   "stats": {
@@ -232,8 +238,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-12T23:21:47.537Z",
-    "bodyHash": "sha256:f92dd2e1b2b5d2e0c4aebaaa848804350eb703cffbddc8c0c3c5d81d07879fcf"
+    "generatedAt": "2026-05-13T00:15:49.307Z",
+    "bodyHash": "sha256:448b81dde1952ba255d1ec96693dc8fd49bfc5847da7c1b369f392261e3c22a0"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
