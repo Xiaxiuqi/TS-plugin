@@ -121,6 +121,7 @@
   const messageSignatures = new Map();
   const mountedModulesByMessage = new Map();
   const recentScannedMessageIds = [];
+  const collapsedMessageSignatures = new Map();
   let renderedWindowSize = 0;
   let recentScanRetryTimer = null;
   let lastScanMode = 'dom';
@@ -371,6 +372,15 @@
   function clearMountedStoryUi(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+  }
+
+  function clearCollapsedPlaceholders(messageElement) {
+    if (!messageElement) return;
+    messageElement.querySelectorAll?.('[data-story-ui-code-placeholder="true"]').forEach(node => node.remove());
+  }
+
+  function hasCollapsedPlaceholder(messageElement) {
+    return Boolean(messageElement?.querySelector?.('[data-story-ui-code-placeholder="true"]'));
   }
 
   function getDisplayedMessageTextElement(messageElement) {
@@ -690,16 +700,24 @@
     return range;
   }
 
-  function replaceRawTextWithMountHost(textElement, rawSource, mountHost) {
+  function replaceRawTextWithNodeHost(textElement, rawSource, hostNode) {
     const candidates = [String(rawSource || ''), String(rawSource || '').trim()].filter(Boolean);
     for (const candidate of candidates) {
       const range = findTextRange(textElement, candidate);
       if (!range) continue;
       range.deleteContents();
-      range.insertNode(mountHost);
+      range.insertNode(hostNode);
       return true;
     }
     return false;
+  }
+
+  function createCollapsedPlaceholderHost(title, blockText) {
+    const host = createElementInHost('section');
+    host.className = 'story-ui-code-placeholder-host';
+    host.dataset.storyUiCodePlaceholder = 'true';
+    host.innerHTML = renderCollapsedBlock(blockText, title);
+    return host;
   }
 
   function mountStoryUiHosts(textElement, registry, rawText, messageId) {
@@ -729,18 +747,24 @@
     const modules = registry
       .list()
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+    clearCollapsedPlaceholders(messageElement);
+    collapsedMessageSignatures.delete(messageId);
     if (modules.length === 0) {
+      clearMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
       return false;
     }
 
     const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
+    if (!textElement) {
+      clearMountedStoryUi(messageElement);
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
 
     textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
 
     const mounted = [];
-    const fallbackHosts = [];
     getRenderableMatchesInOrder(modules, rawText).forEach(match => {
       const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
@@ -751,15 +775,15 @@
       if (!moduleHtml) return;
 
       const mountHost = createRawMountHost(match.module, moduleHtml);
-      const replaced = replaceRawTextWithMountHost(textElement, match.fullMatch, mountHost);
+      const replaced = replaceRawTextWithNodeHost(textElement, match.fullMatch, mountHost);
       if (!replaced) {
-        fallbackHosts.push(mountHost);
-        console.warn(`${logPrefix} 未能在当前原生渲染 DOM 中定位模块原文，已追加挂载: ${match.module.id}`);
+        console.info(`${logPrefix} 检测到当前楼层原文已不可定位，脚本模块已避让原生渲染: ${match.module.id}`);
+        mountHost.remove();
+        return;
       }
       mounted.push(match.module.id);
     });
 
-    fallbackHosts.forEach(host => textElement.appendChild(host));
     mountStoryUiHosts(textElement, registry, rawText, messageId);
 
     if (mounted.length > 0) {
@@ -787,31 +811,41 @@
   function mountCollapsedPlaceholderForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
-    if (!collapseOldMessagesEnabled) return false;
+    if (!collapseOldMessagesEnabled) {
+      collapsedMessageSignatures.delete(messageId);
+      return false;
+    }
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return false;
+    const signature = computeSignature(rawText);
+    if (collapsedMessageSignatures.get(messageId) === signature && hasCollapsedPlaceholder(messageElement)) return true;
 
     const registry = getUi()?.registry;
     if (!registry) return false;
     const modules = registry
       .list()
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) return false;
+    if (modules.length === 0) {
+      collapsedMessageSignatures.delete(messageId);
+      return false;
+    }
 
-    let html = String(rawText || '').replace(/\r\n?/g, '\n');
+    let replacedAny = false;
     modules.forEach(module => {
       const extracted = extractModuleContent(module, rawText);
       if (!extracted?.fullMatch) return;
       const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
-      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
+      const placeholderHost = createCollapsedPlaceholderHost(title, extracted.fullMatch.trim());
+      const replaced = replaceRawTextWithNodeHost(textElement, extracted.fullMatch, placeholderHost);
+      if (replaced) replacedAny = true;
     });
 
-    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
-    } else {
-      textElement.innerHTML = html;
+    if (!replacedAny) {
+      collapsedMessageSignatures.delete(messageId);
+      return false;
     }
+
+    collapsedMessageSignatures.set(messageId, signature);
     return true;
   }
 
@@ -1187,10 +1221,26 @@
       .join('');
   }
 
-  function rerenderAllVisibleMessages() {
+  async function rerenderAllVisibleMessages() {
     const ids = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
+    const refreshed = await refreshRenderedMessagesForNativeRender(ids);
+    if (refreshed) {
+      await new Promise(resolve => window.setTimeout(resolve, 120));
+    }
+
     messageSignatures.clear();
     mountedModulesByMessage.clear();
+    collapsedMessageSignatures.clear();
+    recentScannedMessageIds.length = 0;
+
+    if (!refreshed) {
+      ids.forEach(messageId => {
+        const messageElement = getDisplayedMessageElement(messageId);
+        clearMountedStoryUi(messageElement);
+        clearCollapsedPlaceholders(messageElement);
+      });
+    }
+
     scanMessageIds(ids, 'window');
   }
 
@@ -1242,7 +1292,7 @@
     syncExclusiveModuleState(moduleId, enabled);
     registry.setEnabled(moduleId, enabled);
     await new Promise(resolve => window.setTimeout(resolve, 60));
-    rerenderAllVisibleMessages();
+    await rerenderAllVisibleMessages();
     refreshManagerState();
     notify(`${MODULE_LABELS[moduleId] || moduleId}${enabled ? ' 已开启' : ' 已关闭'}`, 'success');
 
@@ -1358,15 +1408,16 @@
     loaderPromise = null;
     try {
       await ensureLoader();
-      const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
+      const messageIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
       messageSignatures.clear();
       mountedModulesByMessage.clear();
+      collapsedMessageSignatures.clear();
       recentScannedMessageIds.length = 0;
       const refreshed = await refreshRenderedMessagesForNativeRender(messageIds);
       if (refreshed) {
         await new Promise(resolve => window.setTimeout(resolve, 120));
       }
-      queueScan(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      queueScan(messageIds.length ? messageIds : getRenderedMessageIds(Number.MAX_SAFE_INTEGER));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
@@ -1399,8 +1450,8 @@
       collapseOldMessagesEnabled = !collapseOldMessagesEnabled;
       persistCollapseOldMessages(collapseOldMessagesEnabled);
       refreshManagerState();
-      window.setTimeout(() => {
-        rerenderAllVisibleMessages();
+      window.setTimeout(async () => {
+        await rerenderAllVisibleMessages();
         collapseOldMessagesBusy = false;
         refreshManagerState();
       }, 80);
@@ -1509,6 +1560,57 @@
       bindButtonClickFallback(CONFIG.buttonName);
       bindButtonClickFallback(CONFIG.reloadButtonName);
 
+      if (!bound) {
+        console.warn(`${logPrefix} 脚本按钮事件 API 不可用，已启用点击兜底绑定。`);
+        window.setTimeout(() => {
+          bindButtonClickFallback(CONFIG.buttonName);
+          bindButtonClickFallback(CONFIG.reloadButtonName);
+        }, 500);
+      } else {
+        console.info(`${logPrefix} 已通过酒馆按钮事件 API 绑定管理按钮与快捷重载按钮。`);
+      }
+
+      notify('咒回前端管理已导入，点击按钮可打开管理界面。', 'success');
+    } catch (error) {
+      console.error(`${logPrefix} 注册管理按钮失败`, error);
+      notify(`咒回前端管理初始化失败：${error?.message || error}`, 'error');
+    }
+  }
+
+  function exposeManagerApi() {
+    const api = {
+      ensureLoader,
+      queueScan,
+      openManager,
+      closeManager,
+      diagnose,
+      reloadResources,
+      setTheme,
+      toggleManagerModule,
+      hostWindow,
+      hostDocument,
+    };
+
+    window.JJKSStoryUiManager = window.JJKSStoryUiManager || {};
+    window.JJKSStoryUiManager[CONFIG.env] = api;
+    hostWindow.JJKSStoryUiManager = hostWindow.JJKSStoryUiManager || {};
+    hostWindow.JJKSStoryUiManager[CONFIG.env] = api;
+    hostDocument.documentElement.dataset.jjksStoryUiHost = CONFIG.env;
+    hostDocument.documentElement.dataset.jjksStoryUiHostEqualsWindow = hostWindow === window ? 'true' : 'false';
+    hostDocument.documentElement.dataset.jjksStoryUiHostLocation = hostWindow?.location?.href || '';
+  }
+
+  exposeManagerApi();
+  registerManagerButton();
+  bindEvents();
+  ensureLoader()
+    .then(() => {
+      loaderStatus = 'ready';
+    })
+    .catch(error => {
+      console.error(`${logPrefix} 初始化 loader 失败`, error);
+    });
+})();
       if (!bound) {
         console.warn(`${logPrefix} 脚本按钮事件 API 不可用，已启用点击兜底绑定。`);
         window.setTimeout(() => {
