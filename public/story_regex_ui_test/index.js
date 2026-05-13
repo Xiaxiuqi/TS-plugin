@@ -140,6 +140,7 @@
     scriptRewritten: [],
     afterNativeMounted: [],
     afterNativeSkipped: [],
+    afterNativeHidden: [],
   };
   let collapseOldMessagesEnabled = true;
   let collapseOldMessagesBusy = false;
@@ -414,9 +415,21 @@
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
   }
 
+  function restoreAfterNativeHiddenSource(messageElement) {
+    if (!messageElement) return;
+    messageElement.querySelectorAll?.('[data-story-ui-after-native-hidden-source="true"]').forEach(node => {
+      node.hidden = false;
+      node.removeAttribute('aria-hidden');
+      node.classList?.remove('story-ui-after-native-hidden-source');
+      delete node.dataset.storyUiAfterNativeHiddenSource;
+      delete node.dataset.storyUiAfterNativeHiddenModule;
+    });
+  }
+
   function clearAfterNativeMountedStoryUi(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-after-native-mount="true"]').forEach(node => node.remove());
+    restoreAfterNativeHiddenSource(messageElement);
   }
 
   function clearAllMountedStoryUi(messageElement) {
@@ -734,6 +747,76 @@
     );
   }
 
+  function normalizeAfterNativeSourceText(value) {
+    return normalizeTextForAnchor(
+      String(value || '')
+        .replace(/<!--([\s\S]*?)-->/g, ' ')
+        .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
+        .replace(/[｜|]/g, ' '),
+    );
+  }
+
+  function buildAfterNativeHideNeedles(module, rawText) {
+    const needles = [];
+    const pushNeedle = value => {
+      const needle = normalizeAfterNativeSourceText(value);
+      if (needle.length >= 4 && needle.length <= 180 && !needles.includes(needle)) needles.push(needle);
+    };
+
+    (AFTER_NATIVE_ANCHOR_NEEDLES[module?.id] || []).forEach(pushNeedle);
+    const extracted = extractModuleContent(module, rawText);
+    const source = normalizeAfterNativeSourceText(extracted?.content || extracted?.fullMatch || '');
+    source
+      .split(/(?:\n| {2,}|\*\*\*\*)/)
+      .map(line => line.trim())
+      .filter(line => line.length >= 4 && line.length <= 180)
+      .slice(0, 36)
+      .forEach(pushNeedle);
+
+    return needles;
+  }
+
+  function getAfterNativeHideContainer(node, textElement) {
+    if (!node || node === textElement) return null;
+    const blockTags = new Set(['P', 'LI', 'PRE', 'BLOCKQUOTE', 'DETAILS', 'SUMMARY', 'SECTION', 'ARTICLE', 'TABLE', 'UL', 'OL']);
+    let current = node;
+    while (current && current.parentElement && current.parentElement !== textElement) {
+      if (blockTags.has(current.tagName)) return current;
+      current = current.parentElement;
+    }
+    return current && current !== textElement ? current : null;
+  }
+
+  function hideAfterNativeVisibleSource(textElement, module, rawText, anchor) {
+    const needles = buildAfterNativeHideNeedles(module, rawText);
+    const selected = [];
+    const pushNode = node => {
+      const container = getAfterNativeHideContainer(node, textElement);
+      if (!container) return;
+      if (container.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
+      if (!selected.includes(container)) selected.push(container);
+    };
+
+    pushNode(anchor);
+    Array.from(textElement.querySelectorAll?.('*') || []).forEach(node => {
+      if (node === textElement) return;
+      if (node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
+      const text = normalizeAfterNativeSourceText(node.innerText || node.textContent || '');
+      if (!text || text.length > 2500) return;
+      if (needles.some(needle => text.includes(needle))) pushNode(node);
+    });
+
+    const minimal = selected.filter(node => !selected.some(other => other !== node && node.contains(other)));
+    minimal.forEach(node => {
+      node.dataset.storyUiAfterNativeHiddenSource = 'true';
+      node.dataset.storyUiAfterNativeHiddenModule = module.id;
+      node.hidden = true;
+      node.setAttribute('aria-hidden', 'true');
+      node.classList?.add('story-ui-after-native-hidden-source');
+    });
+    return minimal.length;
+  }
+
   function collectTextNodes(root) {
     const nodes = [];
     const nodeFilter = hostWindow.NodeFilter || window.NodeFilter;
@@ -842,6 +925,8 @@
 
       const mountHost = createAfterNativeMountHost(module, moduleHtml, messageId);
       anchor.insertAdjacentElement('afterend', mountHost);
+      const hiddenCount = hideAfterNativeVisibleSource(textElement, module, rawText, anchor);
+      mountHost.dataset.storyUiAfterNativeHiddenCount = String(hiddenCount);
       mountHost.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
       registry.safelyCall(module, 'mount', mountHost, {
         kind: 'after-native',
@@ -853,6 +938,7 @@
         mode: 'after-native',
       });
       result.mounted.push(module.id);
+      if (hiddenCount <= 0) result.skipped.push({ moduleId: module.id, reason: 'source-hide-not-found' });
     });
 
     messageElement.dataset.storyUiAfterNativeMounted = result.mounted.join('|');
@@ -972,6 +1058,7 @@
       scriptRewritten: [],
       afterNativeMounted: [],
       afterNativeSkipped: [],
+      afterNativeHidden: [],
     };
 
     uniqueIds.forEach(messageId => {
@@ -1019,11 +1106,17 @@
           const skipped = String(messageElement?.dataset?.storyUiAfterNativeSkipped || '')
             .split('|')
             .filter(Boolean);
+          const hidden = Array.from(
+            messageElement?.querySelectorAll?.('[data-story-ui-after-native-hidden-source="true"]') || [],
+          ).map(node => `${node.dataset.storyUiAfterNativeHiddenModule || 'unknown'}:${node.tagName.toLowerCase()}`);
           if (mounted.length > 0) {
             scanStats.afterNativeMounted.push({ messageId, modules: mounted });
           }
           if (skipped.length > 0) {
             scanStats.afterNativeSkipped.push({ messageId, modules: skipped });
+          }
+          if (hidden.length > 0) {
+            scanStats.afterNativeHidden.push({ messageId, nodes: hidden });
           }
         }
       }
@@ -1126,6 +1219,7 @@
       最近跳过原生或关闭楼层: lastScanStats.skippedNativeOrOffOnly.slice(-8),
       最近脚本重写楼层: lastScanStats.scriptRewritten.slice(-8),
       最近共存增强挂载楼层: lastScanStats.afterNativeMounted.slice(-8),
+      最近共存增强隐藏原文楼层: lastScanStats.afterNativeHidden.slice(-8),
       最近共存增强跳过楼层: lastScanStats.afterNativeSkipped.slice(-8),
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
