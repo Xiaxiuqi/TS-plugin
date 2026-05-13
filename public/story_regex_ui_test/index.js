@@ -471,8 +471,13 @@
   function renderPlainTextSegment(text, messageId) {
     const source = String(text || '');
     if (!source.trim()) return source;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      return window.formatAsDisplayedMessage(source, { message_id: messageId });
+    const formatAsDisplayedMessage =
+      hostWindow.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage ||
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage;
+    if (typeof formatAsDisplayedMessage === 'function') {
+      return formatAsDisplayedMessage(source, { message_id: messageId });
     }
     return source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
   }
@@ -543,17 +548,23 @@
   function renderMessageHtmlByModules(messageId, rawText, modules) {
     const text = String(rawText || '').replace(/\r\n?/g, '\n');
     let cursor = 0;
-    let html = '';
+    let textWithPlaceholders = '';
     const mounted = [];
+    const replacements = [];
+    const formatAsDisplayedMessage =
+      hostWindow.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage ||
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage;
 
     while (cursor < text.length) {
       const match = findNextRenderableMatch(modules, text, cursor);
       if (!match) {
-        html += renderPlainTextSegment(text.slice(cursor), messageId);
+        textWithPlaceholders += text.slice(cursor);
         break;
       }
 
-      html += renderPlainTextSegment(text.slice(cursor, match.start), messageId);
+      textWithPlaceholders += text.slice(cursor, match.start);
       const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
         messageElement: getDisplayedMessageElement(messageId),
@@ -561,14 +572,34 @@
       });
       const moduleHtml = nodeToHtml(rendered);
       if (moduleHtml) {
-        html += `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${match.module.id}">${moduleHtml}</section>`;
+        const token = `__JJKS_STORY_UI_MOUNT_${CONFIG.env}_${messageId}_${replacements.length}__`;
+        textWithPlaceholders += token;
+        replacements.push({
+          token,
+          html: `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${match.module.id}">${moduleHtml}</section>`,
+        });
         mounted.push(match.module.id);
       } else {
-        html += renderPlainTextSegment(match.fullMatch, messageId);
+        textWithPlaceholders += match.fullMatch;
       }
 
       cursor = match.end;
     }
+
+    let html = '';
+    if (typeof formatAsDisplayedMessage === 'function') {
+      html = formatAsDisplayedMessage(textWithPlaceholders, { message_id: messageId });
+    } else {
+      html = textWithPlaceholders
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+
+    replacements.forEach(({ token, html: replacementHtml }) => {
+      html = html.split(token).join(replacementHtml);
+    });
 
     return { html, mounted };
   }
@@ -665,6 +696,7 @@
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const activeSet = new Set(uniqueIds);
+    const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
@@ -680,7 +712,7 @@
     });
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
-      if (activeSet.has(messageId)) return;
+      if (activeSet.has(messageId) || recentRenderedSet.has(messageId)) return;
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       if (!rawText) return;
