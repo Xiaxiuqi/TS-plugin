@@ -775,6 +775,7 @@
     const modules = registry
       .list()
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+    const signature = computeSignature(rawText);
     clearCollapsedPlaceholders(messageElement);
     collapsedMessageSignatures.delete(messageId);
     if (modules.length === 0) {
