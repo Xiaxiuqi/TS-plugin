@@ -9,8 +9,16 @@
     close: '</UpdateVariable>',
   };
 
+  function normalizeUpdateContent(content) {
+    return String(content || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/^\s*<JSONPatch>\s*/i, '')
+      .replace(/\s*<\/JSONPatch>\s*$/i, '')
+      .trim();
+  }
+
   function renderContent(content) {
-    return dom.escapeHtml(content);
+    return dom.escapeHtml(normalizeUpdateContent(content));
   }
 
   function renderShell(content) {

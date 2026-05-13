@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'test',
     displayEnv: '测试版',
-    version: 'test-20260513-raw-hide-v2',
+    version: 'test-20260513-module-content-v3',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_test/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_test/',
     globalKey: 'StoryRegexUI',
@@ -530,7 +530,8 @@
     return getUi()?.registry?.safelyCall(module, 'renderContent', extracted.content, {
       ...context,
       extracted,
-      rawText,
+      rawText: extracted.fullMatch,
+      messageRawText: rawText,
     });
   }
 
