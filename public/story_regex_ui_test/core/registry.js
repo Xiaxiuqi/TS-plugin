@@ -2,11 +2,25 @@
   const ui = (window.StoryRegexUI = window.StoryRegexUI || {});
   const modules = [];
   const STORAGE_KEY = 'jjks_story_ui_module_enabled_state';
+  const MODE_STORAGE_KEY = 'jjks_story_ui_module_modes';
+  const VALID_MODES = new Set(['script', 'native', 'off']);
+  const DEFAULT_MODE = 'script';
   const enabledState = readEnabledState();
+  const modeState = readModeState();
 
   function readEnabledState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function readModeState() {
+    try {
+      const raw = localStorage.getItem(MODE_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : {};
       return parsed && typeof parsed === 'object' ? parsed : {};
     } catch {
@@ -22,14 +36,30 @@
     }
   }
 
+  function saveModeState() {
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, JSON.stringify(modeState));
+    } catch {
+      // ignore persistence failures
+    }
+  }
+
+  function normalizeMode(mode) {
+    return VALID_MODES.has(mode) ? mode : DEFAULT_MODE;
+  }
+
+  function getStoredOrCompatMode(moduleId) {
+    const savedMode = modeState[moduleId];
+    if (VALID_MODES.has(savedMode)) return savedMode;
+    if (enabledState[moduleId] === false) return 'off';
+    return DEFAULT_MODE;
+  }
+
   function applyEnabledState(module) {
     if (!module?.id) return module;
-    const saved = enabledState[module.id];
-    if (typeof saved === 'boolean') {
-      module.enabled = saved;
-    } else if (typeof module.enabled !== 'boolean') {
-      module.enabled = true;
-    }
+    const mode = getStoredOrCompatMode(module.id);
+    module.mode = mode;
+    module.enabled = mode !== 'off';
     return module;
   }
 
@@ -81,20 +111,40 @@
     return modules.find(module => module.id === moduleId) || null;
   }
 
+  function getMode(moduleId) {
+    const module = find(moduleId);
+    if (!module) return getStoredOrCompatMode(moduleId);
+    const mode = normalizeMode(module.mode || getStoredOrCompatMode(moduleId));
+    module.mode = mode;
+    module.enabled = mode !== 'off';
+    return mode;
+  }
+
   function isEnabled(moduleId) {
     const module = find(moduleId);
     if (!module) return false;
-    return module.enabled !== false;
+    return getMode(moduleId) !== 'off';
+  }
+
+  function isScriptMode(moduleId) {
+    return getMode(moduleId) === 'script';
+  }
+
+  function setMode(moduleId, mode) {
+    const module = find(moduleId);
+    if (!module) return false;
+    const nextMode = normalizeMode(mode);
+    module.mode = nextMode;
+    module.enabled = nextMode !== 'off';
+    modeState[moduleId] = nextMode;
+    enabledState[moduleId] = nextMode !== 'off';
+    saveModeState();
+    saveEnabledState();
+    return true;
   }
 
   function setEnabled(moduleId, enabled) {
-    const module = find(moduleId);
-    if (!module) return false;
-    const nextValue = enabled !== false;
-    module.enabled = nextValue;
-    enabledState[moduleId] = nextValue;
-    saveEnabledState();
-    return true;
+    return setMode(moduleId, enabled === false ? 'off' : DEFAULT_MODE);
   }
 
   function safelyCall(module, methodName, ...args) {
@@ -110,12 +160,18 @@
 
   ui.registry = {
     STORAGE_KEY,
+    MODE_STORAGE_KEY,
+    VALID_MODES: Array.from(VALID_MODES),
+    DEFAULT_MODE,
     register,
     unregister,
     list,
     find,
+    getMode,
+    setMode,
     isEnabled,
     setEnabled,
+    isScriptMode,
     safelyCall,
   };
 })();

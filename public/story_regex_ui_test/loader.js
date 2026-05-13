@@ -24,7 +24,7 @@
 
   const state = {
     baseUrl,
-    version: 'test',
+    version: 'test-raw-token-mode-20260514',
     loadedCss: new Set(),
     loadedScripts: new Set(),
     modules: [

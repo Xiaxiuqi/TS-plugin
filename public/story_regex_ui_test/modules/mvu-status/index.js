@@ -3,18 +3,14 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'mvu-status';
-  const MODULE_VERSION = '0.2.0-test-original-regex-restore';
+  const MODULE_VERSION = '0.2.1-test-original-inline-update';
   const SINGLE_TAG = '<StatusPlaceHolderImpl/>';
 
-  function getMvuDataForMessage(messageId) {
-    try {
-      if (window.Mvu?.getMvuData && Number.isFinite(messageId)) {
-        return window.Mvu.getMvuData({ type: 'message', message_id: messageId }) || {};
-      }
-    } catch {
-      // ignore
-    }
+  function escapeHtml(value) {
+    return dom.escapeHtml(String(value ?? ''));
+  }
 
+  function getAllVariablesSafe() {
     try {
       return window.getAllVariables?.() || {};
     } catch {
@@ -36,15 +32,6 @@
     }
   }
 
-  function escapeHtml(value) {
-    return dom.escapeHtml(String(value ?? ''));
-  }
-
-  function asNumber(value, fallback = 0) {
-    const numberValue = Number(value);
-    return Number.isFinite(numberValue) ? numberValue : fallback;
-  }
-
   function clampPercent(value, max = 100) {
     const numericValue = Number(value) || 0;
     const numericMax = Number(max) || 0;
@@ -64,6 +51,31 @@
 
   function normalizeTitleList(titles, fallback) {
     return [...new Set(normalizeList(titles, fallback))];
+  }
+
+  function safeSetText(root, selector, text) {
+    const el = root?.querySelector?.(selector);
+    if (!el) return;
+    const str = String(text);
+    if (el.textContent !== str) el.textContent = str;
+  }
+
+  function safeSetHtml(root, selector, html) {
+    const el = root?.querySelector?.(selector);
+    if (!el) return;
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }
+
+  function safeSetStyle(root, selector, property, value) {
+    const el = root?.querySelector?.(selector);
+    if (!el) return;
+    if (el.style[property] !== value) el.style[property] = value;
+  }
+
+  function setDisplay(root, selector, value) {
+    const el = root?.querySelector?.(selector);
+    if (!el) return;
+    if (el.style.display !== value) el.style.display = value;
   }
 
   function renderClothes(clothes = {}) {
@@ -94,16 +106,14 @@
     return `<div class="story-ui-mvu-fame-line"><span class="story-ui-mvu-fame-score">名望 ${escapeHtml(scoreText)}</span><span class="story-ui-mvu-fame-tags">${tagHtml}</span></div>`;
   }
 
-  function renderMeter(label, value, max, fillClass) {
-    const safeValue = Number(value) || 0;
-    const safeMax = Number(max) || 0;
-    const width = clampPercent(safeValue, safeMax);
-    return `
-      <div class="story-ui-mvu-rank-meter ${fillClass}">
-        <div class="story-ui-mvu-rank-meter-head"><span>${escapeHtml(label)}</span><span>${escapeHtml(safeValue)} / ${escapeHtml(safeMax)}</span></div>
-        <div class="story-ui-mvu-rank-meter-track"><span class="story-ui-mvu-rank-meter-fill" style="width:${width}%"></span></div>
-      </div>
-    `;
+  function renderWorld(root, allVariables) {
+    const sys = getVar(allVariables, 'stat_data.系统', {});
+    const time = sys.时间 || {};
+    const loc = sys.地点 || {};
+    const timeStr = `${time.年 || 2018}年${time.月日 || ''} ${time.时分 || ''} (${time.星期 || ''})`;
+    const locStr = `${loc.国家 || ''} ${loc.地域 || ''} ${loc.场所 || ''} ${loc.具体位置 || ''}`.trim() || '未知位置';
+    safeSetText(root, '#world-time', timeStr);
+    safeSetText(root, '#world-loc', locStr);
   }
 
   function buildItemList(dataObj, mark, title, renderContentFn) {
@@ -121,99 +131,39 @@
     return html;
   }
 
-  function renderWorld(allVariables, subtitle) {
-    const markIcon = ui.theme?.getTheme?.() === 'night' ? '✧' : '✦';
-    const sys = getVar(allVariables, 'stat_data.系统', {});
-    const time = sys.时间 || {};
-    const loc = sys.地点 || {};
-    const timeStr = `${time.年 || 2018}年${time.月日 || ''} ${time.时分 || ''} (${time.星期 || ''})`;
-    const locStr = `${loc.国家 || ''} ${loc.地域 || ''} ${loc.场所 || ''} ${loc.具体位置 || ''}`.trim() || '未知位置';
-
-    return `
-      <section class="story-ui-mvu-panel">
-        <div class="story-ui-mvu-header">
-          <span class="story-ui-mvu-mark" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
-          <div>
-            <div class="story-ui-mvu-title">世界状态</div>
-            <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>
-          </div>
-          <span class="story-ui-mvu-toggle-icon">✧</span>
-        </div>
-        <div class="story-ui-mvu-body">
-          <div class="story-ui-mvu-world-grid">
-            <div class="story-ui-mvu-world-card">
-              <span class="story-ui-mvu-label">当前时间</span>
-              <span class="story-ui-mvu-value">${escapeHtml(timeStr)}</span>
-            </div>
-            <div class="story-ui-mvu-world-card">
-              <span class="story-ui-mvu-label">当前位置</span>
-              <span class="story-ui-mvu-value">${escapeHtml(locStr)}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    `;
-  }
-
-  function renderSexStatus(allVariables, subtitle) {
-    const sys = getVar(allVariables, 'stat_data.系统', {});
-    const sex = sys.性爱状态 || {};
-    const npcs = getVar(allVariables, 'stat_data.人际档案', {});
-
-    if (sex.进行中 !== true) return '';
-
-    const participants = Array.isArray(sex.参与者) ? sex.参与者 : [];
-    let fullHtml = '';
-
-    if (participants.length === 0) {
-      fullHtml = '<div class="story-ui-mvu-muted-empty">正在感受爱意...</div>';
-    } else {
-      participants.forEach(name => {
-        const npcData = npcs[name] || {};
-        const lust = Number(npcData.欲望值 || 0);
-        fullHtml += `
-          <div class="story-ui-mvu-sex-row">
-            <span class="story-ui-mvu-sex-char-name">${escapeHtml(name)}</span>
-            <div class="story-ui-mvu-lust-bar-bg">
-              <div class="story-ui-mvu-lust-bar-fill" style="width:${Math.min(Math.max(lust, 0), 100)}%"></div>
-            </div>
-            <span class="story-ui-mvu-lust-value-text">${escapeHtml(lust)} / 100</span>
-          </div>
-        `;
-      });
-    }
-
-    return `
-      <section class="story-ui-mvu-panel story-ui-mvu-pink" id="story-ui-mvu-sex-wrapper">
-        <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-sex-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-sex-icon">
-          <span class="story-ui-mvu-mark">✧</span>
-          <div>
-            <div class="story-ui-mvu-title">亲密状态</div>
-            <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>
-          </div>
-          <span class="story-ui-mvu-toggle-icon" id="story-ui-mvu-sex-icon">▼</span>
-        </div>
-        <div class="story-ui-mvu-pink-container" id="story-ui-mvu-sex-container">${fullHtml}</div>
-      </section>
-    `;
-  }
-
-  function renderUser(allVariables, subtitle) {
+  function renderUser(root, allVariables) {
     const theme = ui.theme?.getTheme?.() || 'day';
-    const markIcon = theme === 'night' ? '✧' : '✦';
+    const rewardPrefix = theme === 'night' ? 'REWARD' : '报酬';
     const user = getVar(allVariables, 'stat_data.user', {});
     const tasksModule = getVar(allVariables, 'stat_data.任务系统', {});
 
-    const level = user.等级 || 1;
-    const rank = user.战力评级 || '普通人';
+    safeSetText(root, '#u-lv', user.等级 || 1);
+    safeSetText(root, '#u-rank', user.战力评级 || '普通人');
+
     const expValue = Number(user.EXP || 0);
+    safeSetText(root, '#u-exp', `${expValue} / 100`);
+    safeSetStyle(root, '#u-exp-bar', 'width', `${clampPercent(expValue, 100)}%`);
+
     const ce = user.咒力 || {};
     const spValue = Number(ce.当前值 || 0);
     const spMax = Number(ce.最大值 || 0);
-    const clo = user.当前服装 || {};
+    safeSetText(root, '#u-sp', `${spValue} / ${spMax}`);
+    safeSetStyle(root, '#u-sp-bar', 'width', `${clampPercent(spValue, spMax)}%`);
+    safeSetText(root, '#u-kp', user.KP || 0);
+    safeSetText(root, '#u-health', user.身体状况 || '未知');
+    safeSetText(root, '#u-taijutsu', user.肉搏等级 || '未入门');
+    safeSetText(root, '#u-scar', user.永久损伤或疤痕 || '无');
+
+    safeSetHtml(root, '#u-clothes', renderClothes(user.当前服装 || {}));
+    safeSetHtml(root, '#u-identity', renderIdentityTags(user.公开身份 || []));
+
     const fw = user.名望 || {};
     const pw = fw.正道 || {};
     const ew = fw.邪道 || {};
+    safeSetHtml(root, '#u-fame-pos', renderFameLine(pw.数值, pw.称号, 'pos', '寂寂无名的路人'));
+    safeSetHtml(root, '#u-fame-neg', renderFameLine(ew.数值, ew.称号, 'neg', '无人知晓的普通人'));
+    safeSetText(root, '#u-money', user.持有金钱 || 0);
+    safeSetText(root, '#u-home', user.居住地 || '未知');
 
     const vows = user.束缚 || {};
     let vowHtml = `<div class="story-ui-mvu-sub-toggle-header" data-story-ui-mvu-toggle-next>✦ 束缚 <span class="story-ui-mvu-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-sub-content">`;
@@ -232,10 +182,15 @@
       vowHtml += '</div>';
     }
     vowHtml += `</div>`;
+    safeSetHtml(root, '#list-vows', vowHtml);
 
-    const skillsHtml = buildItemList(user.战技, '✦', '战技', v => {
-      return `<p><span class="story-ui-mvu-c-lbl">熟练度:</span> ${escapeHtml(v?.熟练度 || 0)} <span class="story-ui-mvu-sub-lbl">⇒</span> <span class="story-ui-mvu-val">${escapeHtml(v?.阶段 || '入门')}</span></p><p><span class="story-ui-mvu-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
-    });
+    safeSetHtml(
+      root,
+      '#list-skills',
+      buildItemList(user.战技, '✦', '战技', v => {
+        return `<p><span class="story-ui-mvu-c-lbl">熟练度:</span> ${escapeHtml(v?.熟练度 || 0)} <span class="story-ui-mvu-sub-lbl">⇒</span> <span class="story-ui-mvu-val">${escapeHtml(v?.阶段 || '入门')}</span></p><p><span class="story-ui-mvu-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
+      }),
+    );
 
     const innateCt = user.生得术式 || {};
     const extendedCts = user.扩展术式 || {};
@@ -262,12 +217,25 @@
     finalCtHtml +=
       allCtsItemsHtml !== '' ? `<div class="story-ui-mvu-mini-grid">${allCtsItemsHtml}</div>` : emptyText();
     finalCtHtml += `</div>`;
+    safeSetHtml(root, '#list-all-cts', finalCtHtml);
 
-    const specialHtml = buildItemList(user.特殊体质, '✧', '特殊体质', v => `<p>${escapeHtml(v)}</p>`);
-    const spiritsHtml = buildItemList(user.咒灵操术, '✧', '咒灵操术', v => `<p>${escapeHtml(v)}</p>`);
-    const inventoryHtml = buildItemList(user.行囊, '✦', '行囊', v => {
-      return `<p><span class="story-ui-mvu-c-lbl">数量:</span> ${escapeHtml(v?.数量 || 0)}</p><p><span class="story-ui-mvu-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
-    });
+    safeSetHtml(
+      root,
+      '#list-special',
+      buildItemList(user.特殊体质, '✧', '特殊体质', v => `<p>${escapeHtml(v)}</p>`),
+    );
+    safeSetHtml(
+      root,
+      '#list-spirits',
+      buildItemList(user.咒灵操术, '✧', '咒灵操术', v => `<p>${escapeHtml(v)}</p>`),
+    );
+    safeSetHtml(
+      root,
+      '#list-inventory',
+      buildItemList(user.行囊, '✦', '行囊', v => {
+        return `<p><span class="story-ui-mvu-c-lbl">数量:</span> ${escapeHtml(v?.数量 || 0)}</p><p><span class="story-ui-mvu-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
+      }),
+    );
 
     const tasks = tasksModule || {};
     let taskHtml = `<div class="story-ui-mvu-sub-toggle-header story-ui-mvu-task-header" data-story-ui-mvu-toggle-next>✦ 当前任务 <span class="story-ui-mvu-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-sub-content">`;
@@ -289,7 +257,7 @@
         const rewardSectionHtml = `
           <div class="story-ui-mvu-reward-section">
             <div class="story-ui-mvu-reward-toggle-header" data-story-ui-mvu-toggle-next>
-              <span>报酬 金钱:${escapeHtml(reward.金钱 || 0)} | 名望:+${escapeHtml(reward.名望提升值 || 0)}</span>
+              <span>${rewardPrefix} 金钱:${escapeHtml(reward.金钱 || 0)} | 名望:+${escapeHtml(reward.名望提升值 || 0)}</span>
               <span class="story-ui-mvu-toggle-icon collapsed">▼</span>
             </div>
             <div class="story-ui-mvu-reward-content">
@@ -312,68 +280,10 @@
       });
     }
     taskHtml += `</div>`;
-
-    return `
-      <section class="story-ui-mvu-panel">
-        <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-user-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-user-icon">
-          <span class="story-ui-mvu-mark">${markIcon}</span>
-          <div>
-            <div class="story-ui-mvu-title">个人状态档案</div>
-            <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>
-          </div>
-          <span class="story-ui-mvu-toggle-icon" id="story-ui-mvu-user-icon">▼</span>
-        </div>
-        <div class="story-ui-mvu-body" id="story-ui-mvu-user-container">
-          <div class="story-ui-mvu-hero">
-            <div class="story-ui-mvu-profile-card">
-              <div class="story-ui-mvu-profile-main">
-                <div class="story-ui-mvu-rank-card">
-                  <div class="story-ui-mvu-rank-title">等级 / 战力评级</div>
-                  <div class="story-ui-mvu-rank-value">${escapeHtml(level)} · ${escapeHtml(rank)}</div>
-                  <div class="story-ui-mvu-rank-meters">
-                    ${renderMeter('EXP 经验', expValue, 100, 'exp')}
-                    ${renderMeter('SP 咒力', spValue, spMax, 'sp')}
-                  </div>
-                </div>
-                <div class="story-ui-mvu-stat-grid">
-                  <div class="story-ui-mvu-stat-card"><span class="story-ui-mvu-stat-name">KP <span class="story-ui-mvu-kp-tooltip" title="KP可通过结下束缚或升级获得，每次升级获得5KP。KP可用于提升咒力上限、肉搏等级、战技/术式熟练度，也可用于单次攻击必中、瞬发空间斩等等口胡效果。是原作束缚贷款与升级点的结合。">[?]</span></span><span class="story-ui-mvu-stat-value">${escapeHtml(user.KP || 0)}</span></div>
-                  <div class="story-ui-mvu-stat-card rose"><span class="story-ui-mvu-stat-name">身体状况</span><span class="story-ui-mvu-stat-value">${escapeHtml(user.身体状况 || '未知')}</span></div>
-                  <div class="story-ui-mvu-stat-card"><span class="story-ui-mvu-stat-name">体术等级 <span class="story-ui-mvu-kp-tooltip" title="体术等级除使用KP外不可提升，分未入门/C/B/A/S五个级别，S对应天与暴君。如果需要在开局时设置，在开局【降生】时写入肉搏等级：（你需要的等级）。">[?]</span></span><span class="story-ui-mvu-stat-value">${escapeHtml(user.肉搏等级 || '未入门')}</span></div>
-                  <div class="story-ui-mvu-stat-card rose"><span class="story-ui-mvu-stat-name">损伤/疤痕</span><span class="story-ui-mvu-stat-value">${escapeHtml(user.永久损伤或疤痕 || '无')}</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="story-ui-mvu-section-grid">
-            <div>${vowHtml}</div>
-            <div>${skillsHtml}</div>
-            <div>${finalCtHtml}</div>
-            <div>${specialHtml}</div>
-            <div>${spiritsHtml}</div>
-          </div>
-
-          <div class="story-ui-mvu-info-list">
-            <div class="story-ui-mvu-stat-line"><span class="lbl">当前服装</span><span class="val">${renderClothes(clo)}</span></div>
-            <div class="story-ui-mvu-stat-line"><span class="lbl">身份</span><span class="val">${renderIdentityTags(user.公开身份 || [])}</span></div>
-            <div class="story-ui-mvu-stat-line"><span class="lbl">正道名望</span><span class="val">${renderFameLine(pw.数值, pw.称号, 'pos', '寂寂无名的路人')}</span></div>
-            <div class="story-ui-mvu-stat-line"><span class="lbl">邪道名望</span><span class="val">${renderFameLine(ew.数值, ew.称号, 'neg', '无人知晓的普通人')}</span></div>
-            <div class="story-ui-mvu-stat-line"><span class="lbl">金钱</span><span class="val">${escapeHtml(user.持有金钱 || 0)}</span></div>
-            <div class="story-ui-mvu-stat-line"><span class="lbl">居住</span><span class="val">${escapeHtml(user.居住地 || '未知')}</span></div>
-          </div>
-
-          <div class="story-ui-mvu-section-grid">
-            <div>${inventoryHtml}</div>
-            <div>${taskHtml}</div>
-          </div>
-        </div>
-      </section>
-    `;
+    safeSetHtml(root, '#list-tasks', taskHtml);
   }
 
-  function renderRelations(allVariables, subtitle) {
-    const theme = ui.theme?.getTheme?.() || 'day';
-    const markIcon = theme === 'night' ? '✧' : '✦';
+  function populateCharacterData(root, allVariables) {
     const npcs = getVar(allVariables, 'stat_data.人际档案', {});
     let fullHtml = '';
 
@@ -424,48 +334,185 @@
       fullHtml = emptyText('暂无羁绊数据...');
     }
 
-    return `
-      <section class="story-ui-mvu-panel">
-        <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-jujutsu-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-rel-icon">
-          <span class="story-ui-mvu-mark">${markIcon}</span>
-          <div>
-            <div class="story-ui-mvu-title">咒术高专 · 羁绊档案</div>
-            <div class="story-ui-mvu-subtitle">${escapeHtml(subtitle)}</div>
-          </div>
-          <span class="story-ui-mvu-toggle-icon collapsed" id="story-ui-mvu-rel-icon">▼</span>
-        </div>
-        <div class="story-ui-mvu-jujutsu-container" id="story-ui-mvu-jujutsu-container" style="display: none;">${fullHtml}</div>
-      </section>
-    `;
+    safeSetHtml(root, '#story-ui-mvu-jujutsu-container', fullHtml);
   }
 
-  function renderStatusShell(messageId) {
-    const variables = getMvuDataForMessage(messageId);
+  function renderSexStatus(root, allVariables) {
+    const sys = getVar(allVariables, 'stat_data.系统', {});
+    const sex = sys.性爱状态 || {};
+    const npcs = getVar(allVariables, 'stat_data.人际档案', {});
+
+    if (sex.进行中 === true) {
+      setDisplay(root, '#story-ui-mvu-sex-wrapper', 'block');
+      let fullHtml = '';
+      const participants = Array.isArray(sex.参与者) ? sex.参与者 : [];
+
+      if (participants.length === 0) {
+        fullHtml = '<div class="story-ui-mvu-muted-empty">正在感受爱意...</div>';
+      } else {
+        participants.forEach(name => {
+          const npcData = npcs[name] || {};
+          const lust = Number(npcData.欲望值 || 0);
+          fullHtml += `
+            <div class="story-ui-mvu-sex-row">
+              <span class="story-ui-mvu-sex-char-name">${escapeHtml(name)}</span>
+              <div class="story-ui-mvu-lust-bar-bg">
+                <div class="story-ui-mvu-lust-bar-fill" style="width:${Math.min(lust, 100)}%"></div>
+              </div>
+              <span class="story-ui-mvu-lust-value-text">${escapeHtml(lust)} / 100</span>
+            </div>
+          `;
+        });
+      }
+      safeSetHtml(root, '#story-ui-mvu-sex-container', fullHtml);
+    } else {
+      setDisplay(root, '#story-ui-mvu-sex-wrapper', 'none');
+      safeSetHtml(root, '#story-ui-mvu-sex-container', '');
+    }
+  }
+
+  function populateData(root) {
+    if (!root) return;
+    const allVariables = getAllVariablesSafe();
+    renderWorld(root, allVariables);
+    renderUser(root, allVariables);
+    populateCharacterData(root, allVariables);
+    renderSexStatus(root, allVariables);
+  }
+
+  function renderStatusShell() {
     const theme = ui.theme?.getTheme?.() || 'day';
     const worldSubtitle = theme === 'night' ? 'ASTRAL ANCHOR' : 'GLOBAL ANCHOR';
     const sexSubtitle = theme === 'night' ? 'SIGNAL TRACE' : 'INTIMACY SIGNAL';
     const userSubtitle = theme === 'night' ? 'USER DATA TERMINAL' : 'USER STATUS DASHBOARD';
     const relationSubtitle = theme === 'night' ? 'RELATION LOG' : 'RELATION ARCHIVE';
+    const worldMarkIcon = theme === 'night' ? '✧' : '✦';
+    const userMarkIcon = theme === 'night' ? '✧' : '✦';
+    const relationMarkIcon = theme === 'night' ? '✧' : '✦';
 
     return `
       <section class="story-ui-root story-ui-mvu story-ui-${escapeHtml(theme)}" data-story-ui-module="${MODULE_ID}">
         <main class="story-ui-mvu-root">
-          ${renderWorld(variables, worldSubtitle)}
-          ${renderSexStatus(variables, sexSubtitle)}
-          ${renderUser(variables, userSubtitle)}
-          ${renderRelations(variables, relationSubtitle)}
+          <section class="story-ui-mvu-panel">
+            <div class="story-ui-mvu-header">
+              <span class="story-ui-mvu-mark" data-story-ui-theme-toggle title="切换日夜主题">${worldMarkIcon}</span>
+              <div>
+                <div class="story-ui-mvu-title">世界状态</div>
+                <div class="story-ui-mvu-subtitle">${escapeHtml(worldSubtitle)}</div>
+              </div>
+              <span class="story-ui-mvu-toggle-icon">✧</span>
+            </div>
+            <div class="story-ui-mvu-body">
+              <div class="story-ui-mvu-world-grid">
+                <div class="story-ui-mvu-world-card">
+                  <span class="story-ui-mvu-label">当前时间</span>
+                  <span class="story-ui-mvu-value" id="world-time"></span>
+                </div>
+                <div class="story-ui-mvu-world-card">
+                  <span class="story-ui-mvu-label">当前位置</span>
+                  <span class="story-ui-mvu-value" id="world-loc"></span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="story-ui-mvu-panel story-ui-mvu-pink" id="story-ui-mvu-sex-wrapper" style="display:none;">
+            <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-sex-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-sex-icon">
+              <span class="story-ui-mvu-mark">✧</span>
+              <div>
+                <div class="story-ui-mvu-title">亲密状态</div>
+                <div class="story-ui-mvu-subtitle">${escapeHtml(sexSubtitle)}</div>
+              </div>
+              <span class="story-ui-mvu-toggle-icon" id="story-ui-mvu-sex-icon">▼</span>
+            </div>
+            <div class="story-ui-mvu-pink-container" id="story-ui-mvu-sex-container"></div>
+          </section>
+
+          <section class="story-ui-mvu-panel">
+            <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-user-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-user-icon">
+              <span class="story-ui-mvu-mark">${userMarkIcon}</span>
+              <div>
+                <div class="story-ui-mvu-title">个人状态档案</div>
+                <div class="story-ui-mvu-subtitle">${escapeHtml(userSubtitle)}</div>
+              </div>
+              <span class="story-ui-mvu-toggle-icon" id="story-ui-mvu-user-icon">▼</span>
+            </div>
+            <div class="story-ui-mvu-body" id="story-ui-mvu-user-container">
+              <div class="story-ui-mvu-hero">
+                <div class="story-ui-mvu-profile-card">
+                  <div class="story-ui-mvu-profile-main">
+                    <div class="story-ui-mvu-rank-card">
+                      <div class="story-ui-mvu-rank-title">等级 / 战力评级</div>
+                      <div class="story-ui-mvu-rank-value"><span id="u-lv"></span> · <span id="u-rank"></span></div>
+                      <div class="story-ui-mvu-rank-meters">
+                        <div class="story-ui-mvu-rank-meter exp">
+                          <div class="story-ui-mvu-rank-meter-head"><span>EXP 经验</span><span id="u-exp"></span></div>
+                          <div class="story-ui-mvu-rank-meter-track"><span class="story-ui-mvu-rank-meter-fill" id="u-exp-bar"></span></div>
+                        </div>
+                        <div class="story-ui-mvu-rank-meter sp">
+                          <div class="story-ui-mvu-rank-meter-head"><span>SP 咒力</span><span id="u-sp"></span></div>
+                          <div class="story-ui-mvu-rank-meter-track"><span class="story-ui-mvu-rank-meter-fill" id="u-sp-bar"></span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="story-ui-mvu-stat-grid">
+                      <div class="story-ui-mvu-stat-card"><span class="story-ui-mvu-stat-name">KP <span class="story-ui-mvu-kp-tooltip" title="KP可通过结下束缚或升级获得，每次升级获得5KP。KP可用于提升咒力上限、肉搏等级、战技/术式熟练度，也可用于单次攻击必中、瞬发空间斩等等口胡效果。是原作束缚贷款与升级点的结合。">[?]</span></span><span class="story-ui-mvu-stat-value" id="u-kp"></span></div>
+                      <div class="story-ui-mvu-stat-card rose"><span class="story-ui-mvu-stat-name">身体状况</span><span class="story-ui-mvu-stat-value" id="u-health"></span></div>
+                      <div class="story-ui-mvu-stat-card"><span class="story-ui-mvu-stat-name">体术等级 <span class="story-ui-mvu-kp-tooltip" title="体术等级除使用KP外不可提升，分未入门/C/B/A/S五个级别，S对应天与暴君。如果需要在开局时设置，在开局【降生】时写入肉搏等级：（你需要的等级）。">[?]</span></span><span class="story-ui-mvu-stat-value" id="u-taijutsu"></span></div>
+                      <div class="story-ui-mvu-stat-card rose"><span class="story-ui-mvu-stat-name">损伤/疤痕</span><span class="story-ui-mvu-stat-value" id="u-scar"></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="story-ui-mvu-section-grid">
+                <div id="list-vows"></div>
+                <div id="list-skills"></div>
+                <div id="list-all-cts"></div>
+                <div id="list-special"></div>
+                <div id="list-spirits"></div>
+              </div>
+
+              <div class="story-ui-mvu-info-list">
+                <div class="story-ui-mvu-stat-line"><span class="lbl">当前服装</span><span class="val" id="u-clothes"></span></div>
+                <div class="story-ui-mvu-stat-line"><span class="lbl">身份</span><span class="val" id="u-identity"></span></div>
+                <div class="story-ui-mvu-stat-line"><span class="lbl">正道名望</span><span class="val" id="u-fame-pos"></span></div>
+                <div class="story-ui-mvu-stat-line"><span class="lbl">邪道名望</span><span class="val" id="u-fame-neg"></span></div>
+                <div class="story-ui-mvu-stat-line"><span class="lbl">金钱</span><span class="val" id="u-money"></span></div>
+                <div class="story-ui-mvu-stat-line"><span class="lbl">居住</span><span class="val" id="u-home"></span></div>
+              </div>
+
+              <div class="story-ui-mvu-section-grid">
+                <div id="list-inventory"></div>
+                <div id="list-tasks"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="story-ui-mvu-panel">
+            <div class="story-ui-mvu-header story-ui-mvu-main-toggle" data-story-ui-mvu-toggle-target="story-ui-mvu-jujutsu-container" data-story-ui-mvu-toggle-icon="story-ui-mvu-rel-icon">
+              <span class="story-ui-mvu-mark">${relationMarkIcon}</span>
+              <div>
+                <div class="story-ui-mvu-title">咒术高专 · 羁绊档案</div>
+                <div class="story-ui-mvu-subtitle">${escapeHtml(relationSubtitle)}</div>
+              </div>
+              <span class="story-ui-mvu-toggle-icon collapsed" id="story-ui-mvu-rel-icon">▼</span>
+            </div>
+            <div class="story-ui-mvu-jujutsu-container" id="story-ui-mvu-jujutsu-container" style="display: none;"></div>
+          </section>
         </main>
       </section>
     `;
   }
 
-  function renderContentNode(_content, context = {}) {
+  function renderContentNode() {
     const wrapper = dom.createElement('div', {
       className: 'story-ui-mvu-wrapper',
-      html: renderStatusShell(context.messageId),
+      html: renderStatusShell(),
     });
-
-    return wrapper.firstElementChild || null;
+    const root = wrapper.firstElementChild || null;
+    if (root) populateData(root);
+    return root;
   }
 
   function getExpandedDisplayValue(element) {
@@ -517,15 +564,17 @@
     (hosts || []).forEach(host => {
       const currentPanel = host.querySelector?.('.story-ui-mvu');
       if (!currentPanel) return;
-      const messageId = Number(host.closest?.('.mes[mesid]')?.getAttribute('mesid'));
       const nextPanel =
         ui.theme?.rerenderWithPreservedDetails?.(currentPanel, () => {
           const fresh = document.createElement('div');
-          fresh.innerHTML = renderStatusShell(messageId);
-          return fresh.firstElementChild || null;
+          fresh.innerHTML = renderStatusShell();
+          const created = fresh.firstElementChild || null;
+          if (created) populateData(created);
+          return created;
         }) || null;
       if (nextPanel) {
         bindToggleHandlers(nextPanel);
+        populateData(nextPanel);
       }
     });
   }
@@ -533,31 +582,25 @@
   function mount(node) {
     ui.theme?.applyTheme?.(node);
 
+    const root = node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
+    bindToggleHandlers(root);
+    populateData(root);
+
     if (
       !node.dataset.storyUiMvuInitPending &&
       typeof window.waitGlobalInitialized === 'function' &&
-      !window.Mvu?.getMvuData
+      !window.Mvu?.events
     ) {
       node.dataset.storyUiMvuInitPending = 'true';
       window
         .waitGlobalInitialized('Mvu')
         .then(() => {
-          const panel = node.querySelector?.('.story-ui-mvu');
-          if (!panel) return;
-          const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
-          const fresh = document.createElement('div');
-          fresh.innerHTML = renderStatusShell(messageId);
-          const nextPanel = fresh.firstElementChild;
-          if (!nextPanel) return;
-          panel.replaceWith(nextPanel);
-          ui.theme?.applyThemeToRoot?.(nextPanel);
-          bindToggleHandlers(nextPanel);
+          const currentRoot =
+            node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
+          populateData(currentRoot);
         })
         .catch(() => {});
     }
-
-    const root = node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
-    bindToggleHandlers(root);
 
     if (document.documentElement.dataset.storyUiMvuThemeBound !== 'true') {
       document.documentElement.dataset.storyUiMvuThemeBound = 'true';
@@ -569,16 +612,9 @@
     if (window.Mvu?.events?.VARIABLE_UPDATE_ENDED && window.eventOn && !node.dataset.storyUiMvuRefreshBound) {
       node.dataset.storyUiMvuRefreshBound = 'true';
       window.eventOn(window.Mvu.events.VARIABLE_UPDATE_ENDED, () => {
-        const panel = node.querySelector?.('.story-ui-mvu');
-        if (!panel) return;
-        const messageId = Number(node.closest?.('.mes[mesid]')?.getAttribute('mesid'));
-        const fresh = document.createElement('div');
-        fresh.innerHTML = renderStatusShell(messageId);
-        const nextPanel = fresh.firstElementChild;
-        if (!nextPanel) return;
-        panel.replaceWith(nextPanel);
-        ui.theme?.applyThemeToRoot?.(nextPanel);
-        bindToggleHandlers(nextPanel);
+        const currentRoot =
+          node.querySelector?.('.story-ui-mvu') || node.querySelector?.('.story-ui-root.story-ui-mvu');
+        populateData(currentRoot);
       });
     }
   }
