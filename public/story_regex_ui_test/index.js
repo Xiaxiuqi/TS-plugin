@@ -314,8 +314,13 @@
 
   function getDisplayedMessageElement(messageId) {
     if (messageId === undefined || messageId === null) return null;
+    const retrieveDisplayedMessage =
+      hostWindow.TavernHelper?.retrieveDisplayedMessage ||
+      hostWindow.retrieveDisplayedMessage ||
+      window.TavernHelper?.retrieveDisplayedMessage ||
+      window.retrieveDisplayedMessage;
     try {
-      const byHelper = window.retrieveDisplayedMessage?.(messageId)?.[0];
+      const byHelper = retrieveDisplayedMessage?.(messageId)?.[0];
       if (byHelper) return byHelper.closest?.('.mes[mesid]') || byHelper;
     } catch {
       // ignore helper failures
@@ -343,8 +348,13 @@
   }
 
   function readRawMessage(messageId) {
+    const getChatMessages =
+      hostWindow.TavernHelper?.getChatMessages ||
+      hostWindow.getChatMessages ||
+      window.TavernHelper?.getChatMessages ||
+      window.getChatMessages;
     try {
-      return window.getChatMessages?.(messageId)?.[0] || null;
+      return getChatMessages?.(messageId)?.[0] || null;
     } catch {
       return null;
     }
@@ -510,10 +520,10 @@
     const source = String(text || '');
     if (!source.trim()) return source;
     const formatAsDisplayedMessage =
-      hostWindow.formatAsDisplayedMessage ||
-      window.formatAsDisplayedMessage ||
       hostWindow.TavernHelper?.formatAsDisplayedMessage ||
-      window.TavernHelper?.formatAsDisplayedMessage;
+      hostWindow.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage;
     if (typeof formatAsDisplayedMessage === 'function') {
       return formatAsDisplayedMessage(source, { message_id: messageId });
     }
@@ -590,10 +600,10 @@
     const mounted = [];
     const replacements = [];
     const formatAsDisplayedMessage =
-      hostWindow.formatAsDisplayedMessage ||
-      window.formatAsDisplayedMessage ||
       hostWindow.TavernHelper?.formatAsDisplayedMessage ||
-      window.TavernHelper?.formatAsDisplayedMessage;
+      hostWindow.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage;
 
     const replaceMountToken = (sourceHtml, token, replacementHtml) => {
       const escapedToken = escapeRegex(token);
