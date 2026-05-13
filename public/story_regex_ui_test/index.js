@@ -756,24 +756,39 @@
     );
   }
 
-  function buildAfterNativeHideNeedles(module, rawText) {
-    const needles = [];
-    const pushNeedle = value => {
-      const needle = normalizeAfterNativeSourceText(value);
-      if (needle.length >= 4 && needle.length <= 180 && !needles.includes(needle)) needles.push(needle);
-    };
+  function pushAfterNativeCandidate(candidates, value, { min = 3, max = 220 } = {}) {
+    const candidate = normalizeAfterNativeSourceText(value);
+    if (candidate.length >= min && candidate.length <= max && !candidates.includes(candidate)) candidates.push(candidate);
+  }
 
-    (AFTER_NATIVE_ANCHOR_NEEDLES[module?.id] || []).forEach(pushNeedle);
-    const extracted = extractModuleContent(module, rawText);
-    const source = normalizeAfterNativeSourceText(extracted?.content || extracted?.fullMatch || '');
+  function buildAfterNativeStartCandidates(match) {
+    const candidates = [];
+    (AFTER_NATIVE_ANCHOR_NEEDLES[match?.module?.id] || []).forEach(value => pushAfterNativeCandidate(candidates, value));
+    const source = normalizeAfterNativeSourceText(match?.content || match?.fullMatch || '');
     source
       .split(/(?:\n| {2,}|\*\*\*\*)/)
       .map(line => line.trim())
-      .filter(line => line.length >= 4 && line.length <= 180)
-      .slice(0, 36)
-      .forEach(pushNeedle);
+      .filter(Boolean)
+      .slice(0, 16)
+      .forEach(line => pushAfterNativeCandidate(candidates, line));
+    [220, 160, 120, 80, 48, 32].forEach(size => pushAfterNativeCandidate(candidates, source.slice(0, size)));
+    return candidates;
+  }
 
-    return needles;
+  function buildAfterNativeEndCandidates(match) {
+    const candidates = [];
+    const source = normalizeAfterNativeSourceText(match?.content || match?.fullMatch || '');
+    source
+      .split(/(?:\n| {2,}|\*\*\*\*)/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .slice(-24)
+      .reverse()
+      .forEach(line => pushAfterNativeCandidate(candidates, line));
+    [260, 200, 160, 120, 80, 48, 32].forEach(size =>
+      pushAfterNativeCandidate(candidates, source.slice(Math.max(0, source.length - size))),
+    );
+    return candidates;
   }
 
   function getAfterNativeHideContainer(node, textElement) {
@@ -787,34 +802,69 @@
     return current && current !== textElement ? current : null;
   }
 
-  function hideAfterNativeVisibleSource(textElement, module, rawText, anchor) {
-    const needles = buildAfterNativeHideNeedles(module, rawText);
-    const selected = [];
-    const pushNode = node => {
-      const container = getAfterNativeHideContainer(node, textElement);
-      if (!container) return;
-      if (container.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
-      if (!selected.includes(container)) selected.push(container);
-    };
-
-    pushNode(anchor);
+  function collectAfterNativeVisibleBlocks(textElement) {
+    const blocks = [];
     Array.from(textElement.querySelectorAll?.('*') || []).forEach(node => {
       if (node === textElement) return;
       if (node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
-      const text = normalizeAfterNativeSourceText(node.innerText || node.textContent || '');
-      if (!text || text.length > 2500) return;
-      if (needles.some(needle => text.includes(needle))) pushNode(node);
+      const container = getAfterNativeHideContainer(node, textElement);
+      if (!container || blocks.includes(container)) return;
+      if (container.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
+      const text = normalizeAfterNativeSourceText(container.innerText || container.textContent || '');
+      if (!text || text.length > 5000) return;
+      blocks.push(container);
     });
+    return blocks;
+  }
 
-    const minimal = selected.filter(node => !selected.some(other => other !== node && node.contains(other)));
-    minimal.forEach(node => {
+  function findAfterNativeBlockIndex(blocks, candidates, fromIndex = 0) {
+    for (let index = Math.max(0, fromIndex); index < blocks.length; index += 1) {
+      const text = normalizeAfterNativeSourceText(blocks[index].innerText || blocks[index].textContent || '');
+      if (candidates.some(candidate => text.includes(candidate))) return index;
+    }
+    return -1;
+  }
+
+  function findAfterNativeLastBlockIndex(blocks, candidates, fromIndex = 0) {
+    let found = -1;
+    for (let index = Math.max(0, fromIndex); index < blocks.length; index += 1) {
+      const text = normalizeAfterNativeSourceText(blocks[index].innerText || blocks[index].textContent || '');
+      if (candidates.some(candidate => text.includes(candidate))) found = index;
+    }
+    return found;
+  }
+
+  function hideAfterNativeVisibleSource(textElement, match, nextMatch, anchor) {
+    const blocks = collectAfterNativeVisibleBlocks(textElement);
+    if (blocks.length === 0) return 0;
+
+    const anchorContainer = getAfterNativeHideContainer(anchor, textElement);
+    const anchorIndex = anchorContainer ? blocks.indexOf(anchorContainer) : -1;
+    const startIndex =
+      anchorIndex >= 0 ? anchorIndex : findAfterNativeBlockIndex(blocks, buildAfterNativeStartCandidates(match));
+    if (startIndex < 0) return 0;
+
+    const nextStartIndex = nextMatch
+      ? findAfterNativeBlockIndex(blocks, buildAfterNativeStartCandidates(nextMatch), startIndex + 1)
+      : -1;
+    const ownEndIndex = findAfterNativeLastBlockIndex(blocks, buildAfterNativeEndCandidates(match), startIndex);
+    let endExclusive = nextStartIndex > startIndex ? nextStartIndex : ownEndIndex >= startIndex ? ownEndIndex + 1 : startIndex + 1;
+
+    while (endExclusive > startIndex + 1) {
+      const last = blocks[endExclusive - 1];
+      if (!last?.matches?.('[data-story-ui-after-native-hidden-source="true"]')) break;
+      endExclusive -= 1;
+    }
+
+    const selected = blocks.slice(startIndex, endExclusive);
+    selected.forEach(node => {
       node.dataset.storyUiAfterNativeHiddenSource = 'true';
-      node.dataset.storyUiAfterNativeHiddenModule = module.id;
+      node.dataset.storyUiAfterNativeHiddenModule = match.module.id;
       node.hidden = true;
       node.setAttribute('aria-hidden', 'true');
       node.classList?.add('story-ui-after-native-hidden-source');
     });
-    return minimal.length;
+    return selected.length;
   }
 
   function collectTextNodes(root) {
@@ -902,13 +952,17 @@
     const result = { mounted: [], skipped: [] };
     clearAfterNativeMountedStoryUi(messageElement);
 
-    modules.forEach(module => {
-      const rendered = buildNodeForModule(module, rawText, {
+    const matches = getRenderableMatchesInOrder(modules, rawText);
+    matches.forEach((match, index) => {
+      const module = match.module;
+      const rendered = getUi()?.registry?.safelyCall(module, 'renderContent', match.content, {
         kind: 'after-native',
         mode: 'after-native',
         messageId,
         messageElement,
         textElement,
+        extracted: match,
+        rawText,
         theme: ui?.theme?.getTheme?.() || 'day',
       });
       const moduleHtml = nodeToHtml(rendered);
@@ -925,7 +979,7 @@
 
       const mountHost = createAfterNativeMountHost(module, moduleHtml, messageId);
       anchor.insertAdjacentElement('afterend', mountHost);
-      const hiddenCount = hideAfterNativeVisibleSource(textElement, module, rawText, anchor);
+      const hiddenCount = hideAfterNativeVisibleSource(textElement, match, matches[index + 1] || null, anchor);
       mountHost.dataset.storyUiAfterNativeHiddenCount = String(hiddenCount);
       mountHost.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
       registry.safelyCall(module, 'mount', mountHost, {
