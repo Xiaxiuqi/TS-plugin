@@ -630,7 +630,9 @@
         theme: getUi()?.theme?.getTheme?.() || 'day',
       });
       const moduleHtml = nodeToHtml(rendered);
-      if (moduleHtml) {
+      if (module.enabled === false) {
+        textWithPlaceholders += '';
+      } else if (moduleHtml) {
         const token = `JJKSSTORYUIMOUNT${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
         textWithPlaceholders += token;
         replacements.push({
@@ -639,7 +641,7 @@
         });
         mounted.push(match.module.id);
       } else {
-        textWithPlaceholders += match.fullMatch;
+        textWithPlaceholders += '';
       }
 
       cursor = match.end;
@@ -661,6 +663,62 @@
     });
 
     return { html, mounted };
+  }
+
+  function renderCollapsedHtmlByModules(messageId, rawText, modules) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    let cursor = 0;
+    let textWithPlaceholders = '';
+    const collapsed = [];
+    const replacements = [];
+    const formatAsDisplayedMessage =
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      hostWindow.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage;
+
+    const replaceMountToken = (sourceHtml, token, replacementHtml) => {
+      const escapedToken = escapeRegex(token);
+      return String(sourceHtml || '')
+        .replace(new RegExp(`<p[^>]*>\\s*${escapedToken}\\s*</p>`, 'g'), replacementHtml)
+        .replace(new RegExp(`<span[^>]*>\\s*${escapedToken}\\s*</span>`, 'g'), replacementHtml)
+        .split(token)
+        .join(replacementHtml)
+        .split(escapeHtml(token))
+        .join(replacementHtml);
+    };
+
+    while (cursor < text.length) {
+      const match = findNextRenderableMatch(modules, text, cursor);
+      if (!match) {
+        textWithPlaceholders += text.slice(cursor);
+        break;
+      }
+
+      textWithPlaceholders += text.slice(cursor, match.start);
+      const token = `JJKSSTORYUICOLLAPSED${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
+      const title = MODULE_LABELS[match.module.id] ? `显示代码块 · ${MODULE_LABELS[match.module.id]}` : '显示代码块';
+      textWithPlaceholders += token;
+      replacements.push({
+        token,
+        html: `<section class="story-ui-code-placeholder-host" data-story-ui-code-placeholder="true">${renderCollapsedBlock(match.fullMatch.trim(), title)}</section>`,
+      });
+      collapsed.push(match.module.id);
+      cursor = match.end;
+    }
+
+    let html =
+      typeof formatAsDisplayedMessage === 'function'
+        ? formatAsDisplayedMessage(textWithPlaceholders, { message_id: messageId })
+        : textWithPlaceholders
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+    replacements.forEach(({ token, html: replacementHtml }) => {
+      html = replaceMountToken(html, token, replacementHtml);
+    });
+    return { html, collapsed };
   }
 
   function getRenderableMatchesInOrder(modules, rawText) {
@@ -783,7 +841,7 @@
     if (!registry) return false;
 
     const modules = registry
-      .list()
+      .list({ includeDisabled: true })
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
     const signature = computeSignature(rawText);
     clearCollapsedPlaceholders(messageElement);
@@ -810,40 +868,19 @@
       return false;
     }
 
-    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
-
-    const mounted = [];
-    const avoided = [];
-    getRenderableMatchesInOrder(modules, rawText).forEach(match => {
-      const rendered = buildNodeForModule(match.module, rawText, {
-        messageId,
-        messageElement,
-        theme: getUi()?.theme?.getTheme?.() || 'day',
-      });
-      const moduleHtml = nodeToHtml(rendered);
-      if (!moduleHtml) return;
-
-      const mountHost = createRawMountHost(match.module, moduleHtml);
-      const replaced = replaceRawTextWithNodeHost(textElement, match.fullMatch, mountHost);
-      if (!replaced) {
-        console.info(`${logPrefix} 检测到当前楼层原文已不可定位，脚本模块已避让原生渲染: ${match.module.id}`);
-        avoided.push(match.module.id);
-        mountHost.remove();
-        return;
-      }
-      mounted.push(match.module.id);
-    });
+    const { html, mounted } = renderMessageHtmlByModules(messageId, rawText, modules);
+    textElement.innerHTML = html;
 
     mountStoryUiHosts(textElement, registry, rawText, messageId);
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
-      updateMessageRenderState(messageId, { mounted, avoided, collapsed: [], cleared: false, signature });
+      updateMessageRenderState(messageId, { mounted, avoided: [], collapsed: [], cleared: false, signature });
       return true;
     }
 
     mountedModulesByMessage.delete(messageId);
-    updateMessageRenderState(messageId, { mounted: [], avoided, collapsed: [], cleared: false, signature });
+    updateMessageRenderState(messageId, { mounted: [], avoided: [], collapsed: [], cleared: false, signature });
     return false;
   }
 
@@ -875,34 +912,23 @@
     const registry = getUi()?.registry;
     if (!registry) return false;
     const modules = registry
-      .list()
+      .list({ includeDisabled: true })
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
     if (modules.length === 0) {
       collapsedMessageSignatures.delete(messageId);
       return false;
     }
 
-    let replacedAny = false;
-    const collapsedModules = [];
-    modules.forEach(module => {
-      const extracted = extractModuleContent(module, rawText);
-      if (!extracted?.fullMatch) return;
-      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
-      const placeholderHost = createCollapsedPlaceholderHost(title, extracted.fullMatch.trim());
-      const replaced = replaceRawTextWithNodeHost(textElement, extracted.fullMatch, placeholderHost);
-      if (replaced) {
-        replacedAny = true;
-        collapsedModules.push(module.id);
-      }
-    });
+    const { html, collapsed } = renderCollapsedHtmlByModules(messageId, rawText, modules);
+    textElement.innerHTML = html;
 
-    if (!replacedAny) {
+    if (collapsed.length === 0) {
       collapsedMessageSignatures.delete(messageId);
       return false;
     }
 
     collapsedMessageSignatures.set(messageId, signature);
-    updateMessageRenderState(messageId, { collapsed: collapsedModules, signature });
+    updateMessageRenderState(messageId, { collapsed, signature });
     return true;
   }
 
