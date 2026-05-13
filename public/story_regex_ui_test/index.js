@@ -616,6 +616,70 @@
     return false;
   }
 
+  function mountModulesForMessagePreservingNativeRender(messageId, rawText) {
+    const messageElement = getDisplayedMessageElement(messageId);
+    if (!messageElement) return false;
+
+    const ui = getUi();
+    const registry = ui?.registry;
+    if (!registry) return false;
+
+    const modules = registry
+      .list()
+      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+    if (modules.length === 0) {
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
+
+    const textElement = getDisplayedMessageTextElement(messageElement);
+    if (!textElement) return false;
+
+    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+
+    const mounted = [];
+    const fragment = hostDocument.createDocumentFragment();
+    modules.forEach(module => {
+      const rendered = buildNodeForModule(module, rawText, {
+        messageId,
+        messageElement,
+        theme: getUi()?.theme?.getTheme?.() || 'day',
+      });
+      const moduleHtml = nodeToHtml(rendered);
+      if (!moduleHtml) return;
+
+      const mountHost = createElementInHost('section');
+      mountHost.className = 'story-ui-raw-mount';
+      mountHost.dataset.storyUiRawMount = 'true';
+      mountHost.dataset.storyUiModule = module.id;
+      mountHost.innerHTML = moduleHtml;
+      fragment.appendChild(mountHost);
+      mounted.push(module.id);
+    });
+
+    if (mounted.length === 0) {
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
+
+    textElement.appendChild(fragment);
+    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
+    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
+      const moduleId = mountHost.getAttribute('data-story-ui-module');
+      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
+      if (!module || module.enabled === false) return;
+      registry.safelyCall(module, 'mount', mountHost, {
+        kind: 'raw-preserve-native',
+        rawText,
+        messageId,
+        node: mountHost,
+      });
+    });
+
+    mountedModulesByMessage.set(messageId, mounted);
+    return true;
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -1152,6 +1216,20 @@
     await reloadResources();
   }
 
+  function remountRecentModulesPreservingNativeRender() {
+    const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
+    messageSignatures.clear();
+    mountedModulesByMessage.clear();
+    recentScannedMessageIds.length = 0;
+    messageIds.forEach(messageId => {
+      const chatMessage = readRawMessage(messageId);
+      const rawText = chatMessage?.message || '';
+      if (!rawText) return;
+      mountModulesForMessagePreservingNativeRender(messageId, rawText);
+    });
+    rememberRecentScannedMessageIds(messageIds);
+  }
+
   async function refreshRenderedMessagesAfterReload() {
     const refreshOneMessage = hostWindow.refreshOneMessage || window.refreshOneMessage;
     const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
@@ -1209,7 +1287,7 @@
         console.warn(`${logPrefix} 未找到 refreshOneMessage，已跳过当前楼层刷新。`);
       }
       await new Promise(resolve => window.setTimeout(resolve, refreshed ? 120 : 0));
-      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      remountRecentModulesPreservingNativeRender();
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
