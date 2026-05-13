@@ -351,6 +351,30 @@
   word-break: break-word;
 }
 
+.jjks-manager-tool-note {
+  margin: 8px 10px 0;
+  padding: 7px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.55;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.jjks-manager-day .jjks-manager-tool-note {
+  color: var(--jm-muted);
+  background: rgba(236, 226, 207, 0.46);
+  box-shadow: inset 2px 0 0 rgba(183, 154, 98, 0.48);
+}
+
+.jjks-manager-night .jjks-manager-tool-note {
+  color: var(--jm-muted);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow:
+    inset 2px 0 0 rgba(200, 168, 108, 0.48),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045);
+}
+
 .jjks-manager-actions {
   padding: 8px 10px 10px;
   display: flex;

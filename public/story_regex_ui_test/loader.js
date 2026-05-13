@@ -49,6 +49,11 @@
         script: 'modules/mvu-status/index.js',
       },
       {
+        id: 'mvu-status-newvars',
+        css: 'modules/mvu-status-newvars/style.css',
+        script: 'modules/mvu-status-newvars/index.js',
+      },
+      {
         id: 'story-engine',
         css: 'modules/story-engine/style.css',
         script: 'modules/story-engine/index.js',

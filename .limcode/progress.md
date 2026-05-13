@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-13T01:34:13.949Z
+- Updated At: 2026-05-13T02:03:14.562Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：修正 manager-ui 高度约束并按源正则重做独立的新变量 BP 模块
-- 最新结论：已将 manager-ui 改为外层 panel flex-column、内层 body 使用 flex:1/min-height:0，避免 body 高于外层容器；同时按用户提供的源正则结构重做独立的 bp-panel-newvars 模块，并保持其默认关闭且与旧 BP 互斥。
-- 下一步：验证 manager-ui 底部诊断卡片是否完整显示；验证新变量 BP 在关闭旧 BP 后可独立开启，并正确按米白/暗色主题渲染。
+- 当前焦点：新增 mvu-status-newvars 独立模块，并接入与旧 MVU 状态栏的互斥开关；继续并行收口 bp-panel-newvars 的样式命中问题
+- 最新结论：已新增独立的 mvu-status-newvars 模块，使用与 bp-panel-newvars 相同的互斥策略：默认关闭、通过 <StatusPlaceHolderImpl/> 挂载、接入 loader 与管理面板，并与现有 mvu-status 互斥。
+- 下一步：验证新变量 MVU 在关闭旧 MVU 后可独立开启，并检查米白/暗色两套新变量样式与折叠交互是否完整生效。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -44,7 +44,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T11:57:09.622Z | artifact_changed | plan | 同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:09:33.524Z | artifact_changed | plan | 同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:21:09.357Z | artifact_changed | plan | 同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:24:37.565Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
@@ -64,6 +63,7 @@
 - 2026-05-12T23:21:47.537Z | updated | 拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。
 - 2026-05-13T00:15:49.307Z | updated | 重构 manager-ui 的标题/按钮/诊断布局，并为超出主渲染窗口的旧楼层增加代码块折叠占位。
 - 2026-05-13T01:34:13.949Z | updated | 将 manager-ui 改为 flex-column 以修复底部诊断区裁切，并按源正则重做独立的新变量 BP 模块。
+- 2026-05-13T02:03:14.562Z | updated | 新增 mvu-status-newvars 独立模块，并将其接入 loader、管理面板与旧 mvu-status 的互斥逻辑。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -73,13 +73,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-13T01:34:13.949Z",
+  "updatedAt": "2026-05-13T02:03:14.562Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "修正 manager-ui 高度约束并按源正则重做独立的新变量 BP 模块",
-  "latestConclusion": "已将 manager-ui 改为外层 panel flex-column、内层 body 使用 flex:1/min-height:0，避免 body 高于外层容器；同时按用户提供的源正则结构重做独立的 bp-panel-newvars 模块，并保持其默认关闭且与旧 BP 互斥。",
+  "currentFocus": "新增 mvu-status-newvars 独立模块，并接入与旧 MVU 状态栏的互斥开关；继续并行收口 bp-panel-newvars 的样式命中问题",
+  "latestConclusion": "已新增独立的 mvu-status-newvars 模块，使用与 bp-panel-newvars 相同的互斥策略：默认关闭、通过 <StatusPlaceHolderImpl/> 挂载、接入 loader 与管理面板，并与现有 mvu-status 互斥。",
   "currentBlocker": null,
-  "nextAction": "验证 manager-ui 底部诊断卡片是否完整显示；验证新变量 BP 在关闭旧 BP 后可独立开启，并正确按米白/暗色主题渲染。",
+  "nextAction": "验证新变量 MVU 在关闭旧 MVU 后可独立开启，并检查米白/暗色两套新变量样式与折叠交互是否完整生效。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
@@ -113,12 +113,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T11:57:09.622Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T12:09:33.524Z",
       "type": "artifact_changed",
@@ -225,6 +219,11 @@
       "at": "2026-05-13T01:34:13.949Z",
       "type": "updated",
       "message": "将 manager-ui 改为 flex-column 以修复底部诊断区裁切，并按源正则重做独立的新变量 BP 模块。"
+    },
+    {
+      "at": "2026-05-13T02:03:14.562Z",
+      "type": "updated",
+      "message": "新增 mvu-status-newvars 独立模块，并将其接入 loader、管理面板与旧 mvu-status 的互斥逻辑。"
     }
   ],
   "stats": {
@@ -238,8 +237,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-13T01:34:13.949Z",
-    "bodyHash": "sha256:96704d86184870f9d2f2afd59f7261bae3b71cdee17cdb4329da3ccb16fd87e1"
+    "generatedAt": "2026-05-13T02:03:14.562Z",
+    "bodyHash": "sha256:2221a6cf8c9a64a8cfcee11156f747a7cadeebd41eea30d763a4a6b63dbfa4a1"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

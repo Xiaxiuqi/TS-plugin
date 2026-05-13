@@ -41,6 +41,7 @@
             </section>
             <section class="jjks-manager-card jjks-manager-panel-theme-tools">
               <h3>${title('维护工具')}</h3>
+              <p class="jjks-manager-tool-note">初次加载需要点击一次手动重扫和重载资源</p>
               <div class="jjks-manager-actions jjks-manager-actions-tools" data-jjks-maintenance-actions></div>
             </section>
           </div>

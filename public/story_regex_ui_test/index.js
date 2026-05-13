@@ -24,6 +24,7 @@
     'relation-status': '角色羁绊档案',
     'variable-update': '变量更新',
     'mvu-status': 'MVU状态栏',
+    'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
 
   function getCandidateWindows() {
@@ -226,7 +227,6 @@
 
     applyManagerTheme(nextTheme);
     refreshManagerState();
-    notify(nextTheme === 'night' ? '已切换为暗色模式' : '已切换为米白模式', 'success');
   }
 
   function ensureLoader() {
@@ -977,6 +977,8 @@
   function getExclusiveModuleId(moduleId) {
     if (moduleId === 'bp-panel') return 'bp-panel-newvars';
     if (moduleId === 'bp-panel-newvars') return 'bp-panel';
+    if (moduleId === 'mvu-status') return 'mvu-status-newvars';
+    if (moduleId === 'mvu-status-newvars') return 'mvu-status';
     return '';
   }
 
