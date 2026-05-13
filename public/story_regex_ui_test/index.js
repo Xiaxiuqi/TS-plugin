@@ -665,6 +665,7 @@
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const activeSet = new Set(uniqueIds);
+    const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
@@ -680,7 +681,7 @@
     });
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
-      if (activeSet.has(messageId)) return;
+      if (activeSet.has(messageId) || recentRenderedSet.has(messageId)) return;
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       if (!rawText) return;
