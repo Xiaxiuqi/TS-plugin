@@ -175,10 +175,12 @@
     }
 
     if (groupName === '肉体') {
+      let parsedCount = 0;
       body.split('|').forEach(part => {
         const item = normalizeText(part);
         const itemMatch = item.match(/^(总肉体值_BPA|基础|武艺|阶段|输出|防御系数)\s*([\s\S]*?)$/);
         if (!itemMatch) return;
+        parsedCount += 1;
         const value = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '总肉体值_BPA') target.bodyTotal = value;
         if (itemMatch[1] === '基础') target.bodyBase = value;
@@ -187,14 +189,17 @@
         if (itemMatch[1] === '输出') target.martialOutput = value;
         if (itemMatch[1] === '防御系数') target.martialDefense = value;
       });
+      if (parsedCount === 0) addLegacyField(target, groupName, body);
       return true;
     }
 
     if (groupName === '术式') {
+      let parsedCount = 0;
       body.split('|').forEach(part => {
         const item = normalizeText(part);
         const itemMatch = item.match(/^(术式强度_BPB|名称|潜力|精通|基础强度|当前强度)\s*([\s\S]*?)$/);
         if (!itemMatch) return;
+        parsedCount += 1;
         const value = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '术式强度_BPB') target.techniquePower = value;
         if (itemMatch[1] === '名称') target.techniqueName = value;
@@ -211,45 +216,55 @@
         if (itemMatch[1] === '基础强度') target.techniqueBasePower = value;
         if (itemMatch[1] === '当前强度') target.techniqueCurrentPower = value;
       });
+      if (parsedCount === 0) addLegacyField(target, groupName, body);
       return true;
     }
 
     if (groupName === '攻击') {
+      let parsedCount = 0;
       body.split('|').forEach(part => {
         const item = normalizeText(part);
         const itemMatch = item.match(/^(咒术|物理|咒具)\s*([\s\S]*?)$/);
         if (!itemMatch) return;
+        parsedCount += 1;
         if (itemMatch[1] === '咒术') target.curseAttack = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '物理') target.physicalAttack = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '咒具') target.toolValue = normalizeText(itemMatch[2]);
       });
+      if (parsedCount === 0) addLegacyField(target, groupName, body);
       return true;
     }
 
     if (groupName === '反转') {
+      let parsedCount = 0;
       body.split('|').forEach(part => {
         const item = normalizeText(part);
         const itemMatch = item.match(/^(掌握|等级|回复|治疗消耗|熔断修复消耗)\s*([\s\S]*?)$/);
         if (!itemMatch) return;
+        parsedCount += 1;
         if (itemMatch[1] === '掌握') target.reverseKnown = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '等级') target.reverseTier = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '回复') target.reverseRecovery = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '治疗消耗') target.reverseHealCost = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '熔断修复消耗') target.reverseFixCost = normalizeText(itemMatch[2]);
       });
+      if (parsedCount === 0) addLegacyField(target, groupName, body);
       return true;
     }
 
     if (groupName === '熔断') {
+      let parsedCount = 0;
       body.split('|').forEach(part => {
         const item = normalizeText(part);
         const itemMatch = item.match(/^(状态|大脑重置|回复惩罚|强度惩罚)\s*([\s\S]*?)$/);
         if (!itemMatch) return;
+        parsedCount += 1;
         if (itemMatch[1] === '状态') target.burnoutState = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '大脑重置') target.burnoutReset = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '回复惩罚') target.burnoutRecoveryPenalty = normalizeText(itemMatch[2]);
         if (itemMatch[1] === '强度惩罚') target.burnoutPowerPenalty = normalizeText(itemMatch[2]);
       });
+      if (parsedCount === 0) addLegacyField(target, groupName, body);
       return true;
     }
 
@@ -355,6 +370,18 @@
       .join('');
   }
 
+  function renderTraitPanel(traits) {
+    const traitHtml = renderTraitList(traits);
+    if (!traitHtml) return '';
+    return `<div class="bp-game-panel trait"><div class="bp-game-title">特性备注</div><div class="bp-trait-list">${traitHtml}</div></div>`;
+  }
+
+  function chunkArray(items, size) {
+    const chunks = [];
+    for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+    return chunks;
+  }
+
   function rarityPill(value) {
     const text = normalizeText(value);
     if (!text) return '';
@@ -391,10 +418,15 @@
 
   function renderLegacyPanel(target) {
     if (!target.legacy.length) return '';
-    return renderPanel(
-      '简化战力',
-      target.legacy.map(item => renderGameLine(item.label, item.value)),
-    );
+    const chunks = target.legacy.length > 5 ? chunkArray(target.legacy, 5) : [target.legacy];
+    return chunks
+      .map((chunk, index) =>
+        renderPanel(
+          chunks.length > 1 ? `简化战力 ${index + 1}` : '简化战力',
+          chunk.map(item => renderGameLine(item.label, item.value)),
+        ),
+      )
+      .join('');
   }
 
   function renderTargetCard(target) {
@@ -417,6 +449,15 @@
     ]
       .filter(Boolean)
       .join(' · ');
+    const legacyHtml = renderLegacyPanel(target);
+    const traitPanelHtml = renderTraitPanel(target.traits);
+    const shouldInlineTraitsWithLegacy =
+      target.legacy.length > 0 && target.legacy.length <= 5 && Boolean(traitPanelHtml);
+    const legacyForMainGrid = shouldInlineTraitsWithLegacy ? '' : legacyHtml;
+    const traitBottomHtml =
+      !shouldInlineTraitsWithLegacy && traitHtml
+        ? `<div class="bp-trait-title">特性备注</div><div class="bp-trait-list">${traitHtml}</div>`
+        : '';
 
     return `
       <div class="bp-target-card" data-rarity="${escapeHtml(rarity)}">
@@ -481,10 +522,12 @@
             ],
             'support',
           )}
-          ${renderLegacyPanel(target)}
+          ${legacyForMainGrid}
         </div>
 
-        ${traitHtml ? `<div class="bp-trait-title">特性备注</div><div class="bp-trait-list">${traitHtml}</div>` : ''}
+        ${shouldInlineTraitsWithLegacy ? `<div class="bp-legacy-trait-grid">${legacyHtml}${traitPanelHtml}</div>` : ''}
+
+        ${traitBottomHtml}
       </div>
     `;
   }
