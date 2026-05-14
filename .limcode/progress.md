@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T18:56:23.486Z
+- Updated At: 2026-05-14T19:19:18.604Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：修复 releasetest 新变量 MVU 行囊展开高度与“论外熟练”显示。
-- 最新结论：已在 releasetest 新变量 MVU 中为行囊折叠内容设置最大高度，约四行半内容高度，内容少时自然显示，超过后可纵向滚动且隐藏滚动条。已在 releasetest 新变量 MVU 与 BP 新变量面板显示层增加“轮外熟练”到“论外熟练”的防呆归一化：无论获取值为轮外熟练或论外熟练，界面显示均为论外熟练。JS 已通过 node --check；正式版对…
-- 下一步：在 releasetest 暗色模式实测行囊展开高度、滚动行为与论外熟练显示是否符合预期。
+- 当前焦点：继续修正 releasetest 新变量 MVU 熔断文案、行囊高度与熟练等级胶囊上色。
+- 最新结论：已将术式熔断横向栏文案从“熔断否/是”改为“熔断：否/是”；行囊展开最大高度提升到此前 1.5 倍（约 6.75 行内容高度），仍保持内容少时自然显示、内容多时隐藏滚动条滚动。已确认 MVU 状态栏原先只有主战力等级文字上色，术式/战技里的熟练度阶段未做胶囊上色；本轮已补充 BP 风格扁平胶囊，覆盖战技阶段、扩展术式阶段、生得术式潜力等级、生得术式精通阶段，…
+- 下一步：在 releasetest 页面实测：术式熔断栏文案、行囊滚动高度、战技/术式熟练等级胶囊颜色是否符合预期。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,10 +22,10 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 检查 releasetest 新变量 MVU/BP 中行囊渲染与熟练阶段显示位置  `#inventory-scroll-1`
-- [x] 为新变量 MVU 行囊展开内容设置四行半高度上限、隐藏滚动条滚动  `#inventory-scroll-2`
-- [x] 在新变量 MVU 与 BP 显示层统一将“轮外熟练/论外熟练”显示为“论外熟练”  `#inventory-scroll-3`
-- [x] 验证语法并确认正式版未修改  `#inventory-scroll-4`
+- [x] 修改术式熔断信息栏文案为“熔断：否/是”  `#meltdown-rarity-1`
+- [x] 将行囊展开最大高度提升到当前的 1.5 倍  `#meltdown-rarity-2`
+- [x] 为 MVU 状态栏术式/战技熟练度等级补充 BP 风格扁平胶囊上色  `#meltdown-rarity-3`
+- [x] 验证语法、检查正式版无差异并更新进度  `#meltdown-rarity-4`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -43,7 +43,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:53:50.057Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T22:35:00.389Z | updated | 记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。
 - 2026-05-12T22:51:33.225Z | updated | 新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。
@@ -63,6 +62,7 @@
 - 2026-05-14T18:29:05.741Z | updated | newvars-innate-ct-pending-only | 新变量 MVU 生得术式待觉醒状态改为只显示待觉醒卡片，其余字段不展示。
 - 2026-05-14T18:47:25.745Z | updated | newvars-meltdown-bar-bp-grade-color | 新变量 MVU：术式熔断改为身体状况上方横向栏，并新增 BP 战力等级分级上色。
 - 2026-05-14T18:56:23.486Z | updated | newvars-inventory-scroll-and-lunwai-normalize | 新变量 MVU 行囊展开内容增加隐藏滚动条的高度上限；新变量 MVU/BP 显示层统一论外熟练文案。
+- 2026-05-14T19:19:18.604Z | updated | newvars-mvu-meltdown-inventory-rarity-pills | 新变量 MVU：熔断文案改为“熔断：否/是”，行囊高度增大 1.5 倍，战技/术式熟练等级补 BP 风格胶囊上色。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -72,47 +72,41 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T18:56:23.486Z",
+  "updatedAt": "2026-05-14T19:19:18.604Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "修复 releasetest 新变量 MVU 行囊展开高度与“论外熟练”显示。",
-  "latestConclusion": "已在 releasetest 新变量 MVU 中为行囊折叠内容设置最大高度，约四行半内容高度，内容少时自然显示，超过后可纵向滚动且隐藏滚动条。已在 releasetest 新变量 MVU 与 BP 新变量面板显示层增加“轮外熟练”到“论外熟练”的防呆归一化：无论获取值为轮外熟练或论外熟练，界面显示均为论外熟练。JS 已通过 node --check；正式版对应模块无本轮差异。",
+  "currentFocus": "继续修正 releasetest 新变量 MVU 熔断文案、行囊高度与熟练等级胶囊上色。",
+  "latestConclusion": "已将术式熔断横向栏文案从“熔断否/是”改为“熔断：否/是”；行囊展开最大高度提升到此前 1.5 倍（约 6.75 行内容高度），仍保持内容少时自然显示、内容多时隐藏滚动条滚动。已确认 MVU 状态栏原先只有主战力等级文字上色，术式/战技里的熟练度阶段未做胶囊上色；本轮已补充 BP 风格扁平胶囊，覆盖战技阶段、扩展术式阶段、生得术式潜力等级、生得术式精通阶段，并复用 BP 的等级色系与“论外熟练”归一化。JS 已通过 node --check，正式版对应模块无本轮差异。",
   "currentBlocker": null,
-  "nextAction": "在 releasetest 暗色模式实测行囊展开高度、滚动行为与论外熟练显示是否符合预期。",
+  "nextAction": "在 releasetest 页面实测：术式熔断栏文案、行囊滚动高度、战技/术式熟练等级胶囊颜色是否符合预期。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "inventory-scroll-1",
-      "content": "检查 releasetest 新变量 MVU/BP 中行囊渲染与熟练阶段显示位置",
+      "id": "meltdown-rarity-1",
+      "content": "修改术式熔断信息栏文案为“熔断：否/是”",
       "status": "completed"
     },
     {
-      "id": "inventory-scroll-2",
-      "content": "为新变量 MVU 行囊展开内容设置四行半高度上限、隐藏滚动条滚动",
+      "id": "meltdown-rarity-2",
+      "content": "将行囊展开最大高度提升到当前的 1.5 倍",
       "status": "completed"
     },
     {
-      "id": "inventory-scroll-3",
-      "content": "在新变量 MVU 与 BP 显示层统一将“轮外熟练/论外熟练”显示为“论外熟练”",
+      "id": "meltdown-rarity-3",
+      "content": "为 MVU 状态栏术式/战技熟练度等级补充 BP 风格扁平胶囊上色",
       "status": "completed"
     },
     {
-      "id": "inventory-scroll-4",
-      "content": "验证语法并确认正式版未修改",
+      "id": "meltdown-rarity-4",
+      "content": "验证语法、检查正式版无差异并更新进度",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T16:39:24.651Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T16:53:50.057Z",
       "type": "artifact_changed",
@@ -219,6 +213,12 @@
       "type": "updated",
       "refId": "newvars-inventory-scroll-and-lunwai-normalize",
       "message": "新变量 MVU 行囊展开内容增加隐藏滚动条的高度上限；新变量 MVU/BP 显示层统一论外熟练文案。"
+    },
+    {
+      "at": "2026-05-14T19:19:18.604Z",
+      "type": "updated",
+      "refId": "newvars-mvu-meltdown-inventory-rarity-pills",
+      "message": "新变量 MVU：熔断文案改为“熔断：否/是”，行囊高度增大 1.5 倍，战技/术式熟练等级补 BP 风格胶囊上色。"
     }
   ],
   "stats": {
@@ -232,8 +232,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T18:56:23.486Z",
-    "bodyHash": "sha256:a1b35e440db830abdb893ccb456027818d051d0b63fa332702c1b7d0b395cf3e"
+    "generatedAt": "2026-05-14T19:19:18.604Z",
+    "bodyHash": "sha256:09fd66701c5e348a1a967c03300d97adc3a3229cfea0293d65dcec1111407eba"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

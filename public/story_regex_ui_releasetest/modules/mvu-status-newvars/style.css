@@ -894,7 +894,7 @@
   margin: 2px 0;
 }
 .story-ui-mvu-newvars-inventory-header + .story-ui-mvu-newvars-sub-content {
-  max-height: calc((12px * 1.55 + 16px + 17px) * 4.5);
+  max-height: calc((12px * 1.55 + 16px + 17px) * 6.75);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
@@ -913,6 +913,73 @@
   margin-top: 8px;
   display: grid;
   gap: 7px;
+}
+.story-ui-mvu-newvars-rarity {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.32;
+  font-weight: 900;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.story-ui-mvu-newvars-rarity[data-rarity='S级·论外'],
+.story-ui-mvu-newvars-rarity[data-rarity='出神入化'],
+.story-ui-mvu-newvars-rarity[data-rarity='论外'],
+.story-ui-mvu-newvars-rarity[data-rarity='论外熟练'],
+.story-ui-mvu-newvars-rarity[data-rarity='篡改现实·编织者型'] {
+  color: #b54a4a;
+  background: rgba(181, 74, 74, 0.18);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='AA级·强特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='强特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='特级熟练'],
+.story-ui-mvu-newvars-rarity[data-rarity='干涉现实·规则干涉型'] {
+  color: #a6782a;
+  background: rgba(183, 154, 98, 0.25);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='A级·特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='出类拔萃'],
+.story-ui-mvu-newvars-rarity[data-rarity='登峰造极'],
+.story-ui-mvu-newvars-rarity[data-rarity='第一等·天才型术式'] {
+  color: #8f5fa8;
+  background: rgba(138, 129, 157, 0.24);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='B级·一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='C级·准一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='准一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='登堂入室'],
+.story-ui-mvu-newvars-rarity[data-rarity='精通'],
+.story-ui-mvu-newvars-rarity[data-rarity='第二等·精英型术式'] {
+  color: #527999;
+  background: rgba(116, 139, 157, 0.22);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='D级·二级'],
+.story-ui-mvu-newvars-rarity[data-rarity='二级'],
+.story-ui-mvu-newvars-rarity[data-rarity='熟练'],
+.story-ui-mvu-newvars-rarity[data-rarity='入门'],
+.story-ui-mvu-newvars-rarity[data-rarity='第三等·标准型术式'] {
+  color: #5e7f6a;
+  background: rgba(127, 146, 124, 0.22);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='E级·三级'],
+.story-ui-mvu-newvars-rarity[data-rarity='三级'],
+.story-ui-mvu-newvars-rarity[data-rarity='初步觉醒'],
+.story-ui-mvu-newvars-rarity[data-rarity='初学乍练'],
+.story-ui-mvu-newvars-rarity[data-rarity='初觉醒'],
+.story-ui-mvu-newvars-rarity[data-rarity='第四等·砥砺型术式'] {
+  color: #756b60;
+  background: rgba(117, 107, 96, 0.16);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='F级·四级'],
+.story-ui-mvu-newvars-rarity[data-rarity='四级'],
+.story-ui-mvu-newvars-rarity[data-rarity='未入门'],
+.story-ui-mvu-newvars-rarity[data-rarity='未定型术式'] {
+  color: #9a9389;
+  background: rgba(154, 147, 137, 0.16);
 }
 .story-ui-mvu-newvars-sub-toggle-header,
 .story-ui-mvu-newvars-item-toggle-header,

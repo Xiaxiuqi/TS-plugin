@@ -155,8 +155,14 @@
     el.classList.add(gradeClass);
   }
 
+  function renderRarityPill(value) {
+    const text = normalizeDisplayText(value || '');
+    if (!text) return '';
+    return `<span class="story-ui-mvu-newvars-rarity" data-rarity="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
+  }
+
   function renderMeltdownText(meltdown = {}) {
-    return `熔断${yesNo(meltdown.熔断中)} · 重置${meltdown.大脑重置次数 || 0} · 回复×${meltdown.咒力回复惩罚系数 ?? 1} · 强度×${meltdown.术式强度惩罚系数 ?? 1} · 修复×${meltdown.熔断修复时间缩短倍率 ?? 2}`;
+    return `熔断：${yesNo(meltdown.熔断中)} · 重置${meltdown.大脑重置次数 || 0} · 回复×${meltdown.咒力回复惩罚系数 ?? 1} · 强度×${meltdown.术式强度惩罚系数 ?? 1} · 修复×${meltdown.熔断修复时间缩短倍率 ?? 2}`;
   }
 
   function renderWorld(root, allVariables) {
@@ -281,7 +287,7 @@
       root,
       '#list-skills',
       buildItemList(user.战技, '✦', '战技', v => {
-        return `<p><span class="story-ui-mvu-newvars-c-lbl">熟练度:</span> ${escapeHtml(v?.熟练度 || 0)} <span class="story-ui-mvu-newvars-sub-lbl">⇒</span> <span class="story-ui-mvu-newvars-val">${escapeHtml(v?.阶段 || '入门')}</span></p><p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
+        return `<p><span class="story-ui-mvu-newvars-c-lbl">熟练度:</span> ${escapeHtml(v?.熟练度 || 0)} <span class="story-ui-mvu-newvars-sub-lbl">⇒</span> ${renderRarityPill(v?.阶段 || '入门')}</p><p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
       }),
     );
 
@@ -295,9 +301,9 @@
       } else {
         allCtsItemsHtml += `<article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-innate-ct-header"><div class="story-ui-mvu-newvars-mini-title">[生得术式] ${escapeHtml(innateCt.名称)}</div><div class="story-ui-mvu-newvars-mini-body">
         <p><span class="story-ui-mvu-newvars-c-lbl">属性:</span> ${escapeHtml(innateCt.属性 || '无')}</p>
-        <p><span class="story-ui-mvu-newvars-c-lbl">潜力等级:</span> ${escapeHtml(innateCt.潜力等级 || '未定型术式')}</p>
+        <p><span class="story-ui-mvu-newvars-c-lbl">潜力等级:</span> ${renderRarityPill(innateCt.潜力等级 || '未定型术式')}</p>
         <p><span class="story-ui-mvu-newvars-c-lbl">潜力值:</span> ${escapeHtml(innateCt.潜力值 || 0)}</p>
-        <p><span class="story-ui-mvu-newvars-c-lbl">精通等级:</span> ${escapeHtml(innateCt.精通等级 || 0)} <span class="story-ui-mvu-newvars-sub-lbl">⇒</span> <span class="story-ui-mvu-newvars-val">${escapeHtml(innateCt.阶段 || '未入门')}</span></p>
+        <p><span class="story-ui-mvu-newvars-c-lbl">精通等级:</span> ${escapeHtml(innateCt.精通等级 || 0)} <span class="story-ui-mvu-newvars-sub-lbl">⇒</span> ${renderRarityPill(innateCt.阶段 || '未入门')}</p>
         <p><span class="story-ui-mvu-newvars-c-lbl">术式强度:</span> 基础${escapeHtml(innateCt.基础强度 || 0)} / 当前${escapeHtml(innateCt.当前强度 || 0)}</p>
         <p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(innateCt.描述 || '')}</p>
       </div></article>`;
@@ -306,7 +312,7 @@
 
     if (extendedCts && extendedCts !== '待初始化' && Object.keys(extendedCts).length > 0) {
       Object.entries(extendedCts).forEach(([k, v]) => {
-        allCtsItemsHtml += `<article class="story-ui-mvu-newvars-mini-card"><div class="story-ui-mvu-newvars-mini-title">${escapeHtml(k)}</div><div class="story-ui-mvu-newvars-mini-body"><p><span class="story-ui-mvu-newvars-c-lbl">熟练度:</span> ${escapeHtml(v?.熟练度 || 0)} <span class="story-ui-mvu-newvars-sub-lbl">⇒</span> <span class="story-ui-mvu-newvars-val">${escapeHtml(v?.阶段 || '入门')}</span></p><p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p></div></article>`;
+        allCtsItemsHtml += `<article class="story-ui-mvu-newvars-mini-card"><div class="story-ui-mvu-newvars-mini-title">${escapeHtml(k)}</div><div class="story-ui-mvu-newvars-mini-body"><p><span class="story-ui-mvu-newvars-c-lbl">熟练度:</span> ${escapeHtml(v?.熟练度 || 0)} <span class="story-ui-mvu-newvars-sub-lbl">⇒</span> ${renderRarityPill(v?.阶段 || '入门')}</p><p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p></div></article>`;
       });
     }
 
