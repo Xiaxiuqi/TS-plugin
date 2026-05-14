@@ -10,12 +10,44 @@
     return dom.escapeHtml(String(value ?? ''));
   }
 
-  function getAllVariablesSafe() {
+  function getCurrentMvuDataSafe() {
     try {
-      return window.getAllVariables?.() || {};
+      if (window.Mvu?.getMvuData) {
+        const chatData = window.Mvu.getMvuData({ type: 'chat' });
+        if (chatData && typeof chatData === 'object') return chatData;
+      }
     } catch {
-      return {};
+      // ignore and try other Tavern Helper APIs
     }
+
+    try {
+      if (window.getVariables) {
+        const chatVariables = window.getVariables({ type: 'chat' });
+        if (chatVariables && typeof chatVariables === 'object') return chatVariables;
+      }
+    } catch {
+      // ignore and try legacy iframe helper
+    }
+
+    try {
+      if (window.getAllVariables) {
+        const allVariables = window.getAllVariables();
+        if (allVariables && typeof allVariables === 'object') return allVariables;
+      }
+    } catch {
+      // ignore and try latest message snapshot
+    }
+
+    try {
+      if (window.Mvu?.getMvuData) {
+        const latestData = window.Mvu.getMvuData({ type: 'message', message_id: 'latest' });
+        if (latestData && typeof latestData === 'object') return latestData;
+      }
+    } catch {
+      // ignore
+    }
+
+    return {};
   }
 
   function getVar(variables, path, fallback = '') {
@@ -389,7 +421,7 @@
 
   function populateData(root) {
     if (!root) return;
-    const allVariables = getAllVariablesSafe();
+    const allVariables = getCurrentMvuDataSafe();
     renderWorld(root, allVariables);
     renderUser(root, allVariables);
     populateCharacterData(root, allVariables);

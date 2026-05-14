@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T17:47:24.951Z
+- Updated At: 2026-05-14T18:09:08.731Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：修复新变量结构 MVU 状态栏的数据采集、更新与显示完整性。
-- 最新结论：已检查新变量结构与两个美化正则源文件，发现模块化版 mvu-status-newvars 使用楼层快照并整块 remount，导致变量更新后可能读取旧楼层数据、刷新不稳定；同时固定 206px 卡片/属性面板高度会造成内容显示不全。已将测试版验证过的即时更新实现同步到 releasetest 与 prod：渲染空壳后统一从 getAllVariables()…
-- 下一步：在酒馆中启用“MVU状态栏（新变量）”，触发变量更新后确认世界状态、个人状态、任务、羁绊与亲密状态会即时刷新且无内容被裁切。
+- 当前焦点：修正新变量 MVU 状态栏读取方式与面板高度。
+- 最新结论：根据酒馆助手接口重新调整 releasetest 的新变量 MVU 状态栏：读取当前聊天变量优先使用 Mvu.getMvuData({type:'chat'})，再按 getVariables({type:'chat'})、getAllVariables()、Mvu.getMvuData({type:'message', message_id:'latest…
+- 下一步：在 releasetest 启用“MVU状态栏（新变量）”实测变量读取与更新；若仍为空，优先检查当前环境中 Mvu.getMvuData({type:'chat'}) 返回结构是否包含 stat_data。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,9 +22,9 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 检查 mvu-status-newvars 当前采集、渲染与更新逻辑  `#mvu1`
-- [x] 按新变量结构修复数据路径、缺省兼容和显示完整性  `#mvu2`
-- [ ] 验证语法与更新项目文档  `#mvu3` (in_progress)
+- [x] 只检查并修复 releasetest 的新变量 MVU 数据读取回退逻辑  `#fix-read-1`
+- [x] 恢复新变量 MVU 面板高度/滚动样式符合需求  `#fix-read-2`
+- [x] 验证 releasetest 语法并更新项目文档  `#fix-read-3`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -42,7 +42,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T12:43:18.413Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:43:48.581Z | milestone_recorded | 完成故事 UI 从正则引导到 public 双环境酒馆助手入口的实现，并通过本地 JS 语法检查。
 - 2026-05-12T14:48:24.499Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T15:02:38.418Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
@@ -62,6 +61,7 @@
 - 2026-05-14T17:24:13.953Z | updated | manager-mobile-mask-fix | 非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。
 - 2026-05-14T17:34:52.449Z | updated | sync-releasetest-to-prod-manager-mobile-fix | 将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。
 - 2026-05-14T17:47:24.951Z | updated | fix-mvu-newvars-status-inline-update | 修复新变量 MVU 状态栏：改用 getAllVariables 最新数据进行 populateData 局部刷新，并解除 206px 固定高度裁切。
+- 2026-05-14T18:09:08.731Z | updated | fix-releasetest-newvars-mvu-helper-api-read | 按酒馆助手接口修正 releasetest 新变量 MVU：优先 Mvu.getMvuData({type:'chat'}) 读取当前变量，恢复左卡固定高度与右侧隐藏滚动条滚动。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -71,42 +71,36 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T17:47:24.951Z",
+  "updatedAt": "2026-05-14T18:09:08.731Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "修复新变量结构 MVU 状态栏的数据采集、更新与显示完整性。",
-  "latestConclusion": "已检查新变量结构与两个美化正则源文件，发现模块化版 mvu-status-newvars 使用楼层快照并整块 remount，导致变量更新后可能读取旧楼层数据、刷新不稳定；同时固定 206px 卡片/属性面板高度会造成内容显示不全。已将测试版验证过的即时更新实现同步到 releasetest 与 prod：渲染空壳后统一从 getAllVariables() 采集最新 MVU 数据，VARIABLE_UPDATE_ENDED 只执行 populateData 局部刷新；保留主题切换时 remount；并移除新变量状态卡固定高度裁切，改为 min-height/内容自适应。releasetest/prod 新变量状态栏 JS 均已通过 node --check。",
+  "currentFocus": "修正新变量 MVU 状态栏读取方式与面板高度。",
+  "latestConclusion": "根据酒馆助手接口重新调整 releasetest 的新变量 MVU 状态栏：读取当前聊天变量优先使用 Mvu.getMvuData({type:'chat'})，再按 getVariables({type:'chat'})、getAllVariables()、Mvu.getMvuData({type:'message', message_id:'latest'}) 回退，避免只依赖 getAllVariables 导致无法读取；面板样式恢复为等级/战力评级左卡固定 206px 高度，右侧属性面板固定 206px 并允许垂直滚动但隐藏滚动条。仅修改 releasetest，已确认 prod/mvu-status-newvars 无本轮差异。releasetest 新变量状态栏 JS 已通过 node --check。",
   "currentBlocker": null,
-  "nextAction": "在酒馆中启用“MVU状态栏（新变量）”，触发变量更新后确认世界状态、个人状态、任务、羁绊与亲密状态会即时刷新且无内容被裁切。",
+  "nextAction": "在 releasetest 启用“MVU状态栏（新变量）”实测变量读取与更新；若仍为空，优先检查当前环境中 Mvu.getMvuData({type:'chat'}) 返回结构是否包含 stat_data。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "mvu1",
-      "content": "检查 mvu-status-newvars 当前采集、渲染与更新逻辑",
+      "id": "fix-read-1",
+      "content": "只检查并修复 releasetest 的新变量 MVU 数据读取回退逻辑",
       "status": "completed"
     },
     {
-      "id": "mvu2",
-      "content": "按新变量结构修复数据路径、缺省兼容和显示完整性",
+      "id": "fix-read-2",
+      "content": "恢复新变量 MVU 面板高度/滚动样式符合需求",
       "status": "completed"
     },
     {
-      "id": "mvu3",
-      "content": "验证语法与更新项目文档",
-      "status": "in_progress"
+      "id": "fix-read-3",
+      "content": "验证 releasetest 语法并更新项目文档",
+      "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T12:43:18.413Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T12:43:48.581Z",
       "type": "milestone_recorded",
@@ -212,21 +206,27 @@
       "type": "updated",
       "refId": "fix-mvu-newvars-status-inline-update",
       "message": "修复新变量 MVU 状态栏：改用 getAllVariables 最新数据进行 populateData 局部刷新，并解除 206px 固定高度裁切。"
+    },
+    {
+      "at": "2026-05-14T18:09:08.731Z",
+      "type": "updated",
+      "refId": "fix-releasetest-newvars-mvu-helper-api-read",
+      "message": "按酒馆助手接口修正 releasetest 新变量 MVU：优先 Mvu.getMvuData({type:'chat'}) 读取当前变量，恢复左卡固定高度与右侧隐藏滚动条滚动。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
     "todosTotal": 3,
-    "todosCompleted": 2,
-    "todosInProgress": 1,
+    "todosCompleted": 3,
+    "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T17:47:24.951Z",
-    "bodyHash": "sha256:5285159f7449745ead24fa85d6d60727cb38d334c366688c0719ed7e15b4b0e4"
+    "generatedAt": "2026-05-14T18:09:08.731Z",
+    "bodyHash": "sha256:08f0cee258b7ce839ecd9b12fd2d29d13a942208e725f682a2e027c147e3c293"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
