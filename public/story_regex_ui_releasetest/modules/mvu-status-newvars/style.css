@@ -587,6 +587,44 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.075),
     var(--mvu-shadow-soft);
 }
+.story-ui-mvu-newvars-meltdown-detail {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.story-ui-mvu-newvars-meltdown-state {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-meltdown-state.is-stable {
+  color: #5d7d58;
+  background: rgba(127, 146, 124, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(127, 146, 124, 0.22);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-meltdown-state.is-stable {
+  color: #a7c2a1;
+  background: rgba(127, 146, 124, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(167, 194, 161, 0.22);
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-meltdown-state.is-burnout {
+  color: #9d5f55;
+  background: rgba(160, 126, 116, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(160, 126, 116, 0.24);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-meltdown-state.is-burnout {
+  color: #d99a8d;
+  background: rgba(185, 73, 73, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(217, 154, 141, 0.24);
+}
 .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-card.rose {
   box-shadow:
     inset 3px 0 0 rgba(160, 126, 116, 0.52),

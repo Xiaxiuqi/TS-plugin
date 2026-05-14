@@ -373,6 +373,60 @@
 .story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-rank-value {
   text-shadow: 0 0 12px rgba(200, 168, 108, 0.14);
 }
+.story-ui-mvu-newvars-rank-card.grade-f {
+  --mvu-grade: #9a9389;
+  --mvu-grade-soft: rgba(154, 147, 137, 0.18);
+}
+.story-ui-mvu-newvars-rank-card.grade-e {
+  --mvu-grade: #7f927c;
+  --mvu-grade-soft: rgba(127, 146, 124, 0.2);
+}
+.story-ui-mvu-newvars-rank-card.grade-d {
+  --mvu-grade: #748b9d;
+  --mvu-grade-soft: rgba(116, 139, 157, 0.2);
+}
+.story-ui-mvu-newvars-rank-card.grade-c {
+  --mvu-grade: #8a7bb0;
+  --mvu-grade-soft: rgba(138, 123, 176, 0.2);
+}
+.story-ui-mvu-newvars-rank-card.grade-b {
+  --mvu-grade: #b79a62;
+  --mvu-grade-soft: rgba(183, 154, 98, 0.22);
+}
+.story-ui-mvu-newvars-rank-card.grade-a {
+  --mvu-grade: #a07e74;
+  --mvu-grade-soft: rgba(160, 126, 116, 0.23);
+}
+.story-ui-mvu-newvars-rank-card.grade-aa {
+  --mvu-grade: #c27b68;
+  --mvu-grade-soft: rgba(194, 123, 104, 0.26);
+}
+.story-ui-mvu-newvars-rank-card.grade-s {
+  --mvu-grade: #c8a86c;
+  --mvu-grade-soft: rgba(200, 168, 108, 0.3);
+}
+.story-ui-mvu-newvars-rank-card[class*='grade-'] {
+  box-shadow:
+    inset 4px 0 0 var(--mvu-grade, var(--mvu-gold)),
+    inset 0 0 0 1px var(--mvu-grade-soft, rgba(200, 168, 108, 0.16)),
+    var(--mvu-shadow-soft);
+}
+.story-ui-mvu-newvars-rank-card[class*='grade-']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--mvu-grade-soft, transparent), transparent 52%);
+  opacity: 0.72;
+}
+.story-ui-mvu-newvars-rank-value[class*='grade-'],
+.story-ui-mvu-newvars-rank-overview[class*='grade-'] strong {
+  color: var(--mvu-grade, var(--mvu-gold));
+}
+.story-ui-mvu-newvars-rank-card.grade-aa .story-ui-mvu-newvars-rank-value,
+.story-ui-mvu-newvars-rank-card.grade-s .story-ui-mvu-newvars-rank-value {
+  text-shadow: 0 0 14px var(--mvu-grade-soft, rgba(200, 168, 108, 0.24));
+}
 .story-ui-mvu-newvars-kp-token {
   position: absolute;
   top: 11px;
@@ -489,25 +543,87 @@
 .story-ui-mvu-newvars-stat-card {
   min-height: 56px;
   padding: 9px 10px;
+}
+.story-ui-mvu-newvars-stat-card,
+.story-ui-mvu-newvars-meltdown-bar {
   display: grid;
   align-content: center;
   gap: 3px;
   position: relative;
   overflow: hidden;
 }
-.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-card {
+.story-ui-mvu-newvars-meltdown-bar {
+  min-height: 38px;
+  padding: 7px 10px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-card,
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-meltdown-bar {
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 253, 247, 0.9), rgba(236, 226, 207, 0.36)), rgba(255, 253, 247, 0.74);
   box-shadow:
     inset 0 0 0 1px rgba(117, 107, 96, 0.08),
     var(--mvu-shadow-soft);
 }
-.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-stat-card {
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-stat-card,
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-meltdown-bar {
   border-radius: 7px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.058), rgba(255, 255, 255, 0.026)), rgba(0, 0, 0, 0.08);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.075),
     var(--mvu-shadow-soft);
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-meltdown-bar {
+  box-shadow:
+    inset 3px 0 0 rgba(183, 154, 98, 0.54),
+    inset 0 0 0 1px rgba(117, 107, 96, 0.08),
+    var(--mvu-shadow-soft);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-meltdown-bar {
+  box-shadow:
+    inset 3px 0 0 rgba(200, 168, 108, 0.64),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+    var(--mvu-shadow-soft);
+}
+.story-ui-mvu-newvars-meltdown-detail {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.story-ui-mvu-newvars-meltdown-state {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-meltdown-state.is-stable {
+  color: #5d7d58;
+  background: rgba(127, 146, 124, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(127, 146, 124, 0.22);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-meltdown-state.is-stable {
+  color: #a7c2a1;
+  background: rgba(127, 146, 124, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(167, 194, 161, 0.22);
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-meltdown-state.is-burnout {
+  color: #9d5f55;
+  background: rgba(160, 126, 116, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(160, 126, 116, 0.24);
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-meltdown-state.is-burnout {
+  color: #d99a8d;
+  background: rgba(185, 73, 73, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(217, 154, 141, 0.24);
 }
 .story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-stat-card.rose {
   box-shadow:
@@ -547,6 +663,7 @@
 .story-ui-mvu-newvars-rank-card {
   align-self: start;
   height: 206px;
+  overflow: hidden;
 }
 .story-ui-mvu-newvars-attr-panel {
   align-self: start;
@@ -814,10 +931,93 @@
 .story-ui-mvu-newvars-mini-body p {
   margin: 2px 0;
 }
+.story-ui-mvu-newvars-inventory-header + .story-ui-mvu-newvars-sub-content {
+  max-height: calc((12px * 1.55 + 16px + 17px) * 6.75);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.story-ui-mvu-newvars-inventory-header + .story-ui-mvu-newvars-sub-content::-webkit-scrollbar {
+  display: none;
+}
+.story-ui-mvu-newvars.theme-day .story-ui-mvu-newvars-inventory-header + .story-ui-mvu-newvars-sub-content {
+  border-radius: 0 0 6px 6px;
+}
+.story-ui-mvu-newvars.theme-night .story-ui-mvu-newvars-inventory-header + .story-ui-mvu-newvars-sub-content {
+  border-radius: 0 0 5px 5px;
+}
 .story-ui-mvu-newvars-section-grid {
   margin-top: 8px;
   display: grid;
   gap: 7px;
+}
+.story-ui-mvu-newvars-rarity {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.32;
+  font-weight: 900;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.story-ui-mvu-newvars-rarity[data-rarity='S级·论外'],
+.story-ui-mvu-newvars-rarity[data-rarity='出神入化'],
+.story-ui-mvu-newvars-rarity[data-rarity='论外'],
+.story-ui-mvu-newvars-rarity[data-rarity='论外熟练'],
+.story-ui-mvu-newvars-rarity[data-rarity='篡改现实·编织者型'] {
+  color: #b54a4a;
+  background: rgba(181, 74, 74, 0.18);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='AA级·强特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='强特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='特级熟练'],
+.story-ui-mvu-newvars-rarity[data-rarity='干涉现实·规则干涉型'] {
+  color: #a6782a;
+  background: rgba(183, 154, 98, 0.25);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='A级·特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='特级'],
+.story-ui-mvu-newvars-rarity[data-rarity='出类拔萃'],
+.story-ui-mvu-newvars-rarity[data-rarity='登峰造极'],
+.story-ui-mvu-newvars-rarity[data-rarity='第一等·天才型术式'] {
+  color: #8f5fa8;
+  background: rgba(138, 129, 157, 0.24);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='B级·一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='C级·准一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='准一级'],
+.story-ui-mvu-newvars-rarity[data-rarity='登堂入室'],
+.story-ui-mvu-newvars-rarity[data-rarity='精通'],
+.story-ui-mvu-newvars-rarity[data-rarity='第二等·精英型术式'] {
+  color: #527999;
+  background: rgba(116, 139, 157, 0.22);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='D级·二级'],
+.story-ui-mvu-newvars-rarity[data-rarity='二级'],
+.story-ui-mvu-newvars-rarity[data-rarity='熟练'],
+.story-ui-mvu-newvars-rarity[data-rarity='入门'],
+.story-ui-mvu-newvars-rarity[data-rarity='第三等·标准型术式'] {
+  color: #5e7f6a;
+  background: rgba(127, 146, 124, 0.22);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='E级·三级'],
+.story-ui-mvu-newvars-rarity[data-rarity='三级'],
+.story-ui-mvu-newvars-rarity[data-rarity='初步觉醒'],
+.story-ui-mvu-newvars-rarity[data-rarity='初学乍练'],
+.story-ui-mvu-newvars-rarity[data-rarity='初觉醒'],
+.story-ui-mvu-newvars-rarity[data-rarity='第四等·砥砺型术式'] {
+  color: #756b60;
+  background: rgba(117, 107, 96, 0.16);
+}
+.story-ui-mvu-newvars-rarity[data-rarity='F级·四级'],
+.story-ui-mvu-newvars-rarity[data-rarity='四级'],
+.story-ui-mvu-newvars-rarity[data-rarity='未入门'],
+.story-ui-mvu-newvars-rarity[data-rarity='未定型术式'] {
+  color: #9a9389;
+  background: rgba(154, 147, 137, 0.16);
 }
 .story-ui-mvu-newvars-sub-toggle-header,
 .story-ui-mvu-newvars-item-toggle-header,

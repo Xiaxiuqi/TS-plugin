@@ -162,7 +162,12 @@
   }
 
   function renderMeltdownText(meltdown = {}) {
-    return `熔断：${yesNo(meltdown.熔断中)} · 重置${meltdown.大脑重置次数 || 0} · 回复×${meltdown.咒力回复惩罚系数 ?? 1} · 强度×${meltdown.术式强度惩罚系数 ?? 1} · 修复×${meltdown.熔断修复时间缩短倍率 ?? 2}`;
+    return `重置${meltdown.大脑重置次数 || 0} · 回复×${meltdown.咒力回复惩罚系数 ?? 1} · 强度×${meltdown.术式强度惩罚系数 ?? 1} · 修复×${meltdown.熔断修复时间缩短倍率 ?? 2}`;
+  }
+
+  function renderMeltdownState(meltdown = {}) {
+    const isBurnout = Boolean(meltdown.熔断中);
+    return `<span class="story-ui-mvu-newvars-meltdown-state ${isBurnout ? 'is-burnout' : 'is-stable'}">熔断:${escapeHtml(yesNo(isBurnout))}</span>`;
   }
 
   function renderWorld(root, allVariables) {
@@ -249,6 +254,7 @@
 
     const meltdown = user.术式熔断 || {};
     safeSetText(root, '#u-meltdown-bar', renderMeltdownText(meltdown));
+    safeSetHtml(root, '#u-meltdown-state', renderMeltdownState(meltdown));
 
     safeSetHtml(root, '#u-clothes', renderClothes(user.当前服装 || {}));
     safeSetHtml(root, '#u-identity', renderIdentityTags(user.公开身份 || []));
@@ -603,7 +609,7 @@
                       </div>
                     </div>
                     <div class="story-ui-mvu-newvars-stat-grid">
-                      <div class="story-ui-mvu-newvars-meltdown-bar"><span class="story-ui-mvu-newvars-stat-name">术式熔断</span><span class="story-ui-mvu-newvars-stat-value" id="u-meltdown-bar"></span></div>
+                      <div class="story-ui-mvu-newvars-meltdown-bar"><span class="story-ui-mvu-newvars-stat-name">术式熔断</span><span class="story-ui-mvu-newvars-meltdown-detail"><span id="u-meltdown-state"></span><span class="story-ui-mvu-newvars-stat-value" id="u-meltdown-bar"></span></span></div>
                       <div class="story-ui-mvu-newvars-stat-card sage"><span class="story-ui-mvu-newvars-stat-name">身体状况</span><span class="story-ui-mvu-newvars-stat-value" id="u-health"></span></div>
                       <div class="story-ui-mvu-newvars-stat-card rose"><span class="story-ui-mvu-newvars-stat-name">损伤 / 疤痕</span><span class="story-ui-mvu-newvars-stat-value" id="u-scar"></span></div>
                     </div>
