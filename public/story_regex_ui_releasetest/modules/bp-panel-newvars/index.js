@@ -78,7 +78,9 @@
   }
 
   function splitTargetBlocks(targetsSource) {
-    const source = String(targetsSource || '').replace(/\r\n?/g, '\n').trim();
+    const source = String(targetsSource || '')
+      .replace(/\r\n?/g, '\n')
+      .trim();
     if (!source || /^无[。.]?$/.test(source) || /^暂无/.test(source)) return [];
     const matches = Array.from(source.matchAll(TARGET_SPLIT_PATTERN));
     if (matches.length === 0) return [];
@@ -94,7 +96,10 @@
 
   function parseHeaderLine(line, target) {
     const normalized = normalizeText(line).replace(/^\s*-\s*/, '');
-    const parts = normalized.split('|').map(part => normalizeText(part)).filter(Boolean);
+    const parts = normalized
+      .split('|')
+      .map(part => normalizeText(part))
+      .filter(Boolean);
     parts.forEach((part, index) => {
       const pair = part.match(/^([^:：]+)[:：]\s*([\s\S]*?)$/);
       if (!pair) return;
@@ -109,7 +114,12 @@
     const normalizedValue = normalizeText(value);
     if (!normalizedValue) return;
     target.groups[group] = target.groups[group] || [];
-    target.groups[group].push({ label, value: normalizedValue, rarity: options.rarity || '', meter: options.meter || null });
+    target.groups[group].push({
+      label,
+      value: normalizedValue,
+      rarity: options.rarity || '',
+      meter: options.meter || null,
+    });
   }
 
   function addFieldByKey(target, key, value) {
@@ -119,7 +129,9 @@
 
     if (['总BP', 'BP总值', 'BP总值'].includes(normalizedKey)) {
       target.totalBp = normalizedValue;
-      addField(target, 'core', '总BP', normalizedValue, { meter: { type: 'bp', value: parseNumber(normalizedValue), max: 3001 } });
+      addField(target, 'core', '总BP', normalizedValue, {
+        meter: { type: 'bp', value: parseNumber(normalizedValue), max: 3001 },
+      });
       return;
     }
     if (normalizedKey === '战力等级' || normalizedKey === '层级') {
@@ -146,7 +158,7 @@
     if (!body) return true;
 
     if (groupName === 'HP') {
-      const hpPair = body.match(/^([^|\/\n]+?)\s*\/\s*([^|\n]+?)(?:\s*\||$)/);
+      const hpPair = body.match(/^([^|/\n]+?)\s*\/\s*([^|\n]+?)(?:\s*\||$)/);
       if (hpPair) {
         target.hpCurrent = normalizeText(hpPair[1]);
         target.hpMax = normalizeText(hpPair[2]);
@@ -164,7 +176,7 @@
     }
 
     if (groupName === '咒力') {
-      const ceMatch = body.match(/当前\s*([^\/|]+?)\s*\/\s*有效\s*([^\/|]+?)\s*\/\s*原始\s*([^|\n]+)/);
+      const ceMatch = body.match(/当前\s*([^/|]+?)\s*\/\s*有效\s*([^/|]+?)\s*\/\s*原始\s*([^|\n]+)/);
       if (ceMatch) {
         target.ceCurrent = normalizeText(ceMatch[1]);
         target.ceEffective = normalizeText(ceMatch[2]);
@@ -179,7 +191,8 @@
         .forEach(part => {
           const item = normalizeText(part);
           const itemMatch = item.match(/^(精度|回复|消耗倍率)\s*([\s\S]*?)$/);
-          if (itemMatch) addField(target, 'resources', itemMatch[1] === '回复' ? '每轮回复' : itemMatch[1], itemMatch[2]);
+          if (itemMatch)
+            addField(target, 'resources', itemMatch[1] === '回复' ? '每轮回复' : itemMatch[1], itemMatch[2]);
         });
       return true;
     }
@@ -188,7 +201,14 @@
       body.split('|').forEach(part => {
         const item = normalizeText(part);
         const itemMatch = item.match(/^(总肉体值_BPA|基础|武艺|阶段|输出|防御系数)\s*([\s\S]*?)$/);
-        if (itemMatch) addField(target, 'body', itemMatch[1], itemMatch[2], itemMatch[1] === '阶段' ? { rarity: normalizeText(itemMatch[2]) } : {});
+        if (itemMatch)
+          addField(
+            target,
+            'body',
+            itemMatch[1],
+            itemMatch[2],
+            itemMatch[1] === '阶段' ? { rarity: normalizeText(itemMatch[2]) } : {},
+          );
       });
       return true;
     }
@@ -252,8 +272,10 @@
       traits: [],
       rawBlock: normalizeText(block),
     };
-    const lines = String(block || '').replace(/\r\n?/g, '\n').split('\n');
-    let traitLines = [];
+    const lines = String(block || '')
+      .replace(/\r\n?/g, '\n')
+      .split('\n');
+    const traitLines = [];
     let inTraits = false;
 
     lines.forEach((line, index) => {
@@ -311,12 +333,13 @@
 
   function renderMeter(field) {
     if (!field?.meter) return '';
-    const className = field.meter.type === 'hp' ? 'bp-fill-hp' : field.meter.type === 'ce' ? 'bp-fill-ce' : 'bp-fill-bp';
+    const className =
+      field.meter.type === 'hp' ? 'bp-fill-hp' : field.meter.type === 'ce' ? 'bp-fill-ce' : 'bp-fill-bp';
     const percent = clampPercent(field.meter.value, field.meter.max);
     return `<div class="bp-meter-row"><div class="bp-meter-head"><span>${escapeHtml(field.label)}</span><span class="bp-meter-value">${escapeHtml(field.value)}</span></div><div class="bp-meter-track"><span class="bp-meter-fill ${className}" style="--bp-meter:${percent};"></span></div></div>`;
   }
 
-  function renderTargetCard(target) {
+  function renderTargetCard(target, index = 0) {
     const rarity = target.battleTier || target.groups.body?.find(item => item.rarity)?.rarity || '';
     const coreFields = target.groups.core || [];
     const meterFields = [
@@ -327,16 +350,20 @@
     const traitHtml = renderTraitList(target.traits);
 
     return `
-      <div class="bp-target-card" data-rarity="${escapeHtml(rarity)}">
+      <div class="bp-target-card ${index === 0 ? 'is-active' : ''}" data-rarity="${escapeHtml(rarity)}" data-bp-target-index="${index}">
         <div class="bp-target-top">
           <span class="bp-target-name" data-rarity="${escapeHtml(rarity)}">✦ ${escapeHtml(target.name)}</span>
+          <span class="bp-target-count">#${index + 1}</span>
           ${rarity ? `<span class="bp-tier-wrap"><span class="bp-tier"><span class="bp-rarity" data-rarity="${escapeHtml(rarity)}">${escapeHtml(rarity)}</span></span></span>` : ''}
         </div>
 
         ${meterFields.length ? `<div class="bp-game-face">${meterFields.map(renderMeter).join('')}</div>` : ''}
 
         <div class="bp-game-grid">
-          ${renderPanel('核心指标', coreFields.filter(item => !item.meter))}
+          ${renderPanel(
+            '核心指标',
+            coreFields.filter(item => !item.meter),
+          )}
           ${renderPanel('资源与防御', resourceFields)}
           ${renderPanel('攻击输出', target.groups.attack, 'attack')}
           ${renderPanel('肉体与武艺', target.groups.body)}
@@ -350,10 +377,21 @@
     `;
   }
 
+  function renderTargetTabs(targets) {
+    if (!targets.length) return '';
+    return `<div class="bp-target-tabs" role="tablist" aria-label="切换已扫描目标">${targets
+      .map(
+        (target, index) =>
+          `<button class="bp-target-tab ${index === 0 ? 'is-active' : ''}" type="button" role="tab" aria-selected="${index === 0 ? 'true' : 'false'}" data-bp-target-tab="${index}">${escapeHtml(target.name || `目标${index + 1}`)}</button>`,
+      )
+      .join('')}</div>`;
+  }
+
   function renderTargetGrid(data, targets) {
-    if (targets.length > 0) return targets.map(renderTargetCard).join('');
+    if (targets.length > 0) return targets.map((target, index) => renderTargetCard(target, index)).join('');
     const raw = normalizeText(data.targetsRaw);
-    if (!raw || /^无[。.]?$/.test(raw)) return '<div class="bp-target-card"><div class="bp-trait">暂无已扫描目标</div></div>';
+    if (!raw || /^无[。.]?$/.test(raw))
+      return '<div class="bp-target-card"><div class="bp-trait">暂无已扫描目标</div></div>';
     return `<div class="bp-target-card"><div class="bp-trait bp-trait-raw">${renderMultilineText(raw)}</div></div>`;
   }
 
@@ -385,9 +423,12 @@
                 <div class="bp-scan-text">${renderMultilineText(data.scanText || '暂无扫描数据。')}</div>
               </article>
 
-              <article class="bp-card">
-                <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">已扫描目标</span></div>
-                <div class="bp-target-grid">${renderTargetGrid(data, targets)}</div>
+              <article class="bp-card bp-card-targets">
+                <div class="bp-card-head bp-card-head-with-tabs">
+                  <span class="bp-card-dot"></span><span class="bp-card-title">已扫描目标</span>
+                  ${renderTargetTabs(targets)}
+                </div>
+                <div class="bp-target-grid ${targets.length ? 'is-tabbed' : ''}">${renderTargetGrid(data, targets)}</div>
               </article>
             </div>
 
@@ -426,6 +467,28 @@
     if (rerendered) return;
   }
 
+  function bindTargetTabs(node) {
+    const root =
+      node?.querySelector?.('.story-ui-bp-newvars') ||
+      node?.querySelector?.('.story-ui-root.story-ui-bp-newvars') ||
+      node;
+    if (!root || root.dataset.bpTargetTabsBound === 'true') return;
+    root.dataset.bpTargetTabsBound = 'true';
+    root.addEventListener('click', event => {
+      const tab = event.target?.closest?.('[data-bp-target-tab]');
+      if (!tab || !root.contains(tab)) return;
+      const index = tab.getAttribute('data-bp-target-tab');
+      root.querySelectorAll?.('[data-bp-target-tab]').forEach(button => {
+        const active = button.getAttribute('data-bp-target-tab') === index;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      root.querySelectorAll?.('[data-bp-target-index]').forEach(card => {
+        card.classList.toggle('is-active', card.getAttribute('data-bp-target-index') === index);
+      });
+    });
+  }
+
   function rerenderAll() {
     const hosts = ui.theme?.getModuleHostsForThemeRerender?.('bp-panel-newvars');
     (hosts || []).forEach(host => {
@@ -438,6 +501,7 @@
     const root =
       node?.querySelector?.('.story-ui-bp-newvars') || node?.querySelector?.('.story-ui-root.story-ui-bp-newvars');
     if (!root) return;
+    bindTargetTabs(root);
     if (document.documentElement.dataset.storyUiBpNewvarsThemeBound === 'true') return;
     document.documentElement.dataset.storyUiBpNewvarsThemeBound = 'true';
     document.addEventListener('story-ui-theme-changed', () => {
