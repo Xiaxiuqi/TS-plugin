@@ -546,15 +546,14 @@
 }
 .story-ui-mvu-newvars-rank-card {
   align-self: start;
-  height: 206px;
+  min-height: 206px;
+  height: auto;
 }
 .story-ui-mvu-newvars-attr-panel {
   align-self: start;
-  height: 206px;
-  min-height: 0;
-  max-height: 206px;
-  overflow-x: hidden;
-  overflow-y: auto;
+  min-height: 206px;
+  max-height: none;
+  overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

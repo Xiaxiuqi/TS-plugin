@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T17:34:52.449Z
+- Updated At: 2026-05-14T17:47:24.951Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：已将 releasetest 当前更新同步到正式版。
-- 最新结论：public/story_regex_ui_prod 已由当前 public/story_regex_ui_releasetest 覆盖并恢复 prod 环境配置：env/displayEnv/publicBaseUrl/localBasePath/managerRootId 已改回正式版，入口与 loader 缓存版本号保持 v1.2；本次同步包含手机窄屏…
-- 下一步：部署 public/story_regex_ui_prod 后，在手机窄屏验证正式版管理界面：无暗色遮罩、点击面板外关闭、面板不被顶出屏幕。
+- 当前焦点：修复新变量结构 MVU 状态栏的数据采集、更新与显示完整性。
+- 最新结论：已检查新变量结构与两个美化正则源文件，发现模块化版 mvu-status-newvars 使用楼层快照并整块 remount，导致变量更新后可能读取旧楼层数据、刷新不稳定；同时固定 206px 卡片/属性面板高度会造成内容显示不全。已将测试版验证过的即时更新实现同步到 releasetest 与 prod：渲染空壳后统一从 getAllVariables()…
+- 下一步：在酒馆中启用“MVU状态栏（新变量）”，触发变量更新后确认世界状态、个人状态、任务、羁绊与亲密状态会即时刷新且无内容被裁切。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,9 +22,9 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 将当前 releasetest 内容同步覆盖到 prod  `#sync1`
-- [x] 恢复 prod 环境标识与版本号配置  `#sync2`
-- [x] 验证 prod 语法并更新项目文档  `#sync3`
+- [x] 检查 mvu-status-newvars 当前采集、渲染与更新逻辑  `#mvu1`
+- [x] 按新变量结构修复数据路径、缺省兼容和显示完整性  `#mvu2`
+- [ ] 验证语法与更新项目文档  `#mvu3` (in_progress)
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -42,7 +42,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T12:42:18.817Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:43:18.413Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:43:48.581Z | milestone_recorded | 完成故事 UI 从正则引导到 public 双环境酒馆助手入口的实现，并通过本地 JS 语法检查。
 - 2026-05-12T14:48:24.499Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
@@ -62,6 +61,7 @@
 - 2026-05-14T17:00:57.237Z | updated | bp-compatible-only | releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。
 - 2026-05-14T17:24:13.953Z | updated | manager-mobile-mask-fix | 非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。
 - 2026-05-14T17:34:52.449Z | updated | sync-releasetest-to-prod-manager-mobile-fix | 将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。
+- 2026-05-14T17:47:24.951Z | updated | fix-mvu-newvars-status-inline-update | 修复新变量 MVU 状态栏：改用 getAllVariables 最新数据进行 populateData 局部刷新，并解除 206px 固定高度裁切。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -71,42 +71,36 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T17:34:52.449Z",
+  "updatedAt": "2026-05-14T17:47:24.951Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "已将 releasetest 当前更新同步到正式版。",
-  "latestConclusion": "public/story_regex_ui_prod 已由当前 public/story_regex_ui_releasetest 覆盖并恢复 prod 环境配置：env/displayEnv/publicBaseUrl/localBasePath/managerRootId 已改回正式版，入口与 loader 缓存版本号保持 v1.2；本次同步包含手机窄屏管理界面修复，即移除可见背景遮罩但保留透明外部点击关闭层，并使用 100dvh 避免面板被动态视口顶出。全部 prod JS 已通过 node --check。",
+  "currentFocus": "修复新变量结构 MVU 状态栏的数据采集、更新与显示完整性。",
+  "latestConclusion": "已检查新变量结构与两个美化正则源文件，发现模块化版 mvu-status-newvars 使用楼层快照并整块 remount，导致变量更新后可能读取旧楼层数据、刷新不稳定；同时固定 206px 卡片/属性面板高度会造成内容显示不全。已将测试版验证过的即时更新实现同步到 releasetest 与 prod：渲染空壳后统一从 getAllVariables() 采集最新 MVU 数据，VARIABLE_UPDATE_ENDED 只执行 populateData 局部刷新；保留主题切换时 remount；并移除新变量状态卡固定高度裁切，改为 min-height/内容自适应。releasetest/prod 新变量状态栏 JS 均已通过 node --check。",
   "currentBlocker": null,
-  "nextAction": "部署 public/story_regex_ui_prod 后，在手机窄屏验证正式版管理界面：无暗色遮罩、点击面板外关闭、面板不被顶出屏幕。",
+  "nextAction": "在酒馆中启用“MVU状态栏（新变量）”，触发变量更新后确认世界状态、个人状态、任务、羁绊与亲密状态会即时刷新且无内容被裁切。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "sync1",
-      "content": "将当前 releasetest 内容同步覆盖到 prod",
+      "id": "mvu1",
+      "content": "检查 mvu-status-newvars 当前采集、渲染与更新逻辑",
       "status": "completed"
     },
     {
-      "id": "sync2",
-      "content": "恢复 prod 环境标识与版本号配置",
+      "id": "mvu2",
+      "content": "按新变量结构修复数据路径、缺省兼容和显示完整性",
       "status": "completed"
     },
     {
-      "id": "sync3",
-      "content": "验证 prod 语法并更新项目文档",
-      "status": "completed"
+      "id": "mvu3",
+      "content": "验证语法与更新项目文档",
+      "status": "in_progress"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T12:42:18.817Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T12:43:18.413Z",
       "type": "artifact_changed",
@@ -212,21 +206,27 @@
       "type": "updated",
       "refId": "sync-releasetest-to-prod-manager-mobile-fix",
       "message": "将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。"
+    },
+    {
+      "at": "2026-05-14T17:47:24.951Z",
+      "type": "updated",
+      "refId": "fix-mvu-newvars-status-inline-update",
+      "message": "修复新变量 MVU 状态栏：改用 getAllVariables 最新数据进行 populateData 局部刷新，并解除 206px 固定高度裁切。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
     "todosTotal": 3,
-    "todosCompleted": 3,
-    "todosInProgress": 0,
+    "todosCompleted": 2,
+    "todosInProgress": 1,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T17:34:52.449Z",
-    "bodyHash": "sha256:fe6efe1bc3665352c4a131b854078799e35d7b930db53df3e525642c3bae097b"
+    "generatedAt": "2026-05-14T17:47:24.951Z",
+    "bodyHash": "sha256:5285159f7449745ead24fa85d6d60727cb38d334c366688c0719ed7e15b4b0e4"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
