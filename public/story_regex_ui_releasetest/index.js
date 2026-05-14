@@ -742,15 +742,18 @@
 
   function findAfterNativeAnchor(textElement, match) {
     const blocks = collectAfterNativeVisibleBlocks(textElement);
-    if (blocks.length === 0) return { anchor: textElement, blocks, anchorIndex: -1 };
+    if (blocks.length === 0) return { anchor: null, blocks, anchorIndex: -1, found: false };
     const startIndex = findAfterNativeBlockIndex(blocks, buildAfterNativeStartCandidates(match));
-    const anchorIndex = startIndex >= 0 ? startIndex : 0;
-    return { anchor: blocks[anchorIndex] || textElement, blocks, anchorIndex };
+    if (startIndex < 0) {
+      return { anchor: null, blocks, anchorIndex: -1, found: false };
+    }
+    return { anchor: blocks[startIndex] || null, blocks, anchorIndex: startIndex, found: true };
   }
 
   function mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement) {
     const mounted = [];
-    matches.forEach((match, index) => {
+    let insertionCursor = null;
+    matches.forEach(match => {
       const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
         messageElement: getDisplayedMessageElement(messageId),
@@ -760,9 +763,14 @@
       const moduleHtml = nodeToHtml(rendered);
       if (!moduleHtml) return;
       const anchorResult = findAfterNativeAnchor(textElement, match);
-      const anchor = anchorResult.anchor || textElement;
       const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
-      anchor.insertAdjacentElement?.('afterend', mountHost) || textElement.appendChild(mountHost);
+      const insertionTarget = anchorResult.found ? anchorResult.anchor : insertionCursor;
+      if (insertionTarget?.insertAdjacentElement) {
+        insertionTarget.insertAdjacentElement('afterend', mountHost);
+      } else {
+        textElement.appendChild(mountHost);
+      }
+      insertionCursor = mountHost;
       getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
       registry.safelyCall(match.module, 'mount', mountHost, {
         kind: 'after-native',
@@ -856,7 +864,8 @@
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
-    const activeSet = new Set(uniqueIds);
+    const renderWindowIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
+    const activeSet = new Set([...uniqueIds, ...renderWindowIds]);
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
@@ -873,6 +882,7 @@
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
       if (activeSet.has(messageId)) return;
+      if (hasMountedStoryUi(getDisplayedMessageElement(messageId))) return;
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       if (!rawText) return;
