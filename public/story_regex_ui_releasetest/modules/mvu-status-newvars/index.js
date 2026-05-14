@@ -127,6 +127,10 @@
     return `<div class="story-ui-mvu-newvars-profile-tags">${deduped.map(item => `<span class="story-ui-mvu-newvars-profile-tag">${escapeHtml(item)}</span>`).join('')}</div>`;
   }
 
+  function yesNo(value) {
+    return value ? '是' : '否';
+  }
+
   function renderWorld(root, allVariables) {
     const sys = getVar(allVariables, 'stat_data.系统', {});
     const time = sys.时间 || {};
@@ -183,6 +187,7 @@
       `肉体${bodyBase.基础肉体值 || 0} / 武艺${bodyBase.武艺值 || 0} · ${bodyBase.武艺阶段 || '未入门'}`,
     );
     safeSetText(root, '#u-scar', user.永久损伤或疤痕 || '无');
+    safeSetText(root, '#u-martial-ratio', `输出${bodyBase.武艺输出比例 ?? 0} / 防御×${bodyBase.武艺防御系数 ?? 1}`);
 
     const battle = user.战斗面板 || {};
     const hpValue = Number(battle.当前血量 || 0);
@@ -199,6 +204,10 @@
     safeSetText(root, '#u-regen', energy.每轮回复量 || 0);
     const reverse = user.反转术式 || {};
     safeSetText(root, '#u-heal', reverse.常规回复量 || 0);
+    safeSetText(root, '#u-ce-total', `原始${energy.总量 ?? 0} / 有效${energy.有效总量 ?? 0}`);
+    safeSetText(root, '#u-ce-cost', `×${energy.消耗倍率 ?? 1}`);
+    safeSetText(root, '#u-tool-bp', battle.咒具值 || 0);
+    safeSetText(root, '#u-damage-bonus', `×${battle.伤害补正 ?? 1}`);
 
     safeSetHtml(root, '#u-clothes', renderClothes(user.当前服装 || {}));
     safeSetHtml(root, '#u-identity', renderIdentityTags(user.公开身份 || []));
@@ -245,15 +254,11 @@
     const extendedCts = user.扩展术式 || {};
     let allCtsItemsHtml = '';
 
-    if (
-      innateCt &&
-      innateCt !== '待初始化' &&
-      innateCt.名称 &&
-      innateCt.名称 !== '' &&
-      innateCt.名称 !== '无' &&
-      innateCt.名称 !== '待觉醒'
-    ) {
-      allCtsItemsHtml += `<article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-innate-ct-header"><div class="story-ui-mvu-newvars-mini-title">[生得术式] ${escapeHtml(innateCt.名称)}</div><div class="story-ui-mvu-newvars-mini-body">
+    if (innateCt && innateCt !== '待初始化' && innateCt.名称 && innateCt.名称 !== '' && innateCt.名称 !== '无') {
+      if (innateCt.名称 === '待觉醒') {
+        allCtsItemsHtml += `<article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-innate-ct-header"><div class="story-ui-mvu-newvars-mini-title">[生得术式] 待觉醒</div><div class="story-ui-mvu-newvars-mini-body">${emptyText('待觉醒')}</div></article>`;
+      } else {
+        allCtsItemsHtml += `<article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-innate-ct-header"><div class="story-ui-mvu-newvars-mini-title">[生得术式] ${escapeHtml(innateCt.名称)}</div><div class="story-ui-mvu-newvars-mini-body">
         <p><span class="story-ui-mvu-newvars-c-lbl">属性:</span> ${escapeHtml(innateCt.属性 || '无')}</p>
         <p><span class="story-ui-mvu-newvars-c-lbl">潜力等级:</span> ${escapeHtml(innateCt.潜力等级 || '未定型术式')}</p>
         <p><span class="story-ui-mvu-newvars-c-lbl">潜力值:</span> ${escapeHtml(innateCt.潜力值 || 0)}</p>
@@ -261,6 +266,7 @@
         <p><span class="story-ui-mvu-newvars-c-lbl">术式强度:</span> 基础${escapeHtml(innateCt.基础强度 || 0)} / 当前${escapeHtml(innateCt.当前强度 || 0)}</p>
         <p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(innateCt.描述 || '')}</p>
       </div></article>`;
+      }
     }
 
     if (extendedCts && extendedCts !== '待初始化' && Object.keys(extendedCts).length > 0) {
@@ -274,6 +280,27 @@
       allCtsItemsHtml !== '' ? `<div class="story-ui-mvu-newvars-mini-grid">${allCtsItemsHtml}</div>` : emptyText();
     finalCtHtml += `</div>`;
     safeSetHtml(root, '#list-all-cts', finalCtHtml);
+
+    const reverseHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header" data-story-ui-mvu-newvars-toggle-next>✧ 反转术式 <span class="story-ui-mvu-newvars-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-newvars-sub-content"><div class="story-ui-mvu-newvars-mini-grid"><article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-reverse-card"><div class="story-ui-mvu-newvars-mini-title">治疗 / 回复参数</div><div class="story-ui-mvu-newvars-mini-body">
+      <p><span class="story-ui-mvu-newvars-c-lbl">掌握治疗:</span> ${escapeHtml(yesNo(reverse.掌握治疗))}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">熟练等级:</span> ${escapeHtml(reverse.熟练等级 || '未掌握')}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">熟练系数:</span> ${escapeHtml(reverse.熟练系数 ?? 0)}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">可外放:</span> ${escapeHtml(yesNo(reverse.可外放))}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">常规回复量:</span> ${escapeHtml(reverse.常规回复量 || 0)}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">常规治疗消耗:</span> ${escapeHtml(reverse.常规治疗消耗 || 0)}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">熔断修复消耗:</span> ${escapeHtml(reverse.熔断修复消耗 || 0)}</p>
+    </div></article></div></div>`;
+    safeSetHtml(root, '#list-reverse', reverseHtml);
+
+    const meltdown = user.术式熔断 || {};
+    const meltdownHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header story-ui-mvu-newvars-meltdown-header" data-story-ui-mvu-newvars-toggle-next>✧ 术式熔断 <span class="story-ui-mvu-newvars-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-newvars-sub-content"><div class="story-ui-mvu-newvars-mini-grid"><article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-meltdown-card"><div class="story-ui-mvu-newvars-mini-title">熔断 / 大脑重置</div><div class="story-ui-mvu-newvars-mini-body">
+      <p><span class="story-ui-mvu-newvars-c-lbl">熔断中:</span> ${escapeHtml(yesNo(meltdown.熔断中))}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">大脑重置次数:</span> ${escapeHtml(meltdown.大脑重置次数 || 0)}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">咒力回复惩罚:</span> ×${escapeHtml(meltdown.咒力回复惩罚系数 ?? 1)}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">术式强度惩罚:</span> ×${escapeHtml(meltdown.术式强度惩罚系数 ?? 1)}</p>
+      <p><span class="story-ui-mvu-newvars-c-lbl">修复时间缩短:</span> ×${escapeHtml(meltdown.熔断修复时间缩短倍率 ?? 2)}</p>
+    </div></article></div></div>`;
+    safeSetHtml(root, '#list-meltdown', meltdownHtml);
 
     safeSetHtml(
       root,
@@ -518,9 +545,11 @@
                         <div class="story-ui-mvu-newvars-attr-toggle" data-story-ui-mvu-newvars-toggle-next>基础性能 <span class="story-ui-mvu-newvars-toggle-icon">▼</span></div>
                         <div class="story-ui-mvu-newvars-attr-content">
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">肉体 / 武艺</span><span class="story-ui-mvu-newvars-battle-value" id="u-taijutsu"></span></div>
+                          <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">武艺系数</span><span class="story-ui-mvu-newvars-battle-value" id="u-martial-ratio"></span></div>
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">防御 DEF</span><span class="story-ui-mvu-newvars-battle-value" id="u-def"></span></div>
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">肉体 BPA</span><span class="story-ui-mvu-newvars-battle-value" id="u-bpa"></span></div>
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">术式 BPB</span><span class="story-ui-mvu-newvars-battle-value" id="u-bpb"></span></div>
+                          <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">咒具值</span><span class="story-ui-mvu-newvars-battle-value" id="u-tool-bp"></span></div>
                         </div>
                       </div>
                       <div class="story-ui-mvu-newvars-attr-section">
@@ -530,6 +559,9 @@
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">物理 ATK</span><span class="story-ui-mvu-newvars-battle-value" id="u-patk"></span></div>
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">咒力回复</span><span class="story-ui-mvu-newvars-battle-value" id="u-regen"></span></div>
                           <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">反转回复</span><span class="story-ui-mvu-newvars-battle-value" id="u-heal"></span></div>
+                          <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">咒力总量</span><span class="story-ui-mvu-newvars-battle-value" id="u-ce-total"></span></div>
+                          <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">消耗倍率</span><span class="story-ui-mvu-newvars-battle-value" id="u-ce-cost"></span></div>
+                          <div class="story-ui-mvu-newvars-attr-row"><span class="story-ui-mvu-newvars-battle-name">伤害补正</span><span class="story-ui-mvu-newvars-battle-value" id="u-damage-bonus"></span></div>
                         </div>
                       </div>
                     </div>
@@ -545,6 +577,8 @@
                 <div id="list-vows"></div>
                 <div id="list-skills"></div>
                 <div id="list-all-cts"></div>
+                <div id="list-reverse"></div>
+                <div id="list-meltdown"></div>
                 <div id="list-special"></div>
                 <div id="list-spirits"></div>
               </div>

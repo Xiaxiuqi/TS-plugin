@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T18:09:08.731Z
+- Updated At: 2026-05-14T18:29:05.741Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：修正新变量 MVU 状态栏读取方式与面板高度。
-- 最新结论：根据酒馆助手接口重新调整 releasetest 的新变量 MVU 状态栏：读取当前聊天变量优先使用 Mvu.getMvuData({type:'chat'})，再按 getVariables({type:'chat'})、getAllVariables()、Mvu.getMvuData({type:'message', message_id:'latest…
-- 下一步：在 releasetest 启用“MVU状态栏（新变量）”实测变量读取与更新；若仍为空，优先检查当前环境中 Mvu.getMvuData({type:'chat'}) 返回结构是否包含 stat_data。
+- 当前焦点：调整 releasetest 新变量 MVU 生得术式待觉醒显示。
+- 最新结论：已按要求调整 releasetest 新变量 MVU：生得术式名称为“待觉醒”时显示一张只含“待觉醒”提示的生得术式卡片，不展示属性、潜力、精通、强度、描述等其余字段；名称为“无”或空仍不显示；已觉醒术式仍按原详情显示。JS 已通过 node --check，正式版 mvu-status-newvars 无本轮差异。
+- 下一步：在 releasetest 页面实测术式折叠块中待觉醒/无/已觉醒三种状态的显示是否符合预期。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,9 +22,8 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 只检查并修复 releasetest 的新变量 MVU 数据读取回退逻辑  `#fix-read-1`
-- [x] 恢复新变量 MVU 面板高度/滚动样式符合需求  `#fix-read-2`
-- [x] 验证 releasetest 语法并更新项目文档  `#fix-read-3`
+- [x] 调整 releasetest 生得术式待觉醒显示逻辑：待觉醒时只显示待觉醒提示，其余字段不显示  `#innate-pending-1`
+- [x] 验证 JS 语法并确认正式版未被修改  `#innate-pending-2`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -42,8 +41,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T12:43:48.581Z | milestone_recorded | 完成故事 UI 从正则引导到 public 双环境酒馆助手入口的实现，并通过本地 JS 语法检查。
-- 2026-05-12T14:48:24.499Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T15:02:38.418Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:24:47.041Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
@@ -62,6 +59,8 @@
 - 2026-05-14T17:34:52.449Z | updated | sync-releasetest-to-prod-manager-mobile-fix | 将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。
 - 2026-05-14T17:47:24.951Z | updated | fix-mvu-newvars-status-inline-update | 修复新变量 MVU 状态栏：改用 getAllVariables 最新数据进行 populateData 局部刷新，并解除 206px 固定高度裁切。
 - 2026-05-14T18:09:08.731Z | updated | fix-releasetest-newvars-mvu-helper-api-read | 按酒馆助手接口修正 releasetest 新变量 MVU：优先 Mvu.getMvuData({type:'chat'}) 读取当前变量，恢复左卡固定高度与右侧隐藏滚动条滚动。
+- 2026-05-14T18:25:52.503Z | updated | add-newvars-missing-character-attrs | 补全 releasetest 新变量 MVU 的角色相关缺失显示项：咒力、战斗面板、基础肉体、反转术式、术式熔断。
+- 2026-05-14T18:29:05.741Z | updated | newvars-innate-ct-pending-only | 新变量 MVU 生得术式待觉醒状态改为只显示待觉醒卡片，其余字段不展示。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -71,47 +70,31 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T18:09:08.731Z",
+  "updatedAt": "2026-05-14T18:29:05.741Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "修正新变量 MVU 状态栏读取方式与面板高度。",
-  "latestConclusion": "根据酒馆助手接口重新调整 releasetest 的新变量 MVU 状态栏：读取当前聊天变量优先使用 Mvu.getMvuData({type:'chat'})，再按 getVariables({type:'chat'})、getAllVariables()、Mvu.getMvuData({type:'message', message_id:'latest'}) 回退，避免只依赖 getAllVariables 导致无法读取；面板样式恢复为等级/战力评级左卡固定 206px 高度，右侧属性面板固定 206px 并允许垂直滚动但隐藏滚动条。仅修改 releasetest，已确认 prod/mvu-status-newvars 无本轮差异。releasetest 新变量状态栏 JS 已通过 node --check。",
+  "currentFocus": "调整 releasetest 新变量 MVU 生得术式待觉醒显示。",
+  "latestConclusion": "已按要求调整 releasetest 新变量 MVU：生得术式名称为“待觉醒”时显示一张只含“待觉醒”提示的生得术式卡片，不展示属性、潜力、精通、强度、描述等其余字段；名称为“无”或空仍不显示；已觉醒术式仍按原详情显示。JS 已通过 node --check，正式版 mvu-status-newvars 无本轮差异。",
   "currentBlocker": null,
-  "nextAction": "在 releasetest 启用“MVU状态栏（新变量）”实测变量读取与更新；若仍为空，优先检查当前环境中 Mvu.getMvuData({type:'chat'}) 返回结构是否包含 stat_data。",
+  "nextAction": "在 releasetest 页面实测术式折叠块中待觉醒/无/已觉醒三种状态的显示是否符合预期。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "fix-read-1",
-      "content": "只检查并修复 releasetest 的新变量 MVU 数据读取回退逻辑",
+      "id": "innate-pending-1",
+      "content": "调整 releasetest 生得术式待觉醒显示逻辑：待觉醒时只显示待觉醒提示，其余字段不显示",
       "status": "completed"
     },
     {
-      "id": "fix-read-2",
-      "content": "恢复新变量 MVU 面板高度/滚动样式符合需求",
-      "status": "completed"
-    },
-    {
-      "id": "fix-read-3",
-      "content": "验证 releasetest 语法并更新项目文档",
+      "id": "innate-pending-2",
+      "content": "验证 JS 语法并确认正式版未被修改",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T12:43:48.581Z",
-      "type": "milestone_recorded",
-      "message": "完成故事 UI 从正则引导到 public 双环境酒馆助手入口的实现，并通过本地 JS 语法检查。"
-    },
-    {
-      "at": "2026-05-12T14:48:24.499Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T15:02:38.418Z",
       "type": "artifact_changed",
@@ -212,21 +195,33 @@
       "type": "updated",
       "refId": "fix-releasetest-newvars-mvu-helper-api-read",
       "message": "按酒馆助手接口修正 releasetest 新变量 MVU：优先 Mvu.getMvuData({type:'chat'}) 读取当前变量，恢复左卡固定高度与右侧隐藏滚动条滚动。"
+    },
+    {
+      "at": "2026-05-14T18:25:52.503Z",
+      "type": "updated",
+      "refId": "add-newvars-missing-character-attrs",
+      "message": "补全 releasetest 新变量 MVU 的角色相关缺失显示项：咒力、战斗面板、基础肉体、反转术式、术式熔断。"
+    },
+    {
+      "at": "2026-05-14T18:29:05.741Z",
+      "type": "updated",
+      "refId": "newvars-innate-ct-pending-only",
+      "message": "新变量 MVU 生得术式待觉醒状态改为只显示待觉醒卡片，其余字段不展示。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
-    "todosTotal": 3,
-    "todosCompleted": 3,
+    "todosTotal": 2,
+    "todosCompleted": 2,
     "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T18:09:08.731Z",
-    "bodyHash": "sha256:08f0cee258b7ce839ecd9b12fd2d29d13a942208e725f682a2e027c147e3c293"
+    "generatedAt": "2026-05-14T18:29:05.741Z",
+    "bodyHash": "sha256:f1a9d279452a29432d808f7ebfd3a2ca0319519cbb730cd4a746d27faf11fb7a"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
