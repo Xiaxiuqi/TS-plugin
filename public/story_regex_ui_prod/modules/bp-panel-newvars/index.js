@@ -15,11 +15,15 @@
   const TARGET_SPLIT_PATTERN = /^\s*-\s*名称\s*[:：]\s*/gm;
 
   function escapeHtml(value) {
-    return dom.escapeHtml(String(value ?? ''));
+    return dom.escapeHtml(normalizeDisplayText(value));
+  }
+
+  function normalizeDisplayText(value) {
+    return String(value ?? '').replace(/轮外熟练/g, '论外熟练');
   }
 
   function normalizeText(value) {
-    return String(value || '')
+    return normalizeDisplayText(value || '')
       .replace(/\r\n?/g, '\n')
       .trim();
   }

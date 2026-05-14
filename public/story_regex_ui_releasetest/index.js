@@ -9,7 +9,7 @@
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
-    reloadButtonName: '重载资源',
+    reloadButtonName: '重载美化',
     managerRootId: 'jjks-story-ui-manager-releasetest',
   };
 
@@ -302,7 +302,7 @@
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
             loaderStatus = 'failed';
-            lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪';
+            lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪。请尝试刷新网页或开关美化脚本';
             reject(new Error(lastError));
           }
         }, 120);
@@ -1131,7 +1131,7 @@
     const maintenanceActions = panel.querySelector('[data-jjks-maintenance-actions]');
     if (maintenanceActions && !maintenanceActions.childElementCount) {
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
-      maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
+      maintenanceActions.appendChild(createButton('重载美化', { 'data-jjks-action': 'reload' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
       maintenanceActions.appendChild(
         createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {

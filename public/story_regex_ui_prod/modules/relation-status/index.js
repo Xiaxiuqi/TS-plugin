@@ -3,7 +3,7 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'relation-status';
-  const MODULE_VERSION = 'v1.2';
+  const MODULE_VERSION = '0.1.1-releasetest';
   const BLOCK = {
     open: '<status_relationship>',
     close: '</status_relationship>',

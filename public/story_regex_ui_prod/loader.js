@@ -24,7 +24,7 @@
 
   const state = {
     baseUrl,
-    version: 'v1.2',
+    version: 'v1.5',
     loadedCss: new Set(),
     loadedScripts: new Set(),
     modules: [

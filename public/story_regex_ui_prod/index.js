@@ -2,14 +2,14 @@
   const CONFIG = {
     env: 'prod',
     displayEnv: '正式版',
-    version: 'v1.2',
+    version: 'v1.5',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_prod/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_prod/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
-    reloadButtonName: '重载资源',
+    reloadButtonName: '重载美化',
     managerRootId: 'jjks-story-ui-manager-prod',
   };
 
@@ -26,6 +26,43 @@
     'mvu-status': 'MVU状态栏',
     'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
+  const AFTER_NATIVE_ANCHOR_NEEDLES = {
+    'bp-panel-newvars': ['BP战力雷达', '已扫描目标', '扫描状态', '总BP', 'BP总值'],
+    'story-engine': ['故事引擎', '全域锚定', '行为逻辑锁', '故事主线', '最终修正', 'NPC驱动', '对战双方'],
+    'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
+    'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
+    'variable-update': ['变量更新', '本回合变量变动记录', 'UpdateVariable', '战技', '咒力', '世界状态'],
+    'mvu-status': [
+      '<StatusPlaceHolderImpl/>',
+      'StatusPlaceHolderImpl',
+      'MVU状态栏',
+      '世界状态',
+      '亲密状态',
+      '变量更新',
+    ],
+    'mvu-status-newvars': [
+      '<StatusPlaceHolderImpl/>',
+      'StatusPlaceHolderImpl',
+      'MVU状态栏',
+      '世界状态',
+      '亲密状态',
+      '变量更新',
+    ],
+  };
+  const BEFORE_NATIVE_MODULE_IDS = ['story-engine'];
+  const AFTER_NATIVE_MODULE_ORDER = [
+    'bp-panel-newvars',
+    'relation-status',
+    'world-log',
+    'variable-update',
+    'mvu-status',
+    'mvu-status-newvars',
+  ];
+
+  function getModuleAnchorNeedles(moduleId) {
+    const needles = AFTER_NATIVE_ANCHOR_NEEDLES[moduleId] || [];
+    return [...new Set(needles.map(value => String(value || '').trim()).filter(Boolean))];
+  }
 
   function getCandidateWindows() {
     const candidates = [];
@@ -265,7 +302,7 @@
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
             loaderStatus = 'failed';
-            lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪';
+            lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪。请尝试刷新网页或开关美化脚本';
             reject(new Error(lastError));
           }
         }, 120);
@@ -370,6 +407,8 @@
   function clearMountedStoryUi(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+    messageElement.querySelectorAll?.('[data-story-ui-after-native-mount="true"]').forEach(node => node.remove());
+    messageElement.querySelectorAll?.('[data-story-ui-after-native-stack="true"]').forEach(node => node.remove());
   }
 
   function getDisplayedMessageTextElement(messageElement) {
@@ -397,7 +436,10 @@
 
   function hasMountedStoryUi(messageElement) {
     if (!messageElement) return false;
-    return Boolean(messageElement.querySelector?.('[data-story-ui-raw-mount="true"]'));
+    return Boolean(
+      messageElement.querySelector?.('[data-story-ui-raw-mount="true"]') ||
+      messageElement.querySelector?.('[data-story-ui-after-native-mount="true"]'),
+    );
   }
 
   function escapeRegex(value) {
@@ -539,6 +581,21 @@
       : blockMatch;
   }
 
+  function getRenderableMatchesInOrder(modules, rawText) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    const matches = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const match = findNextRenderableMatch(modules, text, cursor);
+      if (!match) break;
+      matches.push(match);
+      cursor = Math.max(match.end, match.start + 1);
+    }
+
+    return matches;
+  }
+
   function renderMessageHtmlByModules(messageId, rawText, modules) {
     const text = String(rawText || '').replace(/\r\n?/g, '\n');
     let cursor = 0;
@@ -572,6 +629,209 @@
     return { html, mounted };
   }
 
+  function createAfterNativeMountHost(module, moduleHtml, messageId) {
+    const mountHost = createElementInHost('section');
+    mountHost.className = 'story-ui-after-native-mount';
+    mountHost.dataset.storyUiAfterNativeMount = 'true';
+    mountHost.dataset.storyUiModule = module.id;
+    mountHost.dataset.storyUiMessageId = String(messageId);
+    mountHost.innerHTML = moduleHtml;
+    return mountHost;
+  }
+
+  function normalizeTextForAnchor(value) {
+    return String(value || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function normalizeAfterNativeSourceText(value) {
+    return normalizeTextForAnchor(
+      String(value || '')
+        .replace(/<!--([\s\S]*?)-->/g, ' ')
+        .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
+        .replace(/[｜|]/g, ' '),
+    );
+  }
+
+  function pushAfterNativeCandidate(candidates, value, { min = 2, max = 220 } = {}) {
+    const candidate = normalizeAfterNativeSourceText(value);
+    if (candidate.length >= min && candidate.length <= max && !candidates.includes(candidate))
+      candidates.push(candidate);
+  }
+
+  function buildAfterNativeStartCandidates(match) {
+    const candidates = [];
+    getModuleAnchorNeedles(match?.module?.id).forEach(value => pushAfterNativeCandidate(candidates, value));
+    const block = match?.block || getModuleBlockConfig(match?.module);
+    pushAfterNativeCandidate(candidates, block?.open);
+    const source = normalizeAfterNativeSourceText(match?.content || match?.fullMatch || match?.singleTag || '');
+    source
+      .split(/(?:\n| {2,}|\*\*\*\*|━━|【|】)/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .slice(0, 24)
+      .forEach(line => pushAfterNativeCandidate(candidates, line));
+    [220, 160, 120, 80, 48, 32].forEach(size => pushAfterNativeCandidate(candidates, source.slice(0, size)));
+    return candidates;
+  }
+
+  function buildAfterNativeEndCandidates(match) {
+    const candidates = [];
+    const block = match?.block || getModuleBlockConfig(match?.module);
+    pushAfterNativeCandidate(candidates, block?.close);
+    const source = normalizeAfterNativeSourceText(match?.content || match?.fullMatch || match?.singleTag || '');
+    source
+      .split(/(?:\n| {2,}|\*\*\*\*|━━|【|】)/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .slice(-24)
+      .reverse()
+      .forEach(line => pushAfterNativeCandidate(candidates, line));
+    [260, 200, 160, 120, 80, 48, 32].forEach(size =>
+      pushAfterNativeCandidate(candidates, source.slice(Math.max(0, source.length - size))),
+    );
+    return candidates;
+  }
+
+  function getAfterNativeHideContainer(node, textElement) {
+    if (!node || node === textElement) return null;
+    const blockTags = new Set([
+      'P',
+      'LI',
+      'PRE',
+      'BLOCKQUOTE',
+      'DETAILS',
+      'SUMMARY',
+      'SECTION',
+      'ARTICLE',
+      'TABLE',
+      'UL',
+      'OL',
+      'DIV',
+    ]);
+    let current = node;
+    while (current && current.parentElement && current.parentElement !== textElement) {
+      if (blockTags.has(current.tagName)) return current;
+      current = current.parentElement;
+    }
+    return current && current !== textElement ? current : null;
+  }
+
+  function collectAfterNativeVisibleBlocks(textElement) {
+    const blocks = [];
+    Array.from(textElement.querySelectorAll?.('*') || []).forEach(node => {
+      if (node === textElement) return;
+      if (node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
+      const container = getAfterNativeHideContainer(node, textElement);
+      if (!container || blocks.includes(container)) return;
+      if (container.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
+      const text = normalizeAfterNativeSourceText(container.innerText || container.textContent || '');
+      if (!text || text.length > 5000) return;
+      blocks.push(container);
+    });
+    return blocks;
+  }
+
+  function findAfterNativeBlockIndex(blocks, candidates, fromIndex = 0) {
+    for (let index = Math.max(0, fromIndex); index < blocks.length; index += 1) {
+      const text = normalizeAfterNativeSourceText(blocks[index].innerText || blocks[index].textContent || '');
+      if (candidates.some(candidate => text.includes(candidate))) return index;
+    }
+    return -1;
+  }
+
+  function findAfterNativeLastBlockIndex(blocks, candidates, fromIndex = 0) {
+    let found = -1;
+    for (let index = Math.max(0, fromIndex); index < blocks.length; index += 1) {
+      const text = normalizeAfterNativeSourceText(blocks[index].innerText || blocks[index].textContent || '');
+      if (candidates.some(candidate => text.includes(candidate))) found = index;
+    }
+    return found;
+  }
+
+  function findAfterNativeAnchor(textElement, match) {
+    const blocks = collectAfterNativeVisibleBlocks(textElement);
+    if (blocks.length === 0) return { anchor: null, blocks, anchorIndex: -1, found: false };
+    const startIndex = findAfterNativeBlockIndex(blocks, buildAfterNativeStartCandidates(match));
+    if (startIndex < 0) {
+      return { anchor: null, blocks, anchorIndex: -1, found: false };
+    }
+    return { anchor: blocks[startIndex] || null, blocks, anchorIndex: startIndex, found: true };
+  }
+
+  function sortAfterNativeMatches(matches) {
+    const byModuleId = new Map();
+    matches.forEach(match => {
+      if (!byModuleId.has(match.module.id)) byModuleId.set(match.module.id, match);
+    });
+    return AFTER_NATIVE_MODULE_ORDER.map(moduleId => byModuleId.get(moduleId)).filter(Boolean);
+  }
+
+  function appendMountHostToStack(stackHost, match, moduleHtml, messageId, rawText, registry) {
+    const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
+    stackHost.appendChild(mountHost);
+    getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
+    registry.safelyCall(match.module, 'mount', mountHost, {
+      kind: 'after-native',
+      rawText,
+      messageId,
+      node: mountHost,
+      match,
+    });
+    return mountHost;
+  }
+
+  function mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement) {
+    const mounted = [];
+    const beforeMatches = matches.filter(match => BEFORE_NATIVE_MODULE_IDS.includes(match.module.id));
+    const afterMatches = sortAfterNativeMatches(
+      matches.filter(match => !BEFORE_NATIVE_MODULE_IDS.includes(match.module.id)),
+    );
+
+    const renderMatch = match => {
+      const rendered = buildNodeForModule(match.module, rawText, {
+        messageId,
+        messageElement: getDisplayedMessageElement(messageId),
+        theme: getUi()?.theme?.getTheme?.() || 'day',
+        match,
+      });
+      return nodeToHtml(rendered);
+    };
+
+    if (beforeMatches.length > 0) {
+      const beforeStack = createElementInHost('section');
+      beforeStack.className = 'story-ui-before-native-stack';
+      beforeStack.dataset.storyUiAfterNativeStack = 'true';
+      beforeStack.dataset.storyUiStackPosition = 'before';
+      beforeStack.dataset.storyUiMessageId = String(messageId);
+      beforeMatches.forEach(match => {
+        const moduleHtml = renderMatch(match);
+        if (!moduleHtml) return;
+        appendMountHostToStack(beforeStack, match, moduleHtml, messageId, rawText, registry);
+        mounted.push(match.module.id);
+      });
+      if (beforeStack.childElementCount > 0) textElement.insertAdjacentElement('beforebegin', beforeStack);
+    }
+
+    if (afterMatches.length > 0) {
+      const afterStack = createElementInHost('section');
+      afterStack.className = 'story-ui-after-native-stack';
+      afterStack.dataset.storyUiAfterNativeStack = 'true';
+      afterStack.dataset.storyUiStackPosition = 'after';
+      afterStack.dataset.storyUiMessageId = String(messageId);
+      afterMatches.forEach(match => {
+        const moduleHtml = renderMatch(match);
+        if (!moduleHtml) return;
+        appendMountHostToStack(afterStack, match, moduleHtml, messageId, rawText, registry);
+        mounted.push(match.module.id);
+      });
+      if (afterStack.childElementCount > 0) textElement.insertAdjacentElement('afterend', afterStack);
+    }
+
+    return mounted;
+  }
+
   function mountModulesForMessage(messageId, rawText) {
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
@@ -591,20 +851,9 @@
     const textElement = getDisplayedMessageTextElement(messageElement);
     if (!textElement) return false;
 
-    const { html, mounted } = renderMessageHtmlByModules(messageId, rawText, modules);
-    textElement.innerHTML = html;
-    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
-    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
-      const moduleId = mountHost.getAttribute('data-story-ui-module');
-      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
-      if (!module || module.enabled === false) return;
-      registry.safelyCall(module, 'mount', mountHost, {
-        kind: 'raw',
-        rawText,
-        messageId,
-        node: mountHost,
-      });
-    });
+    clearMountedStoryUi(messageElement);
+    const matches = getRenderableMatchesInOrder(modules, rawText);
+    const mounted = mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement);
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
@@ -663,7 +912,8 @@
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
-    const activeSet = new Set(uniqueIds);
+    const renderWindowIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
+    const activeSet = new Set([...uniqueIds, ...renderWindowIds]);
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
@@ -680,6 +930,7 @@
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
       if (activeSet.has(messageId)) return;
+      if (hasMountedStoryUi(getDisplayedMessageElement(messageId))) return;
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       if (!rawText) return;
@@ -880,7 +1131,7 @@
     const maintenanceActions = panel.querySelector('[data-jjks-maintenance-actions]');
     if (maintenanceActions && !maintenanceActions.childElementCount) {
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
-      maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
+      maintenanceActions.appendChild(createButton('重载美化', { 'data-jjks-action': 'reload' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
       maintenanceActions.appendChild(
         createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {
@@ -920,7 +1171,8 @@
 
   function clearModuleMountedDom(moduleId) {
     hostDocument.querySelectorAll(`[data-story-ui-module="${moduleId}"]`).forEach(node => {
-      const mountHost = node.closest?.('[data-story-ui-raw-mount="true"]') || node;
+      const mountHost =
+        node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]') || node;
       mountHost.remove();
     });
   }
