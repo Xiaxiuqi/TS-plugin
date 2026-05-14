@@ -71,19 +71,7 @@
 
   function renderPersonCard(person) {
     const favText = person.rawFav || String(person.fav);
-    return `
-      <div class="rel-person-card">
-        <div class="rel-person-top">
-          <span class="rel-person-name">✦ ${escapeHtml(person.name)}</span>
-          <span class="rel-stage">${escapeHtml(person.stage)}</span>
-        </div>
-        <div class="rel-fav-row">
-          <span>好感</span>
-          <div class="rel-bar"><span class="rel-fill" style="--rel-fav:${person.fav}%;"></span></div>
-          <span>${escapeHtml(favText)} / 100</span>
-        </div>
-      </div>
-    `;
+    return `<div class="rel-person-card"><div class="rel-person-top"><span class="rel-person-name">✦ ${escapeHtml(person.name)}</span><span class="rel-stage">${escapeHtml(person.stage)}</span></div><div class="rel-fav-row"><span>好感</span><div class="rel-bar"><span class="rel-fill" style="--rel-fav:${person.fav}%;"></span></div><span>${escapeHtml(favText)} / 100</span></div></div>`;
   }
 
   function renderPeopleList(data) {
