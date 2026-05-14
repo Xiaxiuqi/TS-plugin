@@ -107,7 +107,7 @@
     const footer = isNight ? '✧ RELATION SIGNAL TERMINAL ✧' : '✧ RELATION ARCHIVE ✧';
 
     return `
-      <section class="story-ui-root story-ui-rel story-ui-${theme}" data-story-ui-module="${MODULE_ID}">
+      <section class="story-ui-root story-ui-rel rel-status-widget ${isNight ? 'rel-hsr-ui' : 'rel-cream-ui'} story-ui-${theme}" data-story-ui-module="${MODULE_ID}">
         <details>
           <summary class="rel-summary" aria-label="展开或收起角色羁绊档案">
             <span class="rel-toggle-icon">♡</span>
