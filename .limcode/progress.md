@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T19:30:54.132Z
+- Updated At: 2026-05-14T20:48:01.066Z
 - Status: active
 - Phase: implementation
 
@@ -8,22 +8,24 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：术式熔断状态文案微调并同步正式版。
-- 最新结论：已将新变量 MVU 术式熔断状态文案从“熔断 : 否/是”改为“熔断:否/是”，保留否绿色、是红色的独立状态胶囊样式。已从 releasetest 同步 mvu-status-newvars index.js/style.css 到正式版；releasetest 与 prod 的 mvu-status-newvars JS 均通过 node --check。
-- 下一步：在 releasetest 与正式版实测术式熔断状态胶囊显示为“熔断:否/是”。
+- 当前焦点：releasetest 共存挂载改造完成，等待用户实测 displayed DOM 锚点效果
+- 最新结论：public/story_regex_ui_releasetest/index.js 已改为基于现有模块 block/singleTag 匹配结果，在原生渲染后的 displayed DOM 中按模块锚点插入 after-native mount；未修改正式版文件和模块匹配规则；node --check 通过。
+- 下一步：请在酒馆中启用 releasetest 后实测所有模块的原生共存挂载位置，尤其观察各模块是否插入到期望锚点后。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
 
 <!-- LIMCODE_PROGRESS_ARTIFACTS_START -->
-- 计划：`.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md`
+- 计划：`.limcode/plans/releasetest-共存挂载改造计划.plan.md`
 <!-- LIMCODE_PROGRESS_ARTIFACTS_END -->
 
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 将 releasetest 术式熔断状态文案改为“熔断:否/是”  `#meltdown-nospace-1`
-- [x] 同步 mvu-status-newvars 到正式版并验证语法  `#meltdown-nospace-2`
+- [x] 对比 releasetest 正式入口与共存候选的差异，识别仅属于挂载策略的变更点  `#releasetest-coexist-1`
+- [x] 设计并确认 releasetest 的仅共存挂载流程，冻结所有模块匹配模式不变  `#releasetest-coexist-2`
+- [x] 实现 releasetest 的共存挂载改造，删除 script/native/off 切换并保留 after-native 插入  `#releasetest-coexist-3`
+- [x] 回归 BP、story-engine、world-log 等关键模块并完成语法/行为验证  `#releasetest-coexist-4`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -41,15 +43,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T22:51:33.225Z | updated | 新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。
-- 2026-05-12T22:59:59.914Z | updated | 新增 bp-panel 模块，将 BP系统米白/暗色三条正则收敛为外置渲染模块。
-- 2026-05-12T23:21:47.537Z | updated | 拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。
-- 2026-05-13T00:15:49.307Z | updated | 重构 manager-ui 的标题/按钮/诊断布局，并为超出主渲染窗口的旧楼层增加代码块折叠占位。
-- 2026-05-13T01:34:13.949Z | updated | 将 manager-ui 改为 flex-column 以修复底部诊断区裁切，并按源正则重做独立的新变量 BP 模块。
-- 2026-05-13T02:03:14.562Z | updated | 新增 mvu-status-newvars 独立模块，并将其接入 loader、管理面板与旧 mvu-status 的互斥逻辑。
-- 2026-05-14T16:53:47.830Z | updated | release-v1.2 | 记录正式版 v1.2 发布内容：同步 releasetest 至 prod；包含新变量 BP 正则分类渲染、等级上色、容错解析、简化战力分栏/拆分、mvu-status-newvars、管理面板与互斥逻辑。
-- 2026-05-14T16:57:38.972Z | milestone_recorded | release-v1.2 | 正式版 v1.2 同步完成：prod 已由 releasetest 覆盖，入口/loader 版本改为 v1.2，并通过全部 prod JS 语法检查。
-- 2026-05-14T17:00:57.237Z | updated | bp-compatible-only | releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。
 - 2026-05-14T17:24:13.953Z | updated | manager-mobile-mask-fix | 非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。
 - 2026-05-14T17:34:52.449Z | updated | sync-releasetest-to-prod-manager-mobile-fix | 将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。
 - 2026-05-14T17:47:24.951Z | updated | fix-mvu-newvars-status-inline-update | 修复新变量 MVU 状态栏：改用 getAllVariables 最新数据进行 populateData 局部刷新，并解除 206px 固定高度裁切。
@@ -61,6 +54,15 @@
 - 2026-05-14T19:19:18.604Z | updated | newvars-mvu-meltdown-inventory-rarity-pills | 新变量 MVU：熔断文案改为“熔断：否/是”，行囊高度增大 1.5 倍，战技/术式熟练等级补 BP 风格胶囊上色。
 - 2026-05-14T19:28:53.775Z | updated | newvars-meltdown-state-pill-sync-prod | 术式熔断状态改为“熔断 : 否/是”独立状态胶囊，并按用户要求同步到正式版。
 - 2026-05-14T19:30:54.132Z | updated | newvars-meltdown-nospace-sync-prod | 术式熔断状态文案改为“熔断:否/是”，并同步正式版。
+- 2026-05-14T20:03:59.686Z | updated | after-native-candidate-no-prod-change | 新建 releasetest 共存候选入口 index.after-native-candidate.js：迁移测试版 after-native/共存增强模式，保留 releasetest 当前模块清单与 BP 兼容标签；prod 未修改，releasetest 现有文件未覆盖。
+- 2026-05-14T20:21:52.421Z | artifact_changed | plan | 同步计划文档：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:25:14.090Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:34:22.993Z | artifact_changed | plan | 同步计划文档：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:35:14.568Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:36:18.325Z | artifact_changed | plan | 同步计划文档：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:47:15.798Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:47:50.358Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md
+- 2026-05-14T20:48:01.066Z | milestone_recorded | 完成 releasetest 仅共存挂载实现：核心按模块现有匹配识别所有模块，并在原生 displayed DOM 锚点后插入 after-native 增强节点。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -70,79 +72,41 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T19:30:54.132Z",
+  "updatedAt": "2026-05-14T20:48:01.066Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "术式熔断状态文案微调并同步正式版。",
-  "latestConclusion": "已将新变量 MVU 术式熔断状态文案从“熔断 : 否/是”改为“熔断:否/是”，保留否绿色、是红色的独立状态胶囊样式。已从 releasetest 同步 mvu-status-newvars index.js/style.css 到正式版；releasetest 与 prod 的 mvu-status-newvars JS 均通过 node --check。",
+  "currentFocus": "releasetest 共存挂载改造完成，等待用户实测 displayed DOM 锚点效果",
+  "latestConclusion": "public/story_regex_ui_releasetest/index.js 已改为基于现有模块 block/singleTag 匹配结果，在原生渲染后的 displayed DOM 中按模块锚点插入 after-native mount；未修改正式版文件和模块匹配规则；node --check 通过。",
   "currentBlocker": null,
-  "nextAction": "在 releasetest 与正式版实测术式熔断状态胶囊显示为“熔断:否/是”。",
+  "nextAction": "请在酒馆中启用 releasetest 后实测所有模块的原生共存挂载位置，尤其观察各模块是否插入到期望锚点后。",
   "activeArtifacts": {
-    "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
+    "plan": ".limcode/plans/releasetest-共存挂载改造计划.plan.md"
   },
   "todos": [
     {
-      "id": "meltdown-nospace-1",
-      "content": "将 releasetest 术式熔断状态文案改为“熔断:否/是”",
+      "id": "releasetest-coexist-1",
+      "content": "对比 releasetest 正式入口与共存候选的差异，识别仅属于挂载策略的变更点",
       "status": "completed"
     },
     {
-      "id": "meltdown-nospace-2",
-      "content": "同步 mvu-status-newvars 到正式版并验证语法",
+      "id": "releasetest-coexist-2",
+      "content": "设计并确认 releasetest 的仅共存挂载流程，冻结所有模块匹配模式不变",
+      "status": "completed"
+    },
+    {
+      "id": "releasetest-coexist-3",
+      "content": "实现 releasetest 的共存挂载改造，删除 script/native/off 切换并保留 after-native 插入",
+      "status": "completed"
+    },
+    {
+      "id": "releasetest-coexist-4",
+      "content": "回归 BP、story-engine、world-log 等关键模块并完成语法/行为验证",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T22:51:33.225Z",
-      "type": "updated",
-      "message": "新增 relation-status 模块，将状态栏·好感度米白/暗色两套多正则收敛为外置渲染模块。"
-    },
-    {
-      "at": "2026-05-12T22:59:59.914Z",
-      "type": "updated",
-      "message": "新增 bp-panel 模块，将 BP系统米白/暗色三条正则收敛为外置渲染模块。"
-    },
-    {
-      "at": "2026-05-12T23:21:47.537Z",
-      "type": "updated",
-      "message": "拆分并重构咒回前端管理界面为 manager-ui 模块，统一米白/暗色样式并加入可调宽高。"
-    },
-    {
-      "at": "2026-05-13T00:15:49.307Z",
-      "type": "updated",
-      "message": "重构 manager-ui 的标题/按钮/诊断布局，并为超出主渲染窗口的旧楼层增加代码块折叠占位。"
-    },
-    {
-      "at": "2026-05-13T01:34:13.949Z",
-      "type": "updated",
-      "message": "将 manager-ui 改为 flex-column 以修复底部诊断区裁切，并按源正则重做独立的新变量 BP 模块。"
-    },
-    {
-      "at": "2026-05-13T02:03:14.562Z",
-      "type": "updated",
-      "message": "新增 mvu-status-newvars 独立模块，并将其接入 loader、管理面板与旧 mvu-status 的互斥逻辑。"
-    },
-    {
-      "at": "2026-05-14T16:53:47.830Z",
-      "type": "updated",
-      "refId": "release-v1.2",
-      "message": "记录正式版 v1.2 发布内容：同步 releasetest 至 prod；包含新变量 BP 正则分类渲染、等级上色、容错解析、简化战力分栏/拆分、mvu-status-newvars、管理面板与互斥逻辑。"
-    },
-    {
-      "at": "2026-05-14T16:57:38.972Z",
-      "type": "milestone_recorded",
-      "refId": "release-v1.2",
-      "message": "正式版 v1.2 同步完成：prod 已由 releasetest 覆盖，入口/loader 版本改为 v1.2，并通过全部 prod JS 语法检查。"
-    },
-    {
-      "at": "2026-05-14T17:00:57.237Z",
-      "type": "updated",
-      "refId": "bp-compatible-only",
-      "message": "releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。"
-    },
     {
       "at": "2026-05-14T17:24:13.953Z",
       "type": "updated",
@@ -208,21 +172,74 @@
       "type": "updated",
       "refId": "newvars-meltdown-nospace-sync-prod",
       "message": "术式熔断状态文案改为“熔断:否/是”，并同步正式版。"
+    },
+    {
+      "at": "2026-05-14T20:03:59.686Z",
+      "type": "updated",
+      "refId": "after-native-candidate-no-prod-change",
+      "message": "新建 releasetest 共存候选入口 index.after-native-candidate.js：迁移测试版 after-native/共存增强模式，保留 releasetest 当前模块清单与 BP 兼容标签；prod 未修改，releasetest 现有文件未覆盖。"
+    },
+    {
+      "at": "2026-05-14T20:21:52.421Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划文档：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:25:14.090Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:34:22.993Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划文档：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:35:14.568Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:36:18.325Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划文档：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:47:15.798Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:47:50.358Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/releasetest-共存挂载改造计划.plan.md"
+    },
+    {
+      "at": "2026-05-14T20:48:01.066Z",
+      "type": "milestone_recorded",
+      "message": "完成 releasetest 仅共存挂载实现：核心按模块现有匹配识别所有模块，并在原生 displayed DOM 锚点后插入 after-native 增强节点。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
-    "todosTotal": 2,
-    "todosCompleted": 2,
+    "todosTotal": 4,
+    "todosCompleted": 4,
     "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T19:30:54.132Z",
-    "bodyHash": "sha256:353ba733dc9ad4067c2a9fab7b22556e37b0540031448d9252443a216922fa45"
+    "generatedAt": "2026-05-14T20:48:01.066Z",
+    "bodyHash": "sha256:560ee59195149047d174e56c2183ae656ec7029723a35c14b046d35e3f91210f"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

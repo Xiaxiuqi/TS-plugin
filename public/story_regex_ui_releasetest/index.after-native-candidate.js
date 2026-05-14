@@ -1,8 +1,8 @@
 (() => {
   const CONFIG = {
     env: 'releasetest',
-    displayEnv: '发布测试版',
-    version: 'releasetest-0.1.1',
+    displayEnv: '发布测试版·共存候选',
+    version: 'releasetest-after-native-candidate-20260514',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_releasetest/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_releasetest/',
     globalKey: 'StoryRegexUI',
@@ -10,7 +10,7 @@
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
     reloadButtonName: '重载资源',
-    managerRootId: 'jjks-story-ui-manager-releasetest',
+    managerRootId: 'jjks-story-ui-manager-releasetest-after-native-candidate',
   };
 
   const INDEX_FLAG = `__jjksStoryUiIndex_${CONFIG.env}`;
@@ -27,33 +27,10 @@
     'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
-    'bp-panel-newvars': ['BP战力雷达', '已扫描目标', '扫描状态', '总BP', 'BP总值'],
-    'story-engine': ['故事引擎', '全域锚定', '行为逻辑锁', '故事主线', '最终修正', 'NPC驱动', '对战双方'],
-    'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
-    'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
-    'variable-update': ['变量更新', '本回合变量变动记录', 'UpdateVariable', '战技', '咒力', '世界状态'],
-    'mvu-status': [
-      '<StatusPlaceHolderImpl/>',
-      'StatusPlaceHolderImpl',
-      'MVU状态栏',
-      '世界状态',
-      '亲密状态',
-      '变量更新',
-    ],
-    'mvu-status-newvars': [
-      '<StatusPlaceHolderImpl/>',
-      'StatusPlaceHolderImpl',
-      'MVU状态栏',
-      '世界状态',
-      '亲密状态',
-      '变量更新',
-    ],
+    'bp-panel-newvars': ['已扫描目标', 'BP战力雷达', '扫描状态', 'BP总值', '总BP'],
+    'story-engine': ['最终修正', '全域锚定', 'STORY ENGINE', 'NPC驱动'],
+    'world-log': ['世界主线', 'Time passed:', '世界运行报告', '当前地点'],
   };
-
-  function getModuleAnchorNeedles(moduleId) {
-    const needles = AFTER_NATIVE_ANCHOR_NEEDLES[moduleId] || [];
-    return [...new Set(needles.map(value => String(value || '').trim()).filter(Boolean))];
-  }
 
   function getCandidateWindows() {
     const candidates = [];
@@ -130,7 +107,7 @@
 
     const scriptSrc = Array.from(document.scripts)
       .map(script => script.src)
-      .find(src => src.includes('/story_regex_ui_releasetest/index.js'));
+      .find(src => src.includes('/story_regex_ui_releasetest/index.after-native-candidate.js'));
     const fromScriptList = normalizeBaseUrl(scriptSrc || '');
     if (fromScriptList) return fromScriptList;
 
@@ -154,6 +131,16 @@
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
+  let lastScanStats = {
+    messageIds: [],
+    hasScriptModeMatch: false,
+    hasAfterNativeModeMatch: false,
+    skippedNativeOrOffOnly: [],
+    scriptRewritten: [],
+    afterNativeMounted: [],
+    afterNativeSkipped: [],
+    afterNativeHidden: [],
+  };
   let collapseOldMessagesEnabled = true;
   let collapseOldMessagesBusy = false;
   let managerActionBusy = false;
@@ -221,6 +208,76 @@
     return hostDocument;
   }
 
+  function ensureRegistryModeApi() {
+    const registry = getUi()?.registry;
+    if (!registry || registry.__storyUiAfterNativeModePatched) return registry;
+    const validModes = new Set(['script', 'native', 'after-native', 'off']);
+    const modeStorageKey = registry.MODE_STORAGE_KEY || 'jjks_story_ui_module_modes';
+    const enabledStorageKey = registry.STORAGE_KEY || 'jjks_story_ui_module_enabled_state';
+    const readJson = key => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch {
+        return {};
+      }
+    };
+    const writeJson = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // ignore persistence failures
+      }
+    };
+    const modeState = readJson(modeStorageKey);
+    const enabledState = readJson(enabledStorageKey);
+    const normalizeMode = mode => (validModes.has(mode) ? mode : 'script');
+    const getStoredMode = moduleId => {
+      const savedMode = modeState[moduleId];
+      if (validModes.has(savedMode)) return savedMode;
+      if (enabledState[moduleId] === false || registry.find?.(moduleId)?.enabled === false) return 'off';
+      return 'script';
+    };
+
+    if (typeof registry.getMode !== 'function') {
+      registry.getMode = moduleId => {
+        const module = registry.find?.(moduleId);
+        const mode = normalizeMode(module?.mode || getStoredMode(moduleId));
+        if (module) {
+          module.mode = mode;
+          module.enabled = mode !== 'off';
+        }
+        return mode;
+      };
+    }
+
+    if (typeof registry.setMode !== 'function') {
+      registry.setMode = (moduleId, mode) => {
+        const module = registry.find?.(moduleId);
+        if (!module) return false;
+        const nextMode = normalizeMode(mode);
+        module.mode = nextMode;
+        module.enabled = nextMode !== 'off';
+        modeState[moduleId] = nextMode;
+        enabledState[moduleId] = nextMode !== 'off';
+        writeJson(modeStorageKey, modeState);
+        writeJson(enabledStorageKey, enabledState);
+        return true;
+      };
+    }
+
+    if (typeof registry.isScriptMode !== 'function') {
+      registry.isScriptMode = moduleId => registry.getMode(moduleId) === 'script';
+    }
+
+    registry.MODE_STORAGE_KEY = modeStorageKey;
+    registry.VALID_MODES = Array.from(validModes);
+    registry.DEFAULT_MODE = 'script';
+    registry.__storyUiAfterNativeModePatched = true;
+    registry.list?.({ includeDisabled: true }).forEach(module => registry.getMode(module.id));
+    return registry;
+  }
+
   function getUiSource() {
     return hostWindow[CONFIG.globalKey] ? 'hostWindow' : window[CONFIG.globalKey] ? 'localWindow' : 'missing';
   }
@@ -272,6 +329,7 @@
 
   function ensureLoader() {
     if (getUi()?.scanner) {
+      ensureRegistryModeApi();
       loaderStatus = 'ready';
       return Promise.resolve();
     }
@@ -340,13 +398,35 @@
   function getDisplayedMessageElement(messageId) {
     if (messageId === undefined || messageId === null) return null;
     try {
-      const byHelper = window.retrieveDisplayedMessage?.(messageId)?.[0];
+      const retrieveDisplayedMessage =
+        hostWindow.retrieveDisplayedMessage ||
+        window.retrieveDisplayedMessage ||
+        hostWindow.TavernHelper?.retrieveDisplayedMessage ||
+        window.TavernHelper?.retrieveDisplayedMessage;
+      const byHelper = retrieveDisplayedMessage?.(messageId)?.[0];
       if (byHelper) return byHelper.closest?.('.mes[mesid]') || byHelper;
     } catch {
       // ignore helper failures
     }
 
     return hostDocument.querySelector?.(`.mes[mesid="${messageId}"]`) || null;
+  }
+
+  function getDisplayedMessageContentElement(messageId) {
+    if (messageId === undefined || messageId === null) return null;
+    try {
+      const retrieveDisplayedMessage =
+        hostWindow.retrieveDisplayedMessage ||
+        window.retrieveDisplayedMessage ||
+        hostWindow.TavernHelper?.retrieveDisplayedMessage ||
+        window.TavernHelper?.retrieveDisplayedMessage;
+      const byHelper = retrieveDisplayedMessage?.(messageId)?.[0];
+      if (byHelper) return byHelper;
+    } catch {
+      // ignore helper failures
+    }
+
+    return getDisplayedMessageTextElement(getDisplayedMessageElement(messageId));
   }
 
   function getRenderedMessageIds(limit = INITIAL_SCAN_LIMIT) {
@@ -369,7 +449,12 @@
 
   function readRawMessage(messageId) {
     try {
-      return window.getChatMessages?.(messageId)?.[0] || null;
+      const getChatMessages =
+        hostWindow.getChatMessages ||
+        window.getChatMessages ||
+        hostWindow.TavernHelper?.getChatMessages ||
+        window.TavernHelper?.getChatMessages;
+      return getChatMessages?.(messageId)?.[0] || null;
     } catch {
       return null;
     }
@@ -398,7 +483,16 @@
   function clearMountedStoryUi(messageElement) {
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
+  }
+
+  function clearAfterNativeMountedStoryUi(messageElement) {
+    if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-after-native-mount="true"]').forEach(node => node.remove());
+  }
+
+  function clearAllMountedStoryUi(messageElement) {
+    clearMountedStoryUi(messageElement);
+    clearAfterNativeMountedStoryUi(messageElement);
   }
 
   function getDisplayedMessageTextElement(messageElement) {
@@ -427,8 +521,7 @@
   function hasMountedStoryUi(messageElement) {
     if (!messageElement) return false;
     return Boolean(
-      messageElement.querySelector?.('[data-story-ui-raw-mount="true"]') ||
-      messageElement.querySelector?.('[data-story-ui-after-native-mount="true"]'),
+      messageElement.querySelector?.('[data-story-ui-raw-mount="true"], [data-story-ui-after-native-mount="true"]'),
     );
   }
 
@@ -502,8 +595,13 @@
   function renderPlainTextSegment(text, messageId) {
     const source = String(text || '');
     if (!source.trim()) return source;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      return window.formatAsDisplayedMessage(source, { message_id: messageId });
+    const formatAsDisplayedMessage =
+      hostWindow.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage ||
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage;
+    if (typeof formatAsDisplayedMessage === 'function') {
+      return formatAsDisplayedMessage(source, { message_id: messageId });
     }
     return source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
   }
@@ -571,6 +669,79 @@
       : blockMatch;
   }
 
+  function renderMessageHtmlByModules(messageId, rawText, modules, registry) {
+    const scriptModules = (modules || []).filter(module => (registry?.getMode?.(module.id) || 'script') === 'script');
+    if (scriptModules.length === 0) return { html: '', mounted: [] };
+
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    let cursor = 0;
+    let textWithPlaceholders = '';
+    const mounted = [];
+    const replacements = [];
+    const formatAsDisplayedMessage =
+      hostWindow.formatAsDisplayedMessage ||
+      window.formatAsDisplayedMessage ||
+      hostWindow.TavernHelper?.formatAsDisplayedMessage ||
+      window.TavernHelper?.formatAsDisplayedMessage;
+
+    const replaceMountToken = (sourceHtml, token, replacementHtml) => {
+      const escapedToken = escapeRegex(token);
+      return String(sourceHtml || '')
+        .replace(new RegExp(`<p[^>]*>\\s*${escapedToken}\\s*</p>`, 'g'), replacementHtml)
+        .replace(new RegExp(`<span[^>]*>\\s*${escapedToken}\\s*</span>`, 'g'), replacementHtml)
+        .split(token)
+        .join(replacementHtml)
+        .split(escapeHtml(token))
+        .join(replacementHtml);
+    };
+
+    while (cursor < text.length) {
+      const match = findNextRenderableMatch(scriptModules, text, cursor);
+      if (!match) {
+        textWithPlaceholders += text.slice(cursor);
+        break;
+      }
+
+      textWithPlaceholders += text.slice(cursor, match.start);
+      const rendered = buildNodeForModule(match.module, rawText, {
+        messageId,
+        messageElement: getDisplayedMessageElement(messageId),
+        theme: getUi()?.theme?.getTheme?.() || 'day',
+      });
+      const moduleHtml = nodeToHtml(rendered);
+      if (moduleHtml) {
+        const token = `JJKSSTORYUIMOUNT${String(CONFIG.env).toUpperCase()}M${messageId}N${replacements.length}END`;
+        textWithPlaceholders += token;
+        replacements.push({
+          token,
+          html: `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${match.module.id}">${moduleHtml}</section>`,
+        });
+        mounted.push(match.module.id);
+      } else {
+        textWithPlaceholders += match.fullMatch;
+      }
+
+      cursor = match.end;
+    }
+
+    let html = '';
+    if (typeof formatAsDisplayedMessage === 'function') {
+      html = formatAsDisplayedMessage(textWithPlaceholders, { message_id: messageId });
+    } else {
+      html = textWithPlaceholders
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+
+    replacements.forEach(({ token, html: replacementHtml }) => {
+      html = replaceMountToken(html, token, replacementHtml);
+    });
+
+    return { html, mounted };
+  }
+
   function getRenderableMatchesInOrder(modules, rawText) {
     const text = String(rawText || '').replace(/\r\n?/g, '\n');
     const matches = [];
@@ -586,37 +757,13 @@
     return matches;
   }
 
-  function renderMessageHtmlByModules(messageId, rawText, modules) {
-    const text = String(rawText || '').replace(/\r\n?/g, '\n');
-    let cursor = 0;
-    let html = '';
-    const mounted = [];
-
-    while (cursor < text.length) {
-      const match = findNextRenderableMatch(modules, text, cursor);
-      if (!match) {
-        html += renderPlainTextSegment(text.slice(cursor), messageId);
-        break;
-      }
-
-      html += renderPlainTextSegment(text.slice(cursor, match.start), messageId);
-      const rendered = buildNodeForModule(match.module, rawText, {
-        messageId,
-        messageElement: getDisplayedMessageElement(messageId),
-        theme: getUi()?.theme?.getTheme?.() || 'day',
-      });
-      const moduleHtml = nodeToHtml(rendered);
-      if (moduleHtml) {
-        html += `<section class="story-ui-raw-mount" data-story-ui-raw-mount="true" data-story-ui-module="${match.module.id}">${moduleHtml}</section>`;
-        mounted.push(match.module.id);
-      } else {
-        html += renderPlainTextSegment(match.fullMatch, messageId);
-      }
-
-      cursor = match.end;
-    }
-
-    return { html, mounted };
+  function createRawMountHost(module, moduleHtml) {
+    const mountHost = createElementInHost('section');
+    mountHost.className = 'story-ui-raw-mount';
+    mountHost.dataset.storyUiRawMount = 'true';
+    mountHost.dataset.storyUiModule = module.id;
+    mountHost.innerHTML = moduleHtml;
+    return mountHost;
   }
 
   function createAfterNativeMountHost(module, moduleHtml, messageId) {
@@ -635,145 +782,161 @@
       .trim();
   }
 
-  function normalizeAfterNativeSourceText(value) {
-    return normalizeTextForAnchor(
-      String(value || '')
-        .replace(/<!--([\s\S]*?)-->/g, ' ')
-        .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
-        .replace(/[｜|]/g, ' '),
-    );
-  }
+  function findAfterNativeAnchor(textElement, moduleId) {
+    const needles = AFTER_NATIVE_ANCHOR_NEEDLES[moduleId] || [];
+    if (!textElement || needles.length === 0) return null;
 
-  function pushAfterNativeCandidate(candidates, value, { min = 2, max = 220 } = {}) {
-    const candidate = normalizeAfterNativeSourceText(value);
-    if (candidate.length >= min && candidate.length <= max && !candidates.includes(candidate))
-      candidates.push(candidate);
-  }
-
-  function buildAfterNativeStartCandidates(match) {
-    const candidates = [];
-    getModuleAnchorNeedles(match?.module?.id).forEach(value => pushAfterNativeCandidate(candidates, value));
-    const block = match?.block || getModuleBlockConfig(match?.module);
-    pushAfterNativeCandidate(candidates, block?.open);
-    const source = normalizeAfterNativeSourceText(match?.content || match?.fullMatch || match?.singleTag || '');
-    source
-      .split(/(?:\n| {2,}|\*\*\*\*|━━|【|】)/)
-      .map(line => line.trim())
-      .filter(Boolean)
-      .slice(0, 24)
-      .forEach(line => pushAfterNativeCandidate(candidates, line));
-    [220, 160, 120, 80, 48, 32].forEach(size => pushAfterNativeCandidate(candidates, source.slice(0, size)));
-    return candidates;
-  }
-
-  function buildAfterNativeEndCandidates(match) {
-    const candidates = [];
-    const block = match?.block || getModuleBlockConfig(match?.module);
-    pushAfterNativeCandidate(candidates, block?.close);
-    const source = normalizeAfterNativeSourceText(match?.content || match?.fullMatch || match?.singleTag || '');
-    source
-      .split(/(?:\n| {2,}|\*\*\*\*|━━|【|】)/)
-      .map(line => line.trim())
-      .filter(Boolean)
-      .slice(-24)
-      .reverse()
-      .forEach(line => pushAfterNativeCandidate(candidates, line));
-    [260, 200, 160, 120, 80, 48, 32].forEach(size =>
-      pushAfterNativeCandidate(candidates, source.slice(Math.max(0, source.length - size))),
-    );
-    return candidates;
-  }
-
-  function getAfterNativeHideContainer(node, textElement) {
-    if (!node || node === textElement) return null;
-    const blockTags = new Set([
-      'P',
-      'LI',
-      'PRE',
-      'BLOCKQUOTE',
-      'DETAILS',
-      'SUMMARY',
-      'SECTION',
-      'ARTICLE',
-      'TABLE',
-      'UL',
-      'OL',
-      'DIV',
-    ]);
-    let current = node;
-    while (current && current.parentElement && current.parentElement !== textElement) {
-      if (blockTags.has(current.tagName)) return current;
-      current = current.parentElement;
-    }
-    return current && current !== textElement ? current : null;
-  }
-
-  function collectAfterNativeVisibleBlocks(textElement) {
-    const blocks = [];
-    Array.from(textElement.querySelectorAll?.('*') || []).forEach(node => {
-      if (node === textElement) return;
-      if (node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
-      const container = getAfterNativeHideContainer(node, textElement);
-      if (!container || blocks.includes(container)) return;
-      if (container.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return;
-      const text = normalizeAfterNativeSourceText(container.innerText || container.textContent || '');
-      if (!text || text.length > 5000) return;
-      blocks.push(container);
+    const candidates = Array.from(textElement.querySelectorAll?.('*') || []).filter(node => {
+      if (node === textElement) return false;
+      if (node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]')) return false;
+      const text = normalizeTextForAnchor(node.innerText || node.textContent || '');
+      if (!text || text.length > 2500) return false;
+      return needles.some(needle => text.includes(needle));
     });
-    return blocks;
+
+    return (
+      candidates
+        .map(node => {
+          const text = normalizeTextForAnchor(node.innerText || node.textContent || '');
+          const childHits = Array.from(node.children || []).filter(child =>
+            needles.some(needle => normalizeTextForAnchor(child.innerText || child.textContent || '').includes(needle)),
+          ).length;
+          return { node, score: text.length + childHits * 600 };
+        })
+        .sort((a, b) => a.score - b.score)[0]?.node || null
+    );
   }
 
-  function findAfterNativeBlockIndex(blocks, candidates, fromIndex = 0) {
-    for (let index = Math.max(0, fromIndex); index < blocks.length; index += 1) {
-      const text = normalizeAfterNativeSourceText(blocks[index].innerText || blocks[index].textContent || '');
-      if (candidates.some(candidate => text.includes(candidate))) return index;
+  function collectTextNodes(root) {
+    const nodes = [];
+    const nodeFilter = hostWindow.NodeFilter || window.NodeFilter;
+    const walker = hostDocument.createTreeWalker(root, nodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent) return nodeFilter.FILTER_REJECT;
+        if (parent.closest?.('[data-story-ui-raw-mount="true"]')) return nodeFilter.FILTER_REJECT;
+        return nodeFilter.FILTER_ACCEPT;
+      },
+    });
+
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    return nodes;
+  }
+
+  function findTextRange(root, sourceText) {
+    const target = String(sourceText || '').replace(/\r\n?/g, '\n');
+    if (!target) return null;
+
+    const nodes = collectTextNodes(root);
+    const chunks = [];
+    let combined = '';
+    nodes.forEach(node => {
+      const raw = node.textContent || '';
+      const normalized = raw.replace(/\r\n?/g, '\n');
+      chunks.push({ node, raw, normalized, start: combined.length, end: combined.length + normalized.length });
+      combined += normalized;
+    });
+
+    const startIndex = combined.indexOf(target);
+    const endIndex = startIndex >= 0 ? startIndex + target.length : -1;
+    if (startIndex < 0) {
+      const compactCombined = combined.replace(/[ \t]+/g, ' ');
+      const compactTarget = target.replace(/[ \t]+/g, ' ');
+      const compactIndex = compactCombined.indexOf(compactTarget);
+      if (compactIndex < 0) return null;
+      return null;
     }
-    return -1;
+
+    const startChunk = chunks.find(chunk => startIndex >= chunk.start && startIndex <= chunk.end);
+    const endChunk = chunks.find(chunk => endIndex >= chunk.start && endIndex <= chunk.end);
+    if (!startChunk || !endChunk) return null;
+
+    const range = hostDocument.createRange();
+    range.setStart(startChunk.node, startIndex - startChunk.start);
+    range.setEnd(endChunk.node, endIndex - endChunk.start);
+    return range;
   }
 
-  function findAfterNativeLastBlockIndex(blocks, candidates, fromIndex = 0) {
-    let found = -1;
-    for (let index = Math.max(0, fromIndex); index < blocks.length; index += 1) {
-      const text = normalizeAfterNativeSourceText(blocks[index].innerText || blocks[index].textContent || '');
-      if (candidates.some(candidate => text.includes(candidate))) found = index;
+  function replaceRawTextWithMountHost(textElement, rawSource, mountHost) {
+    const candidates = [String(rawSource || ''), String(rawSource || '').trim()].filter(Boolean);
+    for (const candidate of candidates) {
+      const range = findTextRange(textElement, candidate);
+      if (!range) continue;
+      range.deleteContents();
+      range.insertNode(mountHost);
+      return true;
     }
-    return found;
+    return false;
   }
 
-  function findAfterNativeAnchor(textElement, match) {
-    const blocks = collectAfterNativeVisibleBlocks(textElement);
-    if (blocks.length === 0) return { anchor: textElement, blocks, anchorIndex: -1 };
-    const startIndex = findAfterNativeBlockIndex(blocks, buildAfterNativeStartCandidates(match));
-    const anchorIndex = startIndex >= 0 ? startIndex : 0;
-    return { anchor: blocks[anchorIndex] || textElement, blocks, anchorIndex };
-  }
-
-  function mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement) {
-    const mounted = [];
-    matches.forEach((match, index) => {
-      const rendered = buildNodeForModule(match.module, rawText, {
+  function mountStoryUiHosts(textElement, registry, rawText, messageId) {
+    const ui = getUi();
+    textElement.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
+    textElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(mountHost => {
+      const moduleId = mountHost.getAttribute('data-story-ui-module');
+      const module = registry.list({ includeDisabled: true }).find(item => item.id === moduleId);
+      if (!module || registry.getMode?.(moduleId) !== 'script') return;
+      registry.safelyCall(module, 'mount', mountHost, {
+        kind: 'raw-token',
+        rawText,
         messageId,
-        messageElement: getDisplayedMessageElement(messageId),
-        theme: getUi()?.theme?.getTheme?.() || 'day',
-        match,
+        node: mountHost,
+        mode: 'script',
+      });
+    });
+  }
+
+  function mountAfterNativeModulesForMessage({ messageId, rawText, messageElement, textElement, modules, registry }) {
+    const ui = getUi();
+    const result = { mounted: [], skipped: [] };
+    clearAfterNativeMountedStoryUi(messageElement);
+
+    const matches = getRenderableMatchesInOrder(modules, rawText);
+    matches.forEach((match, index) => {
+      const module = match.module;
+      const rendered = getUi()?.registry?.safelyCall(module, 'renderContent', match.content, {
+        kind: 'after-native',
+        mode: 'after-native',
+        messageId,
+        messageElement,
+        textElement,
+        extracted: match,
+        rawText,
+        theme: ui?.theme?.getTheme?.() || 'day',
       });
       const moduleHtml = nodeToHtml(rendered);
-      if (!moduleHtml) return;
-      const anchorResult = findAfterNativeAnchor(textElement, match);
-      const anchor = anchorResult.anchor || textElement;
-      const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
-      anchor.insertAdjacentElement?.('afterend', mountHost) || textElement.appendChild(mountHost);
-      getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
-      registry.safelyCall(match.module, 'mount', mountHost, {
+      if (!moduleHtml) {
+        result.skipped.push({ moduleId: module.id, reason: 'render-empty-or-raw-not-matched' });
+        return;
+      }
+
+      const anchor = findAfterNativeAnchor(textElement, module.id);
+      if (!anchor) {
+        result.skipped.push({ moduleId: module.id, reason: 'anchor-not-found' });
+        return;
+      }
+
+      const mountHost = createAfterNativeMountHost(module, moduleHtml, messageId);
+      anchor.insertAdjacentElement('afterend', mountHost);
+      mountHost.querySelectorAll?.('.story-ui-root').forEach(root => ui?.theme?.applyThemeToRoot?.(root));
+      registry.safelyCall(module, 'mount', mountHost, {
         kind: 'after-native',
         rawText,
         messageId,
         node: mountHost,
-        match,
+        messageElement,
+        textElement,
+        mode: 'after-native',
       });
-      mounted.push(match.module.id);
+      result.mounted.push(module.id);
     });
-    return mounted;
+
+    messageElement.dataset.storyUiAfterNativeMounted = result.mounted.join('|');
+    messageElement.dataset.storyUiAfterNativeSkipped = result.skipped
+      .map(item => `${item.moduleId}:${item.reason}`)
+      .join('|');
+    return result;
   }
 
   function mountModulesForMessage(messageId, rawText) {
@@ -785,27 +948,72 @@
     if (!registry) return false;
 
     const modules = registry
-      .list()
+      .list({ includeDisabled: true })
       .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
     if (modules.length === 0) {
+      clearAllMountedStoryUi(messageElement);
       mountedModulesByMessage.delete(messageId);
       return false;
     }
 
-    const textElement = getDisplayedMessageTextElement(messageElement);
+    const matchedModules = modules.map(module => ({
+      id: module.id,
+      mode: registry.getMode?.(module.id) || (module.enabled === false ? 'off' : 'script'),
+    }));
+    const scriptModules = modules.filter(module => (registry.getMode?.(module.id) || 'script') === 'script');
+    const afterNativeModules = modules.filter(module => (registry.getMode?.(module.id) || 'script') === 'after-native');
+    const hasScriptModeMatch = scriptModules.length > 0;
+    const hasAfterNativeModeMatch = afterNativeModules.length > 0;
+    messageElement.dataset.storyUiHasScriptModeMatch = hasScriptModeMatch ? 'true' : 'false';
+    messageElement.dataset.storyUiHasAfterNativeModeMatch = hasAfterNativeModeMatch ? 'true' : 'false';
+    messageElement.dataset.storyUiMatchedModes = matchedModules.map(item => `${item.id}:${item.mode}`).join('|');
+
+    if (!hasScriptModeMatch && !hasAfterNativeModeMatch) {
+      clearAllMountedStoryUi(messageElement);
+      mountedModulesByMessage.delete(messageId);
+      return false;
+    }
+
+    const textElement = getDisplayedMessageContentElement(messageId);
     if (!textElement) return false;
 
-    clearMountedStoryUi(messageElement);
-    const matches = getRenderableMatchesInOrder(modules, rawText);
-    const mounted = mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement);
+    const mounted = [];
+    if (hasScriptModeMatch) {
+      const rendered = renderMessageHtmlByModules(messageId, rawText, modules, registry);
+      if (rendered.mounted.length) {
+        textElement.innerHTML = rendered.html;
+        mountStoryUiHosts(textElement, registry, rawText, messageId);
+        mounted.push(...rendered.mounted.map(moduleId => `${moduleId}:script`));
+      } else {
+        clearMountedStoryUi(messageElement);
+      }
+    } else {
+      clearMountedStoryUi(messageElement);
+    }
+
+    if (hasAfterNativeModeMatch) {
+      const afterNative = mountAfterNativeModulesForMessage({
+        messageId,
+        rawText,
+        messageElement,
+        textElement,
+        modules: afterNativeModules,
+        registry,
+      });
+      mounted.push(...afterNative.mounted.map(moduleId => `${moduleId}:after-native`));
+    } else {
+      clearAfterNativeMountedStoryUi(messageElement);
+      messageElement.dataset.storyUiAfterNativeMounted = '';
+      messageElement.dataset.storyUiAfterNativeSkipped = '';
+    }
 
     if (mounted.length > 0) {
       mountedModulesByMessage.set(messageId, mounted);
-      return true;
+    } else {
+      mountedModulesByMessage.delete(messageId);
     }
 
-    mountedModulesByMessage.delete(messageId);
-    return false;
+    return mounted.length > 0;
   }
 
   function escapeHtml(value) {
@@ -822,34 +1030,9 @@
   }
 
   function mountCollapsedPlaceholderForMessage(messageId, rawText) {
-    const messageElement = getDisplayedMessageElement(messageId);
-    if (!messageElement) return false;
-    if (!collapseOldMessagesEnabled) return false;
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-
-    const registry = getUi()?.registry;
-    if (!registry) return false;
-    const modules = registry
-      .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) return false;
-
-    let html = String(rawText || '').replace(/\r\n?/g, '\n');
-    modules.forEach(module => {
-      const extracted = extractModuleContent(module, rawText);
-      if (!extracted?.fullMatch) return;
-      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
-      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
-    });
-
-    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
-    } else {
-      textElement.innerHTML = html;
-    }
-    return true;
+    void messageId;
+    void rawText;
+    return false;
   }
 
   function scanMessageIds(messageIds, mode = 'incremental') {
@@ -857,28 +1040,90 @@
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const activeSet = new Set(uniqueIds);
+    const recentRenderedSet = new Set(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+    const scanStats = {
+      messageIds: uniqueIds.slice(),
+      hasScriptModeMatch: false,
+      hasAfterNativeModeMatch: false,
+      skippedNativeOrOffOnly: [],
+      scriptRewritten: [],
+      afterNativeMounted: [],
+      afterNativeSkipped: [],
+      afterNativeHidden: [],
+    };
 
     uniqueIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
-      const signature = computeSignature(rawText);
+      const registry = getUi()?.registry;
+      const modules = registry?.list?.({ includeDisabled: true }) || [];
+      const matchedModules = modules.filter(
+        module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText),
+      );
+      const matchedScriptModules = matchedModules.filter(
+        module => (registry?.getMode?.(module.id) || 'script') === 'script',
+      );
+      const matchedAfterNativeModules = matchedModules.filter(
+        module => (registry?.getMode?.(module.id) || 'script') === 'after-native',
+      );
+      const matchedNativeOrOffModules = matchedModules.filter(module => {
+        const moduleMode = registry?.getMode?.(module.id) || 'script';
+        return moduleMode !== 'script' && moduleMode !== 'after-native';
+      });
+      if (matchedScriptModules.length > 0) scanStats.hasScriptModeMatch = true;
+      if (matchedAfterNativeModules.length > 0) scanStats.hasAfterNativeModeMatch = true;
+      if (matchedModules.length > 0 && matchedScriptModules.length === 0 && matchedAfterNativeModules.length === 0) {
+        scanStats.skippedNativeOrOffOnly.push({
+          messageId,
+          modules: matchedNativeOrOffModules.map(
+            module => `${module.id}:${registry?.getMode?.(module.id) || 'script'}`,
+          ),
+        });
+      }
+
+      const modeSignature = modules
+        .map(module => `${module.id}:${registry?.getMode?.(module.id) || 'script'}`)
+        .join('|');
+      const signature = `${computeSignature(rawText)}|modes:${modeSignature}`;
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
-      const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
+      if (previousSignature === signature && hasDisplayHost) return;
 
       messageSignatures.set(messageId, signature);
-      mountModulesForMessage(messageId, rawText);
+      if (mountModulesForMessage(messageId, rawText)) {
+        const messageElement = getDisplayedMessageElement(messageId);
+        if (matchedScriptModules.length > 0) {
+          scanStats.scriptRewritten.push({
+            messageId,
+            modules: matchedScriptModules.map(module => module.id),
+          });
+        }
+        if (matchedAfterNativeModules.length > 0) {
+          const mounted = String(messageElement?.dataset?.storyUiAfterNativeMounted || '')
+            .split('|')
+            .filter(Boolean);
+          const skipped = String(messageElement?.dataset?.storyUiAfterNativeSkipped || '')
+            .split('|')
+            .filter(Boolean);
+          if (mounted.length > 0) {
+            scanStats.afterNativeMounted.push({ messageId, modules: mounted });
+          }
+          if (skipped.length > 0) {
+            scanStats.afterNativeSkipped.push({ messageId, modules: skipped });
+          }
+        }
+      }
     });
 
     getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
-      if (activeSet.has(messageId)) return;
+      if (activeSet.has(messageId) || recentRenderedSet.has(messageId)) return;
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       if (!rawText) return;
       mountCollapsedPlaceholderForMessage(messageId, rawText);
     });
 
+    lastScanStats = scanStats;
     rememberRecentScannedMessageIds(uniqueIds);
   }
 
@@ -949,9 +1194,16 @@
       主题模块就绪: Boolean(ui?.theme),
       当前主题: getTheme(),
       主题键: CONFIG.themeKey,
-      已注册模块: modules.map(
-        module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
+      模块显示模式: Object.fromEntries(
+        modules.map(module => [
+          module.id,
+          ui?.registry?.getMode?.(module.id) || (module.enabled === false ? 'off' : 'script'),
+        ]),
       ),
+      已注册模块: modules.map(module => {
+        const mode = ui?.registry?.getMode?.(module.id) || (module.enabled === false ? 'off' : 'script');
+        return `${module.id}@${module.version || 'unknown'} [mode=${mode}]`;
+      }),
       故事UI节点数: storyRoots,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
@@ -961,6 +1213,12 @@
       最近扫描窗口: renderedWindowSize,
       最近扫描楼层: recentScannedMessageIds.slice(),
       扫描模式: lastScanMode,
+      最近扫描包含脚本接管模块: Boolean(lastScanStats.hasScriptModeMatch),
+      最近扫描包含共存增强模块: Boolean(lastScanStats.hasAfterNativeModeMatch),
+      最近跳过原生或关闭楼层: lastScanStats.skippedNativeOrOffOnly.slice(-8),
+      最近脚本重写楼层: lastScanStats.scriptRewritten.slice(-8),
+      最近共存增强挂载楼层: lastScanStats.afterNativeMounted.slice(-8),
+      最近共存增强跳过楼层: lastScanStats.afterNativeSkipped.slice(-8),
       最近错误: lastError || '无',
       诊断时间: new Date().toLocaleString(),
     };
@@ -1027,6 +1285,7 @@
 
   async function ensureManagerAssetsReady() {
     await ensureLoader();
+    ensureRegistryModeApi();
     const styleHref = toUrl('modules/manager-ui/style.css');
     let link = hostDocument.querySelector(`link[href="${styleHref}"]`);
     if (!link) {
@@ -1114,14 +1373,17 @@
   function clearModuleMountedDom(moduleId) {
     hostDocument.querySelectorAll(`[data-story-ui-module="${moduleId}"]`).forEach(node => {
       const mountHost =
-        node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]') || node;
+        node.closest?.('[data-story-ui-raw-mount="true"], [data-story-ui-after-native-mount="true"]') || node;
       mountHost.remove();
     });
   }
 
   function clearModuleCaches(moduleId) {
     mountedModulesByMessage.forEach((mounted, messageId) => {
-      if (Array.isArray(mounted) && mounted.includes(moduleId)) {
+      if (
+        Array.isArray(mounted) &&
+        mounted.some(item => item === moduleId || String(item).startsWith(`${moduleId}:`))
+      ) {
         mountedModulesByMessage.delete(messageId);
         messageSignatures.delete(messageId);
       }
@@ -1174,6 +1436,16 @@
         return;
       }
 
+      const moduleModeButton = target.closest?.('[data-jjks-module-mode]');
+      if (moduleModeButton) {
+        setManagerModuleMode(
+          moduleModeButton.getAttribute('data-jjks-module-mode'),
+          moduleModeButton.getAttribute('data-jjks-mode-value'),
+          moduleModeButton,
+        );
+        return;
+      }
+
       const moduleButton = target.closest?.('[data-jjks-module-toggle]');
       if (moduleButton) {
         toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'), moduleButton);
@@ -1209,28 +1481,46 @@
     const listRoot = root.querySelector('[data-jjks-module-list]');
     if (!listRoot) return;
     const registry = getUi()?.registry;
+    const modes = [
+      ['script', '脚本显示'],
+      ['native', '原生显示'],
+      ['after-native', '共存增强'],
+      ['off', '关闭'],
+    ];
     const entries = Object.entries(MODULE_LABELS).map(([id, label]) => ({
       id,
       label,
-      enabled: registry?.isEnabled?.(id) !== false,
+      mode: registry?.getMode?.(id) || (registry?.isEnabled?.(id) === false ? 'off' : 'script'),
     }));
 
     listRoot.innerHTML = entries
       .map(
         item => `
-          <div class="jjks-manager-module-item">
+          <div class="jjks-manager-module-item" data-jjks-module-current-mode="${escapeHtml(item.mode)}">
             <span class="jjks-manager-module-name">${escapeHtml(item.label)}</span>
-            <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}">${item.enabled ? '开启' : '关闭'}</button>
+            <div class="jjks-manager-mode-group" role="group" aria-label="${escapeHtml(item.label)}显示模式">
+              ${modes
+                .map(
+                  ([mode, label]) => `
+                    <button class="jjks-manager-mode-button" type="button" data-jjks-module-mode="${escapeHtml(item.id)}" data-jjks-mode-value="${escapeHtml(mode)}" data-active="${item.mode === mode ? 'true' : 'false'}">${escapeHtml(label)}</button>
+                  `,
+                )
+                .join('')}
+            </div>
           </div>
         `,
       )
       .join('');
   }
 
-  function rerenderAllVisibleMessages() {
+  async function rerenderAllVisibleMessages() {
     const ids = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
     messageSignatures.clear();
     mountedModulesByMessage.clear();
+    const refreshed = await refreshRenderedMessagesForNativeRender(ids);
+    if (refreshed) {
+      await new Promise(resolve => window.setTimeout(resolve, 80));
+    }
     scanMessageIds(ids, 'window');
   }
 
@@ -1240,52 +1530,52 @@
     return '';
   }
 
-  function syncExclusiveModuleState(moduleId, enabled) {
+  function syncExclusiveModuleMode(moduleId, mode) {
     const exclusiveId = getExclusiveModuleId(moduleId);
-    if (!exclusiveId) return;
+    if (!exclusiveId || mode !== 'script') return;
     const registry = getUi()?.registry;
     if (!registry?.find?.(exclusiveId)) return;
-    if (enabled) {
-      registry.setEnabled(exclusiveId, false);
+    if (registry.getMode?.(exclusiveId) === 'script') {
+      registry.setMode(exclusiveId, 'off');
       clearModuleMountedDom(exclusiveId);
       clearModuleCaches(exclusiveId);
+      notify(`${MODULE_LABELS[exclusiveId] || exclusiveId} 已因互斥规则切换为关闭`, 'info');
     }
   }
 
-  async function toggleManagerModule(moduleId, button) {
+  async function setManagerModuleMode(moduleId, mode, button) {
     if (!moduleId) return;
     const registry = getUi()?.registry;
-    if (!registry?.find?.(moduleId)) return;
+    if (!registry?.find?.(moduleId) || typeof registry.setMode !== 'function') return;
+    if (!['script', 'native', 'after-native', 'off'].includes(mode)) return;
     if (moduleToggleBusy.has(moduleId)) return;
 
-    const enabled = !registry.isEnabled(moduleId);
-    const exclusiveId = getExclusiveModuleId(moduleId);
-    if (enabled && exclusiveId && registry.isEnabled(exclusiveId)) {
-      notify(
-        `请先关闭${MODULE_LABELS[exclusiveId] || exclusiveId}，再开启${MODULE_LABELS[moduleId] || moduleId}`,
-        'info',
-      );
-      refreshManagerState();
-      return;
-    }
+    const currentMode = registry.getMode?.(moduleId) || 'script';
+    if (currentMode === mode) return;
 
     moduleToggleBusy.add(moduleId);
-    setManagerButtonBusy(button, enabled ? '开启中' : '关闭中', true);
+    setManagerButtonBusy(button, '切换中', true);
 
-    if (!enabled) {
-      clearModuleMountedDom(moduleId);
-      clearModuleCaches(moduleId);
-    }
-
-    syncExclusiveModuleState(moduleId, enabled);
-    registry.setEnabled(moduleId, enabled);
+    clearModuleMountedDom(moduleId);
+    clearModuleCaches(moduleId);
+    syncExclusiveModuleMode(moduleId, mode);
+    registry.setMode(moduleId, mode);
     await new Promise(resolve => window.setTimeout(resolve, 60));
-    rerenderAllVisibleMessages();
+    await rerenderAllVisibleMessages();
     refreshManagerState();
-    notify(`${MODULE_LABELS[moduleId] || moduleId}${enabled ? ' 已开启' : ' 已关闭'}`, 'success');
+    notify(
+      `${MODULE_LABELS[moduleId] || moduleId} 已切换为${mode === 'script' ? '脚本显示' : mode === 'native' ? '原生显示' : mode === 'after-native' ? '共存增强' : '关闭'}`,
+      'success',
+    );
 
     moduleToggleBusy.delete(moduleId);
     setManagerButtonBusy(button, '', false);
+  }
+
+  async function toggleManagerModule(moduleId, button) {
+    const registry = getUi()?.registry;
+    const currentMode = registry?.getMode?.(moduleId) || (registry?.isEnabled?.(moduleId) === false ? 'off' : 'script');
+    await setManagerModuleMode(moduleId, currentMode === 'off' ? 'script' : 'off', button);
   }
 
   function refreshManagerState() {
@@ -1345,6 +1635,24 @@
     await reloadResources();
   }
 
+  async function refreshRenderedMessagesForNativeRender(messageIds) {
+    const refreshOneMessage =
+      hostWindow.refreshOneMessage ||
+      window.refreshOneMessage ||
+      hostWindow.TavernHelper?.refreshOneMessage ||
+      window.TavernHelper?.refreshOneMessage;
+    if (typeof refreshOneMessage !== 'function') return false;
+
+    for (const messageId of messageIds) {
+      try {
+        await refreshOneMessage(messageId);
+      } catch (error) {
+        console.warn(`${logPrefix} 刷新原生楼层渲染失败: ${messageId}`, error);
+      }
+    }
+    return true;
+  }
+
   async function reloadResources() {
     if (managerActionBusy) return;
     managerActionBusy = true;
@@ -1378,10 +1686,15 @@
     loaderPromise = null;
     try {
       await ensureLoader();
+      const messageIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
       messageSignatures.clear();
       mountedModulesByMessage.clear();
       recentScannedMessageIds.length = 0;
-      queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
+      const refreshed = await refreshRenderedMessagesForNativeRender(messageIds);
+      if (refreshed) {
+        await new Promise(resolve => window.setTimeout(resolve, 120));
+      }
+      queueScan(messageIds.length ? messageIds : getRecentMessageIds(INITIAL_SCAN_LIMIT));
       notify('资源已重新加载', 'success');
     } catch (error) {
       console.error(`${logPrefix} 重载资源失败`, error);
@@ -1415,9 +1728,12 @@
       persistCollapseOldMessages(collapseOldMessagesEnabled);
       refreshManagerState();
       window.setTimeout(() => {
-        rerenderAllVisibleMessages();
-        collapseOldMessagesBusy = false;
-        refreshManagerState();
+        rerenderAllVisibleMessages()
+          .catch(error => console.error(`${logPrefix} 重渲染可见楼层失败`, error))
+          .finally(() => {
+            collapseOldMessagesBusy = false;
+            refreshManagerState();
+          });
       }, 80);
       return;
     }
@@ -1551,6 +1867,7 @@
       reloadResources,
       setTheme,
       toggleManagerModule,
+      setManagerModuleMode,
       hostWindow,
       hostDocument,
     };
@@ -1569,6 +1886,7 @@
   bindEvents();
   ensureLoader()
     .then(() => {
+      ensureRegistryModeApi();
       loaderStatus = 'ready';
     })
     .catch(error => {
