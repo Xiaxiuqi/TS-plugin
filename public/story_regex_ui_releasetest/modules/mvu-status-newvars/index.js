@@ -6,8 +6,12 @@
   const MODULE_VERSION = '0.1.1-releasetest-newvars-inline-update';
   const SINGLE_TAG = '<StatusPlaceHolderImpl/>';
 
+  function normalizeDisplayText(value) {
+    return String(value ?? '').replace(/轮外熟练/g, '论外熟练');
+  }
+
   function escapeHtml(value) {
-    return dom.escapeHtml(String(value ?? ''));
+    return dom.escapeHtml(normalizeDisplayText(value));
   }
 
   function getCurrentMvuDataSafe() {
@@ -84,7 +88,7 @@
   function safeSetText(root, selector, text) {
     const el = root?.querySelector?.(selector);
     if (!el) return;
-    const str = String(text);
+    const str = normalizeDisplayText(text);
     if (el.textContent !== str) el.textContent = str;
   }
 
@@ -131,6 +135,30 @@
     return value ? '是' : '否';
   }
 
+  function getCombatGradeClass(value) {
+    const text = String(value || 'F级');
+    if (text.startsWith('S级') || text.includes('论外')) return 'grade-s';
+    if (text.startsWith('AA级') || text.includes('强特级')) return 'grade-aa';
+    if (text.startsWith('A级') || text.includes('特级')) return 'grade-a';
+    if (text.startsWith('B级') || text.includes('一级')) return 'grade-b';
+    if (text.startsWith('C级') || text.includes('准一级')) return 'grade-c';
+    if (text.startsWith('D级') || text.includes('二级')) return 'grade-d';
+    if (text.startsWith('E级') || text.includes('三级')) return 'grade-e';
+    return 'grade-f';
+  }
+
+  function setGradeClass(root, selector, gradeClass) {
+    const el = root?.querySelector?.(selector);
+    if (!el) return;
+    const classes = ['grade-s', 'grade-aa', 'grade-a', 'grade-b', 'grade-c', 'grade-d', 'grade-e', 'grade-f'];
+    classes.forEach(item => el.classList.remove(item));
+    el.classList.add(gradeClass);
+  }
+
+  function renderMeltdownText(meltdown = {}) {
+    return `熔断${yesNo(meltdown.熔断中)} · 重置${meltdown.大脑重置次数 || 0} · 回复×${meltdown.咒力回复惩罚系数 ?? 1} · 强度×${meltdown.术式强度惩罚系数 ?? 1} · 修复×${meltdown.熔断修复时间缩短倍率 ?? 2}`;
+  }
+
   function renderWorld(root, allVariables) {
     const sys = getVar(allVariables, 'stat_data.系统', {});
     const time = sys.时间 || {};
@@ -162,6 +190,8 @@
 
     safeSetText(root, '#u-lv', user.等级 || 1);
     safeSetText(root, '#u-rank', user.战力评级 || 'F级 (四级)');
+    const gradeClass = getCombatGradeClass(user.战力评级 || user.战斗面板?.战力等级);
+    setGradeClass(root, '.story-ui-mvu-newvars-rank-card', gradeClass);
 
     const expValue = Number(user.EXP || 0);
     safeSetText(root, '#u-exp', `${expValue} / 100`);
@@ -199,6 +229,8 @@
     safeSetText(root, '#u-bpb', battle.术式强度_BPB || 0);
     safeSetText(root, '#u-total-bp', battle.总BP || 0);
     safeSetText(root, '#u-combat-grade', battle.战力等级 || 'F级·四级');
+    setGradeClass(root, '.story-ui-mvu-newvars-rank-value', getCombatGradeClass(battle.战力等级 || user.战力评级));
+    setGradeClass(root, '.story-ui-mvu-newvars-rank-overview', getCombatGradeClass(battle.战力等级 || user.战力评级));
     safeSetText(root, '#u-jatk', battle.咒术攻击 || 0);
     safeSetText(root, '#u-patk', battle.物理攻击 || 0);
     safeSetText(root, '#u-regen', energy.每轮回复量 || 0);
@@ -208,6 +240,9 @@
     safeSetText(root, '#u-ce-cost', `×${energy.消耗倍率 ?? 1}`);
     safeSetText(root, '#u-tool-bp', battle.咒具值 || 0);
     safeSetText(root, '#u-damage-bonus', `×${battle.伤害补正 ?? 1}`);
+
+    const meltdown = user.术式熔断 || {};
+    safeSetText(root, '#u-meltdown-bar', renderMeltdownText(meltdown));
 
     safeSetHtml(root, '#u-clothes', renderClothes(user.当前服装 || {}));
     safeSetHtml(root, '#u-identity', renderIdentityTags(user.公开身份 || []));
@@ -292,16 +327,6 @@
     </div></article></div></div>`;
     safeSetHtml(root, '#list-reverse', reverseHtml);
 
-    const meltdown = user.术式熔断 || {};
-    const meltdownHtml = `<div class="story-ui-mvu-newvars-sub-toggle-header story-ui-mvu-newvars-meltdown-header" data-story-ui-mvu-newvars-toggle-next>✧ 术式熔断 <span class="story-ui-mvu-newvars-toggle-icon collapsed">▼</span></div><div class="story-ui-mvu-newvars-sub-content"><div class="story-ui-mvu-newvars-mini-grid"><article class="story-ui-mvu-newvars-mini-card story-ui-mvu-newvars-meltdown-card"><div class="story-ui-mvu-newvars-mini-title">熔断 / 大脑重置</div><div class="story-ui-mvu-newvars-mini-body">
-      <p><span class="story-ui-mvu-newvars-c-lbl">熔断中:</span> ${escapeHtml(yesNo(meltdown.熔断中))}</p>
-      <p><span class="story-ui-mvu-newvars-c-lbl">大脑重置次数:</span> ${escapeHtml(meltdown.大脑重置次数 || 0)}</p>
-      <p><span class="story-ui-mvu-newvars-c-lbl">咒力回复惩罚:</span> ×${escapeHtml(meltdown.咒力回复惩罚系数 ?? 1)}</p>
-      <p><span class="story-ui-mvu-newvars-c-lbl">术式强度惩罚:</span> ×${escapeHtml(meltdown.术式强度惩罚系数 ?? 1)}</p>
-      <p><span class="story-ui-mvu-newvars-c-lbl">修复时间缩短:</span> ×${escapeHtml(meltdown.熔断修复时间缩短倍率 ?? 2)}</p>
-    </div></article></div></div>`;
-    safeSetHtml(root, '#list-meltdown', meltdownHtml);
-
     safeSetHtml(
       root,
       '#list-special',
@@ -315,9 +340,15 @@
     safeSetHtml(
       root,
       '#list-inventory',
-      buildItemList(user.行囊, '✦', '行囊', v => {
-        return `<p><span class="story-ui-mvu-newvars-c-lbl">数量:</span> ${escapeHtml(v?.数量 || 0)}</p><p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
-      }),
+      buildItemList(
+        user.行囊,
+        '✦',
+        '行囊',
+        v => {
+          return `<p><span class="story-ui-mvu-newvars-c-lbl">数量:</span> ${escapeHtml(v?.数量 || 0)}</p><p><span class="story-ui-mvu-newvars-c-lbl">描述:</span> ${escapeHtml(v?.描述 || '')}</p>`;
+        },
+        'story-ui-mvu-newvars-inventory-header',
+      ),
     );
 
     const tasks = tasksModule || {};
@@ -566,6 +597,7 @@
                       </div>
                     </div>
                     <div class="story-ui-mvu-newvars-stat-grid">
+                      <div class="story-ui-mvu-newvars-meltdown-bar"><span class="story-ui-mvu-newvars-stat-name">术式熔断</span><span class="story-ui-mvu-newvars-stat-value" id="u-meltdown-bar"></span></div>
                       <div class="story-ui-mvu-newvars-stat-card sage"><span class="story-ui-mvu-newvars-stat-name">身体状况</span><span class="story-ui-mvu-newvars-stat-value" id="u-health"></span></div>
                       <div class="story-ui-mvu-newvars-stat-card rose"><span class="story-ui-mvu-newvars-stat-name">损伤 / 疤痕</span><span class="story-ui-mvu-newvars-stat-value" id="u-scar"></span></div>
                     </div>
@@ -578,7 +610,6 @@
                 <div id="list-skills"></div>
                 <div id="list-all-cts"></div>
                 <div id="list-reverse"></div>
-                <div id="list-meltdown"></div>
                 <div id="list-special"></div>
                 <div id="list-spirits"></div>
               </div>

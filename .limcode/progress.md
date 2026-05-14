@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T18:29:05.741Z
+- Updated At: 2026-05-14T18:56:23.486Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：调整 releasetest 新变量 MVU 生得术式待觉醒显示。
-- 最新结论：已按要求调整 releasetest 新变量 MVU：生得术式名称为“待觉醒”时显示一张只含“待觉醒”提示的生得术式卡片，不展示属性、潜力、精通、强度、描述等其余字段；名称为“无”或空仍不显示；已觉醒术式仍按原详情显示。JS 已通过 node --check，正式版 mvu-status-newvars 无本轮差异。
-- 下一步：在 releasetest 页面实测术式折叠块中待觉醒/无/已觉醒三种状态的显示是否符合预期。
+- 当前焦点：修复 releasetest 新变量 MVU 行囊展开高度与“论外熟练”显示。
+- 最新结论：已在 releasetest 新变量 MVU 中为行囊折叠内容设置最大高度，约四行半内容高度，内容少时自然显示，超过后可纵向滚动且隐藏滚动条。已在 releasetest 新变量 MVU 与 BP 新变量面板显示层增加“轮外熟练”到“论外熟练”的防呆归一化：无论获取值为轮外熟练或论外熟练，界面显示均为论外熟练。JS 已通过 node --check；正式版对…
+- 下一步：在 releasetest 暗色模式实测行囊展开高度、滚动行为与论外熟练显示是否符合预期。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,8 +22,10 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 调整 releasetest 生得术式待觉醒显示逻辑：待觉醒时只显示待觉醒提示，其余字段不显示  `#innate-pending-1`
-- [x] 验证 JS 语法并确认正式版未被修改  `#innate-pending-2`
+- [x] 检查 releasetest 新变量 MVU/BP 中行囊渲染与熟练阶段显示位置  `#inventory-scroll-1`
+- [x] 为新变量 MVU 行囊展开内容设置四行半高度上限、隐藏滚动条滚动  `#inventory-scroll-2`
+- [x] 在新变量 MVU 与 BP 显示层统一将“轮外熟练/论外熟练”显示为“论外熟练”  `#inventory-scroll-3`
+- [x] 验证语法并确认正式版未修改  `#inventory-scroll-4`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -41,8 +43,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T15:02:38.418Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
-- 2026-05-12T16:24:47.041Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:39:24.651Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T16:53:50.057Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T22:35:00.389Z | updated | 记录当前 StoryRegexUI 修复进展，并开始实现世界运行报告 wlog 模块接入。
@@ -61,6 +61,8 @@
 - 2026-05-14T18:09:08.731Z | updated | fix-releasetest-newvars-mvu-helper-api-read | 按酒馆助手接口修正 releasetest 新变量 MVU：优先 Mvu.getMvuData({type:'chat'}) 读取当前变量，恢复左卡固定高度与右侧隐藏滚动条滚动。
 - 2026-05-14T18:25:52.503Z | updated | add-newvars-missing-character-attrs | 补全 releasetest 新变量 MVU 的角色相关缺失显示项：咒力、战斗面板、基础肉体、反转术式、术式熔断。
 - 2026-05-14T18:29:05.741Z | updated | newvars-innate-ct-pending-only | 新变量 MVU 生得术式待觉醒状态改为只显示待觉醒卡片，其余字段不展示。
+- 2026-05-14T18:47:25.745Z | updated | newvars-meltdown-bar-bp-grade-color | 新变量 MVU：术式熔断改为身体状况上方横向栏，并新增 BP 战力等级分级上色。
+- 2026-05-14T18:56:23.486Z | updated | newvars-inventory-scroll-and-lunwai-normalize | 新变量 MVU 行囊展开内容增加隐藏滚动条的高度上限；新变量 MVU/BP 显示层统一论外熟练文案。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -70,43 +72,41 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T18:29:05.741Z",
+  "updatedAt": "2026-05-14T18:56:23.486Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "调整 releasetest 新变量 MVU 生得术式待觉醒显示。",
-  "latestConclusion": "已按要求调整 releasetest 新变量 MVU：生得术式名称为“待觉醒”时显示一张只含“待觉醒”提示的生得术式卡片，不展示属性、潜力、精通、强度、描述等其余字段；名称为“无”或空仍不显示；已觉醒术式仍按原详情显示。JS 已通过 node --check，正式版 mvu-status-newvars 无本轮差异。",
+  "currentFocus": "修复 releasetest 新变量 MVU 行囊展开高度与“论外熟练”显示。",
+  "latestConclusion": "已在 releasetest 新变量 MVU 中为行囊折叠内容设置最大高度，约四行半内容高度，内容少时自然显示，超过后可纵向滚动且隐藏滚动条。已在 releasetest 新变量 MVU 与 BP 新变量面板显示层增加“轮外熟练”到“论外熟练”的防呆归一化：无论获取值为轮外熟练或论外熟练，界面显示均为论外熟练。JS 已通过 node --check；正式版对应模块无本轮差异。",
   "currentBlocker": null,
-  "nextAction": "在 releasetest 页面实测术式折叠块中待觉醒/无/已觉醒三种状态的显示是否符合预期。",
+  "nextAction": "在 releasetest 暗色模式实测行囊展开高度、滚动行为与论外熟练显示是否符合预期。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "innate-pending-1",
-      "content": "调整 releasetest 生得术式待觉醒显示逻辑：待觉醒时只显示待觉醒提示，其余字段不显示",
+      "id": "inventory-scroll-1",
+      "content": "检查 releasetest 新变量 MVU/BP 中行囊渲染与熟练阶段显示位置",
       "status": "completed"
     },
     {
-      "id": "innate-pending-2",
-      "content": "验证 JS 语法并确认正式版未被修改",
+      "id": "inventory-scroll-2",
+      "content": "为新变量 MVU 行囊展开内容设置四行半高度上限、隐藏滚动条滚动",
+      "status": "completed"
+    },
+    {
+      "id": "inventory-scroll-3",
+      "content": "在新变量 MVU 与 BP 显示层统一将“轮外熟练/论外熟练”显示为“论外熟练”",
+      "status": "completed"
+    },
+    {
+      "id": "inventory-scroll-4",
+      "content": "验证语法并确认正式版未修改",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T15:02:38.418Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
-    {
-      "at": "2026-05-12T16:24:47.041Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T16:39:24.651Z",
       "type": "artifact_changed",
@@ -207,21 +207,33 @@
       "type": "updated",
       "refId": "newvars-innate-ct-pending-only",
       "message": "新变量 MVU 生得术式待觉醒状态改为只显示待觉醒卡片，其余字段不展示。"
+    },
+    {
+      "at": "2026-05-14T18:47:25.745Z",
+      "type": "updated",
+      "refId": "newvars-meltdown-bar-bp-grade-color",
+      "message": "新变量 MVU：术式熔断改为身体状况上方横向栏，并新增 BP 战力等级分级上色。"
+    },
+    {
+      "at": "2026-05-14T18:56:23.486Z",
+      "type": "updated",
+      "refId": "newvars-inventory-scroll-and-lunwai-normalize",
+      "message": "新变量 MVU 行囊展开内容增加隐藏滚动条的高度上限；新变量 MVU/BP 显示层统一论外熟练文案。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
-    "todosTotal": 2,
-    "todosCompleted": 2,
+    "todosTotal": 4,
+    "todosCompleted": 4,
     "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T18:29:05.741Z",
-    "bodyHash": "sha256:f1a9d279452a29432d808f7ebfd3a2ca0319519cbb730cd4a746d27faf11fb7a"
+    "generatedAt": "2026-05-14T18:56:23.486Z",
+    "bodyHash": "sha256:a1b35e440db830abdb893ccb456027818d051d0b63fa332702c1b7d0b395cf3e"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
