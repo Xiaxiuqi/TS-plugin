@@ -180,7 +180,6 @@
   grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
   gap: 8px;
   background: rgba(255, 253, 247, 0.32);
-  white-space: pre-wrap;
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card {
@@ -826,7 +825,6 @@
   grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
   gap: 8px;
   background: rgba(255, 255, 255, 0.025);
-  white-space: pre-wrap;
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card {
