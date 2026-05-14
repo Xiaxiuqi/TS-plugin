@@ -49,6 +49,15 @@
       '变量更新',
     ],
   };
+  const BEFORE_NATIVE_MODULE_IDS = ['story-engine'];
+  const AFTER_NATIVE_MODULE_ORDER = [
+    'bp-panel-newvars',
+    'relation-status',
+    'world-log',
+    'variable-update',
+    'mvu-status',
+    'mvu-status-newvars',
+  ];
 
   function getModuleAnchorNeedles(moduleId) {
     const needles = AFTER_NATIVE_ANCHOR_NEEDLES[moduleId] || [];
@@ -399,6 +408,7 @@
     if (!messageElement) return;
     messageElement.querySelectorAll?.('[data-story-ui-raw-mount="true"]').forEach(node => node.remove());
     messageElement.querySelectorAll?.('[data-story-ui-after-native-mount="true"]').forEach(node => node.remove());
+    messageElement.querySelectorAll?.('[data-story-ui-after-native-stack="true"]').forEach(node => node.remove());
   }
 
   function getDisplayedMessageTextElement(messageElement) {
@@ -750,37 +760,75 @@
     return { anchor: blocks[startIndex] || null, blocks, anchorIndex: startIndex, found: true };
   }
 
+  function sortAfterNativeMatches(matches) {
+    const byModuleId = new Map();
+    matches.forEach(match => {
+      if (!byModuleId.has(match.module.id)) byModuleId.set(match.module.id, match);
+    });
+    return AFTER_NATIVE_MODULE_ORDER.map(moduleId => byModuleId.get(moduleId)).filter(Boolean);
+  }
+
+  function appendMountHostToStack(stackHost, match, moduleHtml, messageId, rawText, registry) {
+    const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
+    stackHost.appendChild(mountHost);
+    getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
+    registry.safelyCall(match.module, 'mount', mountHost, {
+      kind: 'after-native',
+      rawText,
+      messageId,
+      node: mountHost,
+      match,
+    });
+    return mountHost;
+  }
+
   function mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement) {
     const mounted = [];
-    let insertionCursor = null;
-    matches.forEach(match => {
+    const beforeMatches = matches.filter(match => BEFORE_NATIVE_MODULE_IDS.includes(match.module.id));
+    const afterMatches = sortAfterNativeMatches(
+      matches.filter(match => !BEFORE_NATIVE_MODULE_IDS.includes(match.module.id)),
+    );
+
+    const renderMatch = match => {
       const rendered = buildNodeForModule(match.module, rawText, {
         messageId,
         messageElement: getDisplayedMessageElement(messageId),
         theme: getUi()?.theme?.getTheme?.() || 'day',
         match,
       });
-      const moduleHtml = nodeToHtml(rendered);
-      if (!moduleHtml) return;
-      const anchorResult = findAfterNativeAnchor(textElement, match);
-      const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
-      const insertionTarget = anchorResult.found ? anchorResult.anchor : insertionCursor;
-      if (insertionTarget?.insertAdjacentElement) {
-        insertionTarget.insertAdjacentElement('afterend', mountHost);
-      } else {
-        textElement.appendChild(mountHost);
-      }
-      insertionCursor = mountHost;
-      getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
-      registry.safelyCall(match.module, 'mount', mountHost, {
-        kind: 'after-native',
-        rawText,
-        messageId,
-        node: mountHost,
-        match,
+      return nodeToHtml(rendered);
+    };
+
+    if (beforeMatches.length > 0) {
+      const beforeStack = createElementInHost('section');
+      beforeStack.className = 'story-ui-before-native-stack';
+      beforeStack.dataset.storyUiAfterNativeStack = 'true';
+      beforeStack.dataset.storyUiStackPosition = 'before';
+      beforeStack.dataset.storyUiMessageId = String(messageId);
+      beforeMatches.forEach(match => {
+        const moduleHtml = renderMatch(match);
+        if (!moduleHtml) return;
+        appendMountHostToStack(beforeStack, match, moduleHtml, messageId, rawText, registry);
+        mounted.push(match.module.id);
       });
-      mounted.push(match.module.id);
-    });
+      if (beforeStack.childElementCount > 0) textElement.insertAdjacentElement('beforebegin', beforeStack);
+    }
+
+    if (afterMatches.length > 0) {
+      const afterStack = createElementInHost('section');
+      afterStack.className = 'story-ui-after-native-stack';
+      afterStack.dataset.storyUiAfterNativeStack = 'true';
+      afterStack.dataset.storyUiStackPosition = 'after';
+      afterStack.dataset.storyUiMessageId = String(messageId);
+      afterMatches.forEach(match => {
+        const moduleHtml = renderMatch(match);
+        if (!moduleHtml) return;
+        appendMountHostToStack(afterStack, match, moduleHtml, messageId, rawText, registry);
+        mounted.push(match.module.id);
+      });
+      if (afterStack.childElementCount > 0) textElement.insertAdjacentElement('afterend', afterStack);
+    }
+
     return mounted;
   }
 
