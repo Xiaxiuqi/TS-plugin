@@ -3,16 +3,18 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'relation-status';
-  const MODULE_VERSION = '0.1.0-prod';
+  const MODULE_VERSION = '0.1.1-releasetest';
   const BLOCK = {
     open: '<status_relationship>',
-    close: '</status_relationship></>',
+    close: '</status_relationship>',
   };
 
+  // 标签闭合必须写死为 `</status_relationship>`，避免额外闭合串造成跨模块误匹配。
   const OUTER_PATTERN =
-    /<status_relationship>\s*【角色羁绊档案】\s*【本回合情感波动】\s*([\s\S]*?)\s*【已记录角色】\s*([\s\S]*?)\s*<\/status_relationship><\/>/i;
+    /<status_relationship>\s*【角色羁绊档案】\s*【本回合情感波动】\s*([\s\S]*?)\s*【已记录角色】\s*([\s\S]*?)\s*<\/status_relationship>/i;
+  // 兼容半角/全角竖线与整数/小数好感值；显示进度条时仍会夹取到 0-100。
   const PERSON_PATTERN =
-    /^\s*-\s*([^|\n]+?)\s*\|\s*好感度[:：]\s*([+-]?\d{1,3})\s*\/\s*100\s*\|\s*关系阶段[:：]\s*([^\n<]+?)\s*$/gm;
+    /^\s*-\s*([^|｜\n]+?)\s*[|｜]\s*好感度[:：]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*\/\s*100\s*[|｜]\s*关系阶段[:：]\s*([^\n<]+?)\s*$/gm;
 
   function escapeHtml(value) {
     return dom.escapeHtml(String(value ?? ''));
@@ -34,6 +36,15 @@
     const match = String(rawText || '').match(OUTER_PATTERN);
     const wave = normalizeText(match?.[1] || '');
     const listSource = normalizeText(match?.[2] || '');
+
+    if (!match) {
+      return {
+        wave: '',
+        people: [],
+        rawList: normalizeText(rawText),
+      };
+    }
+
     const people = [];
     let personMatch;
 
@@ -91,6 +102,7 @@
     const data = parseRelationship(rawText);
     const theme = ui.theme?.getTheme?.() || 'day';
     const isNight = theme === 'night';
+    const waveText = data.wave || '无';
     const subtitle = isNight ? 'SIGNAL TRACE · RELATION ARCHIVE' : '本回合情感波动 · 已记录角色';
     const footer = isNight ? '✧ RELATION SIGNAL TERMINAL ✧' : '✧ RELATION ARCHIVE ✧';
 
@@ -110,7 +122,7 @@
             <div class="rel-body">
               <article class="rel-card rel-card-wave">
                 <div class="rel-card-head"><span class="rel-card-dot"></span><span class="rel-card-title">本回合情感波动</span></div>
-                <div class="rel-wave">${renderWaveText(data.wave)}</div>
+                <div class="rel-wave">${renderWaveText(waveText)}</div>
               </article>
 
               <article class="rel-card rel-card-list">

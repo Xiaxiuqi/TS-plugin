@@ -1,16 +1,16 @@
 (() => {
   const CONFIG = {
-    env: 'prod',
-    displayEnv: '正式版',
-    version: 'prod',
-    publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_prod/',
-    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_prod/',
+    env: 'releasetest',
+    displayEnv: '发布测试版',
+    version: 'releasetest-0.1.1',
+    publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_releasetest/',
+    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_releasetest/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
     reloadButtonName: '重载资源',
-    managerRootId: 'jjks-story-ui-manager-prod',
+    managerRootId: 'jjks-story-ui-manager-releasetest',
   };
 
   const INDEX_FLAG = `__jjksStoryUiIndex_${CONFIG.env}`;
@@ -103,7 +103,7 @@
 
     const scriptSrc = Array.from(document.scripts)
       .map(script => script.src)
-      .find(src => src.includes('/story_regex_ui_prod/index.js'));
+      .find(src => src.includes('/story_regex_ui_releasetest/index.js'));
     const fromScriptList = normalizeBaseUrl(scriptSrc || '');
     if (fromScriptList) return fromScriptList;
 
@@ -736,8 +736,11 @@
   function diagnose() {
     const ui = getUi();
     const modules = ui?.registry?.list({ includeDisabled: true }) || [];
-    const otherEnv = CONFIG.env === 'test' ? 'prod' : 'test';
-    const otherState = state[otherEnv] || null;
+    const otherState =
+      ['prod', 'test', 'releasetest']
+        .filter(env => env !== CONFIG.env)
+        .map(env => state[env])
+        .find(Boolean) || null;
     const storyRoots = hostDocument.querySelectorAll('.story-ui-root').length;
     const managerExists = Boolean(hostDocument.getElementById(CONFIG.managerRootId));
     const loaderUrl = toUrl('loader.js');

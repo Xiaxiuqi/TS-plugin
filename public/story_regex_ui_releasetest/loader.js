@@ -17,14 +17,14 @@
 
     const fallback = Array.from(document.scripts)
       .map(script => script.src)
-      .find(src => src.includes('/story_regex_ui_prod/loader.js'));
+      .find(src => src.includes('/story_regex_ui_releasetest/loader.js'));
 
     return fallback ? new URL('.', fallback).href : './';
   })();
 
   const state = {
     baseUrl,
-    version: 'prod',
+    version: 'releasetest-0.1.1',
     loadedCss: new Set(),
     loadedScripts: new Set(),
     modules: [
