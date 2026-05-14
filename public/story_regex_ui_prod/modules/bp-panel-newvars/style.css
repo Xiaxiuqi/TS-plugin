@@ -180,7 +180,6 @@
   grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
   gap: 8px;
   background: rgba(255, 253, 247, 0.32);
-  white-space: pre-wrap;
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-card {
@@ -332,6 +331,13 @@
   margin-bottom: 6px;
 }
 
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-legacy-trait-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 6px;
+}
+
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel {
   min-width: 0;
   padding: 6px 7px;
@@ -357,6 +363,12 @@
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel.support {
   box-shadow:
     inset 2px 0 0 rgba(127, 146, 124, 0.46),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-panel.trait {
+  box-shadow:
+    inset 2px 0 0 rgba(116, 139, 157, 0.46),
     var(--bp-shadow-soft);
 }
 
@@ -469,39 +481,60 @@
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='S级·论外'],
-.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='出神入化'] {
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='出神入化'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='论外'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='轮外熟练'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='篡改现实·编织者型'] {
   color: #b54a4a;
   background: rgba(181, 74, 74, 0.18);
 }
 
-.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='AA级·强特级'] {
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='AA级·强特级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='强特级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='特级熟练'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='干涉现实·规则干涉型'] {
   color: #a6782a;
   background: rgba(183, 154, 98, 0.25);
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='A级·特级'],
-.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='出类拔萃'] {
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='特级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='出类拔萃'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='登峰造极'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='第一等·天才型术式'] {
   color: #8f5fa8;
   background: rgba(138, 129, 157, 0.24);
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='B级·一级'],
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='一级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='准一级'],
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='登堂入室'],
-.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='精通'] {
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='精通'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='第二等·精英型术式'] {
   color: #527999;
   background: rgba(116, 139, 157, 0.22);
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='D级·二级'],
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='E级·三级'],
-.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='熟练'] {
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='二级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='三级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='熟练'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='初步觉醒'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='初觉醒'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='初学乍练'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='第三等·标准型术式'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='第四等·砥砺型术式'] {
   color: #617f58;
   background: rgba(127, 146, 124, 0.2);
 }
 
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='F级·四级'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='四级'],
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='入门'],
+.bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='未定型术式'],
 .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-rarity[data-rarity='未入门'] {
   color: #6f6255;
   background: rgba(117, 107, 96, 0.14);
@@ -826,7 +859,6 @@
   grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
   gap: 8px;
   background: rgba(255, 255, 255, 0.025);
-  white-space: pre-wrap;
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card {
@@ -990,6 +1022,13 @@
   margin-bottom: 6px;
 }
 
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-legacy-trait-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 6px;
+}
+
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel {
   min-width: 0;
   padding: 6px 7px;
@@ -1017,6 +1056,12 @@
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.support {
   box-shadow:
     inset 2px 0 0 rgba(159, 191, 155, 0.52),
+    var(--bp-shadow-soft);
+}
+
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.trait {
+  box-shadow:
+    inset 2px 0 0 rgba(136, 174, 184, 0.55),
     var(--bp-shadow-soft);
 }
 
@@ -1130,39 +1175,60 @@
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='S级·论外'],
-.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='出神入化'] {
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='出神入化'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='论外'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='轮外熟练'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='篡改现实·编织者型'] {
   color: #ff8f8f;
   background: rgba(220, 86, 86, 0.24);
 }
 
-.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='AA级·强特级'] {
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='AA级·强特级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='强特级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='特级熟练'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='干涉现实·规则干涉型'] {
   color: #f0ca75;
   background: rgba(200, 168, 108, 0.24);
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='A级·特级'],
-.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='出类拔萃'] {
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='特级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='出类拔萃'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='登峰造极'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='第一等·天才型术式'] {
   color: #d6c3ff;
   background: rgba(166, 155, 208, 0.24);
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='B级·一级'],
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='C级·准一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='一级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='准一级'],
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='登堂入室'],
-.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='精通'] {
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='精通'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='第二等·精英型术式'] {
   color: #9fd3df;
   background: rgba(136, 174, 184, 0.2);
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='D级·二级'],
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='E级·三级'],
-.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='熟练'] {
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='二级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='三级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='熟练'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='初步觉醒'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='初觉醒'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='初学乍练'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='第三等·标准型术式'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='第四等·砥砺型术式'] {
   color: #b8dfb0;
   background: rgba(159, 191, 155, 0.18);
 }
 
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='F级·四级'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='四级'],
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='入门'],
+.bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='未定型术式'],
 .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity='未入门'] {
   color: #d2c7b8;
   background: rgba(184, 175, 161, 0.14);
@@ -1258,8 +1324,10 @@
 @media (max-width: 640px) {
   .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-target-grid,
   .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-game-grid,
+  .bp-radar-widget.bp-cream-ui.bp-newvars-ui .bp-legacy-trait-grid,
   .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-grid,
-  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-grid {
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-grid,
+  .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-legacy-trait-grid {
     grid-template-columns: 1fr;
   }
 

@@ -34,11 +34,6 @@
         script: 'modules/variable-update/index.js',
       },
       {
-        id: 'bp-panel',
-        css: 'modules/bp-panel/style.css',
-        script: 'modules/bp-panel/index.js',
-      },
-      {
         id: 'bp-panel-newvars',
         css: 'modules/bp-panel-newvars/style.css',
         script: 'modules/bp-panel-newvars/index.js',

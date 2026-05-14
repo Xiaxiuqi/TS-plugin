@@ -24,7 +24,7 @@
 
   const state = {
     baseUrl,
-    version: 'prod',
+    version: 'v1.2',
     loadedCss: new Set(),
     loadedScripts: new Set(),
     modules: [
@@ -32,11 +32,6 @@
         id: 'variable-update',
         css: 'modules/variable-update/style.css',
         script: 'modules/variable-update/index.js',
-      },
-      {
-        id: 'bp-panel',
-        css: 'modules/bp-panel/style.css',
-        script: 'modules/bp-panel/index.js',
       },
       {
         id: 'bp-panel-newvars',

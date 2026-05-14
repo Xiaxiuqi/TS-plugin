@@ -19,8 +19,7 @@
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
   const MODULE_LABELS = {
     'story-engine': '故事引擎',
-    'bp-panel': 'BP战力雷达',
-    'bp-panel-newvars': 'BP战力雷达（新变量）',
+    'bp-panel-newvars': 'BP战力雷达（兼容）',
     'world-log': '世界运行报告',
     'relation-status': '角色羁绊档案',
     'variable-update': '变量更新',
@@ -1042,8 +1041,6 @@
   }
 
   function getExclusiveModuleId(moduleId) {
-    if (moduleId === 'bp-panel') return 'bp-panel-newvars';
-    if (moduleId === 'bp-panel-newvars') return 'bp-panel';
     if (moduleId === 'mvu-status') return 'mvu-status-newvars';
     if (moduleId === 'mvu-status-newvars') return 'mvu-status';
     return '';

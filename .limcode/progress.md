@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-13T02:03:14.562Z
+- Updated At: 2026-05-14T17:00:57.237Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：新增 mvu-status-newvars 独立模块，并接入与旧 MVU 状态栏的互斥开关；继续并行收口 bp-panel-newvars 的样式命中问题
-- 最新结论：已新增独立的 mvu-status-newvars 模块，使用与 bp-panel-newvars 相同的互斥策略：默认关闭、通过 <StatusPlaceHolderImpl/> 挂载、接入 loader 与管理面板，并与现有 mvu-status 互斥。
-- 下一步：验证新变量 MVU 在关闭旧 MVU 后可独立开启，并检查米白/暗色两套新变量样式与折叠交互是否完整生效。
+- 当前焦点：正式版与 releasetest 已移除旧 BP 前端，仅保留兼容 BP 模块。
+- 最新结论：已删除 public/story_regex_ui_prod 与 public/story_regex_ui_releasetest 的旧 bp-panel 模块目录，移除 loader 模块接口引用与 BP 新旧互斥逻辑，并将管理界面显示名从“BP战力雷达（新变量）”改为“BP战力雷达（兼容）”。
+- 下一步：如需同步测试版 public/story_regex_ui_test，也可按同样规则移除旧 BP；当前用户仅要求 releasetest 与正式版。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,11 +22,9 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 定位为什么消息显示层无法触发故事UI外置渲染  `#diagnose-display-root-cause`
-- [x] 确认测试版入口脚本、按钮注册与宿主页面调试暴露链路  `#diagnose-script-execution`
-- [x] 修复测试版管理面板打开链路并增强诊断能力  `#fix-manager-open-and-debug`
-- [ ] 将测试版重构为基于原始楼层信息的增量扫描架构，避免依赖显示DOM原始标签  `#redesign-scan-architecture` (in_progress)
-- [ ] 验证首次仅最近窗口扫描、后续按楼层增量处理，避免高楼层聊天卡顿  `#validate-low-memory-behavior`
+- [x] 定位 releasetest/prod 旧 BP 模块引用与管理界面标签  `#bpclean1`
+- [x] 删除 releasetest/prod 旧 bp-panel 文件并移除 loader/接口引用  `#bpclean2`
+- [x] 将新变量 BP 显示名从（新变量）改为（兼容）并验证  `#bpclean3`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -44,9 +42,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T12:09:33.524Z | artifact_changed | plan | 同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
-- 2026-05-12T12:21:09.357Z | artifact_changed | plan | 同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
-- 2026-05-12T12:24:37.565Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:33:32.615Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:37:41.527Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:42:18.817Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
@@ -64,6 +59,9 @@
 - 2026-05-13T00:15:49.307Z | updated | 重构 manager-ui 的标题/按钮/诊断布局，并为超出主渲染窗口的旧楼层增加代码块折叠占位。
 - 2026-05-13T01:34:13.949Z | updated | 将 manager-ui 改为 flex-column 以修复底部诊断区裁切，并按源正则重做独立的新变量 BP 模块。
 - 2026-05-13T02:03:14.562Z | updated | 新增 mvu-status-newvars 独立模块，并将其接入 loader、管理面板与旧 mvu-status 的互斥逻辑。
+- 2026-05-14T16:53:47.830Z | updated | release-v1.2 | 记录正式版 v1.2 发布内容：同步 releasetest 至 prod；包含新变量 BP 正则分类渲染、等级上色、容错解析、简化战力分栏/拆分、mvu-status-newvars、管理面板与互斥逻辑。
+- 2026-05-14T16:57:38.972Z | milestone_recorded | release-v1.2 | 正式版 v1.2 同步完成：prod 已由 releasetest 覆盖，入口/loader 版本改为 v1.2，并通过全部 prod JS 语法检查。
+- 2026-05-14T17:00:57.237Z | updated | bp-compatible-only | releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -73,64 +71,36 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-13T02:03:14.562Z",
+  "updatedAt": "2026-05-14T17:00:57.237Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "新增 mvu-status-newvars 独立模块，并接入与旧 MVU 状态栏的互斥开关；继续并行收口 bp-panel-newvars 的样式命中问题",
-  "latestConclusion": "已新增独立的 mvu-status-newvars 模块，使用与 bp-panel-newvars 相同的互斥策略：默认关闭、通过 <StatusPlaceHolderImpl/> 挂载、接入 loader 与管理面板，并与现有 mvu-status 互斥。",
+  "currentFocus": "正式版与 releasetest 已移除旧 BP 前端，仅保留兼容 BP 模块。",
+  "latestConclusion": "已删除 public/story_regex_ui_prod 与 public/story_regex_ui_releasetest 的旧 bp-panel 模块目录，移除 loader 模块接口引用与 BP 新旧互斥逻辑，并将管理界面显示名从“BP战力雷达（新变量）”改为“BP战力雷达（兼容）”。",
   "currentBlocker": null,
-  "nextAction": "验证新变量 MVU 在关闭旧 MVU 后可独立开启，并检查米白/暗色两套新变量样式与折叠交互是否完整生效。",
+  "nextAction": "如需同步测试版 public/story_regex_ui_test，也可按同样规则移除旧 BP；当前用户仅要求 releasetest 与正式版。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "diagnose-display-root-cause",
-      "content": "定位为什么消息显示层无法触发故事UI外置渲染",
+      "id": "bpclean1",
+      "content": "定位 releasetest/prod 旧 BP 模块引用与管理界面标签",
       "status": "completed"
     },
     {
-      "id": "diagnose-script-execution",
-      "content": "确认测试版入口脚本、按钮注册与宿主页面调试暴露链路",
+      "id": "bpclean2",
+      "content": "删除 releasetest/prod 旧 bp-panel 文件并移除 loader/接口引用",
       "status": "completed"
     },
     {
-      "id": "fix-manager-open-and-debug",
-      "content": "修复测试版管理面板打开链路并增强诊断能力",
+      "id": "bpclean3",
+      "content": "将新变量 BP 显示名从（新变量）改为（兼容）并验证",
       "status": "completed"
-    },
-    {
-      "id": "redesign-scan-architecture",
-      "content": "将测试版重构为基于原始楼层信息的增量扫描架构，避免依赖显示DOM原始标签",
-      "status": "in_progress"
-    },
-    {
-      "id": "validate-low-memory-behavior",
-      "content": "验证首次仅最近窗口扫描、后续按楼层增量处理，避免高楼层聊天卡顿",
-      "status": "pending"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T12:09:33.524Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
-    {
-      "at": "2026-05-12T12:21:09.357Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划文档：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
-    {
-      "at": "2026-05-12T12:24:37.565Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T12:33:32.615Z",
       "type": "artifact_changed",
@@ -224,21 +194,39 @@
       "at": "2026-05-13T02:03:14.562Z",
       "type": "updated",
       "message": "新增 mvu-status-newvars 独立模块，并将其接入 loader、管理面板与旧 mvu-status 的互斥逻辑。"
+    },
+    {
+      "at": "2026-05-14T16:53:47.830Z",
+      "type": "updated",
+      "refId": "release-v1.2",
+      "message": "记录正式版 v1.2 发布内容：同步 releasetest 至 prod；包含新变量 BP 正则分类渲染、等级上色、容错解析、简化战力分栏/拆分、mvu-status-newvars、管理面板与互斥逻辑。"
+    },
+    {
+      "at": "2026-05-14T16:57:38.972Z",
+      "type": "milestone_recorded",
+      "refId": "release-v1.2",
+      "message": "正式版 v1.2 同步完成：prod 已由 releasetest 覆盖，入口/loader 版本改为 v1.2，并通过全部 prod JS 语法检查。"
+    },
+    {
+      "at": "2026-05-14T17:00:57.237Z",
+      "type": "updated",
+      "refId": "bp-compatible-only",
+      "message": "releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
-    "todosTotal": 5,
+    "todosTotal": 3,
     "todosCompleted": 3,
-    "todosInProgress": 1,
+    "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-13T02:03:14.562Z",
-    "bodyHash": "sha256:2221a6cf8c9a64a8cfcee11156f747a7cadeebd41eea30d763a4a6b63dbfa4a1"
+    "generatedAt": "2026-05-14T17:00:57.237Z",
+    "bodyHash": "sha256:626cb200e22b17ae1576ee255feed4f7e22c932546073d9f295c06268f85f939"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
