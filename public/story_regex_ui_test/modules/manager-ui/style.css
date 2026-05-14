@@ -3,14 +3,18 @@
   --jjks-manager-max-height: 680px;
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   z-index: 99999;
   display: none;
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(23, 27, 34, 0.46);
-  backdrop-filter: blur(14px);
+  background: transparent;
+  backdrop-filter: none;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Microsoft YaHei', serif;
+  box-sizing: border-box;
 }
 
 .jjks-manager-mask[data-open='true'] {
@@ -20,6 +24,7 @@
 .jjks-manager-panel {
   width: min(var(--jjks-manager-width), calc(100vw - 36px));
   max-height: min(var(--jjks-manager-max-height), calc(100vh - 36px));
+  max-height: min(var(--jjks-manager-max-height), calc(100dvh - 36px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -697,6 +702,13 @@
 @media (max-width: 640px) {
   .jjks-manager-mask {
     padding: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .jjks-manager-panel {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
   }
 
   .jjks-manager-head {

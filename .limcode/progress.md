@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T17:00:57.237Z
+- Updated At: 2026-05-14T17:24:13.953Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：正式版与 releasetest 已移除旧 BP 前端，仅保留兼容 BP 模块。
-- 最新结论：已删除 public/story_regex_ui_prod 与 public/story_regex_ui_releasetest 的旧 bp-panel 模块目录，移除 loader 模块接口引用与 BP 新旧互斥逻辑，并将管理界面显示名从“BP战力雷达（新变量）”改为“BP战力雷达（兼容）”。
-- 下一步：如需同步测试版 public/story_regex_ui_test，也可按同样规则移除旧 BP；当前用户仅要求 releasetest 与正式版。
+- 当前焦点：修复测试/发布测试版手机窄屏管理界面定位与遮罩问题，正式版保持不动。
+- 最新结论：已在 public/story_regex_ui_test 与 public/story_regex_ui_releasetest 的 manager-ui 样式中移除背景遮罩视觉效果，保留透明全屏点击层用于点击界面外关闭；同时使用 100dvh 约束管理界面高度，避免手机动态视口导致面板被顶出。未修改 public/story_regex_ui_prod。
+- 下一步：在手机窄屏打开咒回前端管理，确认界面居中、背景无遮罩、点击界面外仍可关闭。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,9 +22,9 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 定位 releasetest/prod 旧 BP 模块引用与管理界面标签  `#bpclean1`
-- [x] 删除 releasetest/prod 旧 bp-panel 文件并移除 loader/接口引用  `#bpclean2`
-- [x] 将新变量 BP 显示名从（新变量）改为（兼容）并验证  `#bpclean3`
+- [x] 检查非正式版 manager-ui 遮罩/定位/关闭逻辑  `#mgr1`
+- [x] 删除管理界面背景遮罩但保留点击外部关闭  `#mgr2`
+- [x] 验证窄屏不被顶出且不修改 prod  `#mgr3`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -42,7 +42,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T12:33:32.615Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:37:41.527Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:42:18.817Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:43:18.413Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
@@ -62,6 +61,7 @@
 - 2026-05-14T16:53:47.830Z | updated | release-v1.2 | 记录正式版 v1.2 发布内容：同步 releasetest 至 prod；包含新变量 BP 正则分类渲染、等级上色、容错解析、简化战力分栏/拆分、mvu-status-newvars、管理面板与互斥逻辑。
 - 2026-05-14T16:57:38.972Z | milestone_recorded | release-v1.2 | 正式版 v1.2 同步完成：prod 已由 releasetest 覆盖，入口/loader 版本改为 v1.2，并通过全部 prod JS 语法检查。
 - 2026-05-14T17:00:57.237Z | updated | bp-compatible-only | releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。
+- 2026-05-14T17:24:13.953Z | updated | manager-mobile-mask-fix | 非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -71,42 +71,36 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T17:00:57.237Z",
+  "updatedAt": "2026-05-14T17:24:13.953Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "正式版与 releasetest 已移除旧 BP 前端，仅保留兼容 BP 模块。",
-  "latestConclusion": "已删除 public/story_regex_ui_prod 与 public/story_regex_ui_releasetest 的旧 bp-panel 模块目录，移除 loader 模块接口引用与 BP 新旧互斥逻辑，并将管理界面显示名从“BP战力雷达（新变量）”改为“BP战力雷达（兼容）”。",
+  "currentFocus": "修复测试/发布测试版手机窄屏管理界面定位与遮罩问题，正式版保持不动。",
+  "latestConclusion": "已在 public/story_regex_ui_test 与 public/story_regex_ui_releasetest 的 manager-ui 样式中移除背景遮罩视觉效果，保留透明全屏点击层用于点击界面外关闭；同时使用 100dvh 约束管理界面高度，避免手机动态视口导致面板被顶出。未修改 public/story_regex_ui_prod。",
   "currentBlocker": null,
-  "nextAction": "如需同步测试版 public/story_regex_ui_test，也可按同样规则移除旧 BP；当前用户仅要求 releasetest 与正式版。",
+  "nextAction": "在手机窄屏打开咒回前端管理，确认界面居中、背景无遮罩、点击界面外仍可关闭。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "bpclean1",
-      "content": "定位 releasetest/prod 旧 BP 模块引用与管理界面标签",
+      "id": "mgr1",
+      "content": "检查非正式版 manager-ui 遮罩/定位/关闭逻辑",
       "status": "completed"
     },
     {
-      "id": "bpclean2",
-      "content": "删除 releasetest/prod 旧 bp-panel 文件并移除 loader/接口引用",
+      "id": "mgr2",
+      "content": "删除管理界面背景遮罩但保留点击外部关闭",
       "status": "completed"
     },
     {
-      "id": "bpclean3",
-      "content": "将新变量 BP 显示名从（新变量）改为（兼容）并验证",
+      "id": "mgr3",
+      "content": "验证窄屏不被顶出且不修改 prod",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T12:33:32.615Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T12:37:41.527Z",
       "type": "artifact_changed",
@@ -212,6 +206,12 @@
       "type": "updated",
       "refId": "bp-compatible-only",
       "message": "releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。"
+    },
+    {
+      "at": "2026-05-14T17:24:13.953Z",
+      "type": "updated",
+      "refId": "manager-mobile-mask-fix",
+      "message": "非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。"
     }
   ],
   "stats": {
@@ -225,8 +225,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T17:00:57.237Z",
-    "bodyHash": "sha256:626cb200e22b17ae1576ee255feed4f7e22c932546073d9f295c06268f85f939"
+    "generatedAt": "2026-05-14T17:24:13.953Z",
+    "bodyHash": "sha256:9355e7d6b250a40ab6ca47085487fa8c8c109b2f4d51b9008fa162509adb6b02"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
