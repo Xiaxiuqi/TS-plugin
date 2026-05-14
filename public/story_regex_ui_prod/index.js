@@ -1131,7 +1131,7 @@
     const maintenanceActions = panel.querySelector('[data-jjks-maintenance-actions]');
     if (maintenanceActions && !maintenanceActions.childElementCount) {
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
-      maintenanceActions.appendChild(createButton('重载美化', { 'data-jjks-action': 'reload' }));
+      maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
       maintenanceActions.appendChild(
         createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {
@@ -1512,13 +1512,13 @@
 
   function registerManagerButton() {
     try {
-      if (window.appendInexistentScriptButtons) {
-        window.appendInexistentScriptButtons([
+      if (window.replaceScriptButtons) {
+        window.replaceScriptButtons([
           { name: CONFIG.buttonName, visible: true },
           { name: CONFIG.reloadButtonName, visible: true },
         ]);
-      } else if (window.replaceScriptButtons) {
-        window.replaceScriptButtons([
+      } else if (window.appendInexistentScriptButtons) {
+        window.appendInexistentScriptButtons([
           { name: CONFIG.buttonName, visible: true },
           { name: CONFIG.reloadButtonName, visible: true },
         ]);
