@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-14T17:24:13.953Z
+- Updated At: 2026-05-14T17:34:52.449Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：修复测试/发布测试版手机窄屏管理界面定位与遮罩问题，正式版保持不动。
-- 最新结论：已在 public/story_regex_ui_test 与 public/story_regex_ui_releasetest 的 manager-ui 样式中移除背景遮罩视觉效果，保留透明全屏点击层用于点击界面外关闭；同时使用 100dvh 约束管理界面高度，避免手机动态视口导致面板被顶出。未修改 public/story_regex_ui_prod。
-- 下一步：在手机窄屏打开咒回前端管理，确认界面居中、背景无遮罩、点击界面外仍可关闭。
+- 当前焦点：已将 releasetest 当前更新同步到正式版。
+- 最新结论：public/story_regex_ui_prod 已由当前 public/story_regex_ui_releasetest 覆盖并恢复 prod 环境配置：env/displayEnv/publicBaseUrl/localBasePath/managerRootId 已改回正式版，入口与 loader 缓存版本号保持 v1.2；本次同步包含手机窄屏…
+- 下一步：部署 public/story_regex_ui_prod 后，在手机窄屏验证正式版管理界面：无暗色遮罩、点击面板外关闭、面板不被顶出屏幕。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -22,9 +22,9 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 检查非正式版 manager-ui 遮罩/定位/关闭逻辑  `#mgr1`
-- [x] 删除管理界面背景遮罩但保留点击外部关闭  `#mgr2`
-- [x] 验证窄屏不被顶出且不修改 prod  `#mgr3`
+- [x] 将当前 releasetest 内容同步覆盖到 prod  `#sync1`
+- [x] 恢复 prod 环境标识与版本号配置  `#sync2`
+- [x] 验证 prod 语法并更新项目文档  `#sync3`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -42,7 +42,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-12T12:37:41.527Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:42:18.817Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:43:18.413Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md
 - 2026-05-12T12:43:48.581Z | milestone_recorded | 完成故事 UI 从正则引导到 public 双环境酒馆助手入口的实现，并通过本地 JS 语法检查。
@@ -62,6 +61,7 @@
 - 2026-05-14T16:57:38.972Z | milestone_recorded | release-v1.2 | 正式版 v1.2 同步完成：prod 已由 releasetest 覆盖，入口/loader 版本改为 v1.2，并通过全部 prod JS 语法检查。
 - 2026-05-14T17:00:57.237Z | updated | bp-compatible-only | releasetest/prod 移除旧 BP 前端：删除 modules/bp-panel，移除 loader 注册与 BP 新旧互斥接口，将 bp-panel-newvars 标签改为 BP战力雷达（兼容）。
 - 2026-05-14T17:24:13.953Z | updated | manager-mobile-mask-fix | 非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。
+- 2026-05-14T17:34:52.449Z | updated | sync-releasetest-to-prod-manager-mobile-fix | 将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -71,42 +71,36 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-14T17:24:13.953Z",
+  "updatedAt": "2026-05-14T17:34:52.449Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "修复测试/发布测试版手机窄屏管理界面定位与遮罩问题，正式版保持不动。",
-  "latestConclusion": "已在 public/story_regex_ui_test 与 public/story_regex_ui_releasetest 的 manager-ui 样式中移除背景遮罩视觉效果，保留透明全屏点击层用于点击界面外关闭；同时使用 100dvh 约束管理界面高度，避免手机动态视口导致面板被顶出。未修改 public/story_regex_ui_prod。",
+  "currentFocus": "已将 releasetest 当前更新同步到正式版。",
+  "latestConclusion": "public/story_regex_ui_prod 已由当前 public/story_regex_ui_releasetest 覆盖并恢复 prod 环境配置：env/displayEnv/publicBaseUrl/localBasePath/managerRootId 已改回正式版，入口与 loader 缓存版本号保持 v1.2；本次同步包含手机窄屏管理界面修复，即移除可见背景遮罩但保留透明外部点击关闭层，并使用 100dvh 避免面板被动态视口顶出。全部 prod JS 已通过 node --check。",
   "currentBlocker": null,
-  "nextAction": "在手机窄屏打开咒回前端管理，确认界面居中、背景无遮罩、点击界面外仍可关闭。",
+  "nextAction": "部署 public/story_regex_ui_prod 后，在手机窄屏验证正式版管理界面：无暗色遮罩、点击面板外关闭、面板不被顶出屏幕。",
   "activeArtifacts": {
     "plan": ".limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
   },
   "todos": [
     {
-      "id": "mgr1",
-      "content": "检查非正式版 manager-ui 遮罩/定位/关闭逻辑",
+      "id": "sync1",
+      "content": "将当前 releasetest 内容同步覆盖到 prod",
       "status": "completed"
     },
     {
-      "id": "mgr2",
-      "content": "删除管理界面背景遮罩但保留点击外部关闭",
+      "id": "sync2",
+      "content": "恢复 prod 环境标识与版本号配置",
       "status": "completed"
     },
     {
-      "id": "mgr3",
-      "content": "验证窄屏不被顶出且不修改 prod",
+      "id": "sync3",
+      "content": "验证 prod 语法并更新项目文档",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-12T12:37:41.527Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/story-ui-regex-no-display-diagnosis-script-bootstrap-plan.md"
-    },
     {
       "at": "2026-05-12T12:42:18.817Z",
       "type": "artifact_changed",
@@ -212,6 +206,12 @@
       "type": "updated",
       "refId": "manager-mobile-mask-fix",
       "message": "非正式版 manager-ui 修复：移除可见遮罩/模糊，保留透明全屏外部点击关闭层，并用 100dvh 修正手机窄屏视口高度；prod 未修改。"
+    },
+    {
+      "at": "2026-05-14T17:34:52.449Z",
+      "type": "updated",
+      "refId": "sync-releasetest-to-prod-manager-mobile-fix",
+      "message": "将当前 releasetest 同步到 prod，并恢复正式版环境配置与 v1.2 版本；同步内容包括 manager-ui 手机窄屏透明点击层/100dvh 修复。"
     }
   ],
   "stats": {
@@ -225,8 +225,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-14T17:24:13.953Z",
-    "bodyHash": "sha256:9355e7d6b250a40ab6ca47085487fa8c8c109b2f4d51b9008fa162509adb6b02"
+    "generatedAt": "2026-05-14T17:34:52.449Z",
+    "bodyHash": "sha256:fe6efe1bc3665352c4a131b854078799e35d7b930db53df3e525642c3bae097b"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
