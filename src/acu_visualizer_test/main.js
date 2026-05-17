@@ -9,7 +9,7 @@ import { getConfig, getCurrentPageForTable, savePaginationState } from './core/s
 import { showCellMenu } from './modules/cell-editor.js';
 import { saveDataToDatabase } from './modules/database-sync.js';
 import { clearAllTabUpdates } from './modules/diff-highlighting.js';
-import { showLoadSuccessNotification, showNotification } from './modules/notifications.js';
+import { clearNotifications, showLoadSuccessNotification, showNotification } from './modules/notifications.js';
 import { bindPaginationEvents, generatePaginationHTML } from './modules/pagination.js';
 import { bindRowDragEvents } from './modules/row-sort.js';
 import { bindSearchEvents } from './modules/search.js';
@@ -263,14 +263,57 @@ export function bootstrapAcuVisualizerTest() {
 
   const lifecycle = initAcuVisualizerTest(deps);
 
+  const destroyRuntime = () => {
+    lifecycle.destroy();
+
+    const selectors = [
+      '.acu-table-container',
+      '.acu-cell-menu',
+      '.acu-order-menu',
+      '.acu-edit-overlay',
+      '.acu-settings-overlay',
+      '.acu-history-overlay',
+      '.acu-shortcut-lite-overlay',
+      '.acu-notification',
+      '#acu-visualizer-test-style-loader',
+    ].join(', ');
+
+    try {
+      core.$?.(selectors)?.off?.('.acu')?.remove?.();
+      core.$?.(hostDocument)?.off?.('.acu');
+      core.$?.(hostWindow)?.off?.('.acu');
+      if (hostWindow !== window) {
+        core.$?.(document)?.off?.('.acu');
+        core.$?.(window)?.off?.('.acu');
+      }
+    } catch (error) {
+      console.warn('[ACU TEST] destroy jQuery cleanup failed:', error);
+    }
+
+    try {
+      clearNotifications(core);
+    } catch (error) {
+      console.warn('[ACU TEST] destroy notification cleanup failed:', error);
+    }
+
+    state.flags.isInitialized = false;
+    state.flags.isCellEditing = false;
+    state.flags.isEditingOrder = false;
+    state.flags.isEditingRowOrder = false;
+    state.drag.dragStartIndex = -1;
+    state.drag.dragEndIndex = -1;
+    state.drag.dragInsertIndex = -1;
+    state.drag.isDragging = false;
+    state.pendingDeletes.clear();
+    state.currentUserEditMap.clear();
+    state.currentDiffMap.clear();
+  };
+
   const api = hostWindow.ACUVisualizerTest || {};
   api.version = 'modular-test-migration';
   api.lifecycle = lifecycle;
   api.deps = deps;
-  api.destroy = function destroy() {
-    lifecycle.destroy();
-    hostDocument.getElementById('acu-visualizer-test-style-loader')?.remove();
-  };
+  api.destroy = destroyRuntime;
   hostWindow.ACUVisualizerTest = api;
   window.ACUVisualizerTest = api;
 

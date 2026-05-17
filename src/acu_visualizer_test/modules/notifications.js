@@ -52,6 +52,21 @@ export function removeNotification(notification, core = getCore()) {
   });
 }
 
+export function clearNotifications(core = getCore()) {
+  const { $ } = core;
+  notificationQueue.forEach(notification => {
+    try {
+      notification.stop?.(true, true);
+      notification.remove?.();
+    } catch (error) {
+      try {
+        $(notification).remove();
+      } catch (_ignored) {}
+    }
+  });
+  notificationQueue.length = 0;
+}
+
 export function showLoadSuccessNotification() {
   const now = Date.now();
   const hostWindow = window.parent || window;

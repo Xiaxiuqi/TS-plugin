@@ -86,10 +86,26 @@ export function createLifecycle(deps = {}) {
     destroy() {
       registry.clearAll();
       state.flags.isInitialized = false;
+      state.flags.isCellEditing = false;
+      state.flags.isEditingOrder = false;
+      state.flags.isEditingRowOrder = false;
+      state.drag.dragStartIndex = -1;
+      state.drag.dragEndIndex = -1;
+      state.drag.dragInsertIndex = -1;
+      state.drag.isDragging = false;
       deps.core
         ?.$?.(
-          '.acu-table-container, .acu-cell-menu, .acu-edit-overlay, .acu-settings-overlay, .acu-shortcut-lite-overlay',
+          [
+            '.acu-table-container',
+            '.acu-cell-menu',
+            '.acu-order-menu',
+            '.acu-edit-overlay',
+            '.acu-settings-overlay',
+            '.acu-history-overlay',
+            '.acu-shortcut-lite-overlay',
+          ].join(', '),
         )
+        ?.off?.('.acu')
         ?.remove?.();
     },
     initializeScript,
