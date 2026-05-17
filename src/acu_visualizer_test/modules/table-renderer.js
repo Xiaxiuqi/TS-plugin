@@ -109,7 +109,23 @@ export function generateTableHTML(deps = {}) {
                     <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.6 [标识：${getDataIsolationCode() || '无'}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
-                        <button class="acu-mode-toggle acu-moon-box" title="切换昼夜模式" type="button"><div class="acu-moon-orb"></div><div class="acu-moon-cloud"></div></button>
+                        <button class="acu-mode-toggle acu-moon-box" title="切换昼夜模式" type="button">
+                            <div class="acu-moon-orb"></div>
+                            <div class="acu-moon-cloud"></div>
+                            <div class="acu-glow-particle acu-p1"></div>
+                            <div class="acu-glow-particle acu-p2"></div>
+                            <div class="acu-glow-particle acu-p3"></div>
+                            <div class="acu-glow-particle acu-p4"></div>
+                            <div class="acu-glow-particle acu-p5"></div>
+                            <div class="acu-glow-particle acu-p6"></div>
+                            <div class="acu-glow-particle acu-p7"></div>
+                            <div class="acu-glow-particle acu-p8"></div>
+                            <span class="acu-star-dust s1">✦</span>
+                            <span class="acu-star-dust s2">✦</span>
+                            <span class="acu-star-dust s3">✦</span>
+                            <span class="acu-star-dust s4">✦</span>
+                            <span class="acu-star-dust s5">✦</span>
+                        </button>
                     </div>
                 </summary>
                 <div class="acu-content-wrapper">
