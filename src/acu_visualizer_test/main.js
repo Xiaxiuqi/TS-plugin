@@ -47,6 +47,7 @@ export function bootstrapAcuVisualizerTest() {
   const deps = {};
 
   const STYLE_FILES = Object.freeze(['table.css', 'search.css']);
+  const STYLE_VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
 
   const injectStyles = async () => {
     document.getElementById('acu-visualizer-test-style-loader')?.remove();
@@ -55,19 +56,29 @@ export function bootstrapAcuVisualizerTest() {
     style.id = 'acu-visualizer-test-style-loader';
     style.dataset.source = 'acu_visualizer_test/styles';
 
+    if (typeof window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__ === 'string') {
+      style.textContent = window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__;
+      style.dataset.source = 'acu_visualizer_test/bundled';
+      style.dataset.version = 'bundled';
+      document.head.appendChild(style);
+      return style;
+    }
+
     const cssTexts = [];
     for (const fileName of STYLE_FILES) {
-      const cssUrl = new URL(`./styles/${fileName}`, import.meta.url).href;
+      const cssUrl = `./styles/${fileName}`;
+      const versionedCssUrl = `${cssUrl}${cssUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(STYLE_VERSION)}`;
       try {
-        const response = await fetch(cssUrl, { cache: 'no-store' });
+        const response = await fetch(versionedCssUrl, { cache: 'no-store' });
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
         cssTexts.push(`/* ${fileName} */\n${await response.text()}`);
       } catch (error) {
-        console.error(`[ACU TEST] 加载 CSS 失败: ${cssUrl}`, error);
+        console.error(`[ACU TEST] 加载 CSS 失败: ${versionedCssUrl}`, error);
       }
     }
 
     style.textContent = cssTexts.join('\n\n');
+    style.dataset.version = STYLE_VERSION;
     document.head.appendChild(style);
     return style;
   };

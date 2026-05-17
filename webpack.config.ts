@@ -568,4 +568,20 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
   });
 }
 
-export default config.entries.map(parse_configuration);
+function select_entries(env: any): Entry[] {
+  const entry = env?.entry ?? process.env.TAVERN_HELPER_BUILD_ENTRY;
+  if (!entry) {
+    return config.entries;
+  }
+
+  const normalized = String(entry).replace(/\\/g, '/');
+  return config.entries.filter(item => item.script.replace(/\\/g, '/') === normalized);
+}
+
+export default (env: any, argv: any) => {
+  const entries = select_entries(env);
+  if (entries.length === 0) {
+    throw new Error(`No matching build entry found: ${env?.entry ?? process.env.TAVERN_HELPER_BUILD_ENTRY}`);
+  }
+  return entries.map(entry => parse_configuration(entry)(env, argv));
+};

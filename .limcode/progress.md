@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T16:02:41.305Z
+- Updated At: 2026-05-17T16:40:50.236Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 测试版稳定 loader 入口完成
-- 最新结论：已新增 public/acu_visualizer_test/loader.js 与 version.js；酒馆助手可固定 import loader.js，loader 会先 destroy 旧实例，再以固定版本 main.js?v=20260517-css-loader 导入主入口，避免裸 main.js ESM 缓存导致旧入口不执行。loader sm…
-- 下一步：在酒馆助手中改用 import 'https://ts-plugin.pages.dev/acu_visualizer_test/loader.js' 进行浏览器回归，确认 CSS 正常注入、通知/表格可见、无 cssRules SecurityError。
+- 当前焦点：ACU Visualizer 测试版迁移到 src 并支持单入口构建
+- 最新结论：已将测试版源码整体迁移到 src/acu_visualizer_test，public/acu_visualizer_test 清理为发布产物目录，仅保留 index.js/index.js.map；新增 build:entry 通用脚本与 webpack --env entry 入口过滤，已验证 pnpm build:entry --env entry=s…
+- 下一步：在酒馆助手中使用 import 'https://ts-plugin.pages.dev/acu_visualizer_test/index.js' 做浏览器回归，确认单文件产物加载、CSS 内联、通知/表格显示正常。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -23,10 +23,10 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 重构 main.js：导出 bootstrapAcuVisualizerTest()，支持被 loader 显式重复启动，并保持直接 import main.js 仍可自动启动  `#bootstrap-1`
-- [x] 修改 loader.js：设置 loader 导入标记，导入固定版本 main 后显式调用 bootstrapAcuVisualizerTest()，避免 cached module 不重启  `#bootstrap-2`
-- [x] 修正 lifecycle：等待 CSS 注入完成后再进入初始化调度，避免通知/表格先于样式出现  `#bootstrap-3`
-- [x] 执行 smoke 验证并同步文档/进度  `#bootstrap-4`
+- [x] 废弃 loader 作为推荐入口，将测试版源码整体迁移到 src/acu_visualizer_test 并保留构建期内联 CSS 入口  `#single-1`
+- [x] 删除自定义 webpack 配置，改用现有 pnpm build 扫描 src/acu_visualizer_test/index.js 输出单文件  `#single-2`
+- [x] 执行现有 pnpm build，生成 dist/acu_visualizer_test/index.js，并同步到 public/acu_visualizer_test/index.js；public 目录仅保留构建产物  `#single-3`
+- [x] 同步文档：README、迁移记录、change-log、progress，明确推荐 import index.js  `#single-4`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -44,9 +44,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T13:39:52.545Z | updated | acu-visualizer-phase-3-ui-low-risk-migration | 完成第三阶段低 UI 风险模块迁移：notifications/theme/pagination/tabs。已验证模块可 import 和基础 HTML/class/state 行为，未修改原插件目录。
-- 2026-05-17T13:50:49.856Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T13:52:43.500Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T13:52:53.226Z | updated | acu-visualizer-phase-4-dialog-editor-migration | 完成第四阶段弹窗与编辑模块迁移：settings-dialog/shortcut-dialog/cell-history/cell-editor。已验证模块可 import 和基础 HTML/class/state 行为，未修改原插件目录。
 - 2026-05-17T14:03:54.329Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T14:05:14.871Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -64,6 +61,9 @@
 - 2026-05-17T15:48:00.618Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
 - 2026-05-17T16:02:41.305Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
+- 2026-05-17T16:24:13.116Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
+- 2026-05-17T16:40:36.490Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
+- 2026-05-17T16:40:50.236Z | updated | acu-visualizer-src-single-entry-build | 完成 ACU Visualizer 测试版 src 迁移与单入口构建支持：新增 build:entry，public 仅保留 index.js 产物，推荐直接 import acu_visualizer_test/index.js。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -73,60 +73,42 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T16:02:41.305Z",
+  "updatedAt": "2026-05-17T16:40:50.236Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer 测试版稳定 loader 入口完成",
-  "latestConclusion": "已新增 public/acu_visualizer_test/loader.js 与 version.js；酒馆助手可固定 import loader.js，loader 会先 destroy 旧实例，再以固定版本 main.js?v=20260517-css-loader 导入主入口，避免裸 main.js ESM 缓存导致旧入口不执行。loader smoke 验证通过，未触碰 public/acu_visualizer 原插件目录。",
+  "currentFocus": "ACU Visualizer 测试版迁移到 src 并支持单入口构建",
+  "latestConclusion": "已将测试版源码整体迁移到 src/acu_visualizer_test，public/acu_visualizer_test 清理为发布产物目录，仅保留 index.js/index.js.map；新增 build:entry 通用脚本与 webpack --env entry 入口过滤，已验证 pnpm build:entry --env entry=src/acu_visualizer_test/index.js 只构建 ACU 测试版入口，浮岛 dist 改动已回退。",
   "currentBlocker": null,
-  "nextAction": "在酒馆助手中改用 import 'https://ts-plugin.pages.dev/acu_visualizer_test/loader.js' 进行浏览器回归，确认 CSS 正常注入、通知/表格可见、无 cssRules SecurityError。",
+  "nextAction": "在酒馆助手中使用 import 'https://ts-plugin.pages.dev/acu_visualizer_test/index.js' 做浏览器回归，确认单文件产物加载、CSS 内联、通知/表格显示正常。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
   },
   "todos": [
     {
-      "id": "bootstrap-1",
-      "content": "重构 main.js：导出 bootstrapAcuVisualizerTest()，支持被 loader 显式重复启动，并保持直接 import main.js 仍可自动启动",
+      "id": "single-1",
+      "content": "废弃 loader 作为推荐入口，将测试版源码整体迁移到 src/acu_visualizer_test 并保留构建期内联 CSS 入口",
       "status": "completed"
     },
     {
-      "id": "bootstrap-2",
-      "content": "修改 loader.js：设置 loader 导入标记，导入固定版本 main 后显式调用 bootstrapAcuVisualizerTest()，避免 cached module 不重启",
+      "id": "single-2",
+      "content": "删除自定义 webpack 配置，改用现有 pnpm build 扫描 src/acu_visualizer_test/index.js 输出单文件",
       "status": "completed"
     },
     {
-      "id": "bootstrap-3",
-      "content": "修正 lifecycle：等待 CSS 注入完成后再进入初始化调度，避免通知/表格先于样式出现",
+      "id": "single-3",
+      "content": "执行现有 pnpm build，生成 dist/acu_visualizer_test/index.js，并同步到 public/acu_visualizer_test/index.js；public 目录仅保留构建产物",
       "status": "completed"
     },
     {
-      "id": "bootstrap-4",
-      "content": "执行 smoke 验证并同步文档/进度",
+      "id": "single-4",
+      "content": "同步文档：README、迁移记录、change-log、progress，明确推荐 import index.js",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T13:39:52.545Z",
-      "type": "updated",
-      "refId": "acu-visualizer-phase-3-ui-low-risk-migration",
-      "message": "完成第三阶段低 UI 风险模块迁移：notifications/theme/pagination/tabs。已验证模块可 import 和基础 HTML/class/state 行为，未修改原插件目录。"
-    },
-    {
-      "at": "2026-05-17T13:50:49.856Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T13:52:43.500Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T13:52:53.226Z",
       "type": "updated",
@@ -228,6 +210,24 @@
       "type": "artifact_changed",
       "refId": "plan",
       "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T16:24:13.116Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T16:40:36.490Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T16:40:50.236Z",
+      "type": "updated",
+      "refId": "acu-visualizer-src-single-entry-build",
+      "message": "完成 ACU Visualizer 测试版 src 迁移与单入口构建支持：新增 build:entry，public 仅保留 index.js 产物，推荐直接 import acu_visualizer_test/index.js。"
     }
   ],
   "stats": {
@@ -241,8 +241,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T16:02:41.305Z",
-    "bodyHash": "sha256:dda50166cabdd0fe70d7039fb567bccad3c69e220376c6a4ccc2b0c2afe2e2d0"
+    "generatedAt": "2026-05-17T16:40:50.236Z",
+    "bodyHash": "sha256:256371dfa910cccd113439f2d2615d14d72e11dfc85dd9acabe5c4f3fe6b6b2e"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
