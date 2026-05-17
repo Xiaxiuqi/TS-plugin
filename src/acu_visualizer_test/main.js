@@ -5,7 +5,7 @@
 import { getCore, getParentWindow } from './core/bridge.js';
 import { initAcuVisualizerTest } from './core/lifecycle.js';
 import { state } from './core/state.js';
-import { getConfig } from './core/storage.js';
+import { getConfig, getCurrentPageForTable, savePaginationState } from './core/storage.js';
 import { showCellMenu } from './modules/cell-editor.js';
 import { saveDataToDatabase } from './modules/database-sync.js';
 import { clearAllTabUpdates } from './modules/diff-highlighting.js';
@@ -21,6 +21,7 @@ import {
   insertTableAfterLatestAIMessage,
   performRefreshTable,
   renderDataTable,
+  smartUpdateTable,
 } from './modules/table-renderer.js';
 import { cancelOrderEditing, saveTableOrderFromUI, showOrderMenu } from './modules/table-sort.js';
 import { bindTabClickEvents } from './modules/tabs.js';
@@ -115,6 +116,7 @@ export function bootstrapAcuVisualizerTest() {
       $tableSection.find('.data-table-wrapper').replaceWith(newTableHtml);
       bindCellEventsForSection($tableSection, tableName);
       bindPaginationEvents($tableSection, tableName, tableData, deps);
+      bindRowDragEvents($tableSection, tableName, deps);
     });
   };
 
@@ -127,6 +129,20 @@ export function bootstrapAcuVisualizerTest() {
       });
     bindSearchEvents($section, { ...deps, updateTableContentOnly });
     bindRowDragEvents($section, tableName, deps);
+  };
+
+  const bindAllTableSectionEvents = () => {
+    const rawData = getTableData(core);
+    const tables = processJsonData(rawData);
+    if (!tables) return;
+
+    Object.keys(tables).forEach(tableName => {
+      const $section = $(`#acu-table-${getSafeTableId(tableName)}`);
+      if (!$section.length) return;
+      bindCellEventsForSection($section, tableName);
+      bindPaginationEvents($section, tableName, tables[tableName], deps);
+      bindRowDragEvents($section, tableName, deps);
+    });
   };
 
   const getLatestAIMessageId = () => {
@@ -184,16 +200,24 @@ export function bootstrapAcuVisualizerTest() {
 
   Object.assign(deps, {
     core,
+    flags: state.flags,
+    drag: state.drag,
+    currentUserEditMap: state.currentUserEditMap,
+    pendingDeletes: state.pendingDeletes,
+    rowPositionMapping: state.rowPositionMapping,
     getConfig,
+    getCurrentPageForTable,
+    savePaginationState,
     getInnerScrollPositionState,
     getTableData: () => getTableData(core),
     processJsonData,
     getSafeTableId,
-    renderDataTable,
+    renderDataTable: (tableData, tableName) => renderDataTable(tableData, tableName, deps),
     generatePaginationHTML,
     bindCellEventsForSection,
-    bindPaginationEvents,
-    bindRowDragEvents,
+    bindPaginationEvents: ($section, tableName, tableData) =>
+      bindPaginationEvents($section, tableName, tableData, deps),
+    bindRowDragEvents: ($section, tableName) => bindRowDragEvents($section, tableName, deps),
     bindTabClickEvents: () =>
       bindTabClickEvents({
         ...deps,
@@ -202,10 +226,15 @@ export function bootstrapAcuVisualizerTest() {
         checkAndJumpToLastPageForSummary: () => {},
       }),
     bindExpandCollapseEvents,
-    bindTableEvents: () => bindTableEvents(deps),
+    bindAllTableSectionEvents,
+    bindTableEvents: () => {
+      bindTableEvents(deps);
+      bindAllTableSectionEvents();
+    },
     insertTableAfterLatestAIMessage: () => insertTableAfterLatestAIMessage(deps),
     updateTableContentOnly,
-    saveDataToDatabase: data => saveDataToDatabase(data, null, deps),
+    smartUpdateTable: forceFullUpdate => smartUpdateTable(forceFullUpdate, deps),
+    saveDataToDatabase: (data, updateContext = null) => saveDataToDatabase(data, updateContext, deps),
     showNotification: (message, type) => showNotification(message, type, core),
     showLoadSuccessNotification,
     showCellMenu: (e, cell) => showCellMenu(e, cell, deps),
@@ -226,6 +255,9 @@ export function bootstrapAcuVisualizerTest() {
     checkAndUpdateTablePosition: () => checkAndUpdateTablePosition(deps),
     clearAllTabUpdates,
     updateSaveBtnState,
+    setCellEditing: value => {
+      state.flags.isCellEditing = !!value;
+    },
     addStyles: () => injectStyles(),
   });
 
@@ -243,8 +275,4 @@ export function bootstrapAcuVisualizerTest() {
   window.ACUVisualizerTest = api;
 
   return api;
-}
-
-if (!window.__ACU_VISUALIZER_TEST_LOADER_IMPORTING__) {
-  bootstrapAcuVisualizerTest();
 }

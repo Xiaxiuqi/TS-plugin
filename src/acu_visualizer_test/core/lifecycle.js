@@ -42,7 +42,12 @@ export function createLifecycle(deps = {}) {
         }
 
         if (api?.registerTableUpdateCallback) {
-          api.registerTableUpdateCallback(UpdateController.handleUpdate);
+          api.registerTableUpdateCallback(() => {
+            UpdateController.handleUpdate({
+              smartUpdateTable: deps.smartUpdateTable,
+              insertTableAfterLatestAIMessage: deps.insertTableAfterLatestAIMessage,
+            });
+          });
         }
 
         if (api?.registerTableFillStartCallback) {

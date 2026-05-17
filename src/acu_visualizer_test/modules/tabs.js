@@ -143,7 +143,7 @@ export function bindTabClickEvents({
           $section.find('.data-table-wrapper').replaceWith(newTableHtml);
 
           if (typeof bindCellEventsForSection === 'function') {
-            bindCellEventsForSection($section);
+            bindCellEventsForSection($section, tableName);
           }
           if (typeof bindPaginationEvents === 'function') {
             bindPaginationEvents($section, tableName, tables[tableName]);

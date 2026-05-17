@@ -53,6 +53,15 @@ export function removeNotification(notification, core = getCore()) {
 }
 
 export function showLoadSuccessNotification() {
+  const now = Date.now();
+  const hostWindow = window.parent || window;
+  if (
+    hostWindow.__ACU_VISUALIZER_TEST_LAST_LOAD_NOTIFICATION_AT__ &&
+    now - hostWindow.__ACU_VISUALIZER_TEST_LAST_LOAD_NOTIFICATION_AT__ < 5000
+  ) {
+    return;
+  }
+  hostWindow.__ACU_VISUALIZER_TEST_LAST_LOAD_NOTIFICATION_AT__ = now;
   console.log('[ACU] 正在触发加载成功通知...');
   showNotification(`${acuButtonIconLabel('check', '表格数据已成功加载')}`, 'success');
 }
