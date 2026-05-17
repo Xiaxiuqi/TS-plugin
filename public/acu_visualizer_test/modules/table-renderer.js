@@ -26,7 +26,7 @@ import {
 import { generatePaginationHTML } from './pagination.js';
 import { getOriginalRowIndex, initializeRowMapping } from './row-sort.js';
 import { filterRowDisplayIndices, generateSearchToolbarHTML, highlightSearchMatches } from './search.js';
-import { getTableData } from './table-data.js';
+import { getSafeTableId, getTableData, processJsonData } from './table-data.js';
 import { getOrderedTableNames } from './table-sort.js';
 import { getActiveTabState } from './tabs.js';
 
@@ -92,7 +92,7 @@ export function renderDataTable(tableData, tableName, deps = {}) {
 
 export function generateTableHTML(deps = {}) {
   const rawData = deps.getTableData ? deps.getTableData() : getTableData();
-  const tables = deps.processJsonData ? deps.processJsonData(rawData) : deps.tables || null;
+  const tables = deps.processJsonData ? deps.processJsonData(rawData) : deps.tables || processJsonData(rawData);
   const isExpanded = deps.getTableExpandedState ? deps.getTableExpandedState() : getTableExpandedState();
   const isNightMode = deps.getNightModeState ? deps.getNightModeState() : getNightModeState();
   const activeTab = deps.getActiveTabState ? deps.getActiveTabState() : getActiveTabState();
@@ -120,7 +120,7 @@ export function generateTableHTML(deps = {}) {
     html += `<div class="acu-tabs-container" id="acu-tabs-sortable">`;
     orderedTableNames.forEach(tableName => {
       const tableData = tables[tableName];
-      const safeId = deps.getSafeTableId ? deps.getSafeTableId(tableName) : tableName;
+      const safeId = deps.getSafeTableId ? deps.getSafeTableId(tableName) : getSafeTableId(tableName);
       const rowCount = tableData.rows ? tableData.rows.length : 0;
       const isActive = validActiveTab === tableName ? 'active' : '';
       const hasUpdateClass = shouldShowBadge(tableName) ? 'has-updates' : '';
@@ -129,7 +129,7 @@ export function generateTableHTML(deps = {}) {
     html += `</div><div class="table-content-area acu-scroll-container">`;
     orderedTableNames.forEach(tableName => {
       const tableData = tables[tableName];
-      const safeId = deps.getSafeTableId ? deps.getSafeTableId(tableName) : tableName;
+      const safeId = deps.getSafeTableId ? deps.getSafeTableId(tableName) : getSafeTableId(tableName);
       const isActive = validActiveTab === tableName ? 'active' : '';
       const currentPage = getCurrentPageForTable(tableName);
       const paginationHtml = generatePaginationHTML(tableName, tableData.rows ? tableData.rows.length : 0, currentPage);

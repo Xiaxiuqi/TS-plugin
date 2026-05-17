@@ -4,17 +4,192 @@
 
 import { getCore } from './core/bridge.js';
 import { initAcuVisualizerTest } from './core/lifecycle.js';
+import { state } from './core/state.js';
+import { getConfig } from './core/storage.js';
+import { showCellMenu } from './modules/cell-editor.js';
+import { saveDataToDatabase } from './modules/database-sync.js';
+import { clearAllTabUpdates } from './modules/diff-highlighting.js';
+import { showLoadSuccessNotification, showNotification } from './modules/notifications.js';
+import { bindPaginationEvents, generatePaginationHTML } from './modules/pagination.js';
+import { bindRowDragEvents } from './modules/row-sort.js';
+import { bindSearchEvents } from './modules/search.js';
+import { showSettingsDialog } from './modules/settings-dialog.js';
+import { getSafeTableId, getTableData, processJsonData } from './modules/table-data.js';
+import {
+  bindTableEvents,
+  checkAndUpdateTablePosition,
+  insertTableAfterLatestAIMessage,
+  performRefreshTable,
+  renderDataTable,
+} from './modules/table-renderer.js';
+import { cancelOrderEditing, saveTableOrderFromUI, showOrderMenu } from './modules/table-sort.js';
+import { bindTabClickEvents } from './modules/tabs.js';
+import {
+  getInnerScrollPositionState,
+  saveInnerScrollPositionState,
+  saveTableExpandedState,
+  showThemeMenu,
+  toggleNightMode,
+} from './modules/theme.js';
 
 (function () {
   'use strict';
 
   const core = getCore();
-  const lifecycle = initAcuVisualizerTest({ core });
+  const { $ } = core;
+
+  const deps = {};
+
+  const updateTableContentOnly = () => {
+    const rawData = getTableData(core);
+    const tables = processJsonData(rawData);
+    if (!tables) {
+      insertTableAfterLatestAIMessage(deps);
+      return;
+    }
+
+    Object.keys(tables).forEach(tableName => {
+      const tableData = tables[tableName];
+      const $tableSection = $(`#acu-table-${getSafeTableId(tableName)}`);
+      if (!$tableSection.length) return;
+      const currentPage = deps.getCurrentPageForTable ? deps.getCurrentPageForTable(tableName) : 0;
+      const paginationHtml = generatePaginationHTML(tableName, tableData.rows ? tableData.rows.length : 0, currentPage);
+      const newTableHtml = renderDataTable(tableData, tableName, deps);
+      $tableSection.find('.acu-pagination-container').remove();
+      $tableSection.find('.section-title').after(paginationHtml);
+      $tableSection.find('.data-table-wrapper').replaceWith(newTableHtml);
+      bindCellEventsForSection($tableSection, tableName);
+      bindPaginationEvents($tableSection, tableName, tableData, deps);
+    });
+  };
+
+  const bindCellEventsForSection = ($section, tableName) => {
+    $section
+      .find('.acu-editable-cell')
+      .off('click.acu')
+      .on('click.acu', function (e) {
+        showCellMenu(e, this, deps);
+      });
+    bindSearchEvents($section, { ...deps, updateTableContentOnly });
+    bindRowDragEvents($section, tableName, deps);
+  };
+
+  const getLatestAIMessageId = () => {
+    const $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
+    if ($latestAIMessage.length) {
+      return (
+        $latestAIMessage.attr('data-mid') ||
+        $latestAIMessage.attr('id') ||
+        $latestAIMessage.find('.mes_text').text().substring(0, 50) + Date.now()
+      );
+    }
+    return '';
+  };
+
+  const saveCurrentScrollPosition = () => {
+    const $contentArea = $('.acu-scroll-container');
+    if ($contentArea.length) {
+      const scrollTop = $contentArea.scrollTop();
+      saveInnerScrollPositionState(scrollTop);
+      state.scroll.currentTableScrollTop = scrollTop;
+    }
+  };
+
+  const resetScrollPositionToTop = () => {
+    const $contentArea = $('.acu-scroll-container');
+    if ($contentArea.length) {
+      $contentArea.scrollTop(0);
+      state.scroll.currentTableScrollTop = 0;
+      saveInnerScrollPositionState(0);
+    }
+  };
+
+  const applySavedScrollPositionImmediately = () => {
+    const $contentArea = $('.acu-scroll-container');
+    if ($contentArea.length) $contentArea.scrollTop(state.scroll.currentTableScrollTop);
+  };
+
+  const bindExpandCollapseEvents = () => {
+    $('.acu-table-container details')
+      .off('toggle.acu')
+      .on('toggle.acu', function () {
+        const isOpen = $(this).attr('open') !== undefined;
+        saveTableExpandedState(isOpen);
+        $(this)
+          .find('.acu-expand-hint')
+          .text(isOpen ? '点击收起' : '点击展开');
+      });
+  };
+
+  const updateSaveBtnState = () => {
+    const $btn = $('#acu-save-db-btn-main');
+    if (state.pendingDeletes.size > 0) $btn.addClass('has-pending-deletes');
+    else $btn.removeClass('has-pending-deletes');
+  };
+
+  Object.assign(deps, {
+    core,
+    getConfig,
+    getInnerScrollPositionState,
+    getTableData: () => getTableData(core),
+    processJsonData,
+    getSafeTableId,
+    renderDataTable,
+    generatePaginationHTML,
+    bindCellEventsForSection,
+    bindPaginationEvents,
+    bindRowDragEvents,
+    bindTabClickEvents: () =>
+      bindTabClickEvents({
+        ...deps,
+        isEditingOrder: () => state.flags.isEditingOrder,
+        resetScrollPositionToTop,
+        checkAndJumpToLastPageForSummary: () => {},
+      }),
+    bindExpandCollapseEvents,
+    bindTableEvents: () => bindTableEvents(deps),
+    insertTableAfterLatestAIMessage: () => insertTableAfterLatestAIMessage(deps),
+    updateTableContentOnly,
+    saveDataToDatabase: data => saveDataToDatabase(data, null, deps),
+    showNotification: (message, type) => showNotification(message, type, core),
+    showLoadSuccessNotification,
+    showCellMenu: (e, cell) => showCellMenu(e, cell, deps),
+    showSettingsDialog: () => showSettingsDialog(deps),
+    showOrderMenu: e => showOrderMenu(e, deps),
+    saveTableOrderFromUI: () => saveTableOrderFromUI(deps),
+    cancelOrderEditing: () => cancelOrderEditing(deps),
+    showThemeMenu: e => showThemeMenu(e, deps),
+    toggleNightMode: () => toggleNightMode(core),
+    showRefreshMenu: e => {
+      e?.stopPropagation?.();
+      performRefreshTable(deps);
+    },
+    resetScrollPositionToTop,
+    saveCurrentScrollPosition,
+    applySavedScrollPositionImmediately,
+    getLatestAIMessageId,
+    checkAndUpdateTablePosition: () => checkAndUpdateTablePosition(deps),
+    clearAllTabUpdates,
+    updateSaveBtnState,
+    addStyles: () => {
+      if (!document.getElementById('acu-visualizer-test-style-loader')) {
+        const styleLink = document.createElement('link');
+        styleLink.id = 'acu-visualizer-test-style-loader';
+        styleLink.rel = 'stylesheet';
+        styleLink.href = new URL('./styles/table.css', import.meta.url).href;
+        document.head.appendChild(styleLink);
+      }
+    },
+  });
+
+  const lifecycle = initAcuVisualizerTest(deps);
 
   window.ACUVisualizerTest = window.ACUVisualizerTest || {};
   window.ACUVisualizerTest.version = 'modular-test-migration';
   window.ACUVisualizerTest.lifecycle = lifecycle;
+  window.ACUVisualizerTest.deps = deps;
   window.ACUVisualizerTest.destroy = function destroy() {
     lifecycle.destroy();
+    document.getElementById('acu-visualizer-test-style-loader')?.remove();
   };
 })();

@@ -73,3 +73,44 @@ export function getSheetIdByName(tableData, tableName) {
   const found = entries.find(([, sheet]) => sheet.name === tableName);
   return found ? found[0] : null;
 }
+
+export function processJsonData(json) {
+  const tables = {};
+  if (!json || typeof json !== 'object') return null;
+
+  const isNewFormat = json.mate && json.mate.type === 'chatSheets';
+
+  if (isNewFormat) {
+    for (const sheetId in json) {
+      if (sheetId === 'mate') continue;
+
+      const sheet = json[sheetId];
+      if (sheet?.name) {
+        tables[sheet.name] = {
+          key: sheetId,
+          headers: sheet.content[0] || [],
+          rows: sheet.content.slice(1),
+          rawContent: sheet.content,
+        };
+      }
+    }
+  } else {
+    for (const sheetId in json) {
+      if (json[sheetId]?.name) {
+        const sheet = json[sheetId];
+        tables[sheet.name] = {
+          key: sheetId,
+          headers: sheet.content[0] || [],
+          rows: sheet.content.slice(1),
+          rawContent: sheet.content,
+        };
+      }
+    }
+  }
+
+  return Object.keys(tables).length > 0 ? tables : null;
+}
+
+export function getSafeTableId(tableName) {
+  return tableName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '-').toLowerCase();
+}
