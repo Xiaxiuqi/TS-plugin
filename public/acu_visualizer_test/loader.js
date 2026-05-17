@@ -7,24 +7,30 @@
 import { ACU_VISUALIZER_TEST_VERSION } from './version.js';
 
 const globalObject = window;
-const previous = globalObject.ACUVisualizerTest;
-
-try {
-  previous?.destroy?.();
-} catch (error) {
-  console.warn('[ACU TEST LOADER] destroy previous instance failed:', error);
-}
 
 const mainUrl = new URL('./main.js', import.meta.url);
 mainUrl.searchParams.set('v', ACU_VISUALIZER_TEST_VERSION);
 
-const moduleNamespace = await import(mainUrl.href);
+globalObject.__ACU_VISUALIZER_TEST_LOADER_IMPORTING__ = true;
+let moduleNamespace;
+try {
+  moduleNamespace = await import(mainUrl.href);
+} finally {
+  delete globalObject.__ACU_VISUALIZER_TEST_LOADER_IMPORTING__;
+}
+
+if (typeof moduleNamespace.bootstrapAcuVisualizerTest !== 'function') {
+  throw new Error('[ACU TEST LOADER] main.js does not export bootstrapAcuVisualizerTest()');
+}
+
+const instance = moduleNamespace.bootstrapAcuVisualizerTest();
 
 globalObject.ACUVisualizerTestLoader = {
   version: ACU_VISUALIZER_TEST_VERSION,
   mainUrl: mainUrl.href,
   loadedAt: new Date().toISOString(),
   module: moduleNamespace,
+  instance,
 };
 
 console.log('[ACU TEST LOADER] loaded', globalObject.ACUVisualizerTestLoader);

@@ -69,10 +69,12 @@ export function createLifecycle(deps = {}) {
   };
 
   return {
-    init() {
+    async init() {
       if (state.flags.isInitialized) return;
       cleanupStorage(deps);
-      deps.addStyles?.();
+      if (typeof deps.addStyles === 'function') {
+        await deps.addStyles();
+      }
       state.scroll.currentTableScrollTop = deps.getInnerScrollPositionState?.() || 0;
       scheduleInitialize(initializeScript, 2000);
     },

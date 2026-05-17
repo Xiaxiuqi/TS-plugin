@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T15:48:13.732Z
+- Updated At: 2026-05-17T16:02:41.305Z
 - Status: active
 - Phase: implementation
 
@@ -23,9 +23,10 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 新增 acu_visualizer_test/loader.js，固定入口由 loader 负责 destroy 并版本化导入 main.js  `#loader-1`
-- [x] 执行 loader/main import smoke 验证并确认不触碰原插件目录  `#loader-2`
-- [x] 同步 CSS/loader 迁移文档、change-log 和项目进度  `#loader-3`
+- [x] 重构 main.js：导出 bootstrapAcuVisualizerTest()，支持被 loader 显式重复启动，并保持直接 import main.js 仍可自动启动  `#bootstrap-1`
+- [x] 修改 loader.js：设置 loader 导入标记，导入固定版本 main 后显式调用 bootstrapAcuVisualizerTest()，避免 cached module 不重启  `#bootstrap-2`
+- [x] 修正 lifecycle：等待 CSS 注入完成后再进入初始化调度，避免通知/表格先于样式出现  `#bootstrap-3`
+- [x] 执行 smoke 验证并同步文档/进度  `#bootstrap-4`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -43,7 +44,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T13:39:41.208Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T13:39:52.545Z | updated | acu-visualizer-phase-3-ui-low-risk-migration | 完成第三阶段低 UI 风险模块迁移：notifications/theme/pagination/tabs。已验证模块可 import 和基础 HTML/class/state 行为，未修改原插件目录。
 - 2026-05-17T13:50:49.856Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T13:52:43.500Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -63,6 +63,7 @@
 - 2026-05-17T15:46:27.938Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:00.618Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
+- 2026-05-17T16:02:41.305Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -72,7 +73,7 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T15:48:13.732Z",
+  "updatedAt": "2026-05-17T16:02:41.305Z",
   "status": "active",
   "phase": "implementation",
   "currentFocus": "ACU Visualizer 测试版稳定 loader 入口完成",
@@ -85,30 +86,29 @@
   },
   "todos": [
     {
-      "id": "loader-1",
-      "content": "新增 acu_visualizer_test/loader.js，固定入口由 loader 负责 destroy 并版本化导入 main.js",
+      "id": "bootstrap-1",
+      "content": "重构 main.js：导出 bootstrapAcuVisualizerTest()，支持被 loader 显式重复启动，并保持直接 import main.js 仍可自动启动",
       "status": "completed"
     },
     {
-      "id": "loader-2",
-      "content": "执行 loader/main import smoke 验证并确认不触碰原插件目录",
+      "id": "bootstrap-2",
+      "content": "修改 loader.js：设置 loader 导入标记，导入固定版本 main 后显式调用 bootstrapAcuVisualizerTest()，避免 cached module 不重启",
       "status": "completed"
     },
     {
-      "id": "loader-3",
-      "content": "同步 CSS/loader 迁移文档、change-log 和项目进度",
+      "id": "bootstrap-3",
+      "content": "修正 lifecycle：等待 CSS 注入完成后再进入初始化调度，避免通知/表格先于样式出现",
+      "status": "completed"
+    },
+    {
+      "id": "bootstrap-4",
+      "content": "执行 smoke 验证并同步文档/进度",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T13:39:41.208Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T13:39:52.545Z",
       "type": "updated",
@@ -222,21 +222,27 @@
       "type": "updated",
       "refId": "acu-visualizer-test-loader",
       "message": "完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。"
+    },
+    {
+      "at": "2026-05-17T16:02:41.305Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
-    "todosTotal": 3,
-    "todosCompleted": 3,
+    "todosTotal": 4,
+    "todosCompleted": 4,
     "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T15:48:13.732Z",
-    "bodyHash": "sha256:210afd9ac015b237ba55a6237f92f30644319b6c7157845c4d795cdd4cd3ea89"
+    "generatedAt": "2026-05-17T16:02:41.305Z",
+    "bodyHash": "sha256:dda50166cabdd0fe70d7039fb567bccad3c69e220376c6a4ccc2b0c2afe2e2d0"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

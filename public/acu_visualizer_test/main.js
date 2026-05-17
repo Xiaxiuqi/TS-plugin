@@ -32,8 +32,14 @@ import {
   toggleNightMode,
 } from './modules/theme.js';
 
-(function () {
+export function bootstrapAcuVisualizerTest() {
   'use strict';
+
+  try {
+    window.ACUVisualizerTest?.destroy?.();
+  } catch (error) {
+    console.warn('[ACU TEST] destroy previous instance failed:', error);
+  }
 
   const core = getCore();
   const { $ } = core;
@@ -210,4 +216,9 @@ import {
     lifecycle.destroy();
     document.getElementById('acu-visualizer-test-style-loader')?.remove();
   };
-})();
+  return window.ACUVisualizerTest;
+}
+
+if (!window.__ACU_VISUALIZER_TEST_LOADER_IMPORTING__) {
+  bootstrapAcuVisualizerTest();
+}
