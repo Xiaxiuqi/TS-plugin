@@ -4,6 +4,7 @@
 
 import { getCore, getDataIsolationCode } from '../core/bridge.js';
 import { acuButtonIconLabel } from '../core/constants.js';
+import { removeWithEvents } from '../core/dom-cleanup.js';
 import { state } from '../core/state.js';
 import {
   getConfig,
@@ -80,7 +81,8 @@ export function renderDataTable(tableData, tableName, deps = {}) {
         else if (isCellDBUpdated(tableName, originalIndex, index, state.currentDiffMap))
           highlightClass = 'acu-highlight-changed';
         const columnName = tableData.headers[index] || '';
-        html += `<td class="acu-editable-cell ${highlightClass}" data-table-key="${tableData.key}" data-table-name="${tableName}" data-row="${originalIndex}" data-col="${index}" data-col-name="${columnName}">${formattedContent}</td>`;
+        const cellClass = isPendingDelete ? 'acu-editable-cell' : `acu-editable-cell ${highlightClass}`;
+        html += `<td class="${cellClass}" data-table-key="${tableData.key}" data-table-name="${tableName}" data-row="${originalIndex}" data-col="${index}" data-col-name="${columnName}">${formattedContent}</td>`;
       }
     });
     html += '</tr>';
@@ -181,7 +183,9 @@ export function smartUpdateTable(forceFullUpdate = false, deps = {}) {
 export function insertTableAfterLatestAIMessage(deps = {}) {
   const { $ } = deps.core || getCore();
   const tableHtml = generateTableHTML(deps);
-  $('.acu-table-container').remove();
+  $('.acu-table-container').each(function () {
+    removeWithEvents($(this));
+  });
   const $latestAIMessage = $('.mes:not(.sys):not(.user)').last();
   if ($latestAIMessage.length === 0) {
     const $chatContainer = $('#chat, .chat-container').first();

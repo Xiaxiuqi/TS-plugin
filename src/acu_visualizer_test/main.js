@@ -20,7 +20,6 @@ import {
   bindTableEvents,
   checkAndUpdateTablePosition,
   insertTableAfterLatestAIMessage,
-  performRefreshTable,
   renderDataTable,
   smartUpdateTable,
 } from './modules/table-renderer.js';
@@ -182,6 +181,89 @@ export function bootstrapAcuVisualizerTest() {
   };
 
   const bindExpandCollapseEvents = () => {
+    const showRefreshMenu = event => {
+      event?.stopPropagation?.();
+      event?.preventDefault?.();
+
+      const $existing = $('.acu-refresh-menu');
+      if ($existing.length) {
+        $existing.each(function () {
+          removeWithEvents($(this));
+        });
+        return;
+      }
+
+      $('.acu-refresh-menu').each(function () {
+        removeWithEvents($(this));
+      });
+
+      const config = getConfig();
+      const isNightMode = $('.acu-table-container').hasClass('night-mode');
+      const menuHtml = `
+      <div class="acu-cell-menu acu-refresh-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
+        <div class="acu-cell-menu-item" data-action="refresh">刷新表格</div>
+        <div class="acu-cell-menu-item" data-action="shortcut">快捷选项</div>
+        <div class="acu-cell-menu-item close" data-action="close">关闭菜单</div>
+      </div>
+    `;
+
+      const $menu = $(menuHtml);
+      $('body').append($menu);
+
+      const clickX = event?.clientX ?? 0;
+      const clickY = event?.clientY ?? 0;
+      const menuWidth = $menu.outerWidth();
+      const menuHeight = $menu.outerHeight();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let menuX = clickX + 10;
+      let menuY = clickY + 10;
+      if (menuX + menuWidth > viewportWidth) menuX = clickX - menuWidth - 10;
+      if (menuY + menuHeight > viewportHeight) menuY = clickY - menuHeight - 10;
+      menuX = Math.max(10, menuX);
+      menuY = Math.max(10, menuY);
+      $menu.css({ left: `${menuX}px`, top: `${menuY}px`, position: 'fixed' });
+
+      const closeRecords = [];
+      const removeCloseListeners = () => {
+        closeRecords.splice(0).forEach(record => deps.schedulerRegistry?.removeEventListener?.(record));
+      };
+      const closeMenu = () => {
+        removeCloseListeners();
+        removeWithEvents($menu);
+      };
+
+      $menu.find('.acu-cell-menu-item').on('click.acu', async function () {
+        const action = $(this).data('action');
+        closeMenu();
+        if (action === 'refresh') performRefreshTable(deps);
+        if (action === 'shortcut') await openShortcutDialog(deps);
+      });
+
+      const outsideClickHandler = e => {
+        if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
+          closeMenu();
+        }
+      };
+
+      setTimeout(() => {
+        const iframeRecord = deps.schedulerRegistry?.addEventListener?.(document, 'click', outsideClickHandler);
+        if (iframeRecord) closeRecords.push(iframeRecord);
+        else document.addEventListener('click', outsideClickHandler);
+
+        if (window.parent?.document && window.parent.document !== document) {
+          const parentRecord = deps.schedulerRegistry?.addEventListener?.(
+            window.parent.document,
+            'click',
+            outsideClickHandler,
+          );
+          if (parentRecord) closeRecords.push(parentRecord);
+          else window.parent.document.addEventListener('click', outsideClickHandler);
+        }
+      }, 100);
+    };
+
     $('.acu-table-container details')
       .off('toggle.acu')
       .on('toggle.acu', function () {
@@ -245,10 +327,7 @@ export function bootstrapAcuVisualizerTest() {
     cancelOrderEditing: () => cancelOrderEditing(deps),
     showThemeMenu: e => showThemeMenu(e, deps),
     toggleNightMode: () => toggleNightMode(core),
-    showRefreshMenu: e => {
-      e?.stopPropagation?.();
-      performRefreshTable(deps);
-    },
+    showRefreshMenu: e => showRefreshMenu(e, deps),
     resetScrollPositionToTop,
     saveCurrentScrollPosition,
     applySavedScrollPositionImmediately,

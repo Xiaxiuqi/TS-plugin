@@ -137,6 +137,7 @@ export function showCellMenu(event, cell, deps = {}) {
 
   $menu.find('.acu-cell-menu-item').on('click.acu', function () {
     const action = $(this).data('action');
+    const shouldCloseMenu = action !== 'history';
     if (action === 'history') {
       const simulatedEvent = {
         clientX: $menu.data('clickX'),
@@ -148,8 +149,10 @@ export function showCellMenu(event, cell, deps = {}) {
     } else {
       handleCellAction(action, tableKey, tableName, rowIndex, colIndex, cell, cellContent, null, deps);
     }
-    removeCloseListeners();
-    removeWithEvents($menu);
+    if (shouldCloseMenu) {
+      removeCloseListeners();
+      removeWithEvents($menu);
+    }
   });
 
   const closeMenu = e => {
@@ -220,6 +223,8 @@ export async function handleCellAction(
 
       const saveEdit = async () => {
         const newContent = $textarea.val();
+        removeWithEvents($editOverlay);
+        deps.setCellEditing?.(false);
         const formattedContent = newContent.replace(/\n/g, '<br>');
         $(cell).html(formattedContent);
         deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${colIndex}`);
@@ -242,8 +247,6 @@ export async function handleCellAction(
         } else {
           console.warn('保存失败，但编辑已应用到本地');
         }
-        removeWithEvents($editOverlay);
-        deps.setCellEditing?.(false);
       };
 
       const cancelEdit = () => {

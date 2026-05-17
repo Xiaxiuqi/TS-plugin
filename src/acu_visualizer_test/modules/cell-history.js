@@ -143,7 +143,7 @@ export function showHistoryMenu(event, cell, tableName, rowIndex, colIndex, deps
   const closeDialog = () => removeWithEvents($dialog);
 
   $dialog.find('.acu-history-item').on('click.acu', async function () {
-    const value = $(this).attr('data-value');
+    const value = history[parseInt($(this).attr('data-index'), 10)]?.value ?? $(this).attr('data-value');
     const strValue = String(value || '');
     $(cell).html(strValue.replace(/\n/g, '<br>'));
     deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${colIndex}`);

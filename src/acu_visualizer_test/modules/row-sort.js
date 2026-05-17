@@ -64,6 +64,12 @@ export function moveRow(tableName, fromIndex, insertIndex, rowPositionMapping = 
   );
   mapping.splice(adjustedInsertIndex, 0, movedRow);
 
+  const isIdentityMapping = mapping.every((originalIndex, displayIndex) => originalIndex === displayIndex);
+  if (isIdentityMapping) {
+    localStorage.removeItem(`${ROW_MAPPING_KEY_PREFIX}${tableName}`);
+    return true;
+  }
+
   try {
     localStorage.setItem(`${ROW_MAPPING_KEY_PREFIX}${tableName}`, JSON.stringify(mapping));
   } catch (e) {

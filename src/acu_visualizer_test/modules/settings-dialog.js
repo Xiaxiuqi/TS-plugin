@@ -1,4 +1,4 @@
-// ACU Visualizer 测试版设置弹窗模块
+的// ACU Visualizer 测试版设置弹窗模块
 // 来源：public/acu_visualizer/acu_visualizer-test.js 中 showSettingsDialog()、bindSettingsDialogEvents()、showCleanupConfirmation()。
 // 迁移原则：保留原 DOM class、id、设置 key 与事件语义，不修改 CSS，不夹带优化。
 
@@ -216,17 +216,22 @@ export function bindSettingsDialogEvents(deps = {}) {
     const config = getConfig();
     const newConfig = {
       ...config,
-      theme: $('input[name="theme"]:checked').val(),
-      highlightNew: $('#highlightNew').is(':checked'),
-      maxHistoryItems: parseInt($('#maxHistoryItems').val()),
+      theme: $('input[name="theme"]:checked').val() || config.theme || 'retro',
+      highlightNew: $('#highlightNew').length ? $('#highlightNew').is(':checked') : config.highlightNew,
+      maxHistoryItems: $('#maxHistoryItems').length
+        ? parseInt($('#maxHistoryItems').val(), 10)
+        : config.maxHistoryItems,
       autoCleanup: $('#autoCleanup').is(':checked'),
       keepSnapshots: $('#keepSnapshots').is(':checked'),
     };
     saveConfig(newConfig);
-    saveNightModeState($('#autoNightMode').is(':checked'));
+    const nextNightMode = $('#autoNightMode').length
+      ? $('#autoNightMode').is(':checked')
+      : $('.acu-table-container').hasClass('night-mode');
+    saveNightModeState(nextNightMode);
     saveCleanupSettings(collectCleanupSettings($));
     applyThemeStyles(newConfig.theme);
-    if ($('#autoNightMode').is(':checked')) $('.acu-table-container').addClass('night-mode');
+    if (nextNightMode) $('.acu-table-container').addClass('night-mode');
     else $('.acu-table-container').removeClass('night-mode');
     showStatusMessage('设置已保存', 'success', deps.core);
     setTimeout(closeSettingsDialog, 1000);
@@ -246,6 +251,7 @@ export function collectCleanupSettings($) {
 export function showCleanupConfirmation(cleanupSettings, core = getCore()) {
   return new Promise(resolve => {
     const { $ } = core;
+    const config = getConfig();
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
     const itemsToClean = [];
     if (cleanupSettings.clearSnapshots) itemsToClean.push('数据快照');
@@ -257,7 +263,7 @@ export function showCleanupConfirmation(cleanupSettings, core = getCore()) {
       resolve(false);
       return;
     }
-    const confirmationHtml = `<div class="acu-confirm-overlay ${isNightMode ? 'night-mode' : ''}"><div class="acu-confirm-dialog"><div class="acu-confirm-header"><h3>⚠️ 确认清理操作</h3></div><div class="acu-confirm-content"><div class="acu-warning-box" style="margin-bottom: 20px;"><div class="acu-warning-icon">🚨</div><div class="acu-warning-content"><strong>重要：请先备份数据库模板！</strong><p>清理操作将删除以下数据，且无法恢复：</p></div></div><ul class="acu-cleanup-list">${itemsToClean.map(item => `<li>${item}</li>`).join('')}</ul><div class="acu-confirm-question"><p>确定要执行清理吗？</p></div></div><div class="acu-confirm-buttons"><button class="acu-btn acu-btn-secondary" id="acu-confirm-cancel">取消</button><button class="acu-btn acu-btn-danger" id="acu-confirm-proceed">确定清理</button></div></div></div>`;
+    const confirmationHtml = `<div class="acu-confirm-overlay acu-theme-${config.theme || 'retro'} ${isNightMode ? 'night-mode' : ''}"><div class="acu-confirm-dialog"><div class="acu-confirm-header"><h3>⚠️ 确认清理操作</h3></div><div class="acu-confirm-content"><div class="acu-warning-box" style="margin-bottom: 20px;"><div class="acu-warning-icon">🚨</div><div class="acu-warning-content"><strong>重要：请先备份数据库模板！</strong><p>清理操作将删除以下数据，且无法恢复：</p></div></div><ul class="acu-cleanup-list">${itemsToClean.map(item => `<li>${item}</li>`).join('')}</ul><div class="acu-confirm-question"><p>确定要执行清理吗？</p></div></div><div class="acu-confirm-buttons"><button class="acu-btn acu-btn-secondary" id="acu-confirm-cancel">取消</button><button class="acu-btn acu-btn-danger" id="acu-confirm-proceed">确定清理</button></div></div></div>`;
     $('body').append(confirmationHtml);
     const closeConfirmation = () => removeWithEvents($('.acu-confirm-overlay'));
     $('#acu-confirm-cancel').on('click.acu', () => {
