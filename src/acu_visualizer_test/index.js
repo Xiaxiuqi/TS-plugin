@@ -6,8 +6,15 @@ import { bootstrapAcuVisualizerTest } from './main.js';
 import searchCss from './styles/search.css?raw';
 import tableCss from './styles/table.css?raw';
 
-window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__ = [`/* table.css */\n${tableCss}`, `/* search.css */\n${searchCss}`].join(
-  '\n\n',
-);
+const bundledCss = [`/* table.css */\n${tableCss}`, `/* search.css */\n${searchCss}`].join('\n\n');
+
+window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__ = bundledCss;
+try {
+  if (window.parent && window.parent !== window) {
+    window.parent.__ACU_VISUALIZER_TEST_BUNDLED_CSS__ = bundledCss;
+  }
+} catch (error) {
+  console.warn('[ACU TEST] failed to expose bundled CSS to parent window:', error);
+}
 
 bootstrapAcuVisualizerTest();

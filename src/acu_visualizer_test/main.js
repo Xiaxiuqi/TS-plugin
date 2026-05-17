@@ -2,7 +2,7 @@
 // 来源：public/acu_visualizer/acu_visualizer-test.js 尾部 IIFE 初始化结构。
 // 迁移原则：仅组装测试版生命周期入口，不接入正式插件，不夹带优化。
 
-import { getCore } from './core/bridge.js';
+import { getCore, getParentWindow } from './core/bridge.js';
 import { initAcuVisualizerTest } from './core/lifecycle.js';
 import { state } from './core/state.js';
 import { getConfig } from './core/storage.js';
@@ -35,10 +35,21 @@ import {
 export function bootstrapAcuVisualizerTest() {
   'use strict';
 
+  const hostWindow = getParentWindow();
+  const hostDocument = hostWindow.document || document;
+
   try {
-    window.ACUVisualizerTest?.destroy?.();
+    hostWindow.ACUVisualizerTest?.destroy?.();
   } catch (error) {
     console.warn('[ACU TEST] destroy previous instance failed:', error);
+  }
+
+  if (hostWindow !== window) {
+    try {
+      window.ACUVisualizerTest?.destroy?.();
+    } catch (error) {
+      console.warn('[ACU TEST] destroy previous iframe instance failed:', error);
+    }
   }
 
   const core = getCore();
@@ -50,17 +61,18 @@ export function bootstrapAcuVisualizerTest() {
   const STYLE_VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
 
   const injectStyles = async () => {
-    document.getElementById('acu-visualizer-test-style-loader')?.remove();
+    hostDocument.getElementById('acu-visualizer-test-style-loader')?.remove();
 
-    const style = document.createElement('style');
+    const style = hostDocument.createElement('style');
     style.id = 'acu-visualizer-test-style-loader';
     style.dataset.source = 'acu_visualizer_test/styles';
 
-    if (typeof window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__ === 'string') {
-      style.textContent = window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__;
+    const bundledCss = window.__ACU_VISUALIZER_TEST_BUNDLED_CSS__ || hostWindow.__ACU_VISUALIZER_TEST_BUNDLED_CSS__;
+    if (typeof bundledCss === 'string') {
+      style.textContent = bundledCss;
       style.dataset.source = 'acu_visualizer_test/bundled';
       style.dataset.version = 'bundled';
-      document.head.appendChild(style);
+      hostDocument.head.appendChild(style);
       return style;
     }
 
@@ -79,7 +91,7 @@ export function bootstrapAcuVisualizerTest() {
 
     style.textContent = cssTexts.join('\n\n');
     style.dataset.version = STYLE_VERSION;
-    document.head.appendChild(style);
+    hostDocument.head.appendChild(style);
     return style;
   };
 
@@ -219,15 +231,18 @@ export function bootstrapAcuVisualizerTest() {
 
   const lifecycle = initAcuVisualizerTest(deps);
 
-  window.ACUVisualizerTest = window.ACUVisualizerTest || {};
-  window.ACUVisualizerTest.version = 'modular-test-migration';
-  window.ACUVisualizerTest.lifecycle = lifecycle;
-  window.ACUVisualizerTest.deps = deps;
-  window.ACUVisualizerTest.destroy = function destroy() {
+  const api = hostWindow.ACUVisualizerTest || {};
+  api.version = 'modular-test-migration';
+  api.lifecycle = lifecycle;
+  api.deps = deps;
+  api.destroy = function destroy() {
     lifecycle.destroy();
-    document.getElementById('acu-visualizer-test-style-loader')?.remove();
+    hostDocument.getElementById('acu-visualizer-test-style-loader')?.remove();
   };
-  return window.ACUVisualizerTest;
+  hostWindow.ACUVisualizerTest = api;
+  window.ACUVisualizerTest = api;
+
+  return api;
 }
 
 if (!window.__ACU_VISUALIZER_TEST_LOADER_IMPORTING__) {
