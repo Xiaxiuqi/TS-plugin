@@ -4,6 +4,7 @@
 
 import { getCore } from '../core/bridge.js';
 import { acuMenuItemContent, STORAGE_KEYS } from '../core/constants.js';
+import { removeWithEvents } from '../core/dom-cleanup.js';
 import { state } from '../core/state.js';
 import { startRowOrderEditing, stopRowOrderEditing } from './row-sort.js';
 import { activateSavedOrFirstTab, bindTabClickEvents, getActiveTabState } from './tabs.js';
@@ -118,11 +119,13 @@ export function showOrderMenu(event, deps = {}) {
   const { $ } = deps.core || getCore();
   const $existingMenu = $('.acu-order-menu');
   if ($existingMenu.length > 0) {
-    $existingMenu.remove();
+    removeWithEvents($existingMenu);
     return;
   }
 
-  $('.acu-cell-menu, .acu-edit-overlay').remove();
+  $('.acu-cell-menu, .acu-edit-overlay').each(function () {
+    removeWithEvents($(this));
+  });
   const isNightMode = $('.acu-table-container').hasClass('night-mode');
   const config = deps.getConfig ? deps.getConfig() : { theme: 'retro' };
 
@@ -137,7 +140,16 @@ export function showOrderMenu(event, deps = {}) {
   $('body').append($menu);
   $menu.css({ left: `${event.clientX}px`, top: `${event.clientY}px`, position: 'fixed' });
 
-  $menu.find('.acu-cell-menu-item').on('click', function () {
+  const closeRecords = [];
+  const removeCloseListeners = () => {
+    closeRecords.splice(0).forEach(record => deps.schedulerRegistry?.removeEventListener?.(record));
+    document.removeEventListener('click', closeOrderMenu);
+    if (window.parent && window.parent.document) {
+      window.parent.document.removeEventListener('click', closeOrderMenu);
+    }
+  };
+
+  $menu.find('.acu-cell-menu-item').on('click.acu', function () {
     const action = $(this).data('action');
     if (action === 'tab-order') {
       if (state.flags.isEditingRowOrder) stopRowOrderEditing(deps);
@@ -148,22 +160,34 @@ export function showOrderMenu(event, deps = {}) {
       if (state.flags.isEditingRowOrder) stopRowOrderEditing(deps);
       else startRowOrderEditing(deps);
     }
-    $menu.remove();
+    removeCloseListeners();
+    removeWithEvents($menu);
   });
 
   const closeOrderMenu = e => {
     if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
-      $menu.remove();
-      document.removeEventListener('click', closeOrderMenu);
-      if (window.parent && window.parent.document) {
-        window.parent.document.removeEventListener('click', closeOrderMenu);
-      }
+      removeCloseListeners();
+      removeWithEvents($menu);
     }
   };
   setTimeout(() => {
-    document.addEventListener('click', closeOrderMenu);
+    const iframeRecord = deps.schedulerRegistry?.addEventListener?.(document, 'click', closeOrderMenu);
+    if (iframeRecord) {
+      closeRecords.push(iframeRecord);
+    } else {
+      document.addEventListener('click', closeOrderMenu);
+    }
     if (window.parent && window.parent.document && window.parent.document !== document) {
-      window.parent.document.addEventListener('click', closeOrderMenu);
+      const parentRecord = deps.schedulerRegistry?.addEventListener?.(
+        window.parent.document,
+        'click',
+        closeOrderMenu,
+      );
+      if (parentRecord) {
+        closeRecords.push(parentRecord);
+      } else {
+        window.parent.document.addEventListener('click', closeOrderMenu);
+      }
     }
   }, 100);
   event.stopPropagation();

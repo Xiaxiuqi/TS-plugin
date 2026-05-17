@@ -2,8 +2,9 @@
 // 来源：public/acu_visualizer/acu_visualizer-test.js 中 showCellMenu()、handleCellAction() 的编辑/插入/删除/恢复/发送输入框逻辑。
 // 迁移原则：保留原菜单 class、data-action、插入占位符、pending delete 语义，不夹带优化。
 
-import { acuMenuItemContent } from '../core/constants.js';
 import { getCore } from '../core/bridge.js';
+import { acuMenuItemContent } from '../core/constants.js';
+import { removeWithEvents } from '../core/dom-cleanup.js';
 import { addCellHistory } from './cell-history.js';
 
 export function createEmptyRow(colCount) {
@@ -79,8 +80,11 @@ export function generateEditDialogHTML({ tableName, cellContent, isNightMode }) 
 
 export function showCellMenu(event, cell, deps = {}) {
   const { $ } = deps.core || getCore();
-  $('.acu-cell-menu, .acu-edit-overlay').remove();
+  $('.acu-cell-menu, .acu-edit-overlay').each(function () {
+    removeWithEvents($(this));
+  });
 
+  // 兼容清理迁移前可能残留的全局关闭监听。
   if (window.acuCellMenuCloseHandler) {
     document.removeEventListener('click', window.acuCellMenuCloseHandler);
     if (window.parent && window.parent.document) {
@@ -120,7 +124,18 @@ export function showCellMenu(event, cell, deps = {}) {
   $menu.data('clickX', clickX);
   $menu.data('clickY', clickY);
 
-  $menu.find('.acu-cell-menu-item').on('click', function () {
+  const closeRecords = [];
+  const removeCloseListeners = () => {
+    closeRecords.splice(0).forEach(record => deps.schedulerRegistry?.removeEventListener?.(record));
+    if (window.acuCellMenuCloseHandler) {
+      document.removeEventListener('click', window.acuCellMenuCloseHandler);
+      if (window.parent && window.parent.document) {
+        window.parent.document.removeEventListener('click', window.acuCellMenuCloseHandler);
+      }
+    }
+  };
+
+  $menu.find('.acu-cell-menu-item').on('click.acu', function () {
     const action = $(this).data('action');
     if (action === 'history') {
       const simulatedEvent = {
@@ -133,32 +148,38 @@ export function showCellMenu(event, cell, deps = {}) {
     } else {
       handleCellAction(action, tableKey, tableName, rowIndex, colIndex, cell, cellContent, null, deps);
     }
-    $menu.remove();
-    if (window.acuCellMenuCloseHandler) {
-      document.removeEventListener('click', window.acuCellMenuCloseHandler);
-      if (window.parent && window.parent.document) {
-        window.parent.document.removeEventListener('click', window.acuCellMenuCloseHandler);
-      }
-    }
+    removeCloseListeners();
+    removeWithEvents($menu);
   });
 
   const closeMenu = e => {
     if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
-      $menu.remove();
-      if (window.acuCellMenuCloseHandler) {
-        document.removeEventListener('click', window.acuCellMenuCloseHandler);
-        if (window.parent && window.parent.document) {
-          window.parent.document.removeEventListener('click', window.acuCellMenuCloseHandler);
-        }
-      }
+      removeCloseListeners();
+      removeWithEvents($menu);
     }
   };
 
   window.acuCellMenuCloseHandler = closeMenu;
   setTimeout(() => {
-    document.addEventListener('click', closeMenu, { once: false });
+    const listenerOptions = { once: false };
+    const iframeRecord = deps.schedulerRegistry?.addEventListener?.(document, 'click', closeMenu, listenerOptions);
+    if (iframeRecord) {
+      closeRecords.push(iframeRecord);
+    } else {
+      document.addEventListener('click', closeMenu, listenerOptions);
+    }
     if (window.parent && window.parent.document && window.parent.document !== document) {
-      window.parent.document.addEventListener('click', closeMenu, { once: false });
+      const parentRecord = deps.schedulerRegistry?.addEventListener?.(
+        window.parent.document,
+        'click',
+        closeMenu,
+        listenerOptions,
+      );
+      if (parentRecord) {
+        closeRecords.push(parentRecord);
+      } else {
+        window.parent.document.addEventListener('click', closeMenu, listenerOptions);
+      }
     }
   }, 100);
 
@@ -221,18 +242,18 @@ export async function handleCellAction(
         } else {
           console.warn('保存失败，但编辑已应用到本地');
         }
-        $editOverlay.remove();
+        removeWithEvents($editOverlay);
         deps.setCellEditing?.(false);
       };
 
       const cancelEdit = () => {
-        $editOverlay.remove();
+        removeWithEvents($editOverlay);
         deps.setCellEditing?.(false);
       };
 
-      $editOverlay.find('.acu-save-btn').on('click', saveEdit);
-      $editOverlay.find('.acu-cancel-btn').on('click', cancelEdit);
-      $textarea.on('keydown', function (e) {
+      $editOverlay.find('.acu-save-btn').on('click.acu', saveEdit);
+      $editOverlay.find('.acu-cancel-btn').on('click.acu', cancelEdit);
+      $textarea.on('keydown.acu', function (e) {
         if (e.key === 'Enter' && e.ctrlKey) {
           e.preventDefault();
           saveEdit();
@@ -244,10 +265,10 @@ export async function handleCellAction(
 
       let editMouseDownOnBg = false;
       $editOverlay
-        .on('mousedown', function (e) {
+        .on('mousedown.acu', function (e) {
           editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
         })
-        .on('mouseup', function (e) {
+        .on('mouseup.acu', function (e) {
           if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
           editMouseDownOnBg = false;
         });

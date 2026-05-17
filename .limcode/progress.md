@@ -1,16 +1,16 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T18:35:11.785Z
+- Updated At: 2026-05-17T21:18:43.381Z
 - Status: active
-- Phase: plan
+- Phase: implementation
 
 ## 当前摘要
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 模块迁移稳定，准备进入内存优化详细规划
-- 最新结论：测试版已完成 src 迁移、单文件构建、父页面样式注入修复，并修复加载通知重复、行排序、删除行、搜索事件等回归问题；当前用户确认无问题。接下来只阅读内存优化文档并制定更详细的逐步计划，暂不修改业务代码。
-- 下一步：阅读 src/acu_visualizer_test/docs 内存优化相关文档，基于现有规划创建详细逐步实施计划。
+- 当前焦点：ACU Visualizer 内存优化 L1 泄漏治理完成，等待浏览器回归
+- 最新结论：已完成 L1.2/L1.3：新增 scheduler 原生事件 registry，菜单跨 document 点击监听由 registry 管理；新增 dom-cleanup 工具，设置/历史/快捷/编辑/顺序菜单等临时 UI 关闭改为带事件解绑清理；完成单入口构建并同步 public。
+- 下一步：请在浏览器回归测试单元格菜单、顺序菜单、设置弹窗、历史弹窗、编辑弹窗、快捷选项弹窗、通知显示/消失、重复 import 后无重复触发。通过后再规划 L2.1 状态缓存清理。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -26,8 +26,8 @@
 - [x] 建立优化前基线：记录数据规模、localStorage 占用、DOM 节点数、Heap/Performance 基线  `#mem-l0-1`
 - [x] 补齐内存优化验收表与回归表，明确每阶段通过/回滚标准  `#mem-l0-2`
 - [x] 规划并实施 destroy/重复初始化清理增强，仅清理测试版 DOM、事件、计时器、观察器和临时状态  `#mem-l1-1`
-- [ ] 规划并实施事件生命周期登记与跨 document 监听清理，验证热重载/刷新不叠加监听  `#mem-l1-2` (in_progress)
-- [ ] 规划并实施弹窗/菜单/通知残留清理，验证打开关闭循环无 DOM 泄漏  `#mem-l1-3`
+- [x] 规划并实施事件生命周期登记与跨 document 监听清理，验证热重载/刷新不叠加监听  `#mem-l1-2`
+- [x] 规划并实施弹窗/菜单/通知残留清理，验证打开关闭循环无 DOM 泄漏  `#mem-l1-3`
 - [ ] 规划并实施状态缓存清理：不存在表格的 diff/userEdit/pendingDelete/rowMapping/pagination 清理  `#mem-l2-1`
 - [ ] 规划快照轻量化兼容层：旧快照只读兼容，新 hash 快照 feature flag 试运行  `#mem-l2-2`
 - [ ] 规划单元格历史容量治理：总量上限、过长值处理、旧格式读取兼容与可回滚策略  `#mem-l2-3`
@@ -51,12 +51,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T14:18:37.448Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T14:18:49.402Z | updated | acu-visualizer-phase-6-render-sync-lifecycle-migration | 完成第六阶段渲染、数据库同步与生命周期模块迁移：table-renderer/database-sync/core/lifecycle/core/scheduler/main.js。已验证模块可 import 和基础渲染/同步/生命周期行为，未修改原插件目录。
-- 2026-05-17T15:11:27.985Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T15:14:15.568Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T15:17:25.295Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T15:20:52.925Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:21:04.729Z | updated | acu-visualizer-css-migration | 完成测试版 CSS 完整迁移：search.css/table.css 与原脚本提取内容逐字节一致，main.js 改用 fetch + style 注入，新增 CSS 迁移记录。
 - 2026-05-17T15:42:51.788Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:46:27.938Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -71,6 +65,12 @@
 - 2026-05-17T18:20:29.329Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T18:22:19.255Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T18:35:11.785Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
+- 2026-05-17T20:52:41.245Z | updated | acu-moonbox-structure-restored | 恢复月相盒原版星尘与粒子 DOM 结构，重新构建并同步 public/acu_visualizer_test/index.js；随后暂停实现，进入下一步优化详细计划。
+- 2026-05-17T20:54:15.724Z | artifact_changed | plan | 同步计划文档：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
+- 2026-05-17T21:00:51.292Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
+- 2026-05-17T21:10:09.845Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
+- 2026-05-17T21:18:34.333Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
+- 2026-05-17T21:18:43.381Z | milestone_recorded | memory-l1-leak-cleanup-completed | 完成内存优化 L1 泄漏治理：事件生命周期登记、跨 document 菜单监听清理、弹窗/菜单/通知临时 UI 清理，并完成构建同步。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,13 +80,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T18:35:11.785Z",
+  "updatedAt": "2026-05-17T21:18:43.381Z",
   "status": "active",
-  "phase": "plan",
-  "currentFocus": "ACU Visualizer 模块迁移稳定，准备进入内存优化详细规划",
-  "latestConclusion": "测试版已完成 src 迁移、单文件构建、父页面样式注入修复，并修复加载通知重复、行排序、删除行、搜索事件等回归问题；当前用户确认无问题。接下来只阅读内存优化文档并制定更详细的逐步计划，暂不修改业务代码。",
+  "phase": "implementation",
+  "currentFocus": "ACU Visualizer 内存优化 L1 泄漏治理完成，等待浏览器回归",
+  "latestConclusion": "已完成 L1.2/L1.3：新增 scheduler 原生事件 registry，菜单跨 document 点击监听由 registry 管理；新增 dom-cleanup 工具，设置/历史/快捷/编辑/顺序菜单等临时 UI 关闭改为带事件解绑清理；完成单入口构建并同步 public。",
   "currentBlocker": null,
-  "nextAction": "阅读 src/acu_visualizer_test/docs 内存优化相关文档，基于现有规划创建详细逐步实施计划。",
+  "nextAction": "请在浏览器回归测试单元格菜单、顺序菜单、设置弹窗、历史弹窗、编辑弹窗、快捷选项弹窗、通知显示/消失、重复 import 后无重复触发。通过后再规划 L2.1 状态缓存清理。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
@@ -110,12 +110,12 @@
     {
       "id": "mem-l1-2",
       "content": "规划并实施事件生命周期登记与跨 document 监听清理，验证热重载/刷新不叠加监听",
-      "status": "in_progress"
+      "status": "completed"
     },
     {
       "id": "mem-l1-3",
       "content": "规划并实施弹窗/菜单/通知残留清理，验证打开关闭循环无 DOM 泄漏",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "mem-l2-1",
@@ -151,42 +151,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T14:18:37.448Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T14:18:49.402Z",
-      "type": "updated",
-      "refId": "acu-visualizer-phase-6-render-sync-lifecycle-migration",
-      "message": "完成第六阶段渲染、数据库同步与生命周期模块迁移：table-renderer/database-sync/core/lifecycle/core/scheduler/main.js。已验证模块可 import 和基础渲染/同步/生命周期行为，未修改原插件目录。"
-    },
-    {
-      "at": "2026-05-17T15:11:27.985Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T15:14:15.568Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T15:17:25.295Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T15:20:52.925Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T15:21:04.729Z",
       "type": "updated",
@@ -270,21 +234,57 @@
       "type": "artifact_changed",
       "refId": "plan",
       "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T20:52:41.245Z",
+      "type": "updated",
+      "refId": "acu-moonbox-structure-restored",
+      "message": "恢复月相盒原版星尘与粒子 DOM 结构，重新构建并同步 public/acu_visualizer_test/index.js；随后暂停实现，进入下一步优化详细计划。"
+    },
+    {
+      "at": "2026-05-17T20:54:15.724Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划文档：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T21:00:51.292Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T21:10:09.845Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T21:18:34.333Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T21:18:43.381Z",
+      "type": "milestone_recorded",
+      "refId": "memory-l1-leak-cleanup-completed",
+      "message": "完成内存优化 L1 泄漏治理：事件生命周期登记、跨 document 菜单监听清理、弹窗/菜单/通知临时 UI 清理，并完成构建同步。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
     "todosTotal": 11,
-    "todosCompleted": 3,
-    "todosInProgress": 1,
+    "todosCompleted": 5,
+    "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T18:35:11.785Z",
-    "bodyHash": "sha256:c3ef7bc4cb2ca8f41f0186d8b7c27ce5288abe4c24a894328f47bfe2ecd5aee5"
+    "generatedAt": "2026-05-17T21:18:43.381Z",
+    "bodyHash": "sha256:ae1dbca98cbde814c29e36813ce019db9d866eaaae8e9916ad947fc3380e5235"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

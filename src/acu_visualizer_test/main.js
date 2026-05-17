@@ -3,6 +3,7 @@
 // 迁移原则：仅组装测试版生命周期入口，不接入正式插件，不夹带优化。
 
 import { getCore, getParentWindow } from './core/bridge.js';
+import { removeTransientUi } from './core/dom-cleanup.js';
 import { initAcuVisualizerTest } from './core/lifecycle.js';
 import { state } from './core/state.js';
 import { getConfig, getCurrentPageForTable, savePaginationState } from './core/storage.js';
@@ -279,6 +280,7 @@ export function bootstrapAcuVisualizerTest() {
     ].join(', ');
 
     try {
+      removeTransientUi(core.$, hostDocument);
       core.$?.(selectors)?.off?.('.acu')?.remove?.();
       core.$?.(hostDocument)?.off?.('.acu');
       core.$?.(hostWindow)?.off?.('.acu');

@@ -44,6 +44,7 @@ export function observeAIMessages({ $, onAIMessageAdded, root = document.body } 
 export function createSchedulerRegistry() {
   const timeouts = new Set();
   const observers = new Set();
+  const eventListeners = new Set();
   return {
     setTimeout(fn, ms) {
       const id = setTimeout(() => {
@@ -57,11 +58,30 @@ export function createSchedulerRegistry() {
       observers.add(observer);
       return observer;
     },
+    addEventListener(target, type, handler, options) {
+      if (!target || typeof target.addEventListener !== 'function') return null;
+      target.addEventListener(type, handler, options);
+      const record = { target, type, handler, options };
+      eventListeners.add(record);
+      return record;
+    },
+    removeEventListener(record) {
+      if (!record) return;
+      try {
+        record.target?.removeEventListener?.(record.type, record.handler, record.options);
+      } finally {
+        eventListeners.delete(record);
+      }
+    },
     clearAll() {
       timeouts.forEach(id => clearTimeout(id));
       timeouts.clear();
       observers.forEach(observer => observer.disconnect?.());
       observers.clear();
+      eventListeners.forEach(record => {
+        record.target?.removeEventListener?.(record.type, record.handler, record.options);
+      });
+      eventListeners.clear();
     },
   };
 }

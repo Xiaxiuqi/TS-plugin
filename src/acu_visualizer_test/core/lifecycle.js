@@ -16,6 +16,7 @@ import { cleanupStorage, loadSnapshot, saveSnapshot } from './storage.js';
 
 export function createLifecycle(deps = {}) {
   const registry = deps.schedulerRegistry || createSchedulerRegistry();
+  deps.schedulerRegistry = registry;
 
   const initializeScript = () => {
     const core = deps.core || getCore();
@@ -109,6 +110,7 @@ export function createLifecycle(deps = {}) {
         ?.remove?.();
     },
     initializeScript,
+    registry,
   };
 }
 

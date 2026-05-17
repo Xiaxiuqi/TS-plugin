@@ -4,6 +4,7 @@
 
 import { getCore, getIsolationKey } from '../core/bridge.js';
 import { STORAGE_KEYS } from '../core/constants.js';
+import { removeWithEvents } from '../core/dom-cleanup.js';
 import { safeLocalStorageSet } from '../core/storage.js';
 
 export function getCellHistoryAll() {
@@ -139,7 +140,9 @@ export function showHistoryMenu(event, cell, tableName, rowIndex, colIndex, deps
   const $dialog = $(generateHistoryDialogHTML(history, tableName, { isNightMode, theme: config.theme }));
   $('body').append($dialog);
 
-  $dialog.find('.acu-history-item').on('click', async function () {
+  const closeDialog = () => removeWithEvents($dialog);
+
+  $dialog.find('.acu-history-item').on('click.acu', async function () {
     const value = $(this).attr('data-value');
     const strValue = String(value || '');
     $(cell).html(strValue.replace(/\n/g, '<br>'));
@@ -163,14 +166,14 @@ export function showHistoryMenu(event, cell, tableName, rowIndex, colIndex, deps
       newValue: strValue,
     });
 
-    $dialog.remove();
+    closeDialog();
     deps.showNotification?.('已恢复历史值,标记为用户编辑', 'success');
   });
 
-  $dialog.find('.acu-history-close, .acu-history-close-btn').on('click', () => $dialog.remove());
-  $dialog.on('click', function (e) {
+  $dialog.find('.acu-history-close, .acu-history-close-btn').on('click.acu', closeDialog);
+  $dialog.on('click.acu', function (e) {
     if ($(e.target).hasClass('acu-history-overlay')) {
-      $(this).remove();
+      closeDialog();
     }
   });
 }

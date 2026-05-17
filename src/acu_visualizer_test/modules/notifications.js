@@ -61,7 +61,9 @@ export function clearNotifications(core = getCore()) {
     } catch (error) {
       try {
         $(notification).remove();
-      } catch (_ignored) {}
+      } catch (_ignored) {
+        // 忽略 destroy 阶段的兜底清理失败，避免影响后续清理。
+      }
     }
   });
   notificationQueue.length = 0;

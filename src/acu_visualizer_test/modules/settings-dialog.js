@@ -4,6 +4,7 @@
 
 import { getCore } from '../core/bridge.js';
 import { DEFAULT_CLEANUP_SETTINGS, DEFAULT_CONFIG, STORAGE_KEYS, STORAGE_SIZE_LIMIT_MB } from '../core/constants.js';
+import { removeWithEvents } from '../core/dom-cleanup.js';
 import {
   getCleanupSettings,
   getConfig,
@@ -118,7 +119,9 @@ export function generateSettingsDialogHTML({ config, cleanupSettings, storageAna
 
 export function showSettingsDialog(deps = {}) {
   const { $ } = deps.core || getCore();
-  $('.acu-settings-overlay').remove();
+  $('.acu-settings-overlay').each(function () {
+    removeWithEvents($(this));
+  });
   const config = getConfig();
   const cleanupSettings = getCleanupSettings();
   const storageAnalysis = getStorageAnalysis();
@@ -129,18 +132,19 @@ export function showSettingsDialog(deps = {}) {
 
 export function bindSettingsDialogEvents(deps = {}) {
   const { $ } = deps.core || getCore();
-  $('.acu-settings-close, #acu-settings-cancel').on('click', () => $('.acu-settings-overlay').remove());
-  $('.acu-settings-tab').on('click', function () {
+  const closeSettingsDialog = () => removeWithEvents($('.acu-settings-overlay'));
+  $('.acu-settings-close, #acu-settings-cancel').on('click.acu', closeSettingsDialog);
+  $('.acu-settings-tab').on('click.acu', function () {
     const tabId = $(this).data('tab');
     $('.acu-settings-tab').removeClass('active');
     $(this).addClass('active');
     $('.acu-settings-tab-content').removeClass('active');
     $(`#${tabId}-tab`).addClass('active');
   });
-  $('#maxHistoryItems').on('input', function () {
+  $('#maxHistoryItems').on('input.acu', function () {
     $('#historyCountValue').text($(this).val());
   });
-  $('.acu-theme-option input').on('change', function () {
+  $('.acu-theme-option input').on('change.acu', function () {
     const theme = $(this).val();
     $('.acu-theme-option').removeClass('active');
     $(this).closest('.acu-theme-option').addClass('active');
@@ -148,7 +152,7 @@ export function bindSettingsDialogEvents(deps = {}) {
       .removeClass((index, className) => (className.match(/acu-theme-\w+/g) || []).join(' '))
       .addClass(`acu-theme-${theme}`);
   });
-  $('#acu-analyze-storage').on('click', function () {
+  $('#acu-analyze-storage').on('click.acu', function () {
     const analysis = getStorageAnalysis();
     const cleanableSize = analysis.nonCriticalItems.reduce((sum, item) => sum + (parseFloat(item.size) || 0), 0) / 1024;
     $('.acu-storage-bar-fill').css('width', `${Math.min(100, (analysis.totalSize / STORAGE_SIZE_LIMIT_MB) * 100)}%`);
@@ -158,7 +162,7 @@ export function bindSettingsDialogEvents(deps = {}) {
     $('.acu-cleanable').text(`${cleanableSize.toFixed(2)} MB`);
     showStatusMessage('存储分析完成', 'success', deps.core);
   });
-  $('#acu-cleanup-now').on('click', async function () {
+  $('#acu-cleanup-now').on('click.acu', async function () {
     const cleanupSettings = collectCleanupSettings($);
     if (!Object.values(cleanupSettings).some(v => v)) {
       showStatusMessage('请至少选择一个清理项目', 'error', deps.core);
@@ -181,7 +185,7 @@ export function bindSettingsDialogEvents(deps = {}) {
       showStatusMessage(`清理失败: ${result.error}`, 'error', deps.core);
     }
   });
-  $('#acu-clear-all').on('click', async function () {
+  $('#acu-clear-all').on('click.acu', async function () {
     const cleanupSettings = {
       clearSnapshots: true,
       clearHistory: true,
@@ -199,16 +203,16 @@ export function bindSettingsDialogEvents(deps = {}) {
       showStatusMessage(`清理失败: ${result.error}`, 'error', deps.core);
     }
   });
-  $('#acu-reset-settings').on('click', function () {
+  $('#acu-reset-settings').on('click.acu', function () {
     if (confirm('确定要重置所有设置为默认值吗？')) {
       saveConfig(DEFAULT_CONFIG);
       saveCleanupSettings(DEFAULT_CLEANUP_SETTINGS);
-      $('.acu-settings-overlay').remove();
+      closeSettingsDialog();
       setTimeout(() => showSettingsDialog(deps), 100);
       showStatusMessage('设置已重置为默认值', 'success', deps.core);
     }
   });
-  $('#acu-settings-save').on('click', function () {
+  $('#acu-settings-save').on('click.acu', function () {
     const config = getConfig();
     const newConfig = {
       ...config,
@@ -225,7 +229,7 @@ export function bindSettingsDialogEvents(deps = {}) {
     if ($('#autoNightMode').is(':checked')) $('.acu-table-container').addClass('night-mode');
     else $('.acu-table-container').removeClass('night-mode');
     showStatusMessage('设置已保存', 'success', deps.core);
-    setTimeout(() => $('.acu-settings-overlay').remove(), 1000);
+    setTimeout(closeSettingsDialog, 1000);
   });
 }
 
@@ -255,12 +259,13 @@ export function showCleanupConfirmation(cleanupSettings, core = getCore()) {
     }
     const confirmationHtml = `<div class="acu-confirm-overlay ${isNightMode ? 'night-mode' : ''}"><div class="acu-confirm-dialog"><div class="acu-confirm-header"><h3>⚠️ 确认清理操作</h3></div><div class="acu-confirm-content"><div class="acu-warning-box" style="margin-bottom: 20px;"><div class="acu-warning-icon">🚨</div><div class="acu-warning-content"><strong>重要：请先备份数据库模板！</strong><p>清理操作将删除以下数据，且无法恢复：</p></div></div><ul class="acu-cleanup-list">${itemsToClean.map(item => `<li>${item}</li>`).join('')}</ul><div class="acu-confirm-question"><p>确定要执行清理吗？</p></div></div><div class="acu-confirm-buttons"><button class="acu-btn acu-btn-secondary" id="acu-confirm-cancel">取消</button><button class="acu-btn acu-btn-danger" id="acu-confirm-proceed">确定清理</button></div></div></div>`;
     $('body').append(confirmationHtml);
-    $('#acu-confirm-cancel').on('click', () => {
-      $('.acu-confirm-overlay').remove();
+    const closeConfirmation = () => removeWithEvents($('.acu-confirm-overlay'));
+    $('#acu-confirm-cancel').on('click.acu', () => {
+      closeConfirmation();
       resolve(false);
     });
-    $('#acu-confirm-proceed').on('click', () => {
-      $('.acu-confirm-overlay').remove();
+    $('#acu-confirm-proceed').on('click.acu', () => {
+      closeConfirmation();
       resolve(true);
     });
   });

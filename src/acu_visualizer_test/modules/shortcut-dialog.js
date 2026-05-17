@@ -4,6 +4,7 @@
 
 import { getCore } from '../core/bridge.js';
 import { THEMES } from '../core/constants.js';
+import { removeWithEvents } from '../core/dom-cleanup.js';
 
 export function getShortcutThemeClass($container) {
   return THEMES.map(t => `acu-theme-${t.id}`).find(c => $container.hasClass(c)) || 'acu-theme-modern';
@@ -81,15 +82,15 @@ export async function openShortcutDialog(deps = {}) {
   const $overlay = $(generateShortcutDialogHTML({ themeClass, isNightMode, aiLayers, settings }));
   $('body').append($overlay);
 
-  const close = () => $overlay.remove();
-  $overlay.find('.acu-shortcut-lite-close').on('click', close);
+  const close = () => removeWithEvents($overlay);
+  $overlay.find('.acu-shortcut-lite-close').on('click.acu', close);
 
   let shortcutMouseDownOnBg = false;
   $overlay
-    .on('mousedown', function (e) {
+    .on('mousedown.acu', function (e) {
       shortcutMouseDownOnBg = $(e.target).hasClass('acu-shortcut-lite-overlay');
     })
-    .on('mouseup', function (e) {
+    .on('mouseup.acu', function (e) {
       if (shortcutMouseDownOnBg && $(e.target).hasClass('acu-shortcut-lite-overlay')) close();
       shortcutMouseDownOnBg = false;
     });
@@ -123,8 +124,8 @@ export async function openShortcutDialog(deps = {}) {
     return false;
   };
 
-  $('#acu-sc-save').on('click', () => saveSettingsFromUi());
-  $('#acu-sc-update').on('click', async () => {
+  $('#acu-sc-save').on('click.acu', () => saveSettingsFromUi());
+  $('#acu-sc-update').on('click.acu', async () => {
     try {
       if (typeof api.manualUpdate === 'function') {
         await api.manualUpdate();
@@ -140,7 +141,7 @@ export async function openShortcutDialog(deps = {}) {
       deps.showNotification?.('手动更新出错: ' + (e?.message || e), 'error');
     }
   });
-  $('#acu-sc-open-visualizer').on('click', () => {
+  $('#acu-sc-open-visualizer').on('click.acu', () => {
     try {
       api.openVisualizer();
       close();
