@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T15:21:04.729Z
+- Updated At: 2026-05-17T15:48:13.732Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 测试版 CSS 完整迁移完成
-- 最新结论：已将原 injectSearchStyles 与 addStyles 中的 CSS 完整迁移到测试版 styles/search.css 与 styles/table.css，并将 main.js 改为 fetch + <style> 注入；逐字节一致性校验和入口 smoke 验证通过，未触碰 public/acu_visualizer 原插件目录。
-- 下一步：在 SillyTavern 浏览器环境重新 import 测试版入口并进行视觉/功能回归：确认通知、表格、搜索、弹窗、拖拽、主题/夜间模式样式与原版一致，且不再出现跨域 cssRules SecurityError。
+- 当前焦点：ACU Visualizer 测试版稳定 loader 入口完成
+- 最新结论：已新增 public/acu_visualizer_test/loader.js 与 version.js；酒馆助手可固定 import loader.js，loader 会先 destroy 旧实例，再以固定版本 main.js?v=20260517-css-loader 导入主入口，避免裸 main.js ESM 缓存导致旧入口不执行。loader sm…
+- 下一步：在酒馆助手中改用 import 'https://ts-plugin.pages.dev/acu_visualizer_test/loader.js' 进行浏览器回归，确认 CSS 正常注入、通知/表格可见、无 cssRules SecurityError。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -23,10 +23,9 @@
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 从原 acu_visualizer-test.js 提取 injectSearchStyles/addStyles 的完整 CSS，写入测试版样式文件，保持原版一致  `#css-1`
-- [x] 修改测试版 main.js，使用 fetch + <style> 注入 CSS，避免跨域 cssRules 报错  `#css-2`
-- [x] 执行 CSS 文件与原版提取内容一致性校验、入口 import smoke 验证，确认不触碰原插件  `#css-3`
-- [x] 同步 CSS 迁移记录、change-log、迁移矩阵/测试清单和项目进度  `#css-4`
+- [x] 新增 acu_visualizer_test/loader.js，固定入口由 loader 负责 destroy 并版本化导入 main.js  `#loader-1`
+- [x] 执行 loader/main import smoke 验证并确认不触碰原插件目录  `#loader-2`
+- [x] 同步 CSS/loader 迁移文档、change-log 和项目进度  `#loader-3`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -44,10 +43,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T13:28:17.572Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T13:29:43.848Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T13:29:55.168Z | updated | acu-visualizer-phase-2-data-migration | 完成第二阶段数据与差异模块迁移：storage/table-data/diff-highlighting。已验证模块可 import 与模拟数据 diff，未修改原插件目录。
-- 2026-05-17T13:37:58.322Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T13:39:41.208Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T13:39:52.545Z | updated | acu-visualizer-phase-3-ui-low-risk-migration | 完成第三阶段低 UI 风险模块迁移：notifications/theme/pagination/tabs。已验证模块可 import 和基础 HTML/class/state 行为，未修改原插件目录。
 - 2026-05-17T13:50:49.856Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -64,6 +59,10 @@
 - 2026-05-17T15:17:25.295Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:20:52.925Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:21:04.729Z | updated | acu-visualizer-css-migration | 完成测试版 CSS 完整迁移：search.css/table.css 与原脚本提取内容逐字节一致，main.js 改用 fetch + style 注入，新增 CSS 迁移记录。
+- 2026-05-17T15:42:51.788Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
+- 2026-05-17T15:46:27.938Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
+- 2026-05-17T15:48:00.618Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
+- 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -73,66 +72,37 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T15:21:04.729Z",
+  "updatedAt": "2026-05-17T15:48:13.732Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer 测试版 CSS 完整迁移完成",
-  "latestConclusion": "已将原 injectSearchStyles 与 addStyles 中的 CSS 完整迁移到测试版 styles/search.css 与 styles/table.css，并将 main.js 改为 fetch + <style> 注入；逐字节一致性校验和入口 smoke 验证通过，未触碰 public/acu_visualizer 原插件目录。",
+  "currentFocus": "ACU Visualizer 测试版稳定 loader 入口完成",
+  "latestConclusion": "已新增 public/acu_visualizer_test/loader.js 与 version.js；酒馆助手可固定 import loader.js，loader 会先 destroy 旧实例，再以固定版本 main.js?v=20260517-css-loader 导入主入口，避免裸 main.js ESM 缓存导致旧入口不执行。loader smoke 验证通过，未触碰 public/acu_visualizer 原插件目录。",
   "currentBlocker": null,
-  "nextAction": "在 SillyTavern 浏览器环境重新 import 测试版入口并进行视觉/功能回归：确认通知、表格、搜索、弹窗、拖拽、主题/夜间模式样式与原版一致，且不再出现跨域 cssRules SecurityError。",
+  "nextAction": "在酒馆助手中改用 import 'https://ts-plugin.pages.dev/acu_visualizer_test/loader.js' 进行浏览器回归，确认 CSS 正常注入、通知/表格可见、无 cssRules SecurityError。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
   },
   "todos": [
     {
-      "id": "css-1",
-      "content": "从原 acu_visualizer-test.js 提取 injectSearchStyles/addStyles 的完整 CSS，写入测试版样式文件，保持原版一致",
+      "id": "loader-1",
+      "content": "新增 acu_visualizer_test/loader.js，固定入口由 loader 负责 destroy 并版本化导入 main.js",
       "status": "completed"
     },
     {
-      "id": "css-2",
-      "content": "修改测试版 main.js，使用 fetch + <style> 注入 CSS，避免跨域 cssRules 报错",
+      "id": "loader-2",
+      "content": "执行 loader/main import smoke 验证并确认不触碰原插件目录",
       "status": "completed"
     },
     {
-      "id": "css-3",
-      "content": "执行 CSS 文件与原版提取内容一致性校验、入口 import smoke 验证，确认不触碰原插件",
-      "status": "completed"
-    },
-    {
-      "id": "css-4",
-      "content": "同步 CSS 迁移记录、change-log、迁移矩阵/测试清单和项目进度",
+      "id": "loader-3",
+      "content": "同步 CSS/loader 迁移文档、change-log 和项目进度",
       "status": "completed"
     }
   ],
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T13:28:17.572Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T13:29:43.848Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T13:29:55.168Z",
-      "type": "updated",
-      "refId": "acu-visualizer-phase-2-data-migration",
-      "message": "完成第二阶段数据与差异模块迁移：storage/table-data/diff-highlighting。已验证模块可 import 与模拟数据 diff，未修改原插件目录。"
-    },
-    {
-      "at": "2026-05-17T13:37:58.322Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T13:39:41.208Z",
       "type": "artifact_changed",
@@ -228,21 +198,45 @@
       "type": "updated",
       "refId": "acu-visualizer-css-migration",
       "message": "完成测试版 CSS 完整迁移：search.css/table.css 与原脚本提取内容逐字节一致，main.js 改用 fetch + style 注入，新增 CSS 迁移记录。"
+    },
+    {
+      "at": "2026-05-17T15:42:51.788Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T15:46:27.938Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T15:48:00.618Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
+    },
+    {
+      "at": "2026-05-17T15:48:13.732Z",
+      "type": "updated",
+      "refId": "acu-visualizer-test-loader",
+      "message": "完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。"
     }
   ],
   "stats": {
     "milestonesTotal": 0,
     "milestonesCompleted": 0,
-    "todosTotal": 4,
-    "todosCompleted": 4,
+    "todosTotal": 3,
+    "todosCompleted": 3,
     "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T15:21:04.729Z",
-    "bodyHash": "sha256:6c23014a48d8b35bfb19c59199421d95ba7b258385ce13b0117b49eb5f2ede5a"
+    "generatedAt": "2026-05-17T15:48:13.732Z",
+    "bodyHash": "sha256:210afd9ac015b237ba55a6237f92f30644319b6c7157845c4d795cdd4cd3ea89"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
