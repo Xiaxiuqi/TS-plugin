@@ -8,6 +8,7 @@ import { initAcuVisualizerTest } from './core/lifecycle.js';
 import { state } from './core/state.js';
 import { getConfig, getCurrentPageForTable, savePaginationState } from './core/storage.js';
 import { showCellMenu } from './modules/cell-editor.js';
+import { showHistoryMenu } from './modules/cell-history.js';
 import { saveDataToDatabase } from './modules/database-sync.js';
 import { clearAllTabUpdates } from './modules/diff-highlighting.js';
 import { clearNotifications, showLoadSuccessNotification, showNotification } from './modules/notifications.js';
@@ -180,8 +181,7 @@ export function bootstrapAcuVisualizerTest() {
     if ($contentArea.length) $contentArea.scrollTop(state.scroll.currentTableScrollTop);
   };
 
-  const bindExpandCollapseEvents = () => {
-    const showRefreshMenu = event => {
+  const showRefreshMenu = event => {
       event?.stopPropagation?.();
       event?.preventDefault?.();
 
@@ -262,8 +262,9 @@ export function bootstrapAcuVisualizerTest() {
           else window.parent.document.addEventListener('click', outsideClickHandler);
         }
       }, 100);
-    };
+  };
 
+  const bindExpandCollapseEvents = () => {
     $('.acu-table-container details')
       .off('toggle.acu')
       .on('toggle.acu', function () {
@@ -321,13 +322,15 @@ export function bootstrapAcuVisualizerTest() {
     showNotification: (message, type) => showNotification(message, type, core),
     showLoadSuccessNotification,
     showCellMenu: (e, cell) => showCellMenu(e, cell, deps),
+    showHistoryMenu: (e, cell, tableName, rowIndex, colIndex) =>
+      showHistoryMenu(e, cell, tableName, rowIndex, colIndex, deps),
     showSettingsDialog: () => showSettingsDialog(deps),
     showOrderMenu: e => showOrderMenu(e, deps),
     saveTableOrderFromUI: () => saveTableOrderFromUI(deps),
     cancelOrderEditing: () => cancelOrderEditing(deps),
     showThemeMenu: e => showThemeMenu(e, deps),
     toggleNightMode: () => toggleNightMode(core),
-    showRefreshMenu: e => showRefreshMenu(e, deps),
+    showRefreshMenu: e => showRefreshMenu(e),
     resetScrollPositionToTop,
     saveCurrentScrollPosition,
     applySavedScrollPositionImmediately,

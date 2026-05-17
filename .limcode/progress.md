@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T22:50:13.524Z
+- Updated At: 2026-05-17T23:36:33.660Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer settings-dialog 入口字符错误修复完成，等待复测
-- 最新结论：修复 settings-dialog.js 第 1 行误入的中文字符“的”，该字符导致 import 时 ReferenceError: 的 is not defined。已重新构建并同步 public/acu_visualizer_test/index.js。
-- 下一步：请重新 import 测试版，确认不再出现 settings-dialog.js:1:1 的 ReferenceError，再继续复测 7 项回归点。
+- 当前焦点：ACU Visualizer 历史菜单与刷新菜单二次回归修复完成
+- 最新结论：修复两项二次反馈：1) main.js 漏接 showHistoryMenu 到 deps，导致 cell-editor 调用 deps.showHistoryMenu 时为空，历史记录无反应；2) showRefreshMenu 误插入到 bindExpandCollapseEvents 内部且出现嵌套声明，deps 中引用作用域不可见，导致 Refere…
+- 下一步：请重新 import 后复测：单元格历史记录应弹出；刷新按钮应弹出三项菜单且不再报 showRefreshMenu is not defined。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -51,7 +51,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T15:46:27.938Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:00.618Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
 - 2026-05-17T16:02:41.305Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -71,6 +70,7 @@
 - 2026-05-17T21:18:43.381Z | milestone_recorded | memory-l1-leak-cleanup-completed | 完成内存优化 L1 泄漏治理：事件生命周期登记、跨 document 菜单监听清理、弹窗/菜单/通知临时 UI 清理，并完成构建同步。
 - 2026-05-17T22:04:51.362Z | updated | l1-regression-fixes | 修复 L1 优化后的 7 项回归问题并完成构建同步：历史、编辑保存、删除高亮、row mapping 缓存、设置 CSS、确认弹窗 CSS、快捷选项入口。
 - 2026-05-17T22:50:13.524Z | updated | settings-dialog-leading-char-fix | 移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。
+- 2026-05-17T23:36:33.660Z | updated | history-refresh-regression-fix | 补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,13 +80,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T22:50:13.524Z",
+  "updatedAt": "2026-05-17T23:36:33.660Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer settings-dialog 入口字符错误修复完成，等待复测",
-  "latestConclusion": "修复 settings-dialog.js 第 1 行误入的中文字符“的”，该字符导致 import 时 ReferenceError: 的 is not defined。已重新构建并同步 public/acu_visualizer_test/index.js。",
+  "currentFocus": "ACU Visualizer 历史菜单与刷新菜单二次回归修复完成",
+  "latestConclusion": "修复两项二次反馈：1) main.js 漏接 showHistoryMenu 到 deps，导致 cell-editor 调用 deps.showHistoryMenu 时为空，历史记录无反应；2) showRefreshMenu 误插入到 bindExpandCollapseEvents 内部且出现嵌套声明，deps 中引用作用域不可见，导致 ReferenceError。已移出为 bootstrap 内部顶层函数并重新构建同步 public。",
   "currentBlocker": null,
-  "nextAction": "请重新 import 测试版，确认不再出现 settings-dialog.js:1:1 的 ReferenceError，再继续复测 7 项回归点。",
+  "nextAction": "请重新 import 后复测：单元格历史记录应弹出；刷新按钮应弹出三项菜单且不再报 showRefreshMenu is not defined。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
@@ -151,12 +151,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T15:46:27.938Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T15:48:00.618Z",
       "type": "artifact_changed",
@@ -270,6 +264,12 @@
       "type": "updated",
       "refId": "settings-dialog-leading-char-fix",
       "message": "移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。"
+    },
+    {
+      "at": "2026-05-17T23:36:33.660Z",
+      "type": "updated",
+      "refId": "history-refresh-regression-fix",
+      "message": "补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。"
     }
   ],
   "stats": {
@@ -283,8 +283,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T22:50:13.524Z",
-    "bodyHash": "sha256:c0949ce57f755ba28ff63587e2ad4b766e1276c079ffeafa2fd9f671e51e4923"
+    "generatedAt": "2026-05-17T23:36:33.660Z",
+    "bodyHash": "sha256:4a45fc521ccf9071c5832f055e2efbf3457f2118033affd54b3841cc74cab744"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
