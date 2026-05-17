@@ -40,6 +40,32 @@ import {
 
   const deps = {};
 
+  const STYLE_FILES = Object.freeze(['table.css', 'search.css']);
+
+  const injectStyles = async () => {
+    document.getElementById('acu-visualizer-test-style-loader')?.remove();
+
+    const style = document.createElement('style');
+    style.id = 'acu-visualizer-test-style-loader';
+    style.dataset.source = 'acu_visualizer_test/styles';
+
+    const cssTexts = [];
+    for (const fileName of STYLE_FILES) {
+      const cssUrl = new URL(`./styles/${fileName}`, import.meta.url).href;
+      try {
+        const response = await fetch(cssUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        cssTexts.push(`/* ${fileName} */\n${await response.text()}`);
+      } catch (error) {
+        console.error(`[ACU TEST] 加载 CSS 失败: ${cssUrl}`, error);
+      }
+    }
+
+    style.textContent = cssTexts.join('\n\n');
+    document.head.appendChild(style);
+    return style;
+  };
+
   const updateTableContentOnly = () => {
     const rawData = getTableData(core);
     const tables = processJsonData(rawData);
@@ -171,15 +197,7 @@ import {
     checkAndUpdateTablePosition: () => checkAndUpdateTablePosition(deps),
     clearAllTabUpdates,
     updateSaveBtnState,
-    addStyles: () => {
-      if (!document.getElementById('acu-visualizer-test-style-loader')) {
-        const styleLink = document.createElement('link');
-        styleLink.id = 'acu-visualizer-test-style-loader';
-        styleLink.rel = 'stylesheet';
-        styleLink.href = new URL('./styles/table.css', import.meta.url).href;
-        document.head.appendChild(styleLink);
-      }
-    },
+    addStyles: () => injectStyles(),
   });
 
   const lifecycle = initAcuVisualizerTest(deps);
