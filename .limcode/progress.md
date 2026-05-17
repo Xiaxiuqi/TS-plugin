@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T22:04:51.362Z
+- Updated At: 2026-05-17T22:50:13.524Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer L1 回归问题修复完成，等待用户复测
-- 最新结论：针对用户反馈完成回归修复：历史菜单不再先移除触发节点；编辑保存先关闭弹窗再等待数据库保存；设置保存缺省 theme/nightMode 防止 acu-theme-undefined 与误关夜间模式；确认清理弹窗补充主题 class；恢复刷新按钮三项菜单和快捷选项入口；行排序回到 identity mapping 时删除 acu_row_position_ma…
-- 下一步：请用户复测 7 项反馈点；确认通过后再继续 L2.1 状态缓存清理。
+- 当前焦点：ACU Visualizer settings-dialog 入口字符错误修复完成，等待复测
+- 最新结论：修复 settings-dialog.js 第 1 行误入的中文字符“的”，该字符导致 import 时 ReferenceError: 的 is not defined。已重新构建并同步 public/acu_visualizer_test/index.js。
+- 下一步：请重新 import 测试版，确认不再出现 settings-dialog.js:1:1 的 ReferenceError，再继续复测 7 项回归点。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -51,7 +51,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T15:42:51.788Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:46:27.938Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:00.618Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
@@ -71,6 +70,7 @@
 - 2026-05-17T21:18:34.333Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T21:18:43.381Z | milestone_recorded | memory-l1-leak-cleanup-completed | 完成内存优化 L1 泄漏治理：事件生命周期登记、跨 document 菜单监听清理、弹窗/菜单/通知临时 UI 清理，并完成构建同步。
 - 2026-05-17T22:04:51.362Z | updated | l1-regression-fixes | 修复 L1 优化后的 7 项回归问题并完成构建同步：历史、编辑保存、删除高亮、row mapping 缓存、设置 CSS、确认弹窗 CSS、快捷选项入口。
+- 2026-05-17T22:50:13.524Z | updated | settings-dialog-leading-char-fix | 移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,13 +80,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T22:04:51.362Z",
+  "updatedAt": "2026-05-17T22:50:13.524Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer L1 回归问题修复完成，等待用户复测",
-  "latestConclusion": "针对用户反馈完成回归修复：历史菜单不再先移除触发节点；编辑保存先关闭弹窗再等待数据库保存；设置保存缺省 theme/nightMode 防止 acu-theme-undefined 与误关夜间模式；确认清理弹窗补充主题 class；恢复刷新按钮三项菜单和快捷选项入口；行排序回到 identity mapping 时删除 acu_row_position_mapping 缓存；待删除行渲染时压制单元格 diff/userEdit 高亮以免红色高亮被覆盖。已构建并同步 public。",
+  "currentFocus": "ACU Visualizer settings-dialog 入口字符错误修复完成，等待复测",
+  "latestConclusion": "修复 settings-dialog.js 第 1 行误入的中文字符“的”，该字符导致 import 时 ReferenceError: 的 is not defined。已重新构建并同步 public/acu_visualizer_test/index.js。",
   "currentBlocker": null,
-  "nextAction": "请用户复测 7 项反馈点；确认通过后再继续 L2.1 状态缓存清理。",
+  "nextAction": "请重新 import 测试版，确认不再出现 settings-dialog.js:1:1 的 ReferenceError，再继续复测 7 项回归点。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
@@ -151,12 +151,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T15:42:51.788Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T15:46:27.938Z",
       "type": "artifact_changed",
@@ -270,6 +264,12 @@
       "type": "updated",
       "refId": "l1-regression-fixes",
       "message": "修复 L1 优化后的 7 项回归问题并完成构建同步：历史、编辑保存、删除高亮、row mapping 缓存、设置 CSS、确认弹窗 CSS、快捷选项入口。"
+    },
+    {
+      "at": "2026-05-17T22:50:13.524Z",
+      "type": "updated",
+      "refId": "settings-dialog-leading-char-fix",
+      "message": "移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。"
     }
   ],
   "stats": {
@@ -283,8 +283,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T22:04:51.362Z",
-    "bodyHash": "sha256:f58c8130ca133a614bd45850007a52fb7018ff38d7db5ad33a53274813375dfb"
+    "generatedAt": "2026-05-17T22:50:13.524Z",
+    "bodyHash": "sha256:c0949ce57f755ba28ff63587e2ad4b766e1276c079ffeafa2fd9f671e51e4923"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

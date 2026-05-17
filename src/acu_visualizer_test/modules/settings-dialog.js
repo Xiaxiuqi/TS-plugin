@@ -1,4 +1,4 @@
-的// ACU Visualizer 测试版设置弹窗模块
+// ACU Visualizer 测试版设置弹窗模块
 // 来源：public/acu_visualizer/acu_visualizer-test.js 中 showSettingsDialog()、bindSettingsDialogEvents()、showCleanupConfirmation()。
 // 迁移原则：保留原 DOM class、id、设置 key 与事件语义，不修改 CSS，不夹带优化。
 
