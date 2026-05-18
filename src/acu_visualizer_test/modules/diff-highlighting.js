@@ -168,7 +168,7 @@ export function generateDiffMap(
             if (cIdx === 0) return;
             const oldCell = oldRow[cIdx];
             if (String(cell) !== String(oldCell) && typeof addCellHistory === 'function') {
-              addCellHistory(tableName, rIdx - 1, cIdx, String(cell));
+              addCellHistory(tableName, rIdx - 1, cIdx, String(oldCell));
             }
           });
         }

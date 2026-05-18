@@ -66,6 +66,27 @@ export function addCellHistory(tableName, rowIndex, colIndex, value) {
   return history.filter(item => (item.isolationKey || '') === currentIsolationKey);
 }
 
+export function recordCellPreviousValue(tableName, rowIndex, colIndex, previousValue) {
+  return addCellHistory(tableName, rowIndex, colIndex, previousValue);
+}
+
+export function migrateCurrentValueHistoryToPreviousValue(tableName, rowIndex, colIndex, currentValue, previousValue) {
+  const allHistory = getCellHistoryAll();
+  const key = `${tableName}-${rowIndex}-${colIndex}`;
+  const currentIsolationKey = getIsolationKey();
+  const history = allHistory[key] || [];
+  const currentValueText = String(currentValue ?? '');
+  const previousValueText = String(previousValue ?? '');
+
+  allHistory[key] = history.map(item =>
+    (item.isolationKey || '') === currentIsolationKey && String(item.value) === currentValueText
+      ? { ...item, value: previousValueText, timestamp: item.timestamp || Date.now() }
+      : item,
+  );
+  saveCellHistoryAll(allHistory);
+  return getCellHistory(tableName, rowIndex, colIndex);
+}
+
 export function escapeHistoryValue(value) {
   return String(value)
     .replace(/&/g, '&amp;')

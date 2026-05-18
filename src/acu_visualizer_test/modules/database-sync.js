@@ -166,7 +166,6 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
 
         state.pendingDeletes.clear();
         savePendingDeletions({}, state.pendingDeletes);
-        state.currentUserEditMap.clear();
         state.hashes.lastTableDataHash = generateDataHash(tableData);
         deps.showNotification?.(`保存成功！(${usedMethod})`, 'success');
 
@@ -174,6 +173,7 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
           const { $ } = deps.core || getCore();
           if (typeof $ !== 'undefined') $('.pending-deletion').removeClass('pending-deletion');
           state.currentDiffMap = generateDiffMap(tableData);
+          state.currentUserEditMap.forEach(key => state.currentDiffMap.delete(key));
           if (typeof deps.updateTableContentOnly === 'function') deps.updateTableContentOnly();
           else if (typeof deps.insertTableAfterLatestAIMessage === 'function') deps.insertTableAfterLatestAIMessage();
           deps.updateSaveBtnState?.();

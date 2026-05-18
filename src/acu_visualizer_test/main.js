@@ -3,7 +3,7 @@
 // 迁移原则：仅组装测试版生命周期入口，不接入正式插件，不夹带优化。
 
 import { getCore, getParentWindow } from './core/bridge.js';
-import { removeTransientUi } from './core/dom-cleanup.js';
+import { removeTransientUi, removeWithEvents } from './core/dom-cleanup.js';
 import { initAcuVisualizerTest } from './core/lifecycle.js';
 import { state } from './core/state.js';
 import { getConfig, getCurrentPageForTable, savePaginationState } from './core/storage.js';
@@ -182,24 +182,24 @@ export function bootstrapAcuVisualizerTest() {
   };
 
   const showRefreshMenu = event => {
-      event?.stopPropagation?.();
-      event?.preventDefault?.();
+    event?.stopPropagation?.();
+    event?.preventDefault?.();
 
-      const $existing = $('.acu-refresh-menu');
-      if ($existing.length) {
-        $existing.each(function () {
-          removeWithEvents($(this));
-        });
-        return;
-      }
-
-      $('.acu-refresh-menu').each(function () {
+    const $existing = $('.acu-refresh-menu');
+    if ($existing.length) {
+      $existing.each(function () {
         removeWithEvents($(this));
       });
+      return;
+    }
 
-      const config = getConfig();
-      const isNightMode = $('.acu-table-container').hasClass('night-mode');
-      const menuHtml = `
+    $('.acu-refresh-menu').each(function () {
+      removeWithEvents($(this));
+    });
+
+    const config = getConfig();
+    const isNightMode = $('.acu-table-container').hasClass('night-mode');
+    const menuHtml = `
       <div class="acu-cell-menu acu-refresh-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
         <div class="acu-cell-menu-item" data-action="refresh">刷新表格</div>
         <div class="acu-cell-menu-item" data-action="shortcut">快捷选项</div>
@@ -207,61 +207,61 @@ export function bootstrapAcuVisualizerTest() {
       </div>
     `;
 
-      const $menu = $(menuHtml);
-      $('body').append($menu);
+    const $menu = $(menuHtml);
+    $('body').append($menu);
 
-      const clickX = event?.clientX ?? 0;
-      const clickY = event?.clientY ?? 0;
-      const menuWidth = $menu.outerWidth();
-      const menuHeight = $menu.outerHeight();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+    const clickX = event?.clientX ?? 0;
+    const clickY = event?.clientY ?? 0;
+    const menuWidth = $menu.outerWidth();
+    const menuHeight = $menu.outerHeight();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-      let menuX = clickX + 10;
-      let menuY = clickY + 10;
-      if (menuX + menuWidth > viewportWidth) menuX = clickX - menuWidth - 10;
-      if (menuY + menuHeight > viewportHeight) menuY = clickY - menuHeight - 10;
-      menuX = Math.max(10, menuX);
-      menuY = Math.max(10, menuY);
-      $menu.css({ left: `${menuX}px`, top: `${menuY}px`, position: 'fixed' });
+    let menuX = clickX + 10;
+    let menuY = clickY + 10;
+    if (menuX + menuWidth > viewportWidth) menuX = clickX - menuWidth - 10;
+    if (menuY + menuHeight > viewportHeight) menuY = clickY - menuHeight - 10;
+    menuX = Math.max(10, menuX);
+    menuY = Math.max(10, menuY);
+    $menu.css({ left: `${menuX}px`, top: `${menuY}px`, position: 'fixed' });
 
-      const closeRecords = [];
-      const removeCloseListeners = () => {
-        closeRecords.splice(0).forEach(record => deps.schedulerRegistry?.removeEventListener?.(record));
-      };
-      const closeMenu = () => {
-        removeCloseListeners();
-        removeWithEvents($menu);
-      };
+    const closeRecords = [];
+    const removeCloseListeners = () => {
+      closeRecords.splice(0).forEach(record => deps.schedulerRegistry?.removeEventListener?.(record));
+    };
+    const closeMenu = () => {
+      removeCloseListeners();
+      removeWithEvents($menu);
+    };
 
-      $menu.find('.acu-cell-menu-item').on('click.acu', async function () {
-        const action = $(this).data('action');
+    $menu.find('.acu-cell-menu-item').on('click.acu', async function () {
+      const action = $(this).data('action');
+      closeMenu();
+      if (action === 'refresh') performRefreshTable(deps);
+      if (action === 'shortcut') await openShortcutDialog(deps);
+    });
+
+    const outsideClickHandler = e => {
+      if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
         closeMenu();
-        if (action === 'refresh') performRefreshTable(deps);
-        if (action === 'shortcut') await openShortcutDialog(deps);
-      });
+      }
+    };
 
-      const outsideClickHandler = e => {
-        if (!$menu.is(e.target) && $menu.has(e.target).length === 0) {
-          closeMenu();
-        }
-      };
+    setTimeout(() => {
+      const iframeRecord = deps.schedulerRegistry?.addEventListener?.(document, 'click', outsideClickHandler);
+      if (iframeRecord) closeRecords.push(iframeRecord);
+      else document.addEventListener('click', outsideClickHandler);
 
-      setTimeout(() => {
-        const iframeRecord = deps.schedulerRegistry?.addEventListener?.(document, 'click', outsideClickHandler);
-        if (iframeRecord) closeRecords.push(iframeRecord);
-        else document.addEventListener('click', outsideClickHandler);
-
-        if (window.parent?.document && window.parent.document !== document) {
-          const parentRecord = deps.schedulerRegistry?.addEventListener?.(
-            window.parent.document,
-            'click',
-            outsideClickHandler,
-          );
-          if (parentRecord) closeRecords.push(parentRecord);
-          else window.parent.document.addEventListener('click', outsideClickHandler);
-        }
-      }, 100);
+      if (window.parent?.document && window.parent.document !== document) {
+        const parentRecord = deps.schedulerRegistry?.addEventListener?.(
+          window.parent.document,
+          'click',
+          outsideClickHandler,
+        );
+        if (parentRecord) closeRecords.push(parentRecord);
+        else window.parent.document.addEventListener('click', outsideClickHandler);
+      }
+    }, 100);
   };
 
   const bindExpandCollapseEvents = () => {

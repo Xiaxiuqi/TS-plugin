@@ -5,7 +5,7 @@
 import { getCore } from '../core/bridge.js';
 import { acuMenuItemContent } from '../core/constants.js';
 import { removeWithEvents } from '../core/dom-cleanup.js';
-import { addCellHistory } from './cell-history.js';
+import { recordCellPreviousValue } from './cell-history.js';
 
 export function createEmptyRow(colCount) {
   const newRow = [];
@@ -234,7 +234,9 @@ export async function handleCellAction(
             rawData[tableKey].content[actualRowIndex][colIndex] = newContent;
           }
         }
-        addCellHistory(tableName, rowIndex, colIndex, newContent);
+        if (String(cellContent ?? '') !== String(newContent ?? '')) {
+          recordCellPreviousValue(tableName, rowIndex, colIndex, cellContent);
+        }
         const saveSuccess = await deps.saveDataToDatabase?.(rawData, {
           type: 'cell_edit',
           tableName,

@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-17T23:36:33.660Z
+- Updated At: 2026-05-18T01:04:20.783Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 历史菜单与刷新菜单二次回归修复完成
-- 最新结论：修复两项二次反馈：1) main.js 漏接 showHistoryMenu 到 deps，导致 cell-editor 调用 deps.showHistoryMenu 时为空，历史记录无反应；2) showRefreshMenu 误插入到 bindExpandCollapseEvents 内部且出现嵌套声明，deps 中引用作用域不可见，导致 Refere…
-- 下一步：请重新 import 后复测：单元格历史记录应弹出；刷新按钮应弹出三项菜单且不再报 showRefreshMenu is not defined。
+- 当前焦点：ACU Visualizer 历史记录、高亮优先级、刷新菜单 removeWithEvents 回归修复完成
+- 最新结论：修复用户反馈：1) 历史记录改为记录变更前旧值，数据库 diff 记录 oldCell，用户编辑记录 cellContent；2) 保存后不立即清空 currentUserEditMap，并从 currentDiffMap 删除用户编辑 key，避免绿色用户高亮被蓝色数据库高亮覆盖；3) main.js 补充导入 removeWithEvents，修复刷新三…
+- 下一步：请重新 import 后复测历史记录 A/B/C 逻辑、绿色高亮保存后保留、刷新菜单三项点击与外部关闭。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -51,7 +51,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T15:48:00.618Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
 - 2026-05-17T16:02:41.305Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T16:24:13.116Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -71,6 +70,7 @@
 - 2026-05-17T22:04:51.362Z | updated | l1-regression-fixes | 修复 L1 优化后的 7 项回归问题并完成构建同步：历史、编辑保存、删除高亮、row mapping 缓存、设置 CSS、确认弹窗 CSS、快捷选项入口。
 - 2026-05-17T22:50:13.524Z | updated | settings-dialog-leading-char-fix | 移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。
 - 2026-05-17T23:36:33.660Z | updated | history-refresh-regression-fix | 补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。
+- 2026-05-18T01:04:20.783Z | updated | history-highlight-refresh-menu-fixes | 修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,13 +80,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-17T23:36:33.660Z",
+  "updatedAt": "2026-05-18T01:04:20.783Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer 历史菜单与刷新菜单二次回归修复完成",
-  "latestConclusion": "修复两项二次反馈：1) main.js 漏接 showHistoryMenu 到 deps，导致 cell-editor 调用 deps.showHistoryMenu 时为空，历史记录无反应；2) showRefreshMenu 误插入到 bindExpandCollapseEvents 内部且出现嵌套声明，deps 中引用作用域不可见，导致 ReferenceError。已移出为 bootstrap 内部顶层函数并重新构建同步 public。",
+  "currentFocus": "ACU Visualizer 历史记录、高亮优先级、刷新菜单 removeWithEvents 回归修复完成",
+  "latestConclusion": "修复用户反馈：1) 历史记录改为记录变更前旧值，数据库 diff 记录 oldCell，用户编辑记录 cellContent；2) 保存后不立即清空 currentUserEditMap，并从 currentDiffMap 删除用户编辑 key，避免绿色用户高亮被蓝色数据库高亮覆盖；3) main.js 补充导入 removeWithEvents，修复刷新三项菜单点击/外部点击/关闭/快捷选项时报 removeWithEvents is not defined。已构建并同步 public。",
   "currentBlocker": null,
-  "nextAction": "请重新 import 后复测：单元格历史记录应弹出；刷新按钮应弹出三项菜单且不再报 showRefreshMenu is not defined。",
+  "nextAction": "请重新 import 后复测历史记录 A/B/C 逻辑、绿色高亮保存后保留、刷新菜单三项点击与外部关闭。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
@@ -151,12 +151,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T15:48:00.618Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T15:48:13.732Z",
       "type": "updated",
@@ -270,6 +264,12 @@
       "type": "updated",
       "refId": "history-refresh-regression-fix",
       "message": "补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。"
+    },
+    {
+      "at": "2026-05-18T01:04:20.783Z",
+      "type": "updated",
+      "refId": "history-highlight-refresh-menu-fixes",
+      "message": "修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。"
     }
   ],
   "stats": {
@@ -283,8 +283,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-17T23:36:33.660Z",
-    "bodyHash": "sha256:4a45fc521ccf9071c5832f055e2efbf3457f2118033affd54b3841cc74cab744"
+    "generatedAt": "2026-05-18T01:04:20.783Z",
+    "bodyHash": "sha256:84cf5ff325fa526094990702bebd98930b03b5129a32b21a8629cdce90bce183"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
