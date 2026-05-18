@@ -2466,16 +2466,6 @@
   color: #dbdbd6 !important;
 }
 .acu-history-overlay.night-mode .acu-history-item-date {
-  .acu-history-overlay.night-mode .acu-history-close-btn {
-    background: #3a3a3a !important;
-    color: #dbdbd6 !important;
-    border-color: #555 !important;
-  }
-  .acu-history-overlay.night-mode .acu-history-close-btn:hover {
-    background: #4a4a4a !important;
-    color: #ffffff !important;
-  }
-
   color: #dbdbd6 !important;
 }
 .acu-history-overlay.night-mode .acu-history-item-content {
@@ -2562,4 +2552,23 @@
 .acu-confirm-overlay.night-mode .acu-cleanup-list li,
 .acu-confirm-overlay.night-mode .acu-confirm-question p {
   color: #dbdbd6 !important;
+}
+
+/* 历史记录弹窗：夜间模式按钮变量 */
+.acu-history-overlay.night-mode {
+  --acu-secondary: #3a3a3a !important;
+  --acu-text: #dbdbd6 !important;
+  --acu-border: #555 !important;
+}
+.acu-history-overlay.night-mode .acu-btn-secondary,
+.acu-history-overlay.night-mode button.acu-history-close-btn.acu-btn.acu-btn-secondary {
+  background: var(--acu-secondary) !important;
+  color: var(--acu-text) !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-history-overlay.night-mode .acu-btn-secondary:hover,
+.acu-history-overlay.night-mode button.acu-history-close-btn.acu-btn.acu-btn-secondary:hover {
+  background: #4a4a4a !important;
+  color: #fff !important;
+  border-color: #666 !important;
 }
