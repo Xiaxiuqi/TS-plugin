@@ -17,6 +17,7 @@ import { bindRowDragEvents } from './modules/row-sort.js';
 import { bindSearchEvents } from './modules/search.js';
 import { showSettingsDialog } from './modules/settings-dialog.js';
 import { openShortcutDialog } from './modules/shortcut-dialog.js';
+import { cleanupRuntimeState, getRuntimeStateStats } from './modules/state-cleanup.js';
 import { getSafeTableId, getTableData, processJsonData } from './modules/table-data.js';
 import {
   bindTableEvents,
@@ -337,6 +338,8 @@ export function bootstrapAcuVisualizerTest() {
     saveCurrentScrollPosition,
     applySavedScrollPositionImmediately,
     getLatestAIMessageId,
+    cleanupRuntimeState: tableData => cleanupRuntimeState(tableData, state),
+    getRuntimeStateStats: () => getRuntimeStateStats(state),
     checkAndUpdateTablePosition: () => checkAndUpdateTablePosition(deps),
     clearAllTabUpdates,
     updateSaveBtnState,
@@ -390,6 +393,11 @@ export function bootstrapAcuVisualizerTest() {
     state.drag.dragEndIndex = -1;
     state.drag.dragInsertIndex = -1;
     state.drag.isDragging = false;
+    try {
+      cleanupRuntimeState(getTableData(core), state);
+    } catch (error) {
+      console.warn('[ACU TEST] destroy runtime state cleanup failed:', error);
+    }
     state.pendingDeletes.clear();
     state.currentUserEditMap.clear();
     state.currentDiffMap.clear();

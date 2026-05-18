@@ -5,6 +5,7 @@
 import { getCore } from '../core/bridge.js';
 import { UpdateController, getPendingDeletions, savePendingDeletions, state } from '../core/state.js';
 import { generateDataHash, generateDiffMap } from './diff-highlighting.js';
+import { cleanupRuntimeState } from './state-cleanup.js';
 
 export function collectRowUpdates(currentUserEditMap = state.currentUserEditMap, updateContext = null) {
   const hasCellEdit = updateContext && updateContext.type === 'cell_edit';
@@ -174,6 +175,7 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
           if (typeof $ !== 'undefined') $('.pending-deletion').removeClass('pending-deletion');
           state.currentDiffMap = generateDiffMap(tableData);
           state.currentUserEditMap.forEach(key => state.currentDiffMap.delete(key));
+          cleanupRuntimeState(tableData, state);
           if (typeof deps.updateTableContentOnly === 'function') deps.updateTableContentOnly();
           else if (typeof deps.insertTableAfterLatestAIMessage === 'function') deps.insertTableAfterLatestAIMessage();
           deps.updateSaveBtnState?.();

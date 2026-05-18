@@ -1,45 +1,50 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-18T11:57:27.702Z
+- Updated At: 2026-05-18T13:05:17.091Z
 - Status: active
 - Phase: implementation
 
 ## 当前摘要
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
-- 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 快捷选项 API 读取与夜间配色修复完成
-- 最新结论：根据数据库 API 文档修正快捷选项：优先使用 getUpdateConfigParams()/setUpdateConfigParams() 读取与保存更新配置参数，并补回 getAiLayerCountFromSillyTavern 以正确统计当前上下文 AI 楼层数；保留 getSettings/updateSettings 与 localStorag…
-- 下一步：请重新 import 后复测：快捷选项参数是否能读取数据库 API 当前值、AI 楼层数是否非 0/符合聊天、夜间模式下历史关闭按钮和快捷选项信息文字是否清晰。
+- 当前进度：1/1 个里程碑已完成；最新：acu-visualizer-l1-regression-stabilized-20260518
+- 当前焦点：ACU Visualizer L2.1 运行态状态缓存清理已实现，等待回归复测
+- 最新结论：已按 L2 计划完成第一轮低风险实现：新增 state-cleanup.js，只清理运行态状态中过期的 diff/userEdit/pendingDelete/rowMapping/currentPagination key，不触碰 localStorage 持久用户数据；已接入 generate/smartUpdate、保存成功后、destroy 前；已构…
+- 下一步：请重新 import 后重点回归：表格加载、分页/标签、编辑绿色高亮、数据库蓝色高亮、删除/恢复/保存删除、行排序、刷新菜单。可在控制台查看 window.ACUVisualizerTest.deps.getRuntimeStateStats()。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
 
 <!-- LIMCODE_PROGRESS_ARTIFACTS_START -->
 - 设计：`.limcode/design/acu-visualizer-模块迁移优先设计.md`
-- 计划：`.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md`
+- 计划：`.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md`
 <!-- LIMCODE_PROGRESS_ARTIFACTS_END -->
 
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 建立优化前基线：记录数据规模、localStorage 占用、DOM 节点数、Heap/Performance 基线  `#mem-l0-1`
-- [x] 补齐内存优化验收表与回归表，明确每阶段通过/回滚标准  `#mem-l0-2`
-- [x] 规划并实施 destroy/重复初始化清理增强，仅清理测试版 DOM、事件、计时器、观察器和临时状态  `#mem-l1-1`
-- [x] 规划并实施事件生命周期登记与跨 document 监听清理，验证热重载/刷新不叠加监听  `#mem-l1-2`
-- [x] 规划并实施弹窗/菜单/通知残留清理，验证打开关闭循环无 DOM 泄漏  `#mem-l1-3`
-- [ ] 规划并实施状态缓存清理：不存在表格的 diff/userEdit/pendingDelete/rowMapping/pagination 清理  `#mem-l2-1`
-- [ ] 规划快照轻量化兼容层：旧快照只读兼容，新 hash 快照 feature flag 试运行  `#mem-l2-2`
-- [ ] 规划单元格历史容量治理：总量上限、过长值处理、旧格式读取兼容与可回滚策略  `#mem-l2-3`
-- [ ] 规划当前激活 tab 懒渲染与 fallback，先只设计不直接替换完整渲染路径  `#mem-l3-1`
-- [ ] 规划局部 patch 与搜索高亮 debounce/限制策略，明确保持视觉一致的验证点  `#mem-l3-2`
-- [ ] 评估虚拟滚动、Worker diff、IndexedDB 历史库是否有必要，未达触发条件则暂不实施  `#mem-l4-1`
+- [x] 实施前复测并冻结 L1 稳定基线，记录 L2 前数据规模、localStorage、状态集合大小  `#l2-plan-1`
+- [x] 设计并实现状态缓存清理 helper，仅清理不存在表格/行/列对应的运行态 key，不清理持久用户数据  `#l2-plan-2`
+- [x] 设计并接入状态缓存清理点：数据刷新后、保存成功后、destroy 前，逐点启用并回归验证  `#l2-plan-3`
+- [ ] 设计快照轻量化兼容层：旧完整快照只读兼容，新 hash 快照 feature flag 试运行  `#l2-plan-4`
+- [ ] 设计单元格历史容量治理：单格上限、全局上限、过长值策略、旧格式兼容与用户确认清理  `#l2-plan-5`
+- [ ] 制定 L2 分阶段验收、回滚和暂停条件，确认通过后再进入实施  `#l2-plan-6` (in_progress)
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
 
 <!-- LIMCODE_PROGRESS_MILESTONES_START -->
-<!-- 暂无里程碑 -->
+### acu-visualizer-l1-regression-stabilized-20260518 · ACU Visualizer L1 回归修复完成并确认可进入下一阶段规划
+- 状态：completed
+- 记录时间：2026-05-18T12:53:59.477Z
+- 完成时间：2026-05-18T12:10:00+08:00
+- 关联 TODO：bug-1-history, bug-2-edit-save-slow, bug-3-delete-highlight, bug-4-row-position-cache, bug-5-settings-css-lost, bug-6-confirm-css-lost, bug-7-shortcut-entry, mem-l1-1, mem-l1-2, mem-l1-3
+- 关联文档：
+  - 设计：`.limcode/design/acu-visualizer-模块迁移优先设计.md`
+  - 计划：`.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md`
+- 摘要:
+用户确认此前 L1 泄漏治理后的回归问题已可接受：历史记录、刷新菜单、快捷选项、夜间配色、设置/确认弹窗 CSS、删除高亮、row mapping 缓存等问题已完成修复和构建同步。当前状态允许进入下一阶段内存优化规划，但按用户要求暂不修改业务代码。
+- 下一步：创建下一阶段 L2 常驻内存下降优化计划；仅规划，不改业务代码。
 <!-- LIMCODE_PROGRESS_MILESTONES_END -->
 
 ## 风险与阻塞
@@ -51,12 +56,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T16:40:36.490Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
-- 2026-05-17T16:40:50.236Z | updated | acu-visualizer-src-single-entry-build | 完成 ACU Visualizer 测试版 src 迁移与单入口构建支持：新增 build:entry，public 仅保留 index.js 产物，推荐直接 import acu_visualizer_test/index.js。
-- 2026-05-17T18:14:17.998Z | milestone_recorded | acu-visualizer-test-stable-before-memory-plan | 用户确认当前 ACU Visualizer 测试版加载、CSS、通知、行排序、删除行、搜索等问题已无异常；进入内存优化规划阶段，暂不实施代码修改。
-- 2026-05-17T18:16:24.933Z | artifact_changed | plan | 同步计划文档：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
-- 2026-05-17T18:20:29.329Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
-- 2026-05-17T18:22:19.255Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T18:35:11.785Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T20:52:41.245Z | updated | acu-moonbox-structure-restored | 恢复月相盒原版星尘与粒子 DOM 结构，重新构建并同步 public/acu_visualizer_test/index.js；随后暂停实现，进入下一步优化详细计划。
 - 2026-05-17T20:54:15.724Z | artifact_changed | plan | 同步计划文档：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
@@ -71,6 +70,12 @@
 - 2026-05-18T02:11:49.500Z | updated | diagnosed-history-refresh-import-fix | 对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。
 - 2026-05-18T11:30:31.600Z | updated | shortcut-visible-history-close-fix | 补充快捷选项弹窗 CSS，并恢复单元格菜单任意选项点击后关闭行为。
 - 2026-05-18T11:57:27.702Z | updated | shortcut-api-night-style-fix | 按数据库 API 文档修正快捷选项配置读写接口，并补齐夜间配色修复。
+- 2026-05-18T12:53:59.477Z | milestone_recorded | acu-visualizer-l1-regression-stabilized-20260518 | 记录里程碑：ACU Visualizer L1 回归修复完成并确认可进入下一阶段规划
+- 2026-05-18T12:54:06.359Z | updated | enter-l2-planning-only | 用户确认当前修复可接受，要求记录进度并开始下一阶段优化计划；当前仅进入计划阶段，不修改业务代码。
+- 2026-05-18T12:55:24.041Z | artifact_changed | plan | 同步计划文档：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md
+- 2026-05-18T13:01:43.522Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md
+- 2026-05-18T13:04:59.698Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md
+- 2026-05-18T13:05:17.091Z | updated | l2-1-runtime-state-cleanup-implemented | 完成 L2.1 运行态状态缓存清理 helper 与接入点，实现后构建同步 public/acu_visualizer_test/index.js。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,113 +85,79 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-18T11:57:27.702Z",
+  "updatedAt": "2026-05-18T13:05:17.091Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer 快捷选项 API 读取与夜间配色修复完成",
-  "latestConclusion": "根据数据库 API 文档修正快捷选项：优先使用 getUpdateConfigParams()/setUpdateConfigParams() 读取与保存更新配置参数，并补回 getAiLayerCountFromSillyTavern 以正确统计当前上下文 AI 楼层数；保留 getSettings/updateSettings 与 localStorage 回退。样式方面修复夜间模式快捷选项信息文字、历史记录关闭按钮日间配色问题。已构建并同步 public。",
+  "currentFocus": "ACU Visualizer L2.1 运行态状态缓存清理已实现，等待回归复测",
+  "latestConclusion": "已按 L2 计划完成第一轮低风险实现：新增 state-cleanup.js，只清理运行态状态中过期的 diff/userEdit/pendingDelete/rowMapping/currentPagination key，不触碰 localStorage 持久用户数据；已接入 generate/smartUpdate、保存成功后、destroy 前；已构建并同步 public。",
   "currentBlocker": null,
-  "nextAction": "请重新 import 后复测：快捷选项参数是否能读取数据库 API 当前值、AI 楼层数是否非 0/符合聊天、夜间模式下历史关闭按钮和快捷选项信息文字是否清晰。",
+  "nextAction": "请重新 import 后重点回归：表格加载、分页/标签、编辑绿色高亮、数据库蓝色高亮、删除/恢复/保存删除、行排序、刷新菜单。可在控制台查看 window.ACUVisualizerTest.deps.getRuntimeStateStats()。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
-    "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+    "plan": ".limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md"
   },
   "todos": [
     {
-      "id": "mem-l0-1",
-      "content": "建立优化前基线：记录数据规模、localStorage 占用、DOM 节点数、Heap/Performance 基线",
+      "id": "l2-plan-1",
+      "content": "实施前复测并冻结 L1 稳定基线，记录 L2 前数据规模、localStorage、状态集合大小",
       "status": "completed"
     },
     {
-      "id": "mem-l0-2",
-      "content": "补齐内存优化验收表与回归表，明确每阶段通过/回滚标准",
+      "id": "l2-plan-2",
+      "content": "设计并实现状态缓存清理 helper，仅清理不存在表格/行/列对应的运行态 key，不清理持久用户数据",
       "status": "completed"
     },
     {
-      "id": "mem-l1-1",
-      "content": "规划并实施 destroy/重复初始化清理增强，仅清理测试版 DOM、事件、计时器、观察器和临时状态",
+      "id": "l2-plan-3",
+      "content": "设计并接入状态缓存清理点：数据刷新后、保存成功后、destroy 前，逐点启用并回归验证",
       "status": "completed"
     },
     {
-      "id": "mem-l1-2",
-      "content": "规划并实施事件生命周期登记与跨 document 监听清理，验证热重载/刷新不叠加监听",
-      "status": "completed"
-    },
-    {
-      "id": "mem-l1-3",
-      "content": "规划并实施弹窗/菜单/通知残留清理，验证打开关闭循环无 DOM 泄漏",
-      "status": "completed"
-    },
-    {
-      "id": "mem-l2-1",
-      "content": "规划并实施状态缓存清理：不存在表格的 diff/userEdit/pendingDelete/rowMapping/pagination 清理",
+      "id": "l2-plan-4",
+      "content": "设计快照轻量化兼容层：旧完整快照只读兼容，新 hash 快照 feature flag 试运行",
       "status": "pending"
     },
     {
-      "id": "mem-l2-2",
-      "content": "规划快照轻量化兼容层：旧快照只读兼容，新 hash 快照 feature flag 试运行",
+      "id": "l2-plan-5",
+      "content": "设计单元格历史容量治理：单格上限、全局上限、过长值策略、旧格式兼容与用户确认清理",
       "status": "pending"
     },
     {
-      "id": "mem-l2-3",
-      "content": "规划单元格历史容量治理：总量上限、过长值处理、旧格式读取兼容与可回滚策略",
-      "status": "pending"
-    },
-    {
-      "id": "mem-l3-1",
-      "content": "规划当前激活 tab 懒渲染与 fallback，先只设计不直接替换完整渲染路径",
-      "status": "pending"
-    },
-    {
-      "id": "mem-l3-2",
-      "content": "规划局部 patch 与搜索高亮 debounce/限制策略，明确保持视觉一致的验证点",
-      "status": "pending"
-    },
-    {
-      "id": "mem-l4-1",
-      "content": "评估虚拟滚动、Worker diff、IndexedDB 历史库是否有必要，未达触发条件则暂不实施",
-      "status": "pending"
+      "id": "l2-plan-6",
+      "content": "制定 L2 分阶段验收、回滚和暂停条件，确认通过后再进入实施",
+      "status": "in_progress"
     }
   ],
-  "milestones": [],
+  "milestones": [
+    {
+      "id": "acu-visualizer-l1-regression-stabilized-20260518",
+      "title": "ACU Visualizer L1 回归修复完成并确认可进入下一阶段规划",
+      "status": "completed",
+      "summary": "用户确认此前 L1 泄漏治理后的回归问题已可接受：历史记录、刷新菜单、快捷选项、夜间配色、设置/确认弹窗 CSS、删除高亮、row mapping 缓存等问题已完成修复和构建同步。当前状态允许进入下一阶段内存优化规划，但按用户要求暂不修改业务代码。",
+      "relatedTodoIds": [
+        "bug-1-history",
+        "bug-2-edit-save-slow",
+        "bug-3-delete-highlight",
+        "bug-4-row-position-cache",
+        "bug-5-settings-css-lost",
+        "bug-6-confirm-css-lost",
+        "bug-7-shortcut-entry",
+        "mem-l1-1",
+        "mem-l1-2",
+        "mem-l1-3"
+      ],
+      "relatedReviewMilestoneIds": [],
+      "relatedArtifacts": {
+        "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
+        "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
+      },
+      "completedAt": "2026-05-18T12:10:00+08:00",
+      "recordedAt": "2026-05-18T12:53:59.477Z",
+      "nextAction": "创建下一阶段 L2 常驻内存下降优化计划；仅规划，不改业务代码。"
+    }
+  ],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T16:40:36.490Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T16:40:50.236Z",
-      "type": "updated",
-      "refId": "acu-visualizer-src-single-entry-build",
-      "message": "完成 ACU Visualizer 测试版 src 迁移与单入口构建支持：新增 build:entry，public 仅保留 index.js 产物，推荐直接 import acu_visualizer_test/index.js。"
-    },
-    {
-      "at": "2026-05-17T18:14:17.998Z",
-      "type": "milestone_recorded",
-      "refId": "acu-visualizer-test-stable-before-memory-plan",
-      "message": "用户确认当前 ACU Visualizer 测试版加载、CSS、通知、行排序、删除行、搜索等问题已无异常；进入内存优化规划阶段，暂不实施代码修改。"
-    },
-    {
-      "at": "2026-05-17T18:16:24.933Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划文档：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T18:20:29.329Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
-    },
-    {
-      "at": "2026-05-17T18:22:19.255Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T18:35:11.785Z",
       "type": "artifact_changed",
@@ -270,21 +241,57 @@
       "type": "updated",
       "refId": "shortcut-api-night-style-fix",
       "message": "按数据库 API 文档修正快捷选项配置读写接口，并补齐夜间配色修复。"
+    },
+    {
+      "at": "2026-05-18T12:53:59.477Z",
+      "type": "milestone_recorded",
+      "refId": "acu-visualizer-l1-regression-stabilized-20260518",
+      "message": "记录里程碑：ACU Visualizer L1 回归修复完成并确认可进入下一阶段规划"
+    },
+    {
+      "at": "2026-05-18T12:54:06.359Z",
+      "type": "updated",
+      "refId": "enter-l2-planning-only",
+      "message": "用户确认当前修复可接受，要求记录进度并开始下一阶段优化计划；当前仅进入计划阶段，不修改业务代码。"
+    },
+    {
+      "at": "2026-05-18T12:55:24.041Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划文档：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md"
+    },
+    {
+      "at": "2026-05-18T13:01:43.522Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md"
+    },
+    {
+      "at": "2026-05-18T13:04:59.698Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md"
+    },
+    {
+      "at": "2026-05-18T13:05:17.091Z",
+      "type": "updated",
+      "refId": "l2-1-runtime-state-cleanup-implemented",
+      "message": "完成 L2.1 运行态状态缓存清理 helper 与接入点，实现后构建同步 public/acu_visualizer_test/index.js。"
     }
   ],
   "stats": {
-    "milestonesTotal": 0,
-    "milestonesCompleted": 0,
-    "todosTotal": 11,
-    "todosCompleted": 5,
-    "todosInProgress": 0,
+    "milestonesTotal": 1,
+    "milestonesCompleted": 1,
+    "todosTotal": 6,
+    "todosCompleted": 3,
+    "todosInProgress": 1,
     "todosCancelled": 0,
     "activeRisks": 0
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-18T11:57:27.702Z",
-    "bodyHash": "sha256:93535d87551971a234ea9a0bd03006a270b3bc95fff28618c22374d25f5d3d2b"
+    "generatedAt": "2026-05-18T13:05:17.091Z",
+    "bodyHash": "sha256:a13cdc666f19016746f42fc35ab63ad9889012a5f4b83da0e8a36599526170df"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

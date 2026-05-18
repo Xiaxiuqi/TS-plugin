@@ -27,6 +27,7 @@ import {
 import { generatePaginationHTML } from './pagination.js';
 import { getOriginalRowIndex, initializeRowMapping } from './row-sort.js';
 import { filterRowDisplayIndices, generateSearchToolbarHTML, highlightSearchMatches } from './search.js';
+import { cleanupRuntimeState } from './state-cleanup.js';
 import { getSafeTableId, getTableData, processJsonData } from './table-data.js';
 import { getOrderedTableNames } from './table-sort.js';
 import { getActiveTabState } from './tabs.js';
@@ -102,6 +103,7 @@ export function generateTableHTML(deps = {}) {
 
   if (rawData) state.currentDiffMap = generateDiffMap(rawData);
   const orderedTableNames = tables ? getOrderedTableNames(tables) : [];
+  if (rawData) cleanupRuntimeState(rawData, state);
   const validActiveTab = activeTab && orderedTableNames.includes(activeTab) ? activeTab : null;
 
   let html = `
@@ -174,6 +176,7 @@ export function smartUpdateTable(forceFullUpdate = false, deps = {}) {
   if (currentHash === state.hashes.lastTableDataHash && !forceFullUpdate && !state.flags.isFirstRender) return;
   state.hashes.lastTableDataHash = currentHash;
   if (loadSnapshot() !== null || forceFullUpdate) state.currentDiffMap = generateDiffMap(rawData);
+  cleanupRuntimeState(rawData, state);
   deps.saveCurrentScrollPosition?.();
   if ($('.acu-table-container').length > 0) deps.updateTableContentOnly?.();
   else deps.insertTableAfterLatestAIMessage?.();
