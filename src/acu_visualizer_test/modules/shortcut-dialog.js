@@ -158,7 +158,11 @@ export async function openShortcutDialog(deps = {}) {
   $('#acu-sc-update').on('click.acu', async () => {
     try {
       if (typeof api.manualUpdate === 'function') {
-        await api.manualUpdate();
+        const ok = await api.manualUpdate();
+        deps.showNotification?.(
+          ok !== false ? '手动更新已完成' : '手动更新失败或被终止',
+          ok !== false ? 'success' : 'error',
+        );
       } else {
         deps.showNotification?.('正在触发手动更新...', 'info');
         const ok = await api.triggerUpdate();
@@ -167,6 +171,7 @@ export async function openShortcutDialog(deps = {}) {
           ok !== false ? 'success' : 'error',
         );
       }
+      deps.smartUpdateTable?.(true);
     } catch (e) {
       deps.showNotification?.('手动更新出错: ' + (e?.message || e), 'error');
     }

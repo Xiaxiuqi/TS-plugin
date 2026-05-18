@@ -168,7 +168,7 @@ export function smartUpdateTable(forceFullUpdate = false, deps = {}) {
   if (state.flags.isCellEditing) return;
   const { $ } = deps.core || getCore();
   const rawData = deps.getTableData ? deps.getTableData() : getTableData();
-  if (!rawData || Object.keys(rawData).length === 0) {
+  if (!rawData || Object.keys(rawData).filter(key => key !== 'mate').length === 0) {
     deps.insertTableAfterLatestAIMessage?.();
     return;
   }
@@ -178,7 +178,7 @@ export function smartUpdateTable(forceFullUpdate = false, deps = {}) {
   if (loadSnapshot() !== null || forceFullUpdate) state.currentDiffMap = generateDiffMap(rawData);
   cleanupRuntimeState(rawData, state);
   deps.saveCurrentScrollPosition?.();
-  if ($('.acu-table-container').length > 0) deps.updateTableContentOnly?.();
+  if ($('.acu-table-container').length > 0 && !forceFullUpdate) deps.updateTableContentOnly?.();
   else deps.insertTableAfterLatestAIMessage?.();
   state.flags.isFirstRender = false;
 }

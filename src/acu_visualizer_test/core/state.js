@@ -64,7 +64,7 @@ export const UpdateController = {
     }
 
     if (typeof smartUpdateTable === 'function') {
-      setTimeout(() => smartUpdateTable(), 100);
+      setTimeout(() => smartUpdateTable(true), 100);
     } else if (typeof insertTableAfterLatestAIMessage === 'function') {
       insertTableAfterLatestAIMessage();
     }

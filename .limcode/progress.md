@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-18T13:05:17.091Z
+- Updated At: 2026-05-18T13:58:40.238Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：1/1 个里程碑已完成；最新：acu-visualizer-l1-regression-stabilized-20260518
-- 当前焦点：ACU Visualizer L2.1 运行态状态缓存清理已实现，等待回归复测
-- 最新结论：已按 L2 计划完成第一轮低风险实现：新增 state-cleanup.js，只清理运行态状态中过期的 diff/userEdit/pendingDelete/rowMapping/currentPagination key，不触碰 localStorage 持久用户数据；已接入 generate/smartUpdate、保存成功后、destroy 前；已构…
-- 下一步：请重新 import 后重点回归：表格加载、分页/标签、编辑绿色高亮、数据库蓝色高亮、删除/恢复/保存删除、行排序、刷新菜单。可在控制台查看 window.ACUVisualizerTest.deps.getRuntimeStateStats()。
+- 当前焦点：ACU Visualizer 数据抓取及时性修复完成，等待回归复测
+- 最新结论：针对进入聊天偶发无数据、数据库/手动更新后表格不及时显示新内容和高亮的问题，诊断为数据库更新回调走非强制 smartUpdateTable，已有容器时局部更新只替换既有 section，无法补新增表/新增 tab。已改为数据库更新回调强制刷新，forceFullUpdate 时完整重建表格；手动更新完成后主动 smartUpdateTable(true)。同…
+- 下一步：请重新 import 后复测：进入聊天首次显示、数据库自动更新后新行/高亮、快捷选项手动更新后表格是否自动刷新且无需点击刷新表格。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -56,7 +56,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T18:35:11.785Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T20:52:41.245Z | updated | acu-moonbox-structure-restored | 恢复月相盒原版星尘与粒子 DOM 结构，重新构建并同步 public/acu_visualizer_test/index.js；随后暂停实现，进入下一步优化详细计划。
 - 2026-05-17T20:54:15.724Z | artifact_changed | plan | 同步计划文档：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
 - 2026-05-17T21:00:51.292Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md
@@ -76,6 +75,7 @@
 - 2026-05-18T13:01:43.522Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md
 - 2026-05-18T13:04:59.698Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md
 - 2026-05-18T13:05:17.091Z | updated | l2-1-runtime-state-cleanup-implemented | 完成 L2.1 运行态状态缓存清理 helper 与接入点，实现后构建同步 public/acu_visualizer_test/index.js。
+- 2026-05-18T13:58:40.238Z | updated | l2-refresh-timeliness-fix | 修复数据库更新与手动更新后的表格抓取及时性：回调与手动更新均触发强制完整刷新，避免局部更新漏新增表/行。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -85,13 +85,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-18T13:05:17.091Z",
+  "updatedAt": "2026-05-18T13:58:40.238Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer L2.1 运行态状态缓存清理已实现，等待回归复测",
-  "latestConclusion": "已按 L2 计划完成第一轮低风险实现：新增 state-cleanup.js，只清理运行态状态中过期的 diff/userEdit/pendingDelete/rowMapping/currentPagination key，不触碰 localStorage 持久用户数据；已接入 generate/smartUpdate、保存成功后、destroy 前；已构建并同步 public。",
+  "currentFocus": "ACU Visualizer 数据抓取及时性修复完成，等待回归复测",
+  "latestConclusion": "针对进入聊天偶发无数据、数据库/手动更新后表格不及时显示新内容和高亮的问题，诊断为数据库更新回调走非强制 smartUpdateTable，已有容器时局部更新只替换既有 section，无法补新增表/新增 tab。已改为数据库更新回调强制刷新，forceFullUpdate 时完整重建表格；手动更新完成后主动 smartUpdateTable(true)。同时修正 rawData 仅 mate 时的无数据判断。已构建并同步 public。",
   "currentBlocker": null,
-  "nextAction": "请重新 import 后重点回归：表格加载、分页/标签、编辑绿色高亮、数据库蓝色高亮、删除/恢复/保存删除、行排序、刷新菜单。可在控制台查看 window.ACUVisualizerTest.deps.getRuntimeStateStats()。",
+  "nextAction": "请重新 import 后复测：进入聊天首次显示、数据库自动更新后新行/高亮、快捷选项手动更新后表格是否自动刷新且无需点击刷新表格。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-l2-常驻内存下降优化详细计划.plan.md"
@@ -158,12 +158,6 @@
   ],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T18:35:11.785Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T20:52:41.245Z",
       "type": "updated",
@@ -277,6 +271,12 @@
       "type": "updated",
       "refId": "l2-1-runtime-state-cleanup-implemented",
       "message": "完成 L2.1 运行态状态缓存清理 helper 与接入点，实现后构建同步 public/acu_visualizer_test/index.js。"
+    },
+    {
+      "at": "2026-05-18T13:58:40.238Z",
+      "type": "updated",
+      "refId": "l2-refresh-timeliness-fix",
+      "message": "修复数据库更新与手动更新后的表格抓取及时性：回调与手动更新均触发强制完整刷新，避免局部更新漏新增表/行。"
     }
   ],
   "stats": {
@@ -290,8 +290,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-18T13:05:17.091Z",
-    "bodyHash": "sha256:a13cdc666f19016746f42fc35ab63ad9889012a5f4b83da0e8a36599526170df"
+    "generatedAt": "2026-05-18T13:58:40.238Z",
+    "bodyHash": "sha256:3b597634e5ea8d0a24fc96e4a296c36a87619733b26eeafb03fcb126c0657ab4"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
