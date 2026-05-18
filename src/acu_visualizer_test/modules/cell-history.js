@@ -166,9 +166,12 @@ export function showHistoryMenu(event, cell, tableName, rowIndex, colIndex, deps
   $dialog.find('.acu-history-item').on('click.acu', async function () {
     const value = history[parseInt($(this).attr('data-index'), 10)]?.value ?? $(this).attr('data-value');
     const strValue = String(value || '');
+    const currentValue = $(cell).text().replace(/<br>/g, '\n');
     $(cell).html(strValue.replace(/\n/g, '<br>'));
     deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${colIndex}`);
-    addCellHistory(tableName, rowIndex, colIndex, strValue);
+    if (String(currentValue ?? '') !== String(strValue ?? '')) {
+      addCellHistory(tableName, rowIndex, colIndex, currentValue);
+    }
 
     const rawData = deps.getTableData?.();
     const tableKey = $(cell).data('table-key');

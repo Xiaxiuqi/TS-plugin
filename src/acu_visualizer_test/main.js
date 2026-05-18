@@ -16,11 +16,13 @@ import { bindPaginationEvents, generatePaginationHTML } from './modules/paginati
 import { bindRowDragEvents } from './modules/row-sort.js';
 import { bindSearchEvents } from './modules/search.js';
 import { showSettingsDialog } from './modules/settings-dialog.js';
+import { openShortcutDialog } from './modules/shortcut-dialog.js';
 import { getSafeTableId, getTableData, processJsonData } from './modules/table-data.js';
 import {
   bindTableEvents,
   checkAndUpdateTablePosition,
   insertTableAfterLatestAIMessage,
+  performRefreshTable,
   renderDataTable,
   smartUpdateTable,
 } from './modules/table-renderer.js';

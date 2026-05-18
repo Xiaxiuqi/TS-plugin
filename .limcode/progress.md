@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-18T01:04:20.783Z
+- Updated At: 2026-05-18T02:11:49.500Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 历史记录、高亮优先级、刷新菜单 removeWithEvents 回归修复完成
-- 最新结论：修复用户反馈：1) 历史记录改为记录变更前旧值，数据库 diff 记录 oldCell，用户编辑记录 cellContent；2) 保存后不立即清空 currentUserEditMap，并从 currentDiffMap 删除用户编辑 key，避免绿色用户高亮被蓝色数据库高亮覆盖；3) main.js 补充导入 removeWithEvents，修复刷新三…
-- 下一步：请重新 import 后复测历史记录 A/B/C 逻辑、绿色高亮保存后保留、刷新菜单三项点击与外部关闭。
+- 当前焦点：ACU Visualizer 历史恢复记录与刷新菜单 import 诊断修复完成
+- 最新结论：按正式版对照完成诊断修复：1) showRefreshMenu 位于 main.js，但模块化版漏 import performRefreshTable/openShortcutDialog，已补齐 import，解决刷新表格/快捷选项 ReferenceError；2) 历史恢复操作原先把被恢复值重新写入历史，现改为记录恢复前当前值，因此 C 恢复到 A…
+- 下一步：请重新 import 后复测：刷新菜单的刷新表格和快捷选项；历史 A->B->C 后从历史恢复 A 时是否记录 C。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -51,7 +51,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T15:48:13.732Z | updated | acu-visualizer-test-loader | 完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。
 - 2026-05-17T16:02:41.305Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T16:24:13.116Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T16:40:36.490Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
@@ -71,6 +70,7 @@
 - 2026-05-17T22:50:13.524Z | updated | settings-dialog-leading-char-fix | 移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。
 - 2026-05-17T23:36:33.660Z | updated | history-refresh-regression-fix | 补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。
 - 2026-05-18T01:04:20.783Z | updated | history-highlight-refresh-menu-fixes | 修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。
+- 2026-05-18T02:11:49.500Z | updated | diagnosed-history-refresh-import-fix | 对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,13 +80,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-18T01:04:20.783Z",
+  "updatedAt": "2026-05-18T02:11:49.500Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer 历史记录、高亮优先级、刷新菜单 removeWithEvents 回归修复完成",
-  "latestConclusion": "修复用户反馈：1) 历史记录改为记录变更前旧值，数据库 diff 记录 oldCell，用户编辑记录 cellContent；2) 保存后不立即清空 currentUserEditMap，并从 currentDiffMap 删除用户编辑 key，避免绿色用户高亮被蓝色数据库高亮覆盖；3) main.js 补充导入 removeWithEvents，修复刷新三项菜单点击/外部点击/关闭/快捷选项时报 removeWithEvents is not defined。已构建并同步 public。",
+  "currentFocus": "ACU Visualizer 历史恢复记录与刷新菜单 import 诊断修复完成",
+  "latestConclusion": "按正式版对照完成诊断修复：1) showRefreshMenu 位于 main.js，但模块化版漏 import performRefreshTable/openShortcutDialog，已补齐 import，解决刷新表格/快捷选项 ReferenceError；2) 历史恢复操作原先把被恢复值重新写入历史，现改为记录恢复前当前值，因此 C 恢复到 A 后历史应包含 C、A、B 或按去重规则保持最近旧值链。已构建并同步 public。",
   "currentBlocker": null,
-  "nextAction": "请重新 import 后复测历史记录 A/B/C 逻辑、绿色高亮保存后保留、刷新菜单三项点击与外部关闭。",
+  "nextAction": "请重新 import 后复测：刷新菜单的刷新表格和快捷选项；历史 A->B->C 后从历史恢复 A 时是否记录 C。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
@@ -151,12 +151,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T15:48:13.732Z",
-      "type": "updated",
-      "refId": "acu-visualizer-test-loader",
-      "message": "完成测试版稳定 loader 入口：loader.js 固定导入，内部通过 version.js 控制 main.js 版本化加载，降低 ESM 裸 URL 缓存导致的旧入口复用风险。"
-    },
     {
       "at": "2026-05-17T16:02:41.305Z",
       "type": "artifact_changed",
@@ -270,6 +264,12 @@
       "type": "updated",
       "refId": "history-highlight-refresh-menu-fixes",
       "message": "修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。"
+    },
+    {
+      "at": "2026-05-18T02:11:49.500Z",
+      "type": "updated",
+      "refId": "diagnosed-history-refresh-import-fix",
+      "message": "对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。"
     }
   ],
   "stats": {
@@ -283,8 +283,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-18T01:04:20.783Z",
-    "bodyHash": "sha256:84cf5ff325fa526094990702bebd98930b03b5129a32b21a8629cdce90bce183"
+    "generatedAt": "2026-05-18T02:11:49.500Z",
+    "bodyHash": "sha256:5c93ea57c73be41d3b2cda0ea7c66706383b406932d1d7a36abdd450c954c735"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
