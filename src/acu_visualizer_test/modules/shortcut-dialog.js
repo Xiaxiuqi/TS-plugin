@@ -16,7 +16,13 @@ export function getShortcutSettings(api, readDbSettings) {
   let updateBatchSize = '';
   let skipUpdateFloors = '';
 
-  if (api && typeof api.getSettings === 'function') {
+  if (api && typeof api.getUpdateConfigParams === 'function') {
+    const apiSettings = api.getUpdateConfigParams();
+    autoUpdateThreshold = apiSettings?.autoUpdateThreshold ?? '';
+    autoUpdateFrequency = apiSettings?.autoUpdateFrequency ?? '';
+    updateBatchSize = apiSettings?.updateBatchSize ?? '';
+    skipUpdateFloors = apiSettings?.skipUpdateFloors ?? apiSettings?.skipUpdateMessages ?? '';
+  } else if (api && typeof api.getSettings === 'function') {
     const apiSettings = api.getSettings();
     autoUpdateThreshold = apiSettings?.autoUpdateThreshold ?? '';
     autoUpdateFrequency = apiSettings?.autoUpdateFrequency ?? '';
@@ -31,6 +37,17 @@ export function getShortcutSettings(api, readDbSettings) {
   }
 
   return { autoUpdateThreshold, autoUpdateFrequency, updateBatchSize, skipUpdateFloors };
+}
+
+export function getAiLayerCountFromSillyTavern() {
+  try {
+    let ST = window.SillyTavern || (window.parent ? window.parent.SillyTavern : null);
+    if (!ST && window.top && window.top.SillyTavern) ST = window.top.SillyTavern;
+    const chat = ST && ST.chat ? ST.chat : [];
+    return chat.filter(m => m && !m.is_user).length;
+  } catch (e) {
+    return 0;
+  }
 }
 
 export function generateShortcutDialogHTML({ themeClass, isNightMode, aiLayers, settings }) {
@@ -77,7 +94,7 @@ export async function openShortcutDialog(deps = {}) {
   deps.injectShortcutDialogStylesOnce?.();
   if ($('.acu-shortcut-lite-overlay').length) return;
 
-  const aiLayers = deps.getAiLayerCount ? deps.getAiLayerCount() : 0;
+  const aiLayers = deps.getAiLayerCount ? deps.getAiLayerCount() : getAiLayerCountFromSillyTavern();
   const settings = getShortcutSettings(api, deps.readDbSettings);
   const $overlay = $(generateShortcutDialogHTML({ themeClass, isNightMode, aiLayers, settings }));
   $('body').append($overlay);
@@ -100,6 +117,19 @@ export async function openShortcutDialog(deps = {}) {
     const autoUpdateFrequency = parseInt(String($('#acu-sc-autoUpdateFrequency').val() || '1'), 10);
     const updateBatchSize = parseInt(String($('#acu-sc-updateBatchSize').val() || '1'), 10);
     const skipUpdateFloors = parseInt(String($('#acu-sc-skipUpdateFloors').val() || '0'), 10);
+
+    if (api && typeof api.setUpdateConfigParams === 'function') {
+      const ok = api.setUpdateConfigParams({
+        autoUpdateThreshold,
+        autoUpdateFrequency,
+        updateBatchSize,
+        skipUpdateFloors,
+      });
+      if (ok) {
+        deps.showNotification?.('配置已保存', 'success');
+        return true;
+      }
+    }
 
     if (api && typeof api.updateSettings === 'function') {
       const ok = api.updateSettings({ autoUpdateThreshold, autoUpdateFrequency, updateBatchSize, skipUpdateFloors });
