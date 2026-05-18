@@ -1,7 +1,5 @@
-// ACU Visualizer 测试版模块化入口
-// 来源：public/acu_visualizer/acu_visualizer-test.js 尾部 IIFE 初始化结构。
-// 迁移原则：仅组装测试版生命周期入口，不接入正式插件，不夹带优化。
-
+﻿// ACU Visualizer 娴嬭瘯鐗堟ā鍧楀寲鍏ュ彛
+// 鏉ユ簮锛歱ublic/acu_visualizer/acu_visualizer-test.js 灏鹃儴 IIFE 鍒濆鍖栫粨鏋勩€?// 杩佺Щ鍘熷垯锛氫粎缁勮娴嬭瘯鐗堢敓鍛藉懆鏈熷叆鍙ｏ紝涓嶆帴鍏ユ寮忔彃浠讹紝涓嶅す甯︿紭鍖栥€?
 import { getCore, getParentWindow } from './core/bridge.js';
 import { removeTransientUi, removeWithEvents } from './core/dom-cleanup.js';
 import { initAcuVisualizerTest } from './core/lifecycle.js';
@@ -90,7 +88,7 @@ export function bootstrapAcuVisualizerTest() {
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
         cssTexts.push(`/* ${fileName} */\n${await response.text()}`);
       } catch (error) {
-        console.error(`[ACU TEST] 加载 CSS 失败: ${versionedCssUrl}`, error);
+        console.error(`[ACU TEST] 鍔犺浇 CSS 澶辫触: ${versionedCssUrl}`, error);
       }
     }
 
@@ -204,9 +202,9 @@ export function bootstrapAcuVisualizerTest() {
     const isNightMode = $('.acu-table-container').hasClass('night-mode');
     const menuHtml = `
       <div class="acu-cell-menu acu-refresh-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="z-index: 10001;">
-        <div class="acu-cell-menu-item" data-action="refresh">刷新表格</div>
-        <div class="acu-cell-menu-item" data-action="shortcut">快捷选项</div>
-        <div class="acu-cell-menu-item close" data-action="close">关闭菜单</div>
+        <div class="acu-cell-menu-item" data-action="refresh">鍒锋柊琛ㄦ牸</div>
+        <div class="acu-cell-menu-item" data-action="shortcut">蹇嵎閫夐」</div>
+        <div class="acu-cell-menu-item close" data-action="close">鍏抽棴鑿滃崟</div>
       </div>
     `;
 
@@ -275,7 +273,7 @@ export function bootstrapAcuVisualizerTest() {
         saveTableExpandedState(isOpen);
         $(this)
           .find('.acu-expand-hint')
-          .text(isOpen ? '点击收起' : '点击展开');
+          .text(isOpen ? '鐐瑰嚮鏀惰捣' : '鐐瑰嚮灞曞紑');
       });
   };
 
