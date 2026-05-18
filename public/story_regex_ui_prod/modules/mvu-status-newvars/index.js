@@ -14,7 +14,52 @@
     return dom.escapeHtml(normalizeDisplayText(value));
   }
 
-  function getCurrentMvuDataSafe() {
+  function normalizeMessageId(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  function getCurrentMvuDataSafe(context = {}) {
+    const messageId = normalizeMessageId(context.messageId ?? context.message_id);
+
+    if (messageId !== null) {
+      try {
+        if (window.Mvu?.getMvuData) {
+          const messageData = window.Mvu.getMvuData({ type: 'message', message_id: messageId });
+          if (messageData && typeof messageData === 'object') return messageData;
+        }
+      } catch {
+        // ignore and try Tavern Helper message variables
+      }
+
+      try {
+        if (window.getVariables) {
+          const messageVariables = window.getVariables({ type: 'message', message_id: messageId });
+          if (messageVariables && typeof messageVariables === 'object') return messageVariables;
+        }
+      } catch {
+        // ignore and try latest message snapshot
+      }
+    }
+
+    try {
+      if (window.Mvu?.getMvuData) {
+        const latestData = window.Mvu.getMvuData({ type: 'message', message_id: 'latest' });
+        if (latestData && typeof latestData === 'object') return latestData;
+      }
+    } catch {
+      // ignore and try latest message variables
+    }
+
+    try {
+      if (window.getVariables) {
+        const latestVariables = window.getVariables({ type: 'message', message_id: 'latest' });
+        if (latestVariables && typeof latestVariables === 'object') return latestVariables;
+      }
+    } catch {
+      // ignore and try chat-level data
+    }
+
     try {
       if (window.Mvu?.getMvuData) {
         const chatData = window.Mvu.getMvuData({ type: 'chat' });
@@ -37,15 +82,6 @@
       if (window.getAllVariables) {
         const allVariables = window.getAllVariables();
         if (allVariables && typeof allVariables === 'object') return allVariables;
-      }
-    } catch {
-      // ignore and try latest message snapshot
-    }
-
-    try {
-      if (window.Mvu?.getMvuData) {
-        const latestData = window.Mvu.getMvuData({ type: 'message', message_id: 'latest' });
-        if (latestData && typeof latestData === 'object') return latestData;
       }
     } catch {
       // ignore
@@ -489,9 +525,15 @@
     }
   }
 
-  function populateData(root) {
+  function populateData(root, context = {}) {
     if (!root) return;
-    const allVariables = getCurrentMvuDataSafe();
+    const messageId = normalizeMessageId(
+      context.messageId ?? context.message_id ?? root.dataset.storyUiMvuNewvarsMessageId,
+    );
+    if (messageId !== null) {
+      root.dataset.storyUiMvuNewvarsMessageId = String(messageId);
+    }
+    const allVariables = getCurrentMvuDataSafe({ messageId });
     renderWorld(root, allVariables);
     renderUser(root, allVariables);
     populateCharacterData(root, allVariables);
@@ -658,14 +700,18 @@
     `;
   }
 
-  function renderContentNode() {
+  function renderContentNode(content, context = {}) {
     const wrapper = dom.createElement('div', {
       className: 'story-ui-mvu-newvars-wrapper',
       html: renderStatusShell(),
     });
     const root = wrapper.firstElementChild || null;
     if (root) {
-      populateData(root);
+      const messageId = normalizeMessageId(context.messageId ?? context.message_id);
+      if (messageId !== null) {
+        root.dataset.storyUiMvuNewvarsMessageId = String(messageId);
+      }
+      populateData(root, context);
     }
     return root;
   }
@@ -721,7 +767,10 @@
         const fresh = document.createElement('div');
         fresh.innerHTML = renderStatusShell();
         const created = fresh.firstElementChild || null;
-        if (created) populateData(created);
+        if (created) {
+          created.dataset.storyUiMvuNewvarsMessageId = panel.dataset.storyUiMvuNewvarsMessageId || '';
+          populateData(created);
+        }
         return created;
       }) || null;
     if (nextPanel) {
@@ -733,6 +782,7 @@
     fresh.innerHTML = renderStatusShell();
     const fallbackPanel = fresh.firstElementChild;
     if (!fallbackPanel) return;
+    fallbackPanel.dataset.storyUiMvuNewvarsMessageId = panel.dataset.storyUiMvuNewvarsMessageId || '';
     panel.replaceWith(fallbackPanel);
     ui.theme?.applyThemeToRoot?.(fallbackPanel);
     bindToggleHandlers(fallbackPanel);
@@ -746,12 +796,16 @@
     });
   }
 
-  function mount(node) {
+  function mount(node, context = {}) {
     ui.theme?.applyTheme?.(node);
     const root =
       node.querySelector?.('.story-ui-mvu-newvars') || node.querySelector?.('.story-ui-root.story-ui-mvu-newvars');
+    const messageId = normalizeMessageId(context.messageId ?? context.message_id);
+    if (root && messageId !== null) {
+      root.dataset.storyUiMvuNewvarsMessageId = String(messageId);
+    }
     bindToggleHandlers(root);
-    populateData(root);
+    populateData(root, context);
 
     if (document.documentElement.dataset.storyUiMvuNewvarsThemeBound !== 'true') {
       document.documentElement.dataset.storyUiMvuNewvarsThemeBound = 'true';

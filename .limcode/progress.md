@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-18T15:38:26.747Z
+- Updated At: 2026-05-18T17:49:39.448Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：1/1 个里程碑已完成；最新：acu-visualizer-l1-regression-stabilized-20260518
-- 当前焦点：ACU Visualizer v9.8 正式版发布完成，等待用户在酒馆环境回归确认
-- 最新结论：已按稳定优先策略发布 v9.8：保持用户原地址 public/acu_visualizer/acu_visualizer.js 不变，内部 ACUVisualizerTest 等测试命名暂不重命名；完成旧正式版备份、v9.8 源码快照、版本标识更新、构建、正式产物映射、sourcemap 修正和静态校验。
-- 下一步：请使用原正式版 import 地址在酒馆内回归确认：首次加载、数据库自动更新新行/高亮、手动更新、编辑保存、删除/恢复、排序、主题与快捷选项。后续再单独规划测试版内部命名正式化。
+- 当前焦点：修复 MVU 状态栏新变量版读取旧快照，导致世界状态与羁绊档案不同步的问题
+- 最新结论：已记录按钮改名修复，并修正 mvu-status-newvars 的变量读取顺序：优先按当前消息楼层 messageId 读取 Mvu/getVariables 的 message 变量，再回退 latest message，最后才回退 chat/getAllVariables，避免当前时间、当前位置、咒术高专羁绊档案读取到旧的聊天级快照。
+- 下一步：在酒馆内刷新/开关美化脚本后验证 MVU 状态栏当前时间、当前位置、咒术高专羁绊档案是否随变量更新。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -24,6 +24,7 @@
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
 - [ ] 后续单独规划测试版内部命名清理：ACUVisualizerTest 等测试命名改为正式命名，先在测试版验证，不夹带正式发布  `#future-naming-1`
+- [x] 紧急修复正式版发布入口：按用户确认方式直接从 public/acu_visualizer_test/ 复制到 public/acu_visualizer/，只修改版本号，并以 index.js 作为正式入口  `#hotfix-index-release`
 - [x] 确认正式版发布目标：保持用户原地址 public/acu_visualizer/acu_visualizer.js 不变，内部测试命名本次不重命名  `#release-9-8-1`
 - [x] 备份旧正式版 public 文件，并在 src/数据库前端/acu_visualizer/v9.8-src 中复制当前测试版源文件  `#release-9-8-2`
 - [x] 仅调整用户可见版本标识到 v9.8/9.8.0，不改 ACUVisualizerTest 等内部运行态命名  `#release-9-8-3`
@@ -52,16 +53,12 @@
 ## 风险与阻塞
 
 <!-- LIMCODE_PROGRESS_RISKS_START -->
-<!-- 暂无风险 -->
+- acu-v98-old-entry-ambiguity | active | 正式目录旧 acu_visualizer.js 入口仍存在，可能与 index.js 最终入口混淆：当前最终用户确认方案以 public/acu_visualizer/index.js 为正式入口；但 public/acu_visualizer/acu_visualizer.js 仍存在并显示诊断问题/可能不是最新复制结果。若用户或线上仍引用旧 acu_visualizer.js，可能加载到非最终产物。需要后续明确是否保留、覆盖为 index.js、删除或改为提示重定向。
 <!-- LIMCODE_PROGRESS_RISKS_END -->
 
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T22:50:13.524Z | updated | settings-dialog-leading-char-fix | 移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。
-- 2026-05-17T23:36:33.660Z | updated | history-refresh-regression-fix | 补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。
-- 2026-05-18T01:04:20.783Z | updated | history-highlight-refresh-menu-fixes | 修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。
-- 2026-05-18T02:11:49.500Z | updated | diagnosed-history-refresh-import-fix | 对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。
 - 2026-05-18T11:30:31.600Z | updated | shortcut-visible-history-close-fix | 补充快捷选项弹窗 CSS，并恢复单元格菜单任意选项点击后关闭行为。
 - 2026-05-18T11:57:27.702Z | updated | shortcut-api-night-style-fix | 按数据库 API 文档修正快捷选项配置读写接口，并补齐夜间配色修复。
 - 2026-05-18T12:53:59.477Z | milestone_recorded | acu-visualizer-l1-regression-stabilized-20260518 | 记录里程碑：ACU Visualizer L1 回归修复完成并确认可进入下一阶段规划
@@ -78,6 +75,10 @@
 - 2026-05-18T15:37:14.388Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-v98-测试版同步正式版发布计划.plan.md
 - 2026-05-18T15:38:09.133Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-v98-测试版同步正式版发布计划.plan.md
 - 2026-05-18T15:38:26.747Z | milestone_recorded | acu-visualizer-v9-8-release | ACU Visualizer v9.8 正式版发布完成：用户地址保持不变，内部测试命名暂保留以降低发布风险。
+- 2026-05-18T17:41:21.534Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-v98-测试版同步正式版发布计划.plan.md
+- 2026-05-18T17:41:43.912Z | updated | acu-v98-direct-public-copy-finalized | 整理当前修改：最终发布修正改为直接复制 public/acu_visualizer_test/ 到 public/acu_visualizer/，只替换版本号，并以 public/acu_visualizer/index.js 为确认入口；node --check 已通过。
+- 2026-05-18T17:46:47.495Z | updated | story-regex-ui-reload-button-rename | story_regex_ui_prod 与 story_regex_ui_releasetest：外部按钮“重载资源”改名为“重载美化”；管理面板内部按钮恢复为“重载资源”；注册逻辑改为优先 replaceScriptButtons 以替换旧外部按钮；loader 残留未就绪报错增加刷新/开关脚本提示。
+- 2026-05-18T17:49:39.448Z | updated | mvu-status-newvars-message-scope-read | story_regex_ui_prod 与 story_regex_ui_releasetest：mvu-status-newvars 现在保存并使用当前消息楼层 messageId，优先读取 message 级 MVU/变量数据；修复当前时间、当前位置、咒术高专羁绊档案显示未随变量更新的问题。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -87,13 +88,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-18T15:38:26.747Z",
+  "updatedAt": "2026-05-18T17:49:39.448Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer v9.8 正式版发布完成，等待用户在酒馆环境回归确认",
-  "latestConclusion": "已按稳定优先策略发布 v9.8：保持用户原地址 public/acu_visualizer/acu_visualizer.js 不变，内部 ACUVisualizerTest 等测试命名暂不重命名；完成旧正式版备份、v9.8 源码快照、版本标识更新、构建、正式产物映射、sourcemap 修正和静态校验。",
+  "currentFocus": "修复 MVU 状态栏新变量版读取旧快照，导致世界状态与羁绊档案不同步的问题",
+  "latestConclusion": "已记录按钮改名修复，并修正 mvu-status-newvars 的变量读取顺序：优先按当前消息楼层 messageId 读取 Mvu/getVariables 的 message 变量，再回退 latest message，最后才回退 chat/getAllVariables，避免当前时间、当前位置、咒术高专羁绊档案读取到旧的聊天级快照。",
   "currentBlocker": null,
-  "nextAction": "请使用原正式版 import 地址在酒馆内回归确认：首次加载、数据库自动更新新行/高亮、手动更新、编辑保存、删除/恢复、排序、主题与快捷选项。后续再单独规划测试版内部命名正式化。",
+  "nextAction": "在酒馆内刷新/开关美化脚本后验证 MVU 状态栏当前时间、当前位置、咒术高专羁绊档案是否随变量更新。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-v98-测试版同步正式版发布计划.plan.md"
@@ -103,6 +104,11 @@
       "id": "future-naming-1",
       "content": "后续单独规划测试版内部命名清理：ACUVisualizerTest 等测试命名改为正式命名，先在测试版验证，不夹带正式发布",
       "status": "pending"
+    },
+    {
+      "id": "hotfix-index-release",
+      "content": "紧急修复正式版发布入口：按用户确认方式直接从 public/acu_visualizer_test/ 复制到 public/acu_visualizer/，只修改版本号，并以 index.js 作为正式入口",
+      "status": "completed"
     },
     {
       "id": "release-9-8-1",
@@ -168,32 +174,15 @@
       "nextAction": "创建下一阶段 L2 常驻内存下降优化计划；仅规划，不改业务代码。"
     }
   ],
-  "risks": [],
+  "risks": [
+    {
+      "id": "acu-v98-old-entry-ambiguity",
+      "title": "正式目录旧 acu_visualizer.js 入口仍存在，可能与 index.js 最终入口混淆",
+      "description": "当前最终用户确认方案以 public/acu_visualizer/index.js 为正式入口；但 public/acu_visualizer/acu_visualizer.js 仍存在并显示诊断问题/可能不是最新复制结果。若用户或线上仍引用旧 acu_visualizer.js，可能加载到非最终产物。需要后续明确是否保留、覆盖为 index.js、删除或改为提示重定向。",
+      "status": "active"
+    }
+  ],
   "log": [
-    {
-      "at": "2026-05-17T22:50:13.524Z",
-      "type": "updated",
-      "refId": "settings-dialog-leading-char-fix",
-      "message": "移除 settings-dialog.js 第 1 行误入字符“的”，修复 about:srcdoc 自动加载 import failed。"
-    },
-    {
-      "at": "2026-05-17T23:36:33.660Z",
-      "type": "updated",
-      "refId": "history-refresh-regression-fix",
-      "message": "补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。"
-    },
-    {
-      "at": "2026-05-18T01:04:20.783Z",
-      "type": "updated",
-      "refId": "history-highlight-refresh-menu-fixes",
-      "message": "修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。"
-    },
-    {
-      "at": "2026-05-18T02:11:49.500Z",
-      "type": "updated",
-      "refId": "diagnosed-history-refresh-import-fix",
-      "message": "对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。"
-    },
     {
       "at": "2026-05-18T11:30:31.600Z",
       "type": "updated",
@@ -289,21 +278,45 @@
       "type": "milestone_recorded",
       "refId": "acu-visualizer-v9-8-release",
       "message": "ACU Visualizer v9.8 正式版发布完成：用户地址保持不变，内部测试命名暂保留以降低发布风险。"
+    },
+    {
+      "at": "2026-05-18T17:41:21.534Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-v98-测试版同步正式版发布计划.plan.md"
+    },
+    {
+      "at": "2026-05-18T17:41:43.912Z",
+      "type": "updated",
+      "refId": "acu-v98-direct-public-copy-finalized",
+      "message": "整理当前修改：最终发布修正改为直接复制 public/acu_visualizer_test/ 到 public/acu_visualizer/，只替换版本号，并以 public/acu_visualizer/index.js 为确认入口；node --check 已通过。"
+    },
+    {
+      "at": "2026-05-18T17:46:47.495Z",
+      "type": "updated",
+      "refId": "story-regex-ui-reload-button-rename",
+      "message": "story_regex_ui_prod 与 story_regex_ui_releasetest：外部按钮“重载资源”改名为“重载美化”；管理面板内部按钮恢复为“重载资源”；注册逻辑改为优先 replaceScriptButtons 以替换旧外部按钮；loader 残留未就绪报错增加刷新/开关脚本提示。"
+    },
+    {
+      "at": "2026-05-18T17:49:39.448Z",
+      "type": "updated",
+      "refId": "mvu-status-newvars-message-scope-read",
+      "message": "story_regex_ui_prod 与 story_regex_ui_releasetest：mvu-status-newvars 现在保存并使用当前消息楼层 messageId，优先读取 message 级 MVU/变量数据；修复当前时间、当前位置、咒术高专羁绊档案显示未随变量更新的问题。"
     }
   ],
   "stats": {
     "milestonesTotal": 1,
     "milestonesCompleted": 1,
-    "todosTotal": 8,
-    "todosCompleted": 7,
+    "todosTotal": 9,
+    "todosCompleted": 8,
     "todosInProgress": 0,
     "todosCancelled": 0,
-    "activeRisks": 0
+    "activeRisks": 1
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-18T15:38:26.747Z",
-    "bodyHash": "sha256:cfd004f079f41b121d772fca093d8bd279fe3c2f42631deaf87e2164ea95e815"
+    "generatedAt": "2026-05-18T17:49:39.448Z",
+    "bodyHash": "sha256:ab86c6d090298bd1b51c7f6ef250566696f53f8d3a4e0406544796134f74e42a"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
