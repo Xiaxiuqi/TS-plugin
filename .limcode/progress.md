@@ -1,6 +1,6 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-18T02:11:49.500Z
+- Updated At: 2026-05-18T11:30:31.600Z
 - Status: active
 - Phase: implementation
 
@@ -8,9 +8,9 @@
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：尚无里程碑记录
-- 当前焦点：ACU Visualizer 历史恢复记录与刷新菜单 import 诊断修复完成
-- 最新结论：按正式版对照完成诊断修复：1) showRefreshMenu 位于 main.js，但模块化版漏 import performRefreshTable/openShortcutDialog，已补齐 import，解决刷新表格/快捷选项 ReferenceError；2) 历史恢复操作原先把被恢复值重新写入历史，现改为记录恢复前当前值，因此 C 恢复到 A…
-- 下一步：请重新 import 后复测：刷新菜单的刷新表格和快捷选项；历史 A->B->C 后从历史恢复 A 时是否记录 C。
+- 当前焦点：ACU Visualizer 快捷选项无反应与无历史菜单关闭修复完成
+- 最新结论：修复两项反馈：1) 快捷选项点击无反应经检查是弹窗 CSS 未迁入模块化 table.css，DOM 可能已插入但无可见样式；已补充 acu-shortcut-lite-* 样式。2) 历史记录无条目时 showHistoryMenu 只提示暂无历史记录，cell-editor 因特殊处理 history 不关闭菜单；已改为点击任意菜单项都关闭菜单。已构建并…
+- 下一步：请重新 import 后复测：刷新菜单->快捷选项是否显示弹窗；无历史记录单元格点击历史记录后菜单是否关闭。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
@@ -51,7 +51,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-17T16:02:41.305Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T16:24:13.116Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T16:40:36.490Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md
 - 2026-05-17T16:40:50.236Z | updated | acu-visualizer-src-single-entry-build | 完成 ACU Visualizer 测试版 src 迁移与单入口构建支持：新增 build:entry，public 仅保留 index.js 产物，推荐直接 import acu_visualizer_test/index.js。
@@ -71,6 +70,7 @@
 - 2026-05-17T23:36:33.660Z | updated | history-refresh-regression-fix | 补接 showHistoryMenu 依赖并修正 showRefreshMenu 作用域/嵌套声明错误，完成构建同步。
 - 2026-05-18T01:04:20.783Z | updated | history-highlight-refresh-menu-fixes | 修复历史记录记录当前值的问题、用户编辑高亮被数据库高亮覆盖的问题、刷新菜单 removeWithEvents 未导入的问题，并完成构建同步。
 - 2026-05-18T02:11:49.500Z | updated | diagnosed-history-refresh-import-fix | 对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。
+- 2026-05-18T11:30:31.600Z | updated | shortcut-visible-history-close-fix | 补充快捷选项弹窗 CSS，并恢复单元格菜单任意选项点击后关闭行为。
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -80,13 +80,13 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-18T02:11:49.500Z",
+  "updatedAt": "2026-05-18T11:30:31.600Z",
   "status": "active",
   "phase": "implementation",
-  "currentFocus": "ACU Visualizer 历史恢复记录与刷新菜单 import 诊断修复完成",
-  "latestConclusion": "按正式版对照完成诊断修复：1) showRefreshMenu 位于 main.js，但模块化版漏 import performRefreshTable/openShortcutDialog，已补齐 import，解决刷新表格/快捷选项 ReferenceError；2) 历史恢复操作原先把被恢复值重新写入历史，现改为记录恢复前当前值，因此 C 恢复到 A 后历史应包含 C、A、B 或按去重规则保持最近旧值链。已构建并同步 public。",
+  "currentFocus": "ACU Visualizer 快捷选项无反应与无历史菜单关闭修复完成",
+  "latestConclusion": "修复两项反馈：1) 快捷选项点击无反应经检查是弹窗 CSS 未迁入模块化 table.css，DOM 可能已插入但无可见样式；已补充 acu-shortcut-lite-* 样式。2) 历史记录无条目时 showHistoryMenu 只提示暂无历史记录，cell-editor 因特殊处理 history 不关闭菜单；已改为点击任意菜单项都关闭菜单。已构建并同步 public。",
   "currentBlocker": null,
-  "nextAction": "请重新 import 后复测：刷新菜单的刷新表格和快捷选项；历史 A->B->C 后从历史恢复 A 时是否记录 C。",
+  "nextAction": "请重新 import 后复测：刷新菜单->快捷选项是否显示弹窗；无历史记录单元格点击历史记录后菜单是否关闭。",
   "activeArtifacts": {
     "design": ".limcode/design/acu-visualizer-模块迁移优先设计.md",
     "plan": ".limcode/plans/acu-visualizer-内存优化详细逐步实施计划.plan.md"
@@ -151,12 +151,6 @@
   "milestones": [],
   "risks": [],
   "log": [
-    {
-      "at": "2026-05-17T16:02:41.305Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/acu-visualizer-模块迁移优先实施计划.plan.md"
-    },
     {
       "at": "2026-05-17T16:24:13.116Z",
       "type": "artifact_changed",
@@ -270,6 +264,12 @@
       "type": "updated",
       "refId": "diagnosed-history-refresh-import-fix",
       "message": "对照正式版并诊断模块化差异，补齐 main.js import，修复历史恢复记录当前值而非恢复值。"
+    },
+    {
+      "at": "2026-05-18T11:30:31.600Z",
+      "type": "updated",
+      "refId": "shortcut-visible-history-close-fix",
+      "message": "补充快捷选项弹窗 CSS，并恢复单元格菜单任意选项点击后关闭行为。"
     }
   ],
   "stats": {
@@ -283,8 +283,8 @@
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-18T02:11:49.500Z",
-    "bodyHash": "sha256:5c93ea57c73be41d3b2cda0ea7c66706383b406932d1d7a36abdd450c954c735"
+    "generatedAt": "2026-05-18T11:30:31.600Z",
+    "bodyHash": "sha256:1a0159218a9b96b7e09aedcc18961d52945e7763b00a8cd4b33a3939465c5cd8"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->

@@ -137,7 +137,7 @@ export function showCellMenu(event, cell, deps = {}) {
 
   $menu.find('.acu-cell-menu-item').on('click.acu', function () {
     const action = $(this).data('action');
-    const shouldCloseMenu = action !== 'history';
+    const shouldCloseMenu = true;
     if (action === 'history') {
       const simulatedEvent = {
         clientX: $menu.data('clickX'),
