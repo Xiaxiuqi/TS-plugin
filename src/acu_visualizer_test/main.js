@@ -404,7 +404,7 @@ export function bootstrapAcuVisualizerTest() {
   };
 
   const api = hostWindow.ACUVisualizerTest || {};
-  api.version = 'modular-test-migration';
+  api.version = '9.8.0';
   api.lifecycle = lifecycle;
   api.deps = deps;
   api.destroy = destroyRuntime;
