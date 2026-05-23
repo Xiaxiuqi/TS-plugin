@@ -1,0 +1,24 @@
+{
+  "name": "nova-card-creator",
+  "version": "1.2.0",
+  "description": "AI辅助角色卡创作系统",
+  "main": "tools/build-card.js",
+  "scripts": {
+    "new": "node tools/new-project.js",
+    "build": "node tools/build-card.js",
+    "validate": "node tools/validate-project.js",
+    "test": "node tests/run.js",
+    "png-to-json": "node tools/png-to-json.js",
+    "json-to-png": "node tools/json-to-png.js",
+    "unpack-card": "node tools/unpack-card.js",
+    "analyze-card": "node tools/analyze-card-editable.js",
+    "repack-card": "node tools/repack-card.js",
+    "render-embedded-tables": "node tools/render-embedded-tables.js",
+    "init-readable-tables": "node tools/init-readable-tables.js"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "author": "",
+  "license": "MIT"
+}

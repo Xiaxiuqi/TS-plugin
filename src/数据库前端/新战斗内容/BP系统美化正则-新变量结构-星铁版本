@@ -1,0 +1,1133 @@
+# BP系统美化正则-新变量结构-星铁版本
+
+## 使用目标
+
+本文件用于将新版纯文字格式的 `<bp_panel>` 战力雷达渲染为与当前星铁版状态栏一致的深色终端卡片界面。
+
+本版适配当前新版变量结构，不再使用旧版 `操作 / 肉体 / 咒术` 三段式 BP 条目，而是展示以下新版字段：
+
+- `战斗面板.总BP`
+- `战斗面板.战力等级`
+- `战力评级`
+- `战斗面板.当前血量 / 最大生命值`
+- `战斗面板.防御`
+- `战斗面板.总肉体值_BPA`
+- `战斗面板.术式强度_BPB`
+- `战斗面板.咒术攻击`
+- `战斗面板.物理攻击`
+- `战斗面板.咒具值`
+- `咒力.当前值 / 有效总量 / 总量 / 咒力操纵精度 / 每轮回复量 / 消耗倍率`
+- `基础肉体.基础肉体值 / 武艺值 / 武艺阶段 / 武艺输出比例 / 武艺防御系数`
+- `生得术式.名称 / 潜力等级 / 潜力值 / 精通等级 / 阶段 / 基础强度 / 当前强度`
+- `反转术式`
+- `术式熔断`
+- `特殊体质`
+
+## 适配的原始输出位置
+
+```text
+novel_header
+<story_driver>...</story_driver>
+正文
+<bp_panel>...</bp_panel>
+<wlog>...</wlog>
+<StatusPlaceHolderImpl/>
+```
+
+## 适配的新版原始输出格式
+
+```text
+<bp_panel>
+【BP战力雷达】
+
+【扫描状态】
+本回合读取伏黑甚尔的战力样本，确认其属于极端肉体特化型目标。
+
+【已扫描目标】
+- 名称: 伏黑甚尔 (天与暴君) | 总BP: 1000 | 战力等级: A级·特级 | 咒术评级: 特级
+  HP: 1000 / 1000 | 防御: 0 | 伤害补正: 1
+  咒力: 当前0 / 有效0 / 原始0 | 精度1 | 回复0 | 消耗倍率1
+  肉体: 总肉体值_BPA 1000 | 基础500 | 武艺200 | 阶段出神入化 | 输出1 | 防御系数3
+  术式: 术式强度_BPB 0 | 名称无 | 潜力0(未定型术式) | 精通0(未入门) | 基础强度0 | 当前强度0
+  攻击: 咒术0 | 物理1200 | 咒具100
+  反转: 掌握否 | 等级未掌握 | 回复0 | 治疗消耗0 | 熔断修复消耗0
+  熔断: 状态未熔断 | 大脑重置0 | 回复惩罚1 | 强度惩罚1
+  特性备注:
+  - 【天与咒缚（纯肉体）】: 彻底抛弃咒力换取肉体强度。
+  - 【隐匿】: 无咒力残秽，无法被常规索敌结界捕捉。
+</bp_panel>
+```
+
+## 正则执行顺序
+
+必须严格按以下顺序创建并启用正则：
+
+1. `01_BP战力雷达外层面板_新变量_星铁`
+2. `02_BP战力目标卡片_新变量_星铁`
+3. `03_BP战力特性条目_新变量_星铁`
+
+建议三条正则都设置为作用于 AI 输出或消息显示阶段。若酒馆正则支持脚本顺序，请保证编号越小越先执行；稀有度着色已整合进二号目标卡片正则，无需额外正则。
+
+---
+
+## 01_BP战力雷达外层面板_新变量_星铁
+
+### 查找正则
+
+```regex
+/<bp_panel>\s*【BP战力雷达】\s*【扫描状态】\s*([\s\S]*?)\s*【已扫描目标】\s*([\s\S]*?)\s*<\/bp_panel>/s
+```
+
+### 替换内容
+
+```html
+<div class="bp-radar-widget bp-hsr-ui bp-newvars-ui">
+  <style>
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui {
+      --bp-space: #171b22;
+      --bp-panel: rgba(29, 35, 44, .97);
+      --bp-panel-2: rgba(38, 45, 56, .92);
+      --bp-row: rgba(255, 255, 255, .055);
+      --bp-row-2: rgba(255, 255, 255, .082);
+      --bp-text: #ede7dc;
+      --bp-muted: #b8afa1;
+      --bp-faint: #807d78;
+      --bp-gold: #c8a86c;
+      --bp-cyan: #88aeb8;
+      --bp-blue: #8091ad;
+      --bp-rose: #b9877e;
+      --bp-green: #9fbf9b;
+      --bp-purple: #a69bd0;
+      --bp-shadow: 0 4px 10px rgba(0, 0, 0, .16);
+      --bp-shadow-soft: 0 2px 6px rgba(0, 0, 0, .12);
+      width: 100%;
+      margin: .8em auto;
+      display: flex;
+      justify-content: center;
+      color: var(--bp-text);
+      font-family: "Noto Serif SC", "Source Han Serif SC", "Microsoft YaHei", serif;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui * {
+      box-sizing: border-box;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui details {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(200,168,108,.1), transparent 22%),
+        radial-gradient(circle at 90% 0%, rgba(136,174,184,.12), transparent 30%),
+        linear-gradient(180deg, var(--bp-panel), var(--bp-space));
+      box-shadow: var(--bp-shadow);
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui details::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.28), transparent 18%, transparent 82%, rgba(136,174,184,.18)),
+        linear-gradient(180deg, rgba(255,255,255,.055), transparent 80px);
+      opacity: .58;
+      z-index: 0;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui summary {
+      list-style: none;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-summary {
+      width: 100%;
+      min-height: 38px;
+      cursor: pointer;
+      user-select: none;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 9px;
+      align-items: center;
+      padding: 10px 12px;
+      color: var(--bp-text);
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.14), rgba(136,174,184,.06), transparent),
+        rgba(255,255,255,.035);
+      transition: background .22s ease, filter .22s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-summary:hover {
+      filter: brightness(1.08);
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.2), rgba(136,174,184,.1), transparent),
+        rgba(255,255,255,.055);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-toggle-icon {
+      width: 31px;
+      height: 31px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--bp-gold);
+      background: rgba(255,255,255,.06);
+      font-size: 15px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-summary-text {
+      min-width: 0;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-toggle-title {
+      display: block;
+      margin: 0;
+      color: var(--bp-text);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-toggle-subtitle {
+      display: block;
+      margin-top: 1px;
+      color: var(--bp-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .toggle-icon {
+      color: var(--bp-gold);
+      transition: transform .24s ease;
+      flex: 0 0 auto;
+      font-size: 12px;
+      letter-spacing: 0;
+      opacity: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui details:not([open]) .toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel {
+      margin: 0;
+      width: 100%;
+      overflow: hidden;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.34), transparent 18%, transparent 82%, rgba(136,174,184,.18)),
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent 80px);
+      opacity: .58;
+    }
+
+    /* 等级联动标题与特性区块配色 */
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-game-title {
+      color: #ff8f8f;
+      background: linear-gradient(90deg, rgba(220,86,86,.16), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(220,86,86,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait-title {
+      color: #ff8f8f;
+      background: linear-gradient(90deg, rgba(220,86,86,.16), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(220,86,86,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait {
+      background: linear-gradient(90deg, rgba(220,86,86,.16), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(220,86,86,.34), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] .bp-trait-name[data-trait*="受肉体"] {
+      color: #ff8f8f;
+      background: rgba(220,86,86,.16);
+      box-shadow: inset 0 0 0 1px rgba(220,86,86,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-game-title {
+      color: #f0ca75;
+      background: linear-gradient(90deg, rgba(200,168,108,.16), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(200,168,108,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait-title {
+      color: #f0ca75;
+      background: linear-gradient(90deg, rgba(200,168,108,.16), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(200,168,108,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait {
+      background: linear-gradient(90deg, rgba(200,168,108,.16), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(200,168,108,.34), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] .bp-trait-name[data-trait*="受肉体"] {
+      color: #f0ca75;
+      background: rgba(200,168,108,.16);
+      box-shadow: inset 0 0 0 1px rgba(200,168,108,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-game-title {
+      color: #d6c3ff;
+      background: linear-gradient(90deg, rgba(166,155,208,.16), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(166,155,208,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait-title {
+      color: #d6c3ff;
+      background: linear-gradient(90deg, rgba(166,155,208,.16), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(166,155,208,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait {
+      background: linear-gradient(90deg, rgba(166,155,208,.16), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(166,155,208,.34), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] .bp-trait-name[data-trait*="受肉体"] {
+      color: #d6c3ff;
+      background: rgba(166,155,208,.16);
+      box-shadow: inset 0 0 0 1px rgba(166,155,208,.34);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-game-title {
+      color: #9fd3df;
+      background: linear-gradient(90deg, rgba(136,174,184,.15), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.32);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait-title {
+      color: #9fd3df;
+      background: linear-gradient(90deg, rgba(136,174,184,.15), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.32);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait {
+      background: linear-gradient(90deg, rgba(136,174,184,.15), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.32), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] .bp-trait-name[data-trait*="受肉体"] {
+      color: #9fd3df;
+      background: rgba(136,174,184,.15);
+      box-shadow: inset 0 0 0 1px rgba(136,174,184,.32);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-game-title {
+      color: #b8dfb0;
+      background: linear-gradient(90deg, rgba(159,191,155,.14), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(159,191,155,.3);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait-title {
+      color: #b8dfb0;
+      background: linear-gradient(90deg, rgba(159,191,155,.14), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(159,191,155,.3);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait {
+      background: linear-gradient(90deg, rgba(159,191,155,.14), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(159,191,155,.3), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] .bp-trait-name[data-trait*="受肉体"] {
+      color: #b8dfb0;
+      background: rgba(159,191,155,.14);
+      box-shadow: inset 0 0 0 1px rgba(159,191,155,.3);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-game-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-game-title {
+      color: #d2c7b8;
+      background: linear-gradient(90deg, rgba(184,175,161,.12), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(184,175,161,.24);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait-title,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait-title {
+      color: #d2c7b8;
+      background: linear-gradient(90deg, rgba(184,175,161,.12), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(184,175,161,.24);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait,
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait {
+      background: linear-gradient(90deg, rgba(184,175,161,.12), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(184,175,161,.24), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"] .bp-trait-name[data-trait*="受肉体"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] .bp-trait-name[data-trait*="受肉体"] {
+      color: #d2c7b8;
+      background: rgba(184,175,161,.12);
+      box-shadow: inset 0 0 0 1px rgba(184,175,161,.24);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel-foot {
+      position: relative;
+      z-index: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-body {
+      padding: 10px 12px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card {
+      min-width: 0;
+      border-radius: 6px;
+      border: none;
+      background: var(--bp-panel-2);
+      box-shadow: var(--bp-shadow-soft);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--bp-rose);
+      opacity: .72;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card-head {
+      padding: 8px 10px 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(90deg, rgba(255,255,255,.062), transparent);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card-dot {
+      width: 14px;
+      height: 2px;
+      border-radius: 2px;
+      flex: 0 0 auto;
+      background: var(--bp-gold);
+      box-shadow: 10px 0 0 rgba(200,168,108,.32);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-card-title {
+      color: var(--bp-text);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .11em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-scan-text {
+      padding: 8px 10px 9px 12px;
+      color: var(--bp-text);
+      background: rgba(255,255,255,.025);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-size: 12.5px;
+      line-height: 1.62;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-grid {
+      padding: 8px 9px 10px 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+      gap: 8px;
+      background: rgba(255,255,255,.025);
+      white-space: pre-wrap;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card {
+      min-width: 0;
+      padding: 8px 9px 9px;
+      border-radius: 5px;
+      color: var(--bp-text);
+      font-size: 12.1px;
+      line-height: 1.34;
+      background: var(--bp-row);
+      border: none;
+      box-shadow: inset 4px 0 0 rgba(185,135,126,.5), var(--bp-shadow-soft);
+      position: relative;
+      white-space: normal;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      width: 16px;
+      height: 1px;
+      background: rgba(200,168,108,.45);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 7px;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,.08);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name {
+      min-width: 0;
+      color: var(--bp-cyan);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .07em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-tier-wrap {
+      flex: 0 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-tier {
+      padding: 0;
+      border-radius: 0;
+      color: inherit;
+      background: transparent;
+      font-size: 10.8px;
+      font-weight: 800;
+      line-height: 1.32;
+      white-space: nowrap;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-face {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 7px;
+      padding: 7px;
+      border-radius: 6px;
+      background:
+        linear-gradient(135deg, rgba(200,168,108,.08), transparent 44%),
+        rgba(0,0,0,.14);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.055);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-face-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+      align-items: start;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-row {
+      display: grid;
+      gap: 3px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--bp-muted);
+      font-size: 10.6px;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-value {
+      color: var(--bp-text);
+      font-size: 11.4px;
+      letter-spacing: .02em;
+      text-align: right;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-track {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(0,0,0,.28);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.24);
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill {
+      display: block;
+      height: 100%;
+      width: var(--bp-meter);
+      border-radius: inherit;
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.24), transparent);
+      opacity: .62;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill.bp-fill-bp {
+      background: linear-gradient(90deg, rgba(185,135,126,.72), rgba(200,168,108,.95));
+      box-shadow: 0 0 12px rgba(200,168,108,.22);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill.bp-fill-hp {
+      background: linear-gradient(90deg, rgba(161,68,68,.88), rgba(222,116,95,.94));
+      box-shadow: 0 0 11px rgba(185,88,80,.22);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-fill.bp-fill-ce {
+      background: linear-gradient(90deg, rgba(74,127,165,.88), rgba(136,174,184,.95));
+      box-shadow: 0 0 11px rgba(136,174,184,.22);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-meter-sub {
+      color: var(--bp-faint);
+      font-size: 10px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel {
+      min-width: 0;
+      padding: 6px 7px;
+      border-radius: 6px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.045), transparent 58%),
+        rgba(255,255,255,.045);
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.42), inset 0 0 0 1px rgba(255,255,255,.045), var(--bp-shadow-soft);
+      overflow: hidden;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.attack {
+      box-shadow: inset 2px 0 0 rgba(185,135,126,.6), var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.tech {
+      box-shadow: inset 2px 0 0 rgba(166,155,208,.5), var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-panel.support {
+      box-shadow: inset 2px 0 0 rgba(159,191,155,.52), var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-title {
+      margin: -2px -3px 5px;
+      padding: 3px 5px;
+      border-radius: 4px;
+      color: var(--bp-cyan);
+      font-size: 10.4px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      background: linear-gradient(90deg, rgba(136,174,184,.15), rgba(255,255,255,.045), transparent);
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.5);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-lines {
+      display: grid;
+      gap: 2px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 7px;
+      align-items: baseline;
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: var(--bp-muted);
+      font-size: 10.6px;
+      line-height: 1.22;
+      background: rgba(255,255,255,.07);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-line:nth-child(even) {
+      background: rgba(255,255,255,.105);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-line b {
+      color: var(--bp-text);
+      font-size: 11.6px;
+      font-weight: 900;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-title {
+      margin: 5px 0 5px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      color: var(--bp-cyan);
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      background: linear-gradient(90deg, rgba(136,174,184,.14), rgba(255,255,255,.04), transparent);
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.55);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-list {
+      display: grid;
+      gap: 5px;
+      white-space: normal;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait {
+      padding: 6px 7px;
+      border-radius: 5px;
+      background: linear-gradient(90deg, rgba(136,174,184,.07), rgba(255,255,255,.045));
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.42), inset 0 0 0 1px rgba(255,255,255,.04);
+      font-size: 11.5px;
+      line-height: 1.48;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name {
+      display: inline;
+      margin-right: 2px;
+      padding: 0;
+      border-radius: 0;
+      color: var(--bp-muted);
+      background: transparent;
+      box-shadow: none;
+      font-weight: 800;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*="天与咒缚"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*="六眼"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*="黑闪眷顾者"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*="九相图"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-trait-name[data-trait*="受肉体"] {
+      display: inline-block;
+      margin-right: 4px;
+      padding: 1px 5px;
+      border-radius: 999px;
+      color: var(--bp-cyan);
+      background: rgba(136,174,184,.16);
+      box-shadow: inset 0 0 0 1px rgba(136,174,184,.22);
+      font-weight: 900;
+    }
+
+
+
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 999px;
+      font-weight: 900;
+      line-height: 1.28;
+      white-space: nowrap;
+      box-shadow: none;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="S级·论外"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="出神入化"] {
+      color: #ff8f8f;
+      background: rgba(220,86,86,.24);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="AA级·强特级"] {
+      color: #f0ca75;
+      background: rgba(200,168,108,.24);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="A级·特级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="出类拔萃"] {
+      color: #d6c3ff;
+      background: rgba(166,155,208,.24);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="B级·一级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="C级·准一级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="登堂入室"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="精通"] {
+      color: #9fd3df;
+      background: rgba(136,174,184,.2);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="D级·二级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="E级·三级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="熟练"] {
+      color: #b8dfb0;
+      background: rgba(159,191,155,.18);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="F级·四级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="入门"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-rarity[data-rarity="未入门"] {
+      color: #d2c7b8;
+      background: rgba(184,175,161,.14);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="S级·论外"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出神入化"] {
+      box-shadow: inset 4px 0 0 #ff8f8f, var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="AA级·强特级"] {
+      box-shadow: inset 4px 0 0 #f0ca75, var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="A级·特级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="出类拔萃"] {
+      box-shadow: inset 4px 0 0 #d6c3ff, var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="B级·一级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="C级·准一级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="登堂入室"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="精通"] {
+      box-shadow: inset 4px 0 0 #9fd3df, var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="D级·二级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="E级·三级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="熟练"] {
+      box-shadow: inset 4px 0 0 #b8dfb0, var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="F级·四级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="入门"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-card[data-rarity="未入门"] {
+      box-shadow: inset 4px 0 0 #d2c7b8, var(--bp-shadow-soft);
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="S级·论外"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="出神入化"] {
+      color: #ff8f8f;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="AA级·强特级"] {
+      color: #f0ca75;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="A级·特级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="出类拔萃"] {
+      color: #d6c3ff;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="B级·一级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="C级·准一级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="登堂入室"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="精通"] {
+      color: #9fd3df;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="D级·二级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="E级·三级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="熟练"] {
+      color: #b8dfb0;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="F级·四级"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="入门"],
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-name[data-rarity="未入门"] {
+      color: #d2c7b8;
+    }
+
+    .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-panel-foot {
+      padding: 8px 14px 10px;
+      text-align: center;
+      color: var(--bp-faint);
+      font-size: 10px;
+      letter-spacing: .14em;
+      background: rgba(0,0,0,.16);
+    }
+
+    @media (max-width: 640px) {
+      .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-grid,
+      .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-game-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-target-top,
+      .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-face-top {
+        display: grid;
+        justify-content: stretch;
+      }
+
+      .bp-radar-widget.bp-hsr-ui.bp-newvars-ui .bp-tier-wrap {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+
+  <details>
+    <summary class="bp-summary" aria-label="展开或收起BP战力雷达">
+      <span class="bp-toggle-icon">✦</span>
+      <span class="bp-summary-text">
+        <span class="bp-toggle-title">BP战力雷达</span>
+        <span class="bp-toggle-subtitle">NEW VARIABLE BATTLE POINT TERMINAL · BEFORE WLOG</span>
+      </span>
+      <span class="bp-toggle-state toggle-icon">▼</span>
+    </summary>
+
+    <section class="bp-panel">
+      <div class="bp-body">
+        <article class="bp-card">
+          <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">扫描状态</span></div>
+          <div class="bp-scan-text">$1</div>
+        </article>
+
+        <article class="bp-card">
+          <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">已扫描目标</span></div>
+          <div class="bp-target-grid">
+$2
+          </div>
+        </article>
+      </div>
+
+      <footer class="bp-panel-foot">✧ NEW VARIABLE BATTLE POINT RADAR TERMINAL ✧</footer>
+    </section>
+  </details>
+</div>
+```
+
+---
+
+## 02_BP战力目标卡片_新变量_星铁
+
+### 查找正则
+
+```regex
+/^\s*-\s*名称:\s*([^|\n]+?)\s*\|\s*总BP:\s*([+-]?\d+(?:\.\d+)?)\s*\|\s*战力等级:\s*([^|\n]+?)\s*\|\s*咒术评级:\s*([^\n]+?)\s*\n\s*HP:\s*([^|\n]+?)\s*\/\s*([^|\n]+?)\s*\|\s*防御:\s*([^|\n]+?)\s*\|\s*伤害补正:\s*([^\n]+?)\s*\n\s*咒力:\s*当前([^\/\n]+?)\s*\/\s*有效([^\/\n]+?)\s*\/\s*原始([^|\n]+?)\s*\|\s*精度([^|\n]+?)\s*\|\s*回复([^|\n]+?)\s*\|\s*消耗倍率([^\n]+?)\s*\n\s*肉体:\s*总肉体值_BPA\s*([^|\n]+?)\s*\|\s*基础([^|\n]+?)\s*\|\s*武艺([^|\n]+?)\s*\|\s*阶段([^|\n]+?)\s*\|\s*输出([^|\n]+?)\s*\|\s*防御系数([^\n]+?)\s*\n\s*术式:\s*术式强度_BPB\s*([^|\n]+?)\s*\|\s*名称([^|\n]+?)\s*\|\s*潜力([^(|\n]+?)\(([^)\n]*?)\)\s*\|\s*精通([^(|\n]+?)\(([^)\n]*?)\)\s*\|\s*基础强度([^|\n]+?)\s*\|\s*当前强度([^\n]+?)\s*\n\s*攻击:\s*咒术([^|\n]+?)\s*\|\s*物理([^|\n]+?)\s*\|\s*咒具([^\n]+?)\s*\n\s*反转:\s*掌握([^|\n]+?)\s*\|\s*等级([^|\n]+?)\s*\|\s*回复([^|\n]+?)\s*\|\s*治疗消耗([^|\n]+?)\s*\|\s*熔断修复消耗([^\n]+?)\s*\n\s*熔断:\s*状态([^|\n]+?)\s*\|\s*大脑重置([^|\n]+?)\s*\|\s*回复惩罚([^|\n]+?)\s*\|\s*强度惩罚([^\n]+?)\s*\n\s*特性备注:\s*\n((?:[ \t]*(?:-\s*)?【[^】\n]+】[:：].+(?:\n|$))*)/gm
+```
+
+### 替换内容
+
+```html
+<div class="bp-target-card" data-rarity="$3">
+  <div class="bp-target-top">
+    <span class="bp-target-name" data-rarity="$3">✦ $1</span>
+    <span class="bp-tier-wrap"><span class="bp-tier"><span class="bp-rarity" data-rarity="$3">$3</span></span></span>
+  </div>
+
+  <div class="bp-game-face">
+    <div class="bp-face-top">
+      <div class="bp-meter-row">
+        <div class="bp-meter-head"><span>总BP</span><span class="bp-meter-value">$2</span></div>
+        <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-bp" style="--bp-meter:min(100%, calc($2 / 3001 * 100%));"></span></div>
+      </div>
+    </div>
+
+    <div class="bp-meter-row">
+      <div class="bp-meter-head"><span>HP 生命值</span><span class="bp-meter-value">$5 / $6</span></div>
+      <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-hp" style="--bp-meter:min(100%, calc($5 / max(1, $6) * 100%));"></span></div>
+      <div class="bp-meter-sub">防御 $7 · 伤害补正 $8</div>
+    </div>
+
+    <div class="bp-meter-row">
+      <div class="bp-meter-head"><span>咒力资源</span><span class="bp-meter-value">$9 / $10</span></div>
+      <div class="bp-meter-track"><span class="bp-meter-fill bp-fill-ce" style="--bp-meter:min(100%, calc($9 / max(1, $10) * 100%));"></span></div>
+      <div class="bp-meter-sub">原始 $11 · 精度 $12 · 每轮回复 +$13 · 消耗倍率 $14</div>
+    </div>
+  </div>
+
+  <div class="bp-game-grid">
+    <div class="bp-game-panel attack">
+      <div class="bp-game-title">攻击输出</div>
+      <div class="bp-game-lines">
+        <div class="bp-game-line"><span>咒术攻击</span><b>$29</b></div>
+        <div class="bp-game-line"><span>物理攻击</span><b>$30</b></div>
+        <div class="bp-game-line"><span>咒具值</span><b>$31</b></div>
+      </div>
+    </div>
+
+    <div class="bp-game-panel">
+      <div class="bp-game-title">肉体与武艺</div>
+      <div class="bp-game-lines">
+        <div class="bp-game-line"><span>总肉体值_BPA</span><b>$15</b></div>
+        <div class="bp-game-line"><span>基础 / 武艺</span><b>$16 / $17</b></div>
+        <div class="bp-game-line"><span>阶段</span><b><span class="bp-rarity" data-rarity="$18">$18</span></b></div>
+        <div class="bp-game-line"><span>输出 / 防御系数</span><b>$19 / $20</b></div>
+      </div>
+    </div>
+
+    <div class="bp-game-panel tech">
+      <div class="bp-game-title">术式强度</div>
+      <div class="bp-game-lines">
+        <div class="bp-game-line"><span>术式强度_BPB</span><b>$21</b></div>
+        <div class="bp-game-line"><span>生得术式</span><b>$22</b></div>
+        <div class="bp-game-line"><span>潜力</span><b>$23 · <span class="bp-rarity" data-rarity="$24">$24</span></b></div>
+        <div class="bp-game-line"><span>精通 / 阶段</span><b>$25 / <span class="bp-rarity" data-rarity="$26">$26</span></b></div>
+        <div class="bp-game-line"><span>基础 / 当前</span><b>$27 / $28</b></div>
+      </div>
+    </div>
+
+    <div class="bp-game-panel support">
+      <div class="bp-game-title">反转术式 / 熔断</div>
+      <div class="bp-game-lines">
+        <div class="bp-game-line"><span>反转治疗</span><b>$32 · $33</b></div>
+        <div class="bp-game-line"><span>回复 / 消耗</span><b>$34 / $35</b></div>
+        <div class="bp-game-line"><span>熔断修复</span><b>$36</b></div>
+        <div class="bp-game-line"><span>熔断状态</span><b>$37</b></div>
+        <div class="bp-game-line"><span>重置 / 惩罚</span><b>$38 · $39 / $40</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bp-trait-title">特性备注</div>
+  <div class="bp-trait-list">
+$41
+  </div>
+</div>
+```
+
+---
+
+## 03_BP战力特性条目_新变量_星铁
+
+### 查找正则
+
+```regex
+/^[ \t]*(?:-\s*)?(【[^】\n]+】)[:：]\s*(.*?)\s*$/gm
+```
+
+### 替换内容
+
+```html
+<div class="bp-trait"><span class="bp-trait-name" data-trait="$1">$1</span>：$2</div>
+```
+
+---
+
+## 注意事项
+
+1. 三条正则必须按顺序执行。
+2. `01_BP战力雷达外层面板_新变量_星铁` 需要使用 `s` 标志。
+3. `02_BP战力目标卡片_新变量_星铁` 需要使用 `gm` 标志。
+4. `03_BP战力特性条目_新变量_星铁` 需要使用 `gm` 标志。
+5. 稀有度着色已整合进 `02_BP战力目标卡片_新变量_星铁`：通过 `data-rarity` 属性和 CSS 属性选择器为战力等级、武艺阶段、术式潜力等级、术式阶段上色，无需额外 04-08 正则。
+6. 本方案不使用脚本，适合酒馆正则替换渲染环境。
+7. BP进度条以 `3001` 为满刻度显示，对应新版变量结构中 `S级·论外` 的门槛；超过 `3001` 会以满条显示。
+8. 若目标字段未知，建议仍保持条目字段完整，未知值可填 `未知`；但 `总BP` 必须填数字，否则第二条目标卡片正则不会捕获该目标。
+9. `03_BP战力特性条目_新变量_星铁` 只匹配以 `【...】:` 或 `【...】：` 开头的特性行，可避免误匹配 CSS 变量行如 `--bp-panel:`，否则会破坏前面正则插入的 `<style>` 并导致 `CSS ERROR: missing '}'`。
+10. `03_BP战力特性条目_新变量_星铁` 的名称捕获为完整方括号特性名 `【[^】\n]+】`，确保 `【天与咒缚（纯肉体）】` 这类重点特性可以进入 `data-trait` 并触发样式。
+11. `02_BP战力目标卡片_新变量_星铁` 的特性备注捕获只允许 `【特性名】: 说明` / `【特性名】：说明` 行，可带或不带前导 `-` 与缩进；下一名目标的 `- 名称:` 不会被捕获，避免多目标面板中第一张卡片吞掉下一名目标。

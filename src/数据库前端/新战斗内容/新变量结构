@@ -1,0 +1,475 @@
+import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
+
+const clampNumber = (value, min, max) => _.clamp(Number(value) || 0, min, max);
+const nonNegativeNumber = value => Math.max(0, Number(value) || 0);
+const roundNumber = value => Math.round((Number(value) || 0) * 100) / 100;
+
+function traitText(traits) {
+  if (!traits || typeof traits !== 'object') return '';
+  return JSON.stringify(traits);
+}
+
+function hasTrait(traits, names) {
+  const text = traitText(traits);
+  return names.some(name => text.includes(name));
+}
+
+function getBrainResetPenalty(count) {
+  const value = Math.max(0, Math.floor(Number(count) || 0));
+  if (value <= 2) return 1;
+  if (value === 3) return 0.5;
+  if (value === 4) return 0.2;
+  return 0.01;
+}
+
+function getPrecisionCostRate(precision) {
+  if (precision >= 2) return 0.4;
+  if (precision >= 1.5) return 0.7;
+  return 1;
+}
+
+function getMartialProfile(value) {
+  const martial = nonNegativeNumber(value);
+  if (martial >= 200) {
+    return {
+      阶段: '出神入化',
+      输出比例: 1,
+      防御系数: 3,
+    };
+  }
+  if (martial >= 180) {
+    return {
+      阶段: '登峰造极',
+      输出比例: 0.8,
+      防御系数: 2,
+    };
+  }
+  if (martial >= 150) {
+    return {
+      阶段: '出类拔萃',
+      输出比例: 0.6,
+      防御系数: 1,
+    };
+  }
+  if (martial >= 100) {
+    return {
+      阶段: '登堂入室',
+      输出比例: 0.4,
+      防御系数: 1,
+    };
+  }
+  if (martial >= 50) {
+    return {
+      阶段: '初学乍练',
+      输出比例: 0.2,
+      防御系数: 1,
+    };
+  }
+  if (martial > 0) {
+    return {
+      阶段: '初觉醒',
+      输出比例: 0.1,
+      防御系数: 1,
+    };
+  }
+  return {
+    阶段: '未入门',
+    输出比例: 0.1,
+    防御系数: 1,
+  };
+}
+
+function getPotentialLevel(value) {
+  const potential = nonNegativeNumber(value);
+  if (potential >= 800) return '篡改现实·编织者型';
+  if (potential >= 400) return '干涉现实·规则干涉型';
+  if (potential >= 200) return '第一等·天才型术式';
+  if (potential >= 100) return '第二等·精英型术式';
+  if (potential >= 50) return '第三等·标准型术式';
+  if (potential >= 20) return '第四等·砥砺型术式';
+  return '未定型术式';
+}
+
+function getMasteryStage(value) {
+  const mastery = nonNegativeNumber(value);
+  if (mastery >= 800) return '轮外熟练';
+  if (mastery >= 500) return '特级熟练';
+  if (mastery >= 200) return '精通';
+  if (mastery >= 100) return '入门';
+  if (mastery >= 1) return '初步觉醒';
+  return '未入门';
+}
+
+function getCombatGrade(bp) {
+  const value = nonNegativeNumber(bp);
+  if (value > 3001) return 'S级·论外';
+  if (value >= 1501) return 'AA级·强特级';
+  if (value >= 801) return 'A级·特级';
+  if (value >= 501) return 'B级·一级';
+  if (value >= 301) return 'C级·准一级';
+  if (value >= 151) return 'D级·二级';
+  if (value >= 100) return 'E级·三级';
+  return 'F级·四级';
+}
+
+function getJujutsuRank(bp) {
+  const grade = getCombatGrade(bp);
+  if (grade.startsWith('S级')) return '论外';
+  if (grade.startsWith('AA级')) return '强特级';
+  if (grade.startsWith('A级')) return '特级';
+  if (grade.startsWith('B级')) return '一级';
+  if (grade.startsWith('C级')) return '准一级';
+  if (grade.startsWith('D级')) return '二级';
+  if (grade.startsWith('E级')) return '三级';
+  return '四级';
+}
+
+function getReverseProfile(level, hasSixEyes) {
+  if (hasSixEyes && level !== '未掌握') {
+    return {
+      熟练等级: '六眼等天赋控制',
+      熟练系数: 2,
+      可外放: false,
+    };
+  }
+  if (level === '能够外放') {
+    return {
+      熟练等级: level,
+      熟练系数: 2,
+      可外放: true,
+    };
+  }
+  if (level === '能够熟练运用') {
+    return {
+      熟练等级: level,
+      熟练系数: 1.5,
+      可外放: false,
+    };
+  }
+  if (level === '初步了解运用') {
+    return {
+      熟练等级: level,
+      熟练系数: 1,
+      可外放: false,
+    };
+  }
+  return {
+    熟练等级: '未掌握',
+    熟练系数: 0,
+    可外放: false,
+  };
+}
+
+const 战技条目Schema = z.object({
+  熟练度: z.coerce.number().transform(v => clampNumber(v, 0, 100)).prefault(0),
+  阶段: z.string().prefault('入门'),
+  描述: z.string().prefault(''),
+}).transform(item => {
+  if (item.熟练度 <= 40) item.阶段 = '入门';
+  else if (item.熟练度 <= 80) item.阶段 = '熟练';
+  else item.阶段 = '精通';
+  return item;
+});
+
+const 术式条目Schema = z.object({
+  熟练度: z.coerce.number().transform(v => clampNumber(v, 0, 100)).prefault(0),
+  阶段: z.string().prefault('入门'),
+  描述: z.string().prefault(''),
+}).transform(item => {
+  if (item.熟练度 <= 40) item.阶段 = '入门';
+  else if (item.熟练度 <= 80) item.阶段 = '熟练';
+  else item.阶段 = '精通';
+  return item;
+});
+
+const 生得术式Schema = z.object({
+  名称: z.string().prefault('待觉醒'),
+  属性: z.string().prefault('无'),
+  潜力等级: z.string().prefault('第三等·标准型术式'),
+  潜力值: z.coerce.number().transform(v => clampNumber(v, 1, 2000)).prefault(50),
+  精通等级: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+  阶段: z.string().prefault('未入门'),
+  基础强度: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+  当前强度: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+  描述: z.string().prefault(''),
+}).transform(item => {
+  item.潜力等级 = getPotentialLevel(item.潜力值);
+  if (!item.名称 || item.名称 === '待觉醒' || item.名称 === '无') {
+    item.阶段 = '未入门';
+  } else {
+    item.阶段 = getMasteryStage(item.精通等级);
+  }
+  return item;
+});
+
+const 任务Schema = z.object({
+  任务名: z.string().prefault(''),
+  任务等级: z.string().prefault('未知'),
+  类型: z.string().prefault('祓除/护卫/调查'),
+  委托人或势力: z.string().prefault('未知'),
+  任务描述: z.string().prefault(''),
+  完成条件: z.string().prefault(''),
+  失败条件: z.string().prefault(''),
+  报酬: z.object({
+    金钱: z.coerce.number().prefault(0),
+    名望提升值: z.coerce.number().prefault(0),
+    物品: z.record(z.string(), z.coerce.number()).prefault({}),
+  }).prefault({}),
+});
+
+const 人际档案Schema = z.object({
+  好感数值: z.coerce.number().transform(v => clampNumber(v, -100, 100)).prefault(0),
+  信任度: z.coerce.number().transform(v => clampNumber(v, -100, 100)).prefault(0),
+  关系阶段: z.string().prefault('陌生'),
+  欲望值: z.coerce.number().transform(v => clampNumber(v, 0, 100)).prefault(0),
+});
+
+export const Schema = z.object({
+  系统: z.object({
+    时间: z.object({
+      年: z.coerce.number().prefault(2018),
+      月日: z.string().prefault('1月1日'),
+      时分: z.string().prefault('00:00'),
+      星期: z.string().prefault('未知'),
+    }).prefault({}),
+    地点: z.object({
+      国家: z.string().prefault('日本'),
+      地域: z.string().prefault('东京'),
+      场所: z.string().prefault('咒术高专'),
+      具体位置: z.string().prefault('未知'),
+    }).prefault({}),
+    性爱状态: z.object({
+      进行中: z.boolean().prefault(false),
+      参与者: z.array(z.string()).prefault([]),
+    }).prefault({}),
+  }).prefault({}),
+
+  user: z.object({
+    等级: z.coerce.number().transform(v => Math.max(1, Math.floor(Number(v) || 1))).prefault(1),
+    战力评级: z.string().prefault('四级'),
+    EXP: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+    KP: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+    身体状况: z.string().prefault('健康'),
+    永久损伤或疤痕: z.string().prefault('无'),
+    持有金钱: z.coerce.number().prefault(0),
+    居住地: z.string().prefault('高专宿舍'),
+    公开身份: z.array(z.string()).prefault(['高专学生']),
+
+    咒力: z.object({
+      总量: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(100),
+      当前值: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(100),
+      咒力操纵精度: z.coerce.number().transform(v => Math.max(0.1, Number(v) || 1)).prefault(1.0),
+      有效总量: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(100),
+      每轮回复量: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      消耗倍率: z.coerce.number().transform(v => Math.max(0, Number(v) || 1)).prefault(1),
+    }).prefault({}),
+
+    战斗面板: z.object({
+      最大生命值: z.coerce.number().transform(v => Math.max(1, Number(v) || 1)).prefault(100),
+      当前血量: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(100),
+      防御: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(10),
+      总BP: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(50),
+      战力等级: z.string().prefault('F级·四级'),
+      总肉体值_BPA: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(20),
+      术式强度_BPB: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(30),
+      咒术攻击: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      物理攻击: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      咒具值: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      伤害补正: z.coerce.number().transform(v => Math.max(0, Number(v) || 1)).prefault(1),
+    }).prefault({}),
+
+    基础肉体: z.object({
+      基础肉体值: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(50),
+      武艺值: z.coerce.number().transform(v => clampNumber(v, 0, 200)).prefault(0),
+      武艺阶段: z.string().prefault('未入门'),
+      武艺输出比例: z.coerce.number().transform(v => clampNumber(v, 0, 1)).prefault(0.1),
+      武艺防御系数: z.coerce.number().transform(v => Math.max(1, Number(v) || 1)).prefault(1),
+    }).prefault({}),
+
+    当前服装: z.object({
+      外套: z.string().prefault('高专制服外套'),
+      内搭: z.string().prefault('白衬衫'),
+      下装: z.string().prefault('高专制服裤'),
+      足具: z.string().prefault('运动鞋'),
+    }).prefault({}),
+
+    名望: z.object({
+      正道: z.object({
+        数值: z.coerce.number().transform(v => clampNumber(v, -100, 100)).prefault(0),
+        称号: z.array(z.string()).prefault(['寂寂无名的路人']),
+      }).prefault({}),
+      邪道: z.object({
+        数值: z.coerce.number().transform(v => clampNumber(v, -100, 100)).prefault(0),
+        称号: z.array(z.string()).prefault(['无人知晓的普通人']),
+      }).prefault({}),
+    }).prefault({}),
+
+    束缚: z.record(
+      z.string().describe('束缚名'),
+      z.object({
+        代价: z.string().prefault(''),
+        恢复条件: z.string().prefault('').describe('永久束缚此处填“无”'),
+      })
+    ).prefault({}),
+
+    战技: z.record(
+      z.string().describe('战技名'),
+      战技条目Schema
+    ).prefault({}),
+
+    生得术式: 生得术式Schema.prefault({}),
+
+    反转术式: z.object({
+      掌握治疗: z.boolean().prefault(false),
+      熟练等级: z.string().prefault('未掌握'),
+      熟练系数: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      可外放: z.boolean().prefault(false),
+      常规回复量: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      常规治疗消耗: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+      熔断修复消耗: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(0),
+    }).prefault({}),
+
+    术式熔断: z.object({
+      熔断中: z.boolean().prefault(false),
+      大脑重置次数: z.coerce.number().transform(v => Math.max(0, Math.floor(Number(v) || 0))).prefault(0),
+      咒力回复惩罚系数: z.coerce.number().transform(v => clampNumber(v, 0, 1)).prefault(1),
+      术式强度惩罚系数: z.coerce.number().transform(v => clampNumber(v, 0, 1)).prefault(1),
+      熔断修复时间缩短倍率: z.coerce.number().transform(v => Math.max(1, Number(v) || 1)).prefault(2),
+    }).prefault({}),
+
+    扩展术式: z.record(
+      z.string().describe('术式名'),
+      术式条目Schema
+    ).prefault({}),
+
+    特殊体质: z.record(z.string().describe('体质名'), z.string().describe('描述')).prefault({}),
+
+    咒灵操术: z.record(z.string().describe('咒灵名'), z.string().describe('描述')).prefault({}),
+
+    行囊: z.record(
+      z.string().describe('物品名'),
+      z.object({
+        数量: z.coerce.number().transform(v => nonNegativeNumber(v)).prefault(1),
+        描述: z.string().prefault(''),
+      })
+    ).transform(data => _.pickBy(data, ({ 数量 }) => 数量 > 0)).prefault({}),
+
+  }).transform(user => {
+    const traits = user.特殊体质 || {};
+    const pureHeavenly = hasTrait(traits, ['天与咒缚（纯肉体）', '天与咒缚(纯肉体)', '天与暴君', '完全零咒力肉体']);
+    const mutatedHeavenly = hasTrait(traits, ['天与咒缚（咒力异化）', '天与咒缚(咒力异化)', '咒力异化']);
+    const sixEyes = hasTrait(traits, ['六眼']);
+    const blackFlashFavored = hasTrait(traits, ['黑闪眷顾者']);
+    const deathPainting = hasTrait(traits, ['九相图']);
+
+    const maxPrecision = sixEyes ? 3 : 2;
+    user.咒力.咒力操纵精度 = clampNumber(user.咒力.咒力操纵精度, 0.1, maxPrecision);
+
+    const rawCeTotal = nonNegativeNumber(user.咒力.总量);
+    const effectiveCeTotal = pureHeavenly ? 0 : (mutatedHeavenly ? rawCeTotal * 3 : rawCeTotal);
+    user.咒力.有效总量 = roundNumber(effectiveCeTotal);
+    user.咒力.当前值 = _.clamp(user.咒力.当前值, 0, Math.max(0, effectiveCeTotal));
+
+    user.生得术式.潜力等级 = getPotentialLevel(user.生得术式.潜力值);
+    user.生得术式.阶段 = (!user.生得术式.名称 || user.生得术式.名称 === '待觉醒' || user.生得术式.名称 === '无')
+      ? '未入门'
+      : getMasteryStage(user.生得术式.精通等级);
+
+    const precision = user.咒力.咒力操纵精度;
+    const brainPenalty = getBrainResetPenalty(user.术式熔断.大脑重置次数);
+    const ctPenalty = user.术式熔断.熔断中 ? 0 : brainPenalty;
+    const regenPenalty = user.术式熔断.熔断中 ? 0.1 : brainPenalty;
+    user.术式熔断.术式强度惩罚系数 = ctPenalty;
+    user.术式熔断.咒力回复惩罚系数 = regenPenalty;
+
+    const martialProfile = getMartialProfile(user.基础肉体.武艺值);
+    user.基础肉体.武艺阶段 = martialProfile.阶段;
+    user.基础肉体.武艺输出比例 = martialProfile.输出比例;
+    user.基础肉体.武艺防御系数 = martialProfile.防御系数;
+
+    const jujutsuOutputRatio = sixEyes ? 1 : martialProfile.输出比例;
+    const ceCostMultiplier = sixEyes ? 0.001 : 1;
+    user.咒力.消耗倍率 = ceCostMultiplier;
+
+    const baseCtStrength = (user.生得术式.潜力值 + user.生得术式.精通等级 + effectiveCeTotal * 0.2) * precision;
+    const currentCtStrength = baseCtStrength * ctPenalty;
+    user.生得术式.基础强度 = roundNumber(baseCtStrength);
+    user.生得术式.当前强度 = roundNumber(currentCtStrength);
+    user.战斗面板.术式强度_BPB = roundNumber(currentCtStrength);
+
+    const mutationFleshBonus = mutatedHeavenly ? user.生得术式.潜力值 * 0.3 : 0;
+    const fleshMultiplier = pureHeavenly ? 2 : 1;
+    const totalFlesh = (user.基础肉体.基础肉体值 + effectiveCeTotal * 0.1 * precision + user.基础肉体.武艺值 + mutationFleshBonus) * fleshMultiplier;
+    user.战斗面板.总肉体值_BPA = roundNumber(totalFlesh);
+
+    const defense = effectiveCeTotal * 0.2 * precision * martialProfile.防御系数;
+    user.战斗面板.防御 = roundNumber(defense);
+
+    const reverseProfile = getReverseProfile(user.反转术式.熟练等级, sixEyes && user.反转术式.掌握治疗);
+    user.反转术式.熟练等级 = user.反转术式.掌握治疗 ? reverseProfile.熟练等级 : '未掌握';
+    user.反转术式.熟练系数 = user.反转术式.掌握治疗 ? reverseProfile.熟练系数 : 0;
+    user.反转术式.可外放 = user.反转术式.掌握治疗 ? reverseProfile.可外放 : false;
+
+    const reverseHpBonus = user.反转术式.掌握治疗 ? baseCtStrength * 0.5 : 0;
+    const hpMultiplier = mutatedHeavenly ? 0.75 : 1;
+    const maxHp = Math.max(1, (effectiveCeTotal * precision + totalFlesh + currentCtStrength + reverseHpBonus) * hpMultiplier);
+    user.战斗面板.最大生命值 = roundNumber(maxHp);
+    user.战斗面板.当前血量 = roundNumber(_.clamp(user.战斗面板.当前血量, 0, user.战斗面板.最大生命值));
+
+    const damageBonus = mutatedHeavenly ? 1.2 : 1;
+    user.战斗面板.伤害补正 = damageBonus;
+
+    const jujutsuAttack = pureHeavenly
+      ? 0
+      : (effectiveCeTotal * 0.2 * precision + currentCtStrength) * jujutsuOutputRatio * damageBonus;
+    user.战斗面板.咒术攻击 = roundNumber(jujutsuAttack);
+
+    const heavenlyPhysicalBonus = pureHeavenly ? 2 : (mutatedHeavenly ? 1.5 : 1);
+    const physicalAttack = ((totalFlesh * 0.5 * heavenlyPhysicalBonus + user.基础肉体.武艺值) * martialProfile.输出比例 + user.战斗面板.咒具值) * damageBonus;
+    user.战斗面板.物理攻击 = roundNumber(physicalAttack);
+
+    const ceRegen = (effectiveCeTotal * 0.2 + user.生得术式.潜力值) * precision * regenPenalty;
+    user.咒力.每轮回复量 = roundNumber(ceRegen);
+
+    const reverseHeal = user.反转术式.熟练系数 * (effectiveCeTotal * 0.1 * precision);
+    let reverseCostRate = getPrecisionCostRate(precision);
+    if (sixEyes) reverseCostRate *= 0.001;
+    if (deathPainting) reverseCostRate *= 0.5;
+    user.反转术式.常规回复量 = roundNumber(reverseHeal);
+    user.反转术式.常规治疗消耗 = roundNumber(reverseHeal * reverseCostRate);
+    user.反转术式.熔断修复消耗 = roundNumber(reverseHeal * user.术式熔断.熔断修复时间缩短倍率);
+
+    if (blackFlashFavored && !user.特殊体质['黑闪眷顾者']) {
+      user.特殊体质['黑闪眷顾者'] = '打出黑闪概率提升200%；黑闪触发时，本次攻击伤害按攻击值×2.5结算。';
+    }
+
+    const totalBp = Math.max(totalFlesh, currentCtStrength, jujutsuAttack, physicalAttack);
+    user.战斗面板.总BP = roundNumber(totalBp);
+    user.战斗面板.战力等级 = getCombatGrade(totalBp);
+    user.战力评级 = getJujutsuRank(totalBp);
+
+    while (user.EXP >= 100) {
+      user.EXP -= 100;
+      user.等级 += 1;
+      user.KP += 5;
+    }
+
+    return user;
+  }).prefault({}),
+
+  任务系统: z.record(
+    z.string().describe('任务名'),
+    任务Schema
+  ).prefault({}),
+
+  人际档案: z.record(
+    z.string().describe('角色名'),
+    人际档案Schema
+  ).prefault({}),
+
+});
+
+$(() => {
+  registerMvuSchema(Schema);
+});
+\n

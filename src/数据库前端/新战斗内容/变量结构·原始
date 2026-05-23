@@ -1,0 +1,164 @@
+import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
+
+// --- 独立模块1：好感系统 (NPC个人档案库) ---
+const 好感系统Schema = z.record(z.string(), z.object({
+  好感数值: z.coerce.number().transform(v => _.clamp(v, -100, 100)).prefault(0),
+  信任度: z.coerce.number().transform(v => _.clamp(v, -100, 100)).prefault(0),
+  关系阶段: z.string().prefault('陌路').describe('个人化描述，如：兄弟、恋人等'),
+  欲望值: z.coerce.number().transform(v => _.clamp(v, 0, 100)).prefault(0).describe('100时归零高潮'),
+}));
+
+// --- 独立模块2：任务系统 (当前任务清单) ---
+const 任务系统Schema = z.record(z.string(), z.object({
+  任务名: z.string().prefault(''),
+  任务等级: z.enum(['特级', '一级', '二级', '三级', '特殊']).prefault('三级'),
+  类型: z.enum(['正道', '邪道']).prefault('正道'),
+  委托人或势力: z.string().prefault(''),
+  任务描述: z.string().prefault('').describe('对任务内容的精简描述，包括可能的风险，需要完成的工作'),
+  完成条件: z.string().prefault(''),
+  失败条件: z.string().prefault('无'),
+  报酬: z.object({
+    金钱: z.coerce.number().prefault(0),
+    名望提升值: z.coerce.number().prefault(0),
+    物品: z.record(z.string(), z.coerce.number()).prefault({}),
+  }).prefault({}),
+}));
+
+// --- 独立模块3：User状态栏 (扁平化属性与能力库) ---
+const User状态栏Schema = z.object({
+  // 扁平化基础属性
+  等级: z.coerce.number().transform(v => _.clamp(v, 1, 100)).prefault(1),
+  EXP: z.coerce.number().transform(v => Math.max(0, v)).prefault(0),
+  战力评级: z.string().prefault('普通人'),
+  公开身份: z.array(z.string()).prefault(['咒术高专一年级学生']),
+  身体状况: z.string().prefault('健康'),
+  永久损伤或疤痕: z.string().prefault('无').describe('含伤残、疤痕及永久束缚代价'),
+  持有金钱: z.coerce.number().prefault(10000),
+  居住地: z.string().prefault('高专宿舍'),
+  KP: z.coerce.number().prefault(0).describe('因果点'),
+
+  肉搏等级: z.string().prefault('未入门'),
+
+  名望: z.object({
+    正道: z.object({
+      数值: z.coerce.number().transform(v => _.clamp(v, -100, 100)).prefault(0),
+      称号: z.array(z.string()).prefault(['寂寂无名的路人']),
+    }).prefault({}),
+    邪道: z.object({
+      数值: z.coerce.number().transform(v => _.clamp(v, -100, 100)).prefault(0),
+      称号: z.array(z.string()).prefault(['无人知晓的普通人']),
+    }).prefault({}),
+  }).or(z.literal('待初始化')).prefault('待初始化'),
+
+  咒力: z.object({
+    当前值: z.coerce.number().optional(),
+    最大值: z.coerce.number().prefault(100),
+  }).transform(data => {
+    const max = data.最大值;
+    const current = data.当前值 !== undefined ? data.当前值 : max;
+    return {
+      最大值: max,
+      当前值: _.clamp(current, 0, max)
+    };
+  }).or(z.literal('待初始化')).prefault('待初始化'),
+
+  当前服装: z.object({
+    外套: z.string().prefault('无'),
+    内搭: z.string().prefault('白色T恤'),
+    下装: z.string().prefault('运动裤'),
+    足具: z.string().prefault('运动鞋'),
+  }).or(z.literal('待初始化')).prefault('待初始化'),
+
+  行囊: z.record(z.string(), z.object({
+    数量: z.coerce.number().transform(v => Math.max(v, 0)).prefault(1),
+    描述: z.string().prefault(''),
+  })).transform(data => _.pickBy(data, item => item.数量 > 0)).prefault({}),
+
+  束缚: z.record(z.string(), z.object({
+    代价: z.string().prefault(''),
+    恢复条件: z.string().prefault('').describe('永久束缚此处填“无”'),
+  })).prefault({}),
+
+  战技: z.record(z.string(), z.object({
+    熟练度: z.coerce.number().transform(v => _.clamp(v, 0, 100)).prefault(0),
+    阶段: z.string().prefault('入门'),
+    描述: z.string().prefault(''),
+  }).transform(item => {
+    if (item.熟练度 <= 40) item.阶段 = '入门';
+    else if (item.熟练度 <= 80) item.阶段 = '熟练';
+    else item.阶段 = '精通';
+    return item;
+  })).prefault({}),
+
+  生得术式: z.object({
+    名称: z.string().prefault(''),
+    属性: z.string().prefault('无'),
+    熟练度: z.coerce.number().transform(v => _.clamp(v, 0, 100)).prefault(0),
+    阶段: z.string().prefault('入门'),
+    描述: z.string().prefault(''),
+  }).transform(item => {
+    if (item.熟练度 <= 40) item.阶段 = '入门';
+    else if (item.熟练度 <= 80) item.阶段 = '熟练';
+    else item.阶段 = '精通';
+    return item;
+  }).or(z.literal('待初始化')).prefault('待初始化'),
+
+  扩展术式: z.record(z.string(), z.object({
+    熟练度: z.coerce.number().transform(v => _.clamp(v, 0, 100)).prefault(0),
+    阶段: z.string().prefault('入门'),
+    描述: z.string().prefault(''),
+  }).transform(item => {
+    if (item.熟练度 <= 40) item.阶段 = '入门';
+    else if (item.熟练度 <= 80) item.阶段 = '熟练';
+    else item.阶段 = '精通';
+    return item;
+  })).prefault({}),
+
+  特殊体质: z.record(z.string(), z.string()).prefault({}),
+  咒灵操术: z.record(z.string(), z.string()).prefault({}),
+}).transform(data => {
+  if (typeof data === 'object' && data !== null) {
+    const level = data.等级;
+    if (level <= 10) data.战力评级 = '普通人';
+    else if (level <= 30) data.战力评级 = '三级';
+    else if (level <= 50) data.战力评级 = '二级';
+    else if (level <= 70) data.战力评级 = '一级';
+    else if (level <= 90) data.战力评级 = '准特级';
+    else if (level <= 95) data.战力评级 = '特级';
+    else data.战力评级 = '超特级';
+  }
+  return data;
+});
+
+// --- 总 Schema 组装 (四个顶级模块) ---
+export const Schema = z.object({
+  系统: z.object({
+    时间: z.object({
+      年: z.coerce.number().prefault(2018),
+      月日: z.string().prefault('06-01'),
+      时分: z.string().prefault('14:00'),
+      星期: z.string().prefault('周五'),
+    }).prefault({}),
+    地点: z.object({
+      国家: z.string().prefault('日本'),
+      地域: z.string().prefault('东京'),
+      场所: z.string().prefault('咒术高专'),
+      具体位置: z.string().prefault('操场'),
+    }).prefault({}),
+    性爱状态: z.object({
+      进行中: z.boolean().prefault(false),
+      参与者: z.array(z.string()).prefault([]),
+    }).prefault({}),
+  }),
+
+  人际档案: 好感系统Schema,
+
+  user: User状态栏Schema,
+
+  任务系统: 任务系统Schema,
+
+});
+
+$(() => {
+  registerMvuSchema(Schema);
+})

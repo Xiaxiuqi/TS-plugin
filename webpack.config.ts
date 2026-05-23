@@ -51,27 +51,10 @@ function common_path(lhs: string, rhs: string) {
 function glob_script_files() {
   const results: string[] = [];
 
-  const shouldSkipEntry = (file: string) => {
-    const normalized = file.replace(/\\/g, '/');
-
-    // phone 正在从旧 bundle(src/phone/index.js)向源码入口(src/phone/index.ts)迁移。
-    // 默认构建继续保留旧 bundle 行为，显式传入 --env entry=src/phone/index.ts 时才构建新入口。
-    if (normalized === 'src/phone/index.ts' && process.env.TAVERN_HELPER_BUILD_ENTRY !== normalized) {
-      return true;
-    }
-
-    if (normalized.startsWith('src/phone/source/')) {
-      return true;
-    }
-
-    return false;
-  };
-
   fs.globSync(`src/**/index.{ts,tsx,js,jsx}`)
     .filter(
       file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
     )
-    .filter(file => !shouldSkipEntry(file))
     .forEach(file => {
       const file_dirname = path.dirname(file);
       for (const [index, result] of results.entries()) {

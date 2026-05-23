@@ -77,13 +77,5 @@ export default [
     },
   },
   eslintConfigPrettier,
-  globalIgnores([
-    'dist/**',
-    'node_modules/**',
-    'eslint.config.mjs',
-    'postcss.config.js',
-    'webpack.config.ts',
-    'src/phone/index.js',
-    'src/phone/source/**',
-  ]),
+  globalIgnores(['dist/**', 'node_modules/**', 'eslint.config.mjs', 'postcss.config.js', 'webpack.config.ts']),
 ];

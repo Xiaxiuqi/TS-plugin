@@ -1,0 +1,14 @@
+{
+  "display_name": "示例：聊天记录导出扩展骨架",
+  "loading_order": 200,
+  "requires": [],
+  "optional": [],
+  "dependencies": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "local-example",
+  "version": "1.0.0",
+  "homePage": "",
+  "auto_update": false,
+  "minimum_client_version": "1.12.0"
+}

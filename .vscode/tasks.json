@@ -5,9 +5,7 @@
       "label": "开始监听源代码并编译",
       "type": "shell",
       "command": "pnpm",
-      "args": [
-        "watch"
-      ],
+      "args": ["watch"],
       "problemMatcher": [
         {
           "pattern": [
@@ -41,16 +39,57 @@
       "isBackground": true
     },
     {
+      "label": "Phone 新入口小体积监听构筑",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$env:TAVERN_HELPER_BUILD_ENTRY='src/phone/index.ts'; pnpm build -- --watch --progress --env entry=src/phone/index.ts"
+      ],
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".*",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".*",
+            "endsPattern": "webpack (?:\\d+\\.){2}\\d+ compiled"
+          }
+        }
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": true,
+        "clear": true,
+        "revealProblems": "never"
+      },
+      "isBackground": true
+    },
+    {
       "label": "开始任务",
-      "dependsOn": [
-        "开始监听源代码并编译",
-      ]
+      "dependsOn": ["开始监听源代码并编译"]
+    },
+    {
+      "label": "开始 Phone 新入口小体积监听任务",
+      "dependsOn": ["Phone 新入口小体积监听构筑"]
     },
     {
       "label": "结束任务",
       "command": "echo ${input:terminate}",
       "type": "shell"
-    },
+    }
   ],
   "inputs": [
     {

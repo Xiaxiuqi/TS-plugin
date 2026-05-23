@@ -1,0 +1,548 @@
+# BP系统美化正则-星铁版本
+
+## 使用目标
+
+本文件用于将纯文字格式的 `<bp_panel>` 战力雷达渲染为与当前星铁版状态栏一致的深色终端卡片界面。
+
+适配的原始输出位置参考 `正文输出格式`：
+
+```text
+novel_header
+<story_driver>...</story_driver>
+正文
+<bp_panel>...</bp_panel>
+<wlog>...</wlog>
+<StatusPlaceHolderImpl/>
+```
+
+适配的原始输出格式：
+
+```text
+<bp_panel>
+【BP战力雷达】
+
+【扫描状态】
+本回合读取伏黑甚尔的战力样本，确认其属于极端肉体特化型目标。
+
+【已扫描目标】
+- 名称: 伏黑甚尔 (天与暴君) | BP总值: 1000 | 层级: 特级
+  操作: 0.0 (绝对零咒力)
+  肉体: 1000 (绝对零咒力使肉体来到人类巅峰)
+  咒术: 0 (天与咒缚完全剥夺)
+  特性备注:
+  - 【天与咒缚·极致】: 彻底抛弃咒力换取肉体强度。
+  - 【隐匿】: 无咒力残秽，无法被常规索敌结界捕捉。
+</bp_panel>
+```
+
+## 正则执行顺序
+
+必须严格按以下顺序创建并启用正则：
+
+1. `01_BP战力雷达外层面板_星铁`
+2. `02_BP战力目标卡片_星铁`
+3. `03_BP战力特性条目_星铁`
+
+建议三条正则都设置为作用于 AI 输出或消息显示阶段。若酒馆正则支持脚本顺序，请保证编号越小越先执行。
+
+---
+
+## 01_BP战力雷达外层面板_星铁
+
+### 查找正则
+
+```regex
+/<bp_panel>\s*【BP战力雷达】\s*【扫描状态】\s*([\s\S]*?)\s*【已扫描目标】\s*([\s\S]*?)\s*<\/bp_panel>/s
+```
+
+### 替换内容
+
+```html
+<div class="bp-radar-widget bp-hsr-ui">
+  <style>
+    .bp-radar-widget.bp-hsr-ui {
+      --bp-space: #171b22;
+      --bp-panel: rgba(29, 35, 44, .97);
+      --bp-panel-2: rgba(38, 45, 56, .92);
+      --bp-row: rgba(255, 255, 255, .055);
+      --bp-row-2: rgba(255, 255, 255, .082);
+      --bp-text: #ede7dc;
+      --bp-muted: #b8afa1;
+      --bp-faint: #807d78;
+      --bp-gold: #c8a86c;
+      --bp-cyan: #88aeb8;
+      --bp-blue: #8091ad;
+      --bp-rose: #b9877e;
+      --bp-shadow: 0 4px 10px rgba(0, 0, 0, .16);
+      --bp-shadow-soft: 0 2px 6px rgba(0, 0, 0, .12);
+      width: 100%;
+      margin: .8em auto;
+      display: flex;
+      justify-content: center;
+      color: var(--bp-text);
+      font-family: "Noto Serif SC", "Source Han Serif SC", "Microsoft YaHei", serif;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+
+    .bp-radar-widget.bp-hsr-ui,
+    .bp-radar-widget.bp-hsr-ui * {
+      box-sizing: border-box;
+    }
+
+    .bp-radar-widget.bp-hsr-ui details {
+      width: min(96%, 920px);
+      overflow: hidden;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(200,168,108,.1), transparent 22%),
+        radial-gradient(circle at 90% 0%, rgba(136,174,184,.12), transparent 30%),
+        linear-gradient(180deg, var(--bp-panel), var(--bp-space));
+      box-shadow: var(--bp-shadow);
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui details::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.28), transparent 18%, transparent 82%, rgba(136,174,184,.18)),
+        linear-gradient(180deg, rgba(255,255,255,.055), transparent 80px);
+      opacity: .58;
+      z-index: 0;
+    }
+
+    .bp-radar-widget.bp-hsr-ui summary {
+      list-style: none;
+    }
+
+    .bp-radar-widget.bp-hsr-ui summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-summary {
+      width: 100%;
+      min-height: 38px;
+      cursor: pointer;
+      user-select: none;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 9px;
+      align-items: center;
+      padding: 10px 12px;
+      color: var(--bp-text);
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.14), rgba(136,174,184,.06), transparent),
+        rgba(255,255,255,.035);
+      transition: background .22s ease, filter .22s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-summary:hover {
+      filter: brightness(1.08);
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.2), rgba(136,174,184,.1), transparent),
+        rgba(255,255,255,.055);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-toggle-icon {
+      width: 31px;
+      height: 31px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--bp-gold);
+      background: rgba(255,255,255,.06);
+      font-size: 15px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-summary-text {
+      min-width: 0;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-toggle-title {
+      display: block;
+      margin: 0;
+      color: var(--bp-text);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-toggle-subtitle {
+      display: block;
+      margin-top: 1px;
+      color: var(--bp-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .toggle-icon {
+      color: var(--bp-gold);
+      transition: transform .24s ease;
+      flex: 0 0 auto;
+      font-size: 12px;
+      letter-spacing: 0;
+      opacity: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui details:not([open]) .toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-panel {
+      margin: 0;
+      width: 100%;
+      overflow: hidden;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(200,168,108,.34), transparent 18%, transparent 82%, rgba(136,174,184,.18)),
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent 80px);
+      opacity: .58;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-body,
+    .bp-radar-widget.bp-hsr-ui .bp-panel-foot {
+      position: relative;
+      z-index: 1;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-body {
+      padding: 10px 12px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-card {
+      min-width: 0;
+      border-radius: 6px;
+      border: none;
+      background: var(--bp-panel-2);
+      box-shadow: var(--bp-shadow-soft);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--bp-rose);
+      opacity: .72;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-card-head {
+      padding: 8px 10px 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(90deg, rgba(255,255,255,.062), transparent);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-card-dot {
+      width: 14px;
+      height: 2px;
+      border-radius: 2px;
+      flex: 0 0 auto;
+      background: var(--bp-gold);
+      box-shadow: 10px 0 0 rgba(200,168,108,.32);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-card-title {
+      color: var(--bp-text);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .11em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-scan-text {
+      padding: 8px 10px 9px 12px;
+      color: var(--bp-text);
+      background: rgba(255,255,255,.025);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-size: 12.5px;
+      line-height: 1.62;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-target-grid {
+      padding: 8px 9px 10px 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+      gap: 8px;
+      background: rgba(255,255,255,.025);
+      white-space: pre-wrap;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-target-card {
+      min-width: 0;
+      padding: 10px 10px 11px;
+      border-radius: 5px;
+      color: var(--bp-text);
+      font-size: 12.3px;
+      line-height: 1.54;
+      background: var(--bp-row);
+      border: none;
+      box-shadow: inset 3px 0 0 rgba(185,135,126,.5), var(--bp-shadow-soft);
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-target-card::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      width: 16px;
+      height: 1px;
+      background: rgba(200,168,108,.45);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-target-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 6px;
+      margin-bottom: 7px;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,.08);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-target-name {
+      min-width: 0;
+      color: var(--bp-cyan);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .07em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-tier {
+      flex: 0 0 auto;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--bp-text);
+      background: rgba(136,174,184,.12);
+      font-size: 10.8px;
+      font-weight: 800;
+      line-height: 1.32;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-total {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-total-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--bp-muted);
+      font-size: 10.8px;
+      font-weight: 900;
+      letter-spacing: .07em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-total-value {
+      color: var(--bp-gold);
+      font-size: 13px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-total-track {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(0,0,0,.26);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.2);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-total-fill {
+      display: block;
+      height: 100%;
+      width: var(--bp-meter);
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(185,135,126,.62), rgba(200,168,108,.92));
+      box-shadow: 0 0 12px rgba(200,168,108,.22);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-stat {
+      min-width: 0;
+      padding: 6px 7px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.052);
+      box-shadow: inset 2px 0 0 rgba(136,174,184,.42);
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-stat-label {
+      color: var(--bp-cyan);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-stat-value {
+      color: var(--bp-text);
+      font-size: 12px;
+      font-weight: 900;
+      margin-top: 2px;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-stat-note {
+      color: var(--bp-muted);
+      font-size: 10.5px;
+      line-height: 1.38;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-trait-title {
+      margin: 5px 0 5px;
+      color: var(--bp-gold);
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-trait-list {
+      display: grid;
+      gap: 5px;
+      white-space: normal;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-trait {
+      padding: 6px 7px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.052);
+      box-shadow: inset 2px 0 0 rgba(200,168,108,.42);
+      font-size: 11.5px;
+      line-height: 1.48;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-trait-name {
+      color: var(--bp-gold);
+      font-weight: 900;
+    }
+
+    .bp-radar-widget.bp-hsr-ui .bp-panel-foot {
+      padding: 8px 14px 10px;
+      text-align: center;
+      color: var(--bp-faint);
+      font-size: 10px;
+      letter-spacing: .14em;
+      background: rgba(0,0,0,.16);
+    }
+
+    @media (max-width: 640px) {
+      .bp-radar-widget.bp-hsr-ui .bp-target-grid,
+      .bp-radar-widget.bp-hsr-ui .bp-stat-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <details>
+    <summary class="bp-summary" aria-label="展开或收起BP战力雷达">
+      <span class="bp-toggle-icon">✦</span>
+      <span class="bp-summary-text">
+        <span class="bp-toggle-title">BP战力雷达</span>
+        <span class="bp-toggle-subtitle">BATTLE POINT TERMINAL · BEFORE WLOG</span>
+      </span>
+      <span class="bp-toggle-state toggle-icon">▼</span>
+    </summary>
+
+    <section class="bp-panel">
+
+      <div class="bp-body">
+        <article class="bp-card">
+          <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">扫描状态</span></div>
+          <div class="bp-scan-text">$1</div>
+        </article>
+
+        <article class="bp-card">
+          <div class="bp-card-head"><span class="bp-card-dot"></span><span class="bp-card-title">已扫描目标</span></div>
+          <div class="bp-target-grid">
+$2
+          </div>
+        </article>
+      </div>
+
+      <footer class="bp-panel-foot">✧ BATTLE POINT RADAR TERMINAL ✧</footer>
+    </section>
+  </details>
+</div>
+```
+
+---
+
+## 02_BP战力目标卡片_星铁
+
+### 查找正则
+
+```regex
+/^\s*-\s*名称:\s*([^|\n]+?)\s*\|\s*BP总值:\s*([+-]?\d+(?:\.\d+)?)\s*\|\s*层级:\s*([^\n]+?)\s*\n\s*操作:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*肉体:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*咒术:\s*([+-]?\d+(?:\.\d+)?)\s*\((.*?)\)\s*\n\s*特性备注:\s*\n((?:\s*-\s*.+(?:\n|$))*)/gm
+```
+
+### 替换内容
+
+```html
+<div class="bp-target-card"><div class="bp-target-top"><span class="bp-target-name">✦ $1</span><span class="bp-tier">$3</span></div><div class="bp-total"><div class="bp-total-head"><span>BP总值</span><span class="bp-total-value">$2</span></div><div class="bp-total-track"><span class="bp-total-fill" style="--bp-meter:min(100%, calc($2 / 1000 * 100%));"></span></div></div><div class="bp-stat-grid"><div class="bp-stat"><div class="bp-stat-label">操作</div><div class="bp-stat-value">$4</div><div class="bp-stat-note">$5</div></div><div class="bp-stat"><div class="bp-stat-label">肉体</div><div class="bp-stat-value">$6</div><div class="bp-stat-note">$7</div></div><div class="bp-stat"><div class="bp-stat-label">咒术</div><div class="bp-stat-value">$8</div><div class="bp-stat-note">$9</div></div></div><div class="bp-trait-title">特性备注</div><div class="bp-trait-list">$10</div></div>
+```
+
+---
+
+## 03_BP战力特性条目_星铁
+
+### 查找正则
+
+```regex
+/^\s*-\s*(?!-)([^|:：\n]+?)[:：]\s*(.*?)\s*$/gm
+```
+
+### 替换内容
+
+```html
+<div class="bp-trait"><span class="bp-trait-name">$1</span>：$2</div>
+```
+
+---
+
+## 注意事项
+
+1. 三条正则必须按顺序执行。
+2. `01_BP战力雷达外层面板_星铁` 需要使用 `s` 标志。
+3. `02_BP战力目标卡片_星铁` 需要使用 `gm` 标志。
+4. `03_BP战力特性条目_星铁` 需要使用 `gm` 标志。
+5. 本方案不使用脚本，适合酒馆正则替换渲染环境。
+6. BP进度条以 `1000` 为满刻度显示，超过 `1000` 会以满条显示。
+7. `03_BP战力特性条目_星铁` 已加入 `(?!-)`，避免误匹配 CSS 变量行如 `--rel-space:`、`--bp-panel:`，否则会破坏前面正则插入的 `<style>` 并导致 `CSS ERROR: missing '}'`。
+8. `03_BP战力特性条目_星铁` 的名称捕获已改为 `[^|:：\n]+?`，避免误匹配好感度原始行如 `- 角色名 | 好感度: 80/100 | 关系阶段: 挚友`，否则会导致好感度第二条角色卡片正则失效。

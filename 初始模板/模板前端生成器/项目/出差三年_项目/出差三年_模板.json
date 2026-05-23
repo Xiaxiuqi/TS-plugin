@@ -1,0 +1,329 @@
+{
+  "sheet_G1obAlM0": {
+    "uid": "sheet_G1obAlM0",
+    "name": "全局监控数据",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "记录当前家庭的核心宏观状态。",
+      "initNode": "故事开始时，插入初始状态。",
+      "deleteNode": "禁止删除。",
+      "updateNode": "每轮必须更新时间，轮次计数加一。当轮次计数达到15时，必须将其重置为0。",
+      "insertNode": "禁止操作。"
+    },
+    "content": [
+      [
+        null,
+        "地图标题",
+        "当前时间",
+        "安防等级",
+        "轮次计数",
+        "外部区域列表"
+      ]
+    ]
+  },
+  "sheet_R0omPl4N": {
+    "uid": "sheet_R0omPl4N",
+    "name": "主要地点表",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "记录家中的房间布局。",
+      "initNode": "游戏初始化时，插入家中的主要房间（客厅、主卧、女儿房等）。",
+      "deleteNode": "禁止删除。",
+      "updateNode": "房间环境描述变化时更新。",
+      "insertNode": "发现隐藏房间时添加。"
+    },
+    "content": [
+      [
+        null,
+        "地点名称",
+        "X坐标",
+        "Y坐标",
+        "宽度",
+        "高度",
+        "环境描述"
+      ]
+    ]
+  },
+  "sheet_C1arSt4T": {
+    "uid": "sheet_C1arSt4T",
+    "name": "主角信息",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "记录主角的核心状态和可执行选项。",
+      "initNode": "游戏初始化时，插入主角信息。",
+      "deleteNode": "禁止删除。",
+      "updateNode": "每轮必须更新四个选项，以及理智值、怀疑度等状态。",
+      "insertNode": "禁止操作。"
+    },
+    "content": [
+      [
+        null,
+        "人物名称",
+        "理智值",
+        "怀疑度",
+        "当前位置",
+        "选项一",
+        "选项二",
+        "选项三",
+        "选项四"
+      ]
+    ]
+  },
+  "sheet_ImpCh4r1": {
+    "uid": "sheet_ImpCh4r1",
+    "name": "重要人物表",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "记录妻子和女儿的状态。",
+      "initNode": "游戏初始化时，插入苏婉和李悦的信息。",
+      "deleteNode": "禁止删除。",
+      "updateNode": "随着剧情推进，更新堕落度、当前状态（如从'做饭'变为'偷情'）和位置。",
+      "insertNode": "新角色（如王强）登场时添加。"
+    },
+    "content": [
+      [
+        null,
+        "姓名",
+        "堕落度",
+        "当前状态",
+        "所在地点",
+        "好感度"
+      ]
+    ]
+  },
+  "sheet_TraCe10g": {
+    "uid": "sheet_TraCe10g",
+    "name": "可疑痕迹表",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "记录家中发现的异常痕迹或物品（代替原地图元素表）。",
+      "initNode": "初始化时，根据剧情放置一些初始痕迹。",
+      "deleteNode": "痕迹被清理或调查完毕后删除。",
+      "updateNode": "状态更新。",
+      "insertNode": "发现新痕迹时添加。"
+    },
+    "content": [
+      [
+        null,
+        "痕迹名称",
+        "类型",
+        "描述",
+        "所在房间",
+        "互动选项1",
+        "互动选项2",
+        "互动选项3"
+      ]
+    ]
+  },
+  "sheet_SumSma11": {
+    "uid": "sheet_SumSma11",
+    "name": "小总结表",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "每轮交互的简短日志。",
+      "initNode": "故事初始化时插入。",
+      "deleteNode": "大总结生成后清空。",
+      "updateNode": "禁止操作。",
+      "insertNode": "每轮插入新记录。"
+    },
+    "content": [
+      [
+        null,
+        "时间跨度",
+        "纪要",
+        "编码索引"
+      ]
+    ]
+  },
+  "sheet_SumBi6G": {
+    "uid": "sheet_SumBi6G",
+    "name": "大总结表",
+    "domain": "chat",
+    "type": "dynamic",
+    "enable": true,
+    "required": false,
+    "triggerSend": false,
+    "triggerSendDeep": 1,
+    "config": {
+      "toChat": true,
+      "useCustomStyle": false,
+      "triggerSendToChat": false,
+      "alternateTable": false,
+      "insertTable": false,
+      "alternateLevel": 0,
+      "skipTop": false,
+      "selectedCustomStyleKey": "",
+      "customStyles": {
+        "自定义样式": {
+          "mode": "regex",
+          "basedOn": "html",
+          "regex": "/(^[\\s\\S]*$)/g",
+          "replace": "$1",
+          "replaceDivide": ""
+        }
+      }
+    },
+    "sourceData": {
+      "note": "每15轮生成一次的长篇总结。",
+      "initNode": "禁止操作。",
+      "deleteNode": "禁止删除。",
+      "updateNode": "禁止操作。",
+      "insertNode": "轮次计数满15时插入。"
+    },
+    "content": [
+      [
+        null,
+        "阶段性大总结",
+        "编码索引"
+      ]
+    ]
+  },
+  "mate": {
+    "type": "chatSheets",
+    "version": 1
+  }
+}

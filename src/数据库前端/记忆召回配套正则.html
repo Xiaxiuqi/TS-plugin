@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>记忆召回面板</title>
+    <style>
+      /* CSS 变量定义 */
+      :root {
+        /* 日间模式 */
+        --mr-bg: rgba(255, 255, 255, 0.96);
+        --mr-bg-secondary: #f8f9fa;
+        --mr-header-bg: linear-gradient(90deg, #ffffff, #91b0f030);
+        --mr-header-bg-hover: linear-gradient(90deg, #ffffff, #91b0f050);
+        --mr-glass: blur(20px);
+        --mr-border: 1px solid rgba(0, 0, 0, 0.08);
+        --mr-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        --mr-card-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+        --mr-text: #333;
+        --mr-text-secondary: #666;
+        --mr-accent: #1a73e8;
+        --mr-accent-rgb: 26, 115, 232;
+        --scrollbar-thumb: #ccc;
+      }
+
+      body.theme-night {
+        /* 夜间模式 */
+        --mr-bg: rgba(32, 32, 32, 0.95);
+        --mr-bg-secondary: #2a2a2a;
+        --mr-header-bg: linear-gradient(90deg, #2a2a2a, #5c7cfa30);
+        --mr-header-bg-hover: linear-gradient(90deg, #2a2a2a, #5c7cfa50);
+        --mr-border: 1px solid rgba(255, 255, 255, 0.1);
+        --mr-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        --mr-card-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+        --mr-text: #d0d0d0;
+        --mr-text-secondary: #999;
+        --mr-accent: #5c7cfa;
+        --mr-accent-rgb: 92, 124, 250;
+        --scrollbar-thumb: #555;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Microsoft YaHei', serif;
+        background: transparent;
+        padding: 8px;
+        margin: 0;
+        color: var(--mr-text);
+        transition: color 0.3s ease;
+      }
+
+      /* 面板主体 */
+      .context-panel {
+        width: 100%;
+        background: var(--mr-bg);
+        border-radius: 12px;
+        border: var(--mr-border);
+        overflow: hidden;
+        box-shadow: var(--mr-shadow);
+        backdrop-filter: var(--mr-glass);
+        -webkit-backdrop-filter: var(--mr-glass);
+        position: relative;
+        transition:
+          background 0.3s ease,
+          border-color 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      /* 顶部装饰条 */
+      .context-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        opacity: 0.8;
+      }
+
+      /* 面板头部 */
+      .panel-header {
+        padding: 6px 17px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--mr-header-bg);
+        border-bottom: var(--mr-border);
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.3s ease;
+      }
+
+      .panel-header:hover {
+        background: var(--mr-header-bg-hover);
+      }
+
+      .panel-title-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .panel-icon {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .panel-icon svg {
+        width: 100%;
+        height: 100%;
+        fill: var(--mr-text);
+      }
+
+      .panel-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--mr-text);
+        letter-spacing: 1px;
+      }
+
+      .panel-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* 日夜模式切换按钮 */
+      .theme-toggle-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: var(--mr-border);
+        background: transparent;
+        color: var(--mr-text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+
+      .theme-toggle-btn svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+
+      .theme-toggle-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: var(--mr-accent);
+        transform: rotate(15deg);
+      }
+
+      body.theme-night .theme-toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .panel-badges {
+        display: flex;
+        gap: 8px;
+      }
+
+      .badge {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        border: 1px solid transparent;
+      }
+
+      .badge-input {
+        background: rgba(255, 152, 0, 0.1);
+        color: #f57c00;
+        border-color: rgba(255, 152, 0, 0.2);
+      }
+
+      body.theme-night .badge-input {
+        background: rgba(255, 152, 0, 0.15);
+        color: #ffb74d;
+      }
+
+      .badge-memory {
+        background: rgba(33, 150, 243, 0.1);
+        color: #1976d2;
+        border-color: rgba(33, 150, 243, 0.2);
+      }
+
+      body.theme-night .badge-memory {
+        background: rgba(33, 150, 243, 0.15);
+        color: #64b5f6;
+      }
+
+      .toggle-arrow {
+        color: var(--mr-text-secondary);
+        font-size: 12px;
+        transition: transform 0.3s ease;
+      }
+
+      .context-panel.expanded .toggle-arrow {
+        transform: rotate(180deg);
+      }
+
+      .panel-content {
+        display: none;
+        background: var(--mr-bg);
+      }
+
+      .context-panel.expanded .panel-content {
+        display: block;
+      }
+
+      .panel-content-inner {
+        padding: 0;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+
+      /* 用户输入区域 */
+      .user-input-section {
+        background: var(--mr-bg-secondary);
+        border-bottom: var(--mr-border);
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        border-bottom: var(--mr-border);
+      }
+
+      .section-icon {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .section-icon svg {
+        width: 100%;
+        height: 100%;
+        fill: var(--mr-text);
+      }
+
+      .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--mr-text);
+        letter-spacing: 1px;
+      }
+
+      .user-input-content {
+        padding: 14px 18px;
+        color: var(--mr-text-secondary);
+        font-size: 14px;
+        line-height: 1.75;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      /* 记忆召回区域 - 网格布局 */
+      .recall-section {
+        background: var(--mr-bg);
+      }
+
+      .recall-loading {
+        padding: 20px 18px;
+        text-align: center;
+        color: var(--mr-text-secondary);
+        font-size: 13px;
+      }
+
+      /* 核心修改：卡片式网格布局 */
+      .memory-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        padding: 16px;
+      }
+
+      .memory-card {
+        background: var(--mr-bg);
+        border: var(--mr-border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        box-shadow: var(--mr-card-shadow);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .memory-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        border-color: var(--mr-accent);
+      }
+
+      body.theme-night .memory-card:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      }
+
+      .memory-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: var(--mr-bg-secondary);
+        border-bottom: var(--mr-border);
+      }
+
+      .memory-id {
+        background: var(--mr-accent);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .memory-title {
+        flex: 1;
+        color: var(--mr-text);
+        font-size: 13px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .memory-body {
+        padding: 14px;
+        color: var(--mr-text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        flex: 1;
+      }
+
+      .memory-not-found {
+        padding: 14px;
+        color: #e57373;
+        font-size: 12px;
+        font-style: italic;
+        background: rgba(229, 115, 115, 0.1);
+      }
+
+      .panel-footer {
+        padding: 10px 18px;
+        text-align: center;
+        color: var(--mr-text-secondary);
+        font-size: 12px;
+        cursor: pointer;
+        border-top: var(--mr-border);
+        background: var(--mr-bg-secondary);
+        user-select: none;
+        transition: all 0.2s ease;
+      }
+
+      .panel-footer:hover {
+        color: var(--mr-accent);
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      body.theme-night .panel-footer:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      /* 滚动条样式 */
+      .panel-content-inner::-webkit-scrollbar {
+        width: 6px;
+      }
+      .panel-content-inner::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .panel-content-inner::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 3px;
+      }
+      .panel-content-inner::-webkit-scrollbar-thumb:hover {
+        background: var(--mr-accent);
+      }
+
+      /* 响应式适配 */
+      @media (max-width: 600px) {
+        .memory-grid {
+          grid-template-columns: 1fr; /* 移动端单列显示 */
+        }
+
+        .context-panel {
+          border-radius: 14px;
+        }
+
+        .panel-header {
+          padding: 12px 16px;
+        }
+
+        .memory-body {
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="context-panel" id="contextPanel">
+      <div class="panel-header" onclick="togglePanel(event)">
+        <div class="panel-title-group">
+          <span class="panel-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+          </span>
+          <span class="panel-title">记忆召回</span>
+        </div>
+
+        <div class="panel-controls">
+          <div class="panel-badges">
+            <span class="badge badge-input">用户输入</span>
+            <span class="badge badge-memory" id="memoryBadge">记忆 -</span>
+          </div>
+
+          <!-- 日夜模式切换按钮 -->
+          <div class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme(event)" title="切换日/夜模式">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C6.93,10.39 11.61,15.06 17,14.95C17.67,14.93 18.34,15.28 18.97,15.95Z"
+              />
+            </svg>
+          </div>
+
+          <div class="toggle-arrow">▼</div>
+        </div>
+      </div>
+
+      <div class="panel-content">
+        <div class="panel-content-inner">
+          <div class="user-input-section">
+            <div class="section-header">
+              <span class="section-icon">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M6,9H18V11H6M14,14H6V12H14M18,8H6V6H18"
+                  />
+                </svg>
+              </span>
+              <span class="section-title">本轮用户输入</span>
+            </div>
+            <div class="user-input-content" id="userInputContent"></div>
+          </div>
+
+          <div class="recall-section">
+            <div class="section-header">
+              <span class="section-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12,1L9,9L1,12L9,15L12,23L15,15L23,12L15,9L12,1Z" />
+                </svg>
+              </span>
+              <span class="section-title">相关记忆</span>
+            </div>
+            <div class="memory-grid" id="memoryList">
+              <div class="recall-loading" id="recallLoading">正在从世界书中检索记忆</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-footer" onclick="togglePanel(event)">收起面板</div>
+      </div>
+    </div>
+
+    <script>
+      // 正则捕获的两部分
+      const rawUserInput = `$1`;
+      const rawAmList = `$2`;
+
+      // 状态管理
+      const state = {
+        isNightMode: false,
+      };
+
+      // 初始化主题
+      function initTheme() {
+        const savedTheme = localStorage.getItem('mr_theme_mode');
+        // 默认为夜间模式 (如果未设置) 或者根据保存的设置
+        // 这里根据 style.scss 默认是日间模式，body.theme-night 是夜间
+        // 假设用户更喜欢跟随系统或默认为日间，这里我们检查 localStorage
+
+        if (savedTheme === 'night') {
+          state.isNightMode = true;
+          document.body.classList.add('theme-night');
+          document.getElementById('themeToggleBtn').innerHTML =
+            '<svg viewBox="0 0 24 24"><path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,5.29C7.24,5.84 6.6,6.96 6.34,7.53L3.34,7M3.34,17L6.34,16.47C6.6,17.04 7.24,18.16 7.5,18.71L3.34,17M20.65,17L16.5,18.71C16.76,18.16 17.4,17.04 17.66,16.47L20.65,17M20.65,7L17.66,7.53C17.4,6.96 16.76,5.84 16.5,5.29L20.65,7M12,22L9.61,18.58C10.35,18.85 11.16,19 12,19C12.84,19 13.65,18.85 14.39,18.58L12,22Z" /></svg>';
+        } else {
+          state.isNightMode = false;
+          document.body.classList.remove('theme-night');
+          document.getElementById('themeToggleBtn').innerHTML =
+            '<svg viewBox="0 0 24 24"><path d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C6.93,10.39 11.61,15.06 17,14.95C17.67,14.93 18.34,15.28 18.97,15.95Z" /></svg>';
+        }
+      }
+
+      // 切换日夜模式
+      function toggleTheme(e) {
+        if (e) e.stopPropagation(); // 防止触发面板折叠
+
+        state.isNightMode = !state.isNightMode;
+        const btn = document.getElementById('themeToggleBtn');
+
+        if (state.isNightMode) {
+          document.body.classList.add('theme-night');
+          btn.innerHTML =
+            '<svg viewBox="0 0 24 24"><path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,5.29C7.24,5.84 6.6,6.96 6.34,7.53L3.34,7M3.34,17L6.34,16.47C6.6,17.04 7.24,18.16 7.5,18.71L3.34,17M20.65,17L16.5,18.71C16.76,18.16 17.4,17.04 17.66,16.47L20.65,17M20.65,7L17.66,7.53C17.4,6.96 16.76,5.84 16.5,5.29L20.65,7M12,22L9.61,18.58C10.35,18.85 11.16,19 12,19C12.84,19 13.65,18.85 14.39,18.58L12,22Z" /></svg>';
+          localStorage.setItem('mr_theme_mode', 'night');
+        } else {
+          document.body.classList.remove('theme-night');
+          btn.innerHTML =
+            '<svg viewBox="0 0 24 24"><path d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C6.93,10.39 11.61,15.06 17,14.95C17.67,14.93 18.34,15.28 18.97,15.95Z" /></svg>';
+          localStorage.setItem('mr_theme_mode', 'day');
+        }
+      }
+
+      function togglePanel(e) {
+        // 如果点击的是切换按钮，不触发折叠
+        if (e && e.target.closest('.theme-toggle-btn')) return;
+
+        const panel = document.getElementById('contextPanel');
+        panel.classList.toggle('expanded');
+        updateIframeHeight();
+      }
+
+      function updateIframeHeight() {
+        setTimeout(() => {
+          const bodyHeight = document.body.scrollHeight;
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'resizeIframe', height: bodyHeight }, '*');
+          }
+        }, 50);
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function parseAmCodes(raw) {
+        return raw
+          .split(/[,，\s]+/)
+          .map(s => s.trim())
+          .filter(s => /^AM\d+$/i.test(s))
+          .map(s => s.toUpperCase());
+      }
+
+      async function findEntryByKey(entries, keyToFind) {
+        const keyUpper = keyToFind.toUpperCase();
+        for (const entry of entries) {
+          if (entry.key && Array.isArray(entry.key)) {
+            for (const k of entry.key) {
+              if (k.toUpperCase() === keyUpper) {
+                return entry;
+              }
+            }
+          }
+        }
+        return null;
+      }
+
+      function renderMemoryItem(amCode, entry) {
+        if (!entry) {
+          return `
+            <div class="memory-card">
+              <div class="memory-header">
+                <span class="memory-id">${amCode}</span>
+                <span class="memory-title">未找到</span>
+              </div>
+              <div class="memory-not-found">未在世界书中找到关键词为 "${amCode}" 的条目</div>
+            </div>
+          `;
+        }
+        const title = entry.comment || '无标题';
+        const content = entry.content || '（无内容）';
+        return `
+          <div class="memory-card">
+            <div class="memory-header">
+              <span class="memory-id">${amCode}</span>
+              <span class="memory-title">${escapeHtml(title)}</span>
+            </div>
+            <div class="memory-body">${escapeHtml(content)}</div>
+          </div>
+        `;
+      }
+
+      function initUserInput() {
+        const container = document.getElementById('userInputContent');
+        const trimmed = rawUserInput.trim();
+        container.innerHTML = trimmed
+          ? escapeHtml(trimmed)
+          : '<span style="color:var(--mr-text-secondary);font-style:italic;">（无输入内容）</span>';
+      }
+
+      async function loadMemories() {
+        const container = document.getElementById('memoryList');
+        const loading = document.getElementById('recallLoading');
+        const badge = document.getElementById('memoryBadge');
+
+        const amCodes = parseAmCodes(rawAmList);
+        badge.textContent = '记忆 ' + amCodes.length;
+
+        if (amCodes.length === 0) {
+          loading.textContent = '未检测到有效的AM编号';
+          return;
+        }
+
+        try {
+          let worldBookName = '';
+          if (typeof getVariables === 'function') {
+            const chatVars = await getVariables({ type: 'chat' });
+            if (chatVars && chatVars.selectedWorldBook) {
+              worldBookName = chatVars.selectedWorldBook;
+            }
+          }
+
+          if (!worldBookName && typeof getCurrentCharPrimaryLorebook === 'function') {
+            worldBookName = await getCurrentCharPrimaryLorebook();
+          }
+
+          if (!worldBookName) {
+            loading.textContent = '未选择世界书';
+            return;
+          }
+
+          if (typeof getLorebookEntries !== 'function') {
+            loading.textContent = '前端助手API未加载';
+            return;
+          }
+
+          const entries = await getLorebookEntries(worldBookName);
+
+          let html = '';
+          for (const amCode of amCodes) {
+            const entry = await findEntryByKey(entries, amCode);
+            html += renderMemoryItem(amCode, entry);
+          }
+
+          container.innerHTML = html;
+          updateIframeHeight();
+        } catch (error) {
+          console.error('记忆召回失败:', error);
+          loading.textContent = '加载失败: ' + error.message;
+        }
+      }
+
+      window.addEventListener('load', () => {
+        initTheme(); // 初始化主题
+        initUserInput();
+        updateIframeHeight();
+        setTimeout(loadMemories, 300);
+      });
+    </script>
+  </body>
+</html>

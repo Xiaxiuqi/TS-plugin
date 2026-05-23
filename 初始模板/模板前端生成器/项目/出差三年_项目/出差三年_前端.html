@@ -1,0 +1,793 @@
+======当前地图=======
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>家庭异变监控终端</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 核心配色：暗黑监控屏风格 */
+            --bg-main: #1a1b26;
+            --bg-container: rgba(20, 21, 30, 0.9);
+            --text-main: #a9b1d6;
+            --text-title: #c0caf5;
+            
+            /* 安全色 (理智/表象) */
+            --accent-safe: #41a5ea;
+            --accent-safe-dim: rgba(65, 165, 234, 0.2);
+            
+            /* 警告色 (堕落/真相) */
+            --accent-danger: #f7768e;
+            --accent-danger-dim: rgba(247, 118, 142, 0.2);
+            
+            /* 边框与阴影 */
+            --border-color: rgba(65, 165, 234, 0.3);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            
+            --font-mono: 'Roboto Mono', monospace;
+            --radius-base: 4px;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            margin: 0;
+            padding: 10px;
+            font-size: 14px;
+            background-image: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 故障动画 */
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            10% { transform: skew(-1deg); }
+            20% { transform: skew(1deg); }
+            30% { transform: skew(0deg); }
+            100% { transform: skew(0deg); }
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .glitch-text {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .system-warning {
+            color: var(--accent-danger);
+            animation: blink 2s infinite;
+        }
+
+        /* 布局容器 */
+        .dashboard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 15px;
+        }
+
+        /* 面板通用样式 */
+        .panel {
+            background: var(--bg-container);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 10px var(--accent-safe-dim);
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .panel::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-safe), transparent);
+            opacity: 0.7;
+        }
+
+        .panel-header {
+            font-size: 12px;
+            color: var(--accent-safe);
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 顶部状态栏 */
+        .top-status-bar {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 15px;
+            border-bottom: 2px solid var(--accent-safe);
+        }
+
+        .status-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .time-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--text-title);
+            text-shadow: 0 0 5px var(--accent-safe);
+        }
+
+        .security-level {
+            padding: 2px 8px;
+            background: var(--accent-safe-dim);
+            border: 1px solid var(--accent-safe);
+            color: var(--accent-safe);
+            font-size: 0.8em;
+            border-radius: 2px;
+        }
+        
+        .security-level.danger {
+            background: var(--accent-danger-dim);
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+            animation: blink 1s infinite;
+        }
+
+        /* 进度条 */
+        .bar-wrapper {
+            width: 150px;
+            font-size: 0.8em;
+        }
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        .progress-track {
+            height: 6px;
+            background: #000;
+            border: 1px solid #333;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        .fill-sanity { background: var(--accent-safe); box-shadow: 0 0 5px var(--accent-safe); }
+        .fill-suspicion { background: var(--accent-danger); box-shadow: 0 0 5px var(--accent-danger); }
+
+        /* 左侧：全屋监控地图 */
+        .surveillance-map {
+            grid-column: 1 / 2;
+            min-height: 400px;
+            position: relative;
+            background-image: 
+                radial-gradient(circle, rgba(65, 165, 234, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #house-map-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 2px var(--accent-safe-dim));
+        }
+
+        .room-rect {
+            fill: rgba(65, 165, 234, 0.05);
+            stroke: var(--accent-safe);
+            stroke-width: 2;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .room-rect:hover {
+            fill: rgba(65, 165, 234, 0.15);
+        }
+        .room-rect.danger {
+            stroke: var(--accent-danger);
+            fill: rgba(247, 118, 142, 0.1);
+            animation: blink 2s infinite;
+        }
+
+        .room-label {
+            fill: var(--text-main);
+            font-size: 12px;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        .char-icon {
+            font-size: 20px;
+            fill: #fff;
+            filter: drop-shadow(0 0 2px #000);
+            pointer-events: none;
+            transition: all 0.5s ease;
+        }
+
+        /* 右侧：目标监视卡片 */
+        .target-monitor {
+            grid-column: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .target-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            transition: border-color 0.3s;
+        }
+        .target-card:hover {
+            border-color: var(--accent-safe);
+        }
+        .target-card.corrupted {
+            border-color: var(--accent-danger);
+        }
+
+        .target-avatar {
+            width: 50px;
+            height: 50px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .target-avatar img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        
+        /* 堕落圆环 */
+        .corruption-ring {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--accent-danger);
+            animation: spin 3s linear infinite;
+            opacity: 0;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .target-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-size: 0.9em;
+        }
+        .target-name {
+            font-weight: bold;
+            color: var(--text-title);
+            display: flex;
+            justify-content: space-between;
+        }
+        .target-status {
+            color: var(--accent-safe);
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+        .target-status.exposed {
+            color: var(--accent-danger);
+            text-shadow: 0 0 3px var(--accent-danger);
+        }
+
+        .trace-log {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #333;
+            padding: 8px;
+            font-size: 0.85em;
+            overflow-y: auto;
+            max-height: 200px;
+            font-family: monospace;
+            color: #888;
+        }
+        .trace-item {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 2px;
+            cursor: pointer;
+        }
+        .trace-item:hover { color: var(--accent-safe); }
+        .trace-item b { color: var(--accent-danger); }
+
+        /* 底部：交互区 */
+        .command-center {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .cmd-btn {
+            background: rgba(65, 165, 234, 0.1);
+            border: 1px solid var(--accent-safe);
+            color: var(--accent-safe);
+            padding: 12px 5px;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 0.9em;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .cmd-btn::before {
+            content: "";
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(65, 165, 234, 0.4), transparent);
+            transition: 0.5s;
+        }
+        
+        .cmd-btn:hover {
+            background: rgba(65, 165, 234, 0.2);
+            box-shadow: 0 0 10px var(--accent-safe-dim);
+            text-shadow: 0 0 5px var(--accent-safe);
+        }
+        .cmd-btn:hover::before { left: 100%; }
+
+        .cmd-btn.danger {
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+            background: rgba(247, 118, 142, 0.1);
+        }
+        .cmd-btn.danger:hover {
+            background: rgba(247, 118, 142, 0.2);
+            box-shadow: 0 0 10px var(--accent-danger-dim);
+        }
+
+        .utility-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .util-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #666;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        .util-btn:hover { border-color: var(--text-main); color: var(--text-main); }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            .options-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .surveillance-map {
+                min-height: 250px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container" id="main-ui">
+    <!-- 顶部栏 -->
+    <div class="top-status-bar">
+        <div class="status-group">
+            <div class="time-display">
+                <i class="far fa-clock"></i> <span id="sys-time">00:00</span>
+            </div>
+            <div id="security-status" class="security-level">SYSTEM NORMAL</div>
+        </div>
+        
+        <div class="status-group">
+            <div class="bar-wrapper">
+                <div class="bar-label"><span>SANITY</span><span id="val-sanity">100%</span></div>
+                <div class="progress-track">
+                    <div id="bar-sanity" class="progress-fill fill-sanity" style="width: 100%;"></div>
+                </div>
+            </div>
+            <div class="bar-wrapper">
+                <div class="bar-label"><span>SUSPICION</span><span id="val-suspicion">0%</span></div>
+                <div class="progress-track">
+                    <div id="bar-suspicion" class="progress-fill fill-suspicion" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 左侧监控地图 -->
+    <div class="panel surveillance-map">
+        <div class="panel-header">
+            <span>FLOOR PLAN SURVEILLANCE // <span id="map-location-name">未知区域</span></span>
+            <i class="fas fa-video"></i>
+        </div>
+        
+        <svg id="house-map-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+            <!-- 房间将由 JS 动态生成 -->
+            <text x="400" y="300" fill="#666" text-anchor="middle">系统正在连接...</text>
+        </svg>
+    </div>
+
+    <!-- 右侧目标监视 -->
+    <div class="panel target-monitor">
+        <div class="panel-header">TARGET PROFILE</div>
+        
+        <div id="npc-container">
+            <!-- NPC 卡片示例 -->
+            <div style="padding:10px; text-align:center; color:#666;">Waiting for data stream...</div>
+        </div>
+
+        <div class="panel-header" style="margin-top: 10px;">ANOMALY LOG</div>
+        <div class="trace-log" id="trace-log">
+            <div class="trace-item">> System initialized...</div>
+            <div class="trace-item">> Monitoring protocols active.</div>
+        </div>
+    </div>
+
+    <!-- 底部指令区 -->
+    <div class="panel command-center">
+        <div class="panel-header">COMMAND OVERRIDE</div>
+        <div class="options-grid" id="action-buttons">
+            <button class="cmd-btn" onclick="sendGameActionRequest('观察环境')">INITIATE SCAN</button>
+            <button class="cmd-btn" onclick="sendGameActionRequest('询问情况')">INTERROGATE</button>
+            <button class="cmd-btn danger" onclick="sendGameActionRequest('强行调查')">BREACH PROTOCOL</button>
+            <button class="cmd-btn" onclick="sendGameActionRequest('等待')">STANDBY</button>
+        </div>
+        
+        <div class="utility-bar">
+            <button class="util-btn" onclick="sendGameActionRequest('查看背包')"><i class="fas fa-box"></i> INVENTORY</button>
+            <button class="util-btn" onclick="sendGameActionRequest('查看任务')"><i class="fas fa-tasks"></i> OBJECTIVES</button>
+            <button class="util-btn" onclick="sendGameActionRequest('查看技能')"><i class="fas fa-dna"></i> ABILITIES</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 1. API Definition (Standard Boilerplate)
+// ==========================================
+const dataSourceAPI = (typeof parent !== 'undefined' && parent.AutoCardUpdaterAPI) ? parent.AutoCardUpdaterAPI : {
+    exportTableAsJson: function() { console.warn("No API found, using test data."); return null; },
+    registerTableUpdateCallback: function(cb) { console.warn("No API found, no callbacks."); }
+};
+
+function sendGameActionRequest(msg) {
+    console.log("Action sent:", msg);
+    if (typeof parent.triggerSlash === 'function') {
+        try { parent.triggerSlash('/setinput ' + msg); } 
+        catch(e) { console.error(e); }
+    } else {
+        const input = parent.document.getElementById('send_textarea');
+        if (input) { input.value = msg; } 
+        else { alert(`[模拟发送] ${msg}`); }
+    }
+}
+
+// ==========================================
+// 2. Data Processing
+// ==========================================
+function processJsonData(json) {
+    if (!json) return null;
+    const tables = {};
+    for (const sheetId in json) {
+        if (Object.prototype.hasOwnProperty.call(json, sheetId) && json[sheetId] && json[sheetId].name) {
+            const sheet = json[sheetId];
+            tables[sheet.name] = {
+                headers: sheet.content[0] || [],
+                rows: sheet.content.slice(1)
+            };
+        }
+    }
+    return tables;
+}
+
+const getVal = (row, headers, colName) => {
+    if(!row || !headers) return null;
+    const idx = headers.indexOf(colName);
+    return idx !== -1 ? row[idx] : null;
+};
+
+// ==========================================
+// 3. Rendering Logic
+// ==========================================
+
+// Render Global Status
+function renderGlobal(table) {
+    if (!table || !table.rows[0]) return;
+    const row = table.rows[0];
+    const headers = table.headers;
+
+    document.getElementById('map-location-name').textContent = getVal(row, headers, '地图标题') || '未知区域';
+    document.getElementById('sys-time').textContent = getVal(row, headers, '当前时间') || '00:00';
+    
+    // 外部区域 (虽然设计文档没重点提，但保留功能)
+    // const extAreas = getVal(row, headers, '外部区域列表');
+}
+
+// Render Protagonist (Sanity/Suspicion + Options)
+function renderProtagonist(table) {
+    if (!table || !table.rows[0]) return;
+    const row = table.rows[0];
+    const headers = table.headers;
+
+    // Stats
+    const sanity = parseInt(getVal(row, headers, '理智值') || 100);
+    const suspicion = parseInt(getVal(row, headers, '怀疑度') || 0);
+    const curLoc = getVal(row, headers, '当前位置');
+
+    document.getElementById('val-sanity').textContent = sanity + '%';
+    document.getElementById('bar-sanity').style.width = sanity + '%';
+    
+    document.getElementById('val-suspicion').textContent = suspicion + '%';
+    document.getElementById('bar-suspicion').style.width = suspicion + '%';
+
+    // Visual Effects based on Sanity
+    const mainUI = document.getElementById('main-ui');
+    if (sanity < 30) {
+        mainUI.style.animation = 'shake 0.5s infinite';
+        document.documentElement.style.setProperty('--accent-safe', '#888'); 
+    } else {
+        mainUI.style.animation = 'none';
+        document.documentElement.style.setProperty('--accent-safe', '#41a5ea');
+    }
+
+    // Buttons
+    const btnContainer = document.getElementById('action-buttons');
+    btnContainer.innerHTML = '';
+    
+    const options = [
+        getVal(row, headers, '选项一'),
+        getVal(row, headers, '选项二'),
+        getVal(row, headers, '选项三'),
+        getVal(row, headers, '选项四')
+    ];
+
+    options.forEach(opt => {
+        if (opt) {
+            const btn = document.createElement('button');
+            btn.className = 'cmd-btn';
+            if (opt.includes('强行') || opt.includes('攻击') || opt.includes('揭穿')) {
+                btn.classList.add('danger');
+            }
+            btn.textContent = opt;
+            btn.onclick = () => sendGameActionRequest(opt);
+            btnContainer.appendChild(btn);
+        }
+    });
+
+    return curLoc; // Return current location for map rendering
+}
+
+// Render Map (Rooms & Elements)
+function renderMap(roomTable, elemTable, charLocs) {
+    const svg = document.getElementById('house-map-svg');
+    svg.innerHTML = ''; // Clear
+
+    if (!roomTable || !roomTable.rows) {
+        svg.innerHTML = '<text x="400" y="300" fill="#666" text-anchor="middle">NO SIGNAL</text>';
+        return;
+    }
+
+    // 1. Draw Rooms
+    roomTable.rows.forEach(row => {
+        const name = getVal(row, roomTable.headers, '地点名称');
+        const x = getVal(row, roomTable.headers, 'X坐标');
+        const y = getVal(row, roomTable.headers, 'Y坐标');
+        const w = getVal(row, roomTable.headers, '宽度');
+        const h = getVal(row, roomTable.headers, '高度');
+
+        if (name && x && y && w && h) {
+            const g = document.createElementNS("http://www.w3.org/2000/svg", 'g');
+            g.onclick = () => sendGameActionRequest(`前往 ${name}`);
+            
+            const rect = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+            rect.setAttribute('x', x); rect.setAttribute('y', y);
+            rect.setAttribute('width', w); rect.setAttribute('height', h);
+            rect.setAttribute('class', 'room-rect');
+            
+            // Check for anomalies (using Suspicion or specific flags could be better, but keeping simple)
+            // Here we just check if any "corrupted" char is in the room (simulated logic)
+            
+            const text = document.createElementNS("http://www.w3.org/2000/svg", 'text');
+            text.setAttribute('x', parseInt(x) + parseInt(w)/2);
+            text.setAttribute('y', parseInt(y) + parseInt(h)/2);
+            text.setAttribute('class', 'room-label');
+            text.textContent = name;
+
+            g.appendChild(rect);
+            g.appendChild(text);
+            svg.appendChild(g);
+        }
+    });
+
+    // 2. Draw Characters (Icons)
+    // charLocs format: { "Name": "RoomName" }
+    Object.keys(charLocs).forEach(charName => {
+        const locName = charLocs[charName];
+        // Find room coords
+        const roomRow = roomTable.rows.find(r => getVal(r, roomTable.headers, '地点名称') === locName);
+        if (roomRow) {
+            const rx = parseInt(getVal(roomRow, roomTable.headers, 'X坐标'));
+            const ry = parseInt(getVal(roomRow, roomTable.headers, 'Y坐标'));
+            const rw = parseInt(getVal(roomRow, roomTable.headers, '宽度'));
+            const rh = parseInt(getVal(roomRow, roomTable.headers, '高度'));
+
+            // Random offset within room to prevent overlap
+            const ox = rx + 20 + Math.random() * (rw - 40);
+            const oy = ry + 20 + Math.random() * (rh - 40);
+
+            const iconGroup = document.createElementNS("http://www.w3.org/2000/svg", 'text');
+            iconGroup.setAttribute('x', ox);
+            iconGroup.setAttribute('y', oy);
+            iconGroup.setAttribute('class', 'char-icon');
+            
+            if (charName === '主角' || charName === '我') iconGroup.textContent = '🕵️';
+            else if (charName.includes('苏婉') || charName.includes('妻')) iconGroup.textContent = '👩';
+            else if (charName.includes('李悦') || charName.includes('女')) iconGroup.textContent = '👧';
+            else iconGroup.textContent = '👤';
+
+            svg.appendChild(iconGroup);
+        }
+    });
+}
+
+// Render NPCs
+function renderNPCs(table, pLoc) {
+    const container = document.getElementById('npc-container');
+    container.innerHTML = '';
+    const charLocs = {}; // Store locations for map
+
+    if (!table || !table.rows) return {};
+
+    table.rows.forEach(row => {
+        const name = getVal(row, table.headers, '姓名');
+        const status = getVal(row, table.headers, '当前状态') || '未知';
+        const loc = getVal(row, table.headers, '所在地点');
+        const corruption = parseInt(getVal(row, table.headers, '堕落度') || 0);
+
+        charLocs[name] = loc;
+
+        const card = document.createElement('div');
+        card.className = 'target-card';
+        if (corruption > 80) card.classList.add('corrupted');
+
+        // Avatar char
+        const charInitial = name ? name[0] : '?';
+        
+        let statusClass = 'target-status';
+        if (status.includes('暴露') || status.includes('本性') || status.includes('淫')) statusClass += ' exposed';
+
+        card.innerHTML = `
+            <div class="target-avatar">
+                ${charInitial}
+                <div class="corruption-ring" style="opacity: ${corruption/100}; animation-duration: ${100/(corruption+1)}s"></div>
+            </div>
+            <div class="target-info">
+                <div class="target-name">
+                    <span>${name}</span>
+                    <span style="color: #666; font-size: 0.8em;">COR: ${corruption}%</span>
+                </div>
+                <div class="${statusClass}">STATUS: ${status}</div>
+                <div style="color: #666; font-size: 0.8em; margin-top: 2px;">LOC: ${loc}</div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+
+    return charLocs;
+}
+
+// Render Trace Log (Anomalies)
+function renderTraces(table) {
+    const container = document.getElementById('trace-log');
+    if (!table || !table.rows) return;
+
+    container.innerHTML = '';
+    table.rows.forEach(row => {
+        const name = getVal(row, table.headers, '痕迹名称');
+        const type = getVal(row, table.headers, '类型');
+        const desc = getVal(row, table.headers, '描述');
+        
+        const div = document.createElement('div');
+        div.className = 'trace-item';
+        div.innerHTML = `<b>[${type}]</b> ${name}: ${desc}`;
+        div.onclick = () => sendGameActionRequest(`调查 ${name}`);
+        container.appendChild(div);
+    });
+}
+
+// Main Render Loop
+function renderUI(tables) {
+    if (!tables) return;
+    
+    renderGlobal(tables['全局监控数据']);
+    
+    // Render Protagonist & Get Location
+    const pLoc = renderProtagonist(tables['主角信息']); // Note: In design doc, protagonist is in '主角信息' or '家庭成员状态'
+    
+    // Render NPCs & Get Locations
+    // Note: In design doc, we proposed merging, but if separate:
+    const charLocs = renderNPCs(tables['重要人物表'], pLoc);
+    if (pLoc) charLocs['主角'] = pLoc;
+
+    // Render Map
+    renderMap(tables['主要地点表'], tables['地图元素表'], charLocs); // '地图元素表' here maps to '可疑痕迹表' logic if using old structure, or new one
+
+    // Render Traces (Anomalies)
+    // Assuming '可疑痕迹表' or mapping '地图元素表' to logs
+    const traceTable = tables['可疑痕迹表'] || tables['地图元素表'];
+    renderTraces(traceTable);
+}
+
+// ==========================================
+// 4. Initialization
+// ==========================================
+window.onload = function() {
+    const rawData = dataSourceAPI.exportTableAsJson();
+    if (rawData) {
+        const initialTables = processJsonData(rawData);
+        renderUI(initialTables);
+    }
+
+    dataSourceAPI.registerTableUpdateCallback(function(newData) {
+        console.log("Detected data update, refreshing UI...");
+        const updatedTables = processJsonData(newData);
+        renderUI(updatedTables);
+    });
+};
+
+</script>
+</body>
+</html>

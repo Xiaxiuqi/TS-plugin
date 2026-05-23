@@ -1,0 +1,412 @@
+# 状态栏·好感度美化正则-米白版本
+
+## 使用目标
+
+本文件用于将纯文字格式的 `<status_relationship>` 羁绊状态栏渲染为与当前米白版 MVU 状态栏一致的低饱和米白卡片界面。
+
+适配的原始输出格式：
+
+```text
+<status_relationship>
+【角色羁绊档案】
+
+【本回合情感波动】
+本回合说明文字
+
+【已记录角色】
+- 角色名 | 好感度: 80/100 | 关系阶段: 挚友
+- 角色名 | 好感度: 35/100 | 关系阶段: 熟人
+</status_relationship></>
+```
+
+## 正则执行顺序
+
+必须严格按以下顺序创建并启用正则：
+
+1. `01_好感度状态栏外层面板_米白`
+2. `02_好感度角色卡片_米白`
+
+建议两条正则都设置为作用于 AI 输出或消息显示阶段。若酒馆正则支持脚本顺序，请保证编号越小越先执行。
+
+---
+
+## 01_好感度状态栏外层面板_米白
+
+### 查找正则
+
+```regex
+/<status_relationship>\s*【角色羁绊档案】\s*【本回合情感波动】\s*([\s\S]*?)\s*【已记录角色】\s*([\s\S]*?)\s*<\/status_relationship><\/>/s
+```
+
+### 替换内容
+
+```html
+<div class="rel-status-widget rel-cream-ui">
+  <style>
+    .rel-status-widget.rel-cream-ui {
+      --rel-bg: #f7f1e6;
+      --rel-panel: rgba(251, 247, 238, .97);
+      --rel-card: rgba(255, 253, 247, .86);
+      --rel-card-2: rgba(236, 226, 207, .46);
+      --rel-text: #342f29;
+      --rel-muted: #756b60;
+      --rel-faint: #a39889;
+      --rel-sage: #7f927c;
+      --rel-blue: #748b9d;
+      --rel-rose: #a07e74;
+      --rel-gold: #b79a62;
+      --rel-line: rgba(117, 107, 96, .13);
+      --rel-shadow: 0 4px 10px rgba(71, 58, 42, .07);
+      --rel-shadow-soft: 0 2px 6px rgba(71, 58, 42, .045);
+      width: 100%;
+      margin: .8em auto;
+      display: flex;
+      justify-content: center;
+      color: var(--rel-text);
+      font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+      line-height: 1.52;
+      box-sizing: border-box;
+    }
+
+    .rel-status-widget.rel-cream-ui,
+    .rel-status-widget.rel-cream-ui * {
+      box-sizing: border-box;
+    }
+
+    .rel-status-widget.rel-cream-ui details {
+      width: min(96%, 900px);
+      overflow: hidden;
+      border-radius: 10px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.55), transparent 30%),
+        radial-gradient(circle at top left, rgba(160,126,116,.12), transparent 30%),
+        var(--rel-panel);
+      box-shadow: var(--rel-shadow);
+    }
+
+    .rel-status-widget.rel-cream-ui summary {
+      list-style: none;
+    }
+
+    .rel-status-widget.rel-cream-ui summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-summary {
+      width: 100%;
+      min-height: 38px;
+      cursor: pointer;
+      user-select: none;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 9px;
+      align-items: center;
+      padding: 10px 12px;
+      color: var(--rel-text);
+      background: linear-gradient(90deg, rgba(236,226,207,.72), rgba(255,253,247,.42));
+      transition: background .22s ease, filter .22s ease;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-summary:hover {
+      filter: brightness(1.015);
+      background: linear-gradient(90deg, rgba(236,226,207,.86), rgba(255,253,247,.56));
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-toggle-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--rel-rose);
+      background: rgba(160,126,116,.12);
+      font-size: 15px;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-summary-text {
+      min-width: 0;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-toggle-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .1em;
+      color: var(--rel-text);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-toggle-subtitle {
+      margin-top: 1px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      color: var(--rel-muted);
+    }
+
+    .rel-status-widget.rel-cream-ui .toggle-icon {
+      color: var(--rel-gold);
+      transition: transform .24s ease;
+      flex: 0 0 auto;
+      font-size: 12px;
+      letter-spacing: 0;
+      opacity: 1;
+    }
+
+    .rel-status-widget.rel-cream-ui details:not([open]) .toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-panel {
+      width: 100%;
+      overflow: hidden;
+      border: none;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.55), transparent 30%),
+        radial-gradient(circle at top left, rgba(160,126,116,.12), transparent 30%),
+        var(--rel-panel);
+      box-shadow: var(--rel-shadow);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-panel-head {
+      padding: 12px 14px 10px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(236,226,207,.66), rgba(255,253,247,.42));
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-head-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--rel-rose);
+      background: rgba(160,126,116,.12);
+      font-size: 15px;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      color: var(--rel-text);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-subtitle {
+      margin-top: 1px;
+      font-size: 10.5px;
+      letter-spacing: .04em;
+      color: var(--rel-muted);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-corner {
+      color: var(--rel-gold);
+      font-size: 13px;
+      letter-spacing: .12em;
+      opacity: .82;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-body {
+      padding: 10px 12px 12px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-card {
+      min-width: 0;
+      border-radius: 8px;
+      border: none;
+      background: var(--rel-card);
+      box-shadow: var(--rel-shadow-soft);
+      overflow: hidden;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-card-head {
+      padding: 8px 10px 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(90deg, rgba(236,226,207,.52), transparent);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-card-dot {
+      width: 3px;
+      height: 16px;
+      border-radius: 2px;
+      flex: 0 0 auto;
+      background: var(--rel-rose);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-card-title {
+      color: var(--rel-text);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .1em;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-wave {
+      padding: 8px 10px 9px;
+      color: var(--rel-text);
+      background: rgba(255,253,247,.42);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-size: 12.5px;
+      line-height: 1.62;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-list {
+      padding: 8px 9px 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px;
+      background: rgba(255,253,247,.32);
+      white-space: pre-wrap;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-person-card {
+      min-width: 0;
+      padding: 9px 10px 10px;
+      border-radius: 7px;
+      color: var(--rel-text);
+      font-size: 12.3px;
+      line-height: 1.54;
+      background: rgba(255,253,247,.82);
+      border: none;
+      box-shadow: inset 3px 0 0 rgba(160,126,116,.48), var(--rel-shadow-soft);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-person-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 5px;
+      margin-bottom: 6px;
+      box-shadow: inset 0 -1px 0 rgba(117,107,96,.12);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-person-name {
+      min-width: 0;
+      color: var(--rel-blue);
+      font-size: 12.8px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-stage {
+      flex: 0 0 auto;
+      padding: 2px 6px;
+      border-radius: 999px;
+      color: var(--rel-text);
+      background: rgba(116,139,157,.12);
+      font-size: 10.8px;
+      font-weight: 700;
+      line-height: 1.32;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-fav-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 7px;
+      align-items: center;
+      color: var(--rel-muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-bar {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(117,107,96,.14);
+      box-shadow: inset 0 1px 2px rgba(71,58,42,.12);
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-fill {
+      display: block;
+      height: 100%;
+      width: var(--rel-fav);
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(160,126,116,.58), rgba(183,154,98,.86));
+    }
+
+    .rel-status-widget.rel-cream-ui .rel-panel-foot {
+      padding: 8px 14px 10px;
+      text-align: center;
+      color: var(--rel-faint);
+      font-size: 10px;
+      letter-spacing: .12em;
+      background: rgba(236,226,207,.42);
+    }
+
+    @media (max-width: 640px) {
+      .rel-status-widget.rel-cream-ui .rel-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <details>
+    <summary class="rel-summary" aria-label="展开或收起角色羁绊档案">
+      <span class="rel-toggle-icon">♡</span>
+      <span class="rel-summary-text">
+        <span class="rel-toggle-title">角色羁绊档案</span>
+        <span class="rel-toggle-subtitle">本回合情感波动 · 已记录角色</span>
+      </span>
+      <span class="rel-toggle-state toggle-icon">▼</span>
+    </summary>
+
+    <section class="rel-panel">
+      <div class="rel-body">
+        <article class="rel-card">
+          <div class="rel-card-head"><span class="rel-card-dot"></span><span class="rel-card-title">本回合情感波动</span></div>
+          <div class="rel-wave">$1</div>
+        </article>
+
+        <article class="rel-card">
+          <div class="rel-card-head"><span class="rel-card-dot"></span><span class="rel-card-title">已记录角色</span></div>
+          <div class="rel-list">
+$2
+          </div>
+        </article>
+      </div>
+
+      <footer class="rel-panel-foot">✧ RELATION ARCHIVE ✧</footer>
+    </section>
+  </details>
+</div>
+```
+
+---
+
+## 02_好感度角色卡片_米白
+
+### 查找正则
+
+```regex
+/^\s*-\s*([^|\n]+?)\s*\|\s*好感度[:：]\s*([+-]?\d{1,3})\s*\/\s*100\s*\|\s*关系阶段[:：]\s*([^\n<]+?)\s*$/gm
+```
+
+### 替换内容
+
+```html
+<div class="rel-person-card"><div class="rel-person-top"><span class="rel-person-name">✦ $1</span><span class="rel-stage">$3</span></div><div class="rel-fav-row"><span>好感</span><div class="rel-bar"><span class="rel-fill" style="--rel-fav:$2%;"></span></div><span>$2 / 100</span></div></div>
+```
+
+---
+
+## 注意事项
+
+1. 两条正则必须按顺序执行。
+2. `01_好感度状态栏外层面板_米白` 需要使用 `s` 标志。
+3. `02_好感度角色卡片_米白` 需要使用 `gm` 标志。
+4. 进度条直接使用好感数值作为百分比宽度，建议原始好感度保持 `0-100`。
+5. 本方案不使用脚本，适合酒馆正则替换渲染环境。

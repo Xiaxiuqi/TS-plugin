@@ -1,0 +1,18 @@
+{
+  "name": "tavern-chat-export-tool",
+  "version": "6.0.0",
+  "private": true,
+  "description": "单文件级酒馆生态资产维护工具箱，提供脚本、正则、预设、数据库模板、世界书、前端片段与 API 知识库的生成、校验和版本管理",
+  "scripts": {
+    "convert": "node scripts/convert.js",
+    "new": "node scripts/new.js",
+    "cli": "node scripts/cli.js",
+    "validate": "node scripts/validate-examples.js",
+    "check-refs": "node scripts/check-api-references.js",
+    "test": "node tests/run.js",
+    "help": "node scripts/convert.js --help"
+  },
+  "engines": {
+    "node": ">=14.17"
+  }
+}

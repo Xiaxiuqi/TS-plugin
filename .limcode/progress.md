@@ -1,38 +1,36 @@
 # 项目进度
 - Project: tavern_helper_template
-- Updated At: 2026-05-23T08:36:49.543Z
+- Updated At: 2026-05-23T17:12:44.280Z
 - Status: active
-- Phase: implementation
+- Phase: maintenance
 
 ## 当前摘要
 
 <!-- LIMCODE_PROGRESS_SUMMARY_START -->
 - 当前进度：3/3 个里程碑已完成；最新：PG3
-- 当前焦点：Phone 下一阶段安全迁移：next-8-settings-placeholders 继续恢复 Settings 占位组件
-- 最新结论：P8 静态兼容验证通过，新入口可进入人工验收阶段；生产入口 src/phone/index.js 未切换。
-- 下一步：在 Tavern 环境按 compat-report 执行人工业务流验收；通过后再规划 P9/P10，仍不可切换生产入口。
+- 当前焦点：Phone 迁移基准已重置为 src/phone/index.js 唯一权威源
+- 最新结论：已删除旧错误迁移文档、过时对比报告与错误拆分源码；src/phone 目录当前仅保留 index.js。新校验文档与迁移文档已写入 .limcode/phone-indexjs-validation.md 和 .limcode/phone-indexjs-migration.md。
+- 下一步：在酒馆中直接加载 http://127.0.0.1:5501/src/phone/index.js 执行人工功能验收。
 <!-- LIMCODE_PROGRESS_SUMMARY_END -->
 
 ## 关联文档
 
 <!-- LIMCODE_PROGRESS_ARTIFACTS_START -->
 - 设计：`.limcode/design/memo-prompt-optimization-record.md`
-- 计划：`.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md`
+- 计划：`.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md`
 <!-- LIMCODE_PROGRESS_ARTIFACTS_END -->
 
 ## 当前 TODO 快照
 
 <!-- LIMCODE_PROGRESS_TODOS_START -->
-- [x] 建立下一阶段基线：确认当前新入口 typecheck/lint/build 通过，记录不切换 src/phone/index.js 的安全边界  `#next-1-baseline`
-- [x] 迁移 Forum 帖子详情缓存与历史读取：梳理 forum/forumPost phone_module schema、缓存 key、帖子详情/评论写回与历史恢复路径  `#next-2-forum-history`
-- [x] 迁移 Dynamic 动态历史精准化：动态主页、评论、发动态、配图更新、characterName 过滤与历史合并策略  `#next-3-dynamic-history`
-- [x] 迁移 Live 直播历史精准化：直播列表、直播间、streamerName 过滤、消息流/状态更新与楼层读写回退  `#next-4-live-history`
-- [x] 补齐媒体资源库：音乐库、头像库、图片库、聊天图库、贴纸/角色图查找策略与 Settings 资源页一致性  `#next-5-media-library`
-- [x] 细化 AI prompt/schema：按 Chat、Shopping、Forum、Dynamic、Live、Diary、Email、Browser 等业务逐个补齐 prompt、返回字段约束与解析失败提示  `#next-6-ai-schema`
-- [x] 深化图片生成 provider：对照旧 bundle 验证 NovelAI/OpenAI/Gemini 请求参数、负面提示词、参考图、二进制/zip 响应处理  `#next-7-imagegen-provider`
-- [x] 清理 Settings 剩余占位页：指定五页、VariablePickerModal、PresetSettings、PresetAutoFillSettings 均已恢复；复扫仅 AvatarLibrary 残留非占位空状态样式类  `#next-8-settings-placeholders`
-- [x] 建立并执行 P8 兼容验证清单：静态验证已通过，compat-report 已创建；待 Tavern 环境人工业务流验收  `#next-9-compat-checklist`
-- [ ] P8 人工验收通过后再规划 P9/P10：并行产物对比、灰度替换 src/phone/index.js、回滚方案、模块映射表、迁移说明与临时脚本清理  `#next-10-switchover-docs`
+- [x] 确认并固定唯一权威源为 src/phone/index.js，停止引用 src/phone/source/** 作为真源  `#p0-freeze-authority`
+- [x] 生成 Phone 相关文件清单，将权威源、运行必需文件、可删除过时文件分组  `#p1-inventory-obsolete`
+- [x] 重写校验文档：记录如何从 src/phone/index.js 校验 CSS、界面、功能、字体、返回/导航与导入通知  `#p2-rewrite-validation-doc`
+- [x] 重写迁移文档：明确从 src/phone/index.js 反查、提取、迁入、对比、验收的流程，废弃旧 source/** 基准  `#p3-rewrite-migration-doc`
+- [x] 删除旧的错误迁移文档和过时对比报告，仅保留新的基准文档/计划/必要进度记录  `#p4-delete-outdated-docs`
+- [x] 删除错误迁移产生且不再作为运行入口的 Phone 过时源码/适配器/占位目录，保留 src/phone/index.js 与明确需要的开发服务文件  `#p5-delete-obsolete-phone-artifacts`
+- [x] 验证直接加载 http://127.0.0.1:5501/src/phone/index.js 后功能、CSS、字体、设置页面与通知行为等同源文件  `#p6-verify-direct-source-load`
+- [x] 更新进度记录，标记旧迁移路线废弃，新迁移路线以 src/phone/index.js 为唯一基准  `#p7-update-progress`
 <!-- LIMCODE_PROGRESS_TODOS_END -->
 
 ## 项目里程碑
@@ -82,15 +80,6 @@
 ## 最近更新
 
 <!-- LIMCODE_PROGRESS_LOG_START -->
-- 2026-05-23T06:41:53.145Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md
-- 2026-05-23T06:42:11.797Z | updated | phone-safe-migration-settings-other | Settings OtherSettings 从迁移占位恢复为真实其他设置页；生产入口未切换。
-- 2026-05-23T06:48:27.338Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md
-- 2026-05-23T06:48:48.225Z | updated | phone-safe-migration-settings-auto-reply | Settings AutoReplySettings 从迁移占位恢复为真实自动回复设置页；生产入口未切换。
-- 2026-05-23T06:54:32.744Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md
-- 2026-05-23T06:54:57.172Z | updated | phone-safe-migration-settings-worldbook-manager | Settings WorldbookManager 从迁移占位恢复为真实世界书管理页；指定 Settings 五页顺序恢复完成；生产入口未切换。
-- 2026-05-23T07:03:23.631Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md
-- 2026-05-23T07:03:43.965Z | updated | phone-safe-migration-settings-placeholder-scan | 扫描 Settings 剩余占位：除 Preset 两页外无页面级完整占位；发现 VariablePickerModal 弹窗占位待后续处理。
-- 2026-05-23T07:15:05.768Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md
 - 2026-05-23T07:15:23.295Z | updated | phone-safe-migration-settings-variable-picker | Settings VariablePickerModal 从迁移占位恢复为真实变量选择弹窗；生产入口未切换。
 - 2026-05-23T07:22:00.913Z | artifact_changed | plan | 同步计划文档：.limcode/plans/settings-preset-pages-recovery.plan.md
 - 2026-05-23T07:40:27.785Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/settings-preset-pages-recovery.plan.md
@@ -102,6 +91,15 @@
 - 2026-05-23T08:23:11.529Z | milestone_recorded | PG2 | 记录里程碑：Settings 预设页占位恢复完成
 - 2026-05-23T08:36:35.557Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md
 - 2026-05-23T08:36:49.543Z | milestone_recorded | PG3 | 记录里程碑：P8 静态兼容验证清单完成
+- 2026-05-23T17:04:35.529Z | artifact_changed | plan | 同步计划文档：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:05:18.880Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:06:01.361Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:08:37.837Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:09:46.414Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:10:52.664Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:12:05.479Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
+- 2026-05-23T17:12:22.486Z | milestone_recorded | phone-indexjs-authority-reset | Phone 旧迁移路线废弃，src/phone/index.js 固定为唯一权威源；错误拆分产物已清理。
+- 2026-05-23T17:12:44.280Z | artifact_changed | plan | 同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md
 <!-- LIMCODE_PROGRESS_LOG_END -->
 
 <!-- LIMCODE_PROGRESS_METADATA_START -->
@@ -111,67 +109,57 @@
   "projectId": "tavern-helper-template",
   "projectName": "tavern_helper_template",
   "createdAt": "2026-05-12T11:57:09.622Z",
-  "updatedAt": "2026-05-23T08:36:49.543Z",
+  "updatedAt": "2026-05-23T17:12:44.280Z",
   "status": "active",
-  "phase": "implementation",
-  "currentFocus": "Phone 下一阶段安全迁移：next-8-settings-placeholders 继续恢复 Settings 占位组件",
-  "latestConclusion": "P8 静态兼容验证通过，新入口可进入人工验收阶段；生产入口 src/phone/index.js 未切换。",
+  "phase": "maintenance",
+  "currentFocus": "Phone 迁移基准已重置为 src/phone/index.js 唯一权威源",
+  "latestConclusion": "已删除旧错误迁移文档、过时对比报告与错误拆分源码；src/phone 目录当前仅保留 index.js。新校验文档与迁移文档已写入 .limcode/phone-indexjs-validation.md 和 .limcode/phone-indexjs-migration.md。",
   "currentBlocker": null,
-  "nextAction": "在 Tavern 环境按 compat-report 执行人工业务流验收；通过后再规划 P9/P10，仍不可切换生产入口。",
+  "nextAction": "在酒馆中直接加载 http://127.0.0.1:5501/src/phone/index.js 执行人工功能验收。",
   "activeArtifacts": {
     "design": ".limcode/design/memo-prompt-optimization-record.md",
-    "plan": ".limcode/plans/phone-下一阶段深度迁移细致计划.plan.md"
+    "plan": ".limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
   },
   "todos": [
     {
-      "id": "next-1-baseline",
-      "content": "建立下一阶段基线：确认当前新入口 typecheck/lint/build 通过，记录不切换 src/phone/index.js 的安全边界",
+      "id": "p0-freeze-authority",
+      "content": "确认并固定唯一权威源为 src/phone/index.js，停止引用 src/phone/source/** 作为真源",
       "status": "completed"
     },
     {
-      "id": "next-2-forum-history",
-      "content": "迁移 Forum 帖子详情缓存与历史读取：梳理 forum/forumPost phone_module schema、缓存 key、帖子详情/评论写回与历史恢复路径",
+      "id": "p1-inventory-obsolete",
+      "content": "生成 Phone 相关文件清单，将权威源、运行必需文件、可删除过时文件分组",
       "status": "completed"
     },
     {
-      "id": "next-3-dynamic-history",
-      "content": "迁移 Dynamic 动态历史精准化：动态主页、评论、发动态、配图更新、characterName 过滤与历史合并策略",
+      "id": "p2-rewrite-validation-doc",
+      "content": "重写校验文档：记录如何从 src/phone/index.js 校验 CSS、界面、功能、字体、返回/导航与导入通知",
       "status": "completed"
     },
     {
-      "id": "next-4-live-history",
-      "content": "迁移 Live 直播历史精准化：直播列表、直播间、streamerName 过滤、消息流/状态更新与楼层读写回退",
+      "id": "p3-rewrite-migration-doc",
+      "content": "重写迁移文档：明确从 src/phone/index.js 反查、提取、迁入、对比、验收的流程，废弃旧 source/** 基准",
       "status": "completed"
     },
     {
-      "id": "next-5-media-library",
-      "content": "补齐媒体资源库：音乐库、头像库、图片库、聊天图库、贴纸/角色图查找策略与 Settings 资源页一致性",
+      "id": "p4-delete-outdated-docs",
+      "content": "删除旧的错误迁移文档和过时对比报告，仅保留新的基准文档/计划/必要进度记录",
       "status": "completed"
     },
     {
-      "id": "next-6-ai-schema",
-      "content": "细化 AI prompt/schema：按 Chat、Shopping、Forum、Dynamic、Live、Diary、Email、Browser 等业务逐个补齐 prompt、返回字段约束与解析失败提示",
+      "id": "p5-delete-obsolete-phone-artifacts",
+      "content": "删除错误迁移产生且不再作为运行入口的 Phone 过时源码/适配器/占位目录，保留 src/phone/index.js 与明确需要的开发服务文件",
       "status": "completed"
     },
     {
-      "id": "next-7-imagegen-provider",
-      "content": "深化图片生成 provider：对照旧 bundle 验证 NovelAI/OpenAI/Gemini 请求参数、负面提示词、参考图、二进制/zip 响应处理",
+      "id": "p6-verify-direct-source-load",
+      "content": "验证直接加载 http://127.0.0.1:5501/src/phone/index.js 后功能、CSS、字体、设置页面与通知行为等同源文件",
       "status": "completed"
     },
     {
-      "id": "next-8-settings-placeholders",
-      "content": "清理 Settings 剩余占位页：指定五页、VariablePickerModal、PresetSettings、PresetAutoFillSettings 均已恢复；复扫仅 AvatarLibrary 残留非占位空状态样式类",
+      "id": "p7-update-progress",
+      "content": "更新进度记录，标记旧迁移路线废弃，新迁移路线以 src/phone/index.js 为唯一基准",
       "status": "completed"
-    },
-    {
-      "id": "next-9-compat-checklist",
-      "content": "建立并执行 P8 兼容验证清单：静态验证已通过，compat-report 已创建；待 Tavern 环境人工业务流验收",
-      "status": "completed"
-    },
-    {
-      "id": "next-10-switchover-docs",
-      "content": "P8 人工验收通过后再规划 P9/P10：并行产物对比、灰度替换 src/phone/index.js、回滚方案、模块映射表、迁移说明与临时脚本清理",
-      "status": "pending"
     }
   ],
   "milestones": [
@@ -254,60 +242,6 @@
   ],
   "log": [
     {
-      "at": "2026-05-23T06:41:53.145Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md"
-    },
-    {
-      "at": "2026-05-23T06:42:11.797Z",
-      "type": "updated",
-      "refId": "phone-safe-migration-settings-other",
-      "message": "Settings OtherSettings 从迁移占位恢复为真实其他设置页；生产入口未切换。"
-    },
-    {
-      "at": "2026-05-23T06:48:27.338Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md"
-    },
-    {
-      "at": "2026-05-23T06:48:48.225Z",
-      "type": "updated",
-      "refId": "phone-safe-migration-settings-auto-reply",
-      "message": "Settings AutoReplySettings 从迁移占位恢复为真实自动回复设置页；生产入口未切换。"
-    },
-    {
-      "at": "2026-05-23T06:54:32.744Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md"
-    },
-    {
-      "at": "2026-05-23T06:54:57.172Z",
-      "type": "updated",
-      "refId": "phone-safe-migration-settings-worldbook-manager",
-      "message": "Settings WorldbookManager 从迁移占位恢复为真实世界书管理页；指定 Settings 五页顺序恢复完成；生产入口未切换。"
-    },
-    {
-      "at": "2026-05-23T07:03:23.631Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md"
-    },
-    {
-      "at": "2026-05-23T07:03:43.965Z",
-      "type": "updated",
-      "refId": "phone-safe-migration-settings-placeholder-scan",
-      "message": "扫描 Settings 剩余占位：除 Preset 两页外无页面级完整占位；发现 VariablePickerModal 弹窗占位待后续处理。"
-    },
-    {
-      "at": "2026-05-23T07:15:05.768Z",
-      "type": "artifact_changed",
-      "refId": "plan",
-      "message": "同步计划 TODO 快照：.limcode/plans/phone-下一阶段深度迁移细致计划.plan.md"
-    },
-    {
       "at": "2026-05-23T07:15:23.295Z",
       "type": "updated",
       "refId": "phone-safe-migration-settings-variable-picker",
@@ -372,21 +306,75 @@
       "type": "milestone_recorded",
       "refId": "PG3",
       "message": "记录里程碑：P8 静态兼容验证清单完成"
+    },
+    {
+      "at": "2026-05-23T17:04:35.529Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划文档：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:05:18.880Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:06:01.361Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:08:37.837Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:09:46.414Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:10:52.664Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:12:05.479Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
+    },
+    {
+      "at": "2026-05-23T17:12:22.486Z",
+      "type": "milestone_recorded",
+      "refId": "phone-indexjs-authority-reset",
+      "message": "Phone 旧迁移路线废弃，src/phone/index.js 固定为唯一权威源；错误拆分产物已清理。"
+    },
+    {
+      "at": "2026-05-23T17:12:44.280Z",
+      "type": "artifact_changed",
+      "refId": "plan",
+      "message": "同步计划 TODO 快照：.limcode/plans/phone-indexjs-authority-reset-cleanup.plan.md"
     }
   ],
   "stats": {
     "milestonesTotal": 3,
     "milestonesCompleted": 3,
-    "todosTotal": 10,
-    "todosCompleted": 9,
+    "todosTotal": 8,
+    "todosCompleted": 8,
     "todosInProgress": 0,
     "todosCancelled": 0,
     "activeRisks": 1
   },
   "render": {
     "rendererVersion": 1,
-    "generatedAt": "2026-05-23T08:36:49.543Z",
-    "bodyHash": "sha256:3bfa0fdd6f401e7cec3b13ecde3842f0b032ff92dcb7f77a57efdb61ae6c395c"
+    "generatedAt": "2026-05-23T17:12:44.280Z",
+    "bodyHash": "sha256:a268be35b2587e2fb02ad161eac2c3bf6eda6332ec2568e48a9170c47f2f6e80"
   }
 }
 <!-- LIMCODE_PROGRESS_METADATA_END -->
