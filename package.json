@@ -6,7 +6,9 @@
     "watch": "webpack --mode development --watch --progress",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\" --no-error-on-unmatched-pattern",
     "lint": "eslint",
+    "lint:phone": "eslint src/phone --ignore-pattern 'src/phone/source/**' --ignore-pattern 'src/phone/index.js'",
     "lint:fix": "eslint --fix",
+    "typecheck:phone": "tsc -p src/phone/tsconfig.migration.json --pretty false",
     "dump": "node dump_schema.ts",
     "sync": "node tavern_sync.mjs"
   },
