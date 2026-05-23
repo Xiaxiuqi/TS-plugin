@@ -12,7 +12,6 @@ pnpm-debug.log*
 auto-imports.d.ts
 components.d.ts
 
-src/
 项目文档.txt
 备份/
 初始模板/
@@ -20,4 +19,7 @@ tmp/
 plans/
 public/acu_visualizer_test/docs
 .limcode/
-src/phone/
+src/数据库前端
+src/output-phrasing-engineering-main
+src/phone
+src/ci_island_map
