@@ -1,0 +1,1190 @@
+// 编辑弹窗与遮罩层 - 从原 style.scss:1760-2946 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+.ci-item-popup-title,
+.ci-edit-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+  display: flex;
+  align-items: center;
+}
+.ci-item-tag-inline {
+  font-size: 10px;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 8px;
+  font-weight: normal;
+  vertical-align: middle;
+}
+.ci-item-row {
+  font-size: 12px;
+  color: #555;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed #f5f5f5;
+  padding: 4px 0;
+}
+.ci-item-label {
+  font-weight: bold;
+  color: #999;
+  margin-right: 8px;
+}
+.ci-item-close,
+.ci-edit-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.ci-item-close:hover,
+.ci-edit-close:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+.ci-input-group {
+  margin-bottom: 8px;
+}
+.ci-input-label {
+  display: block;
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 2px;
+}
+.ci-input-field {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+.ci-input-field:focus {
+  border-color: #4caf50;
+  outline: none;
+}
+.ci-edit-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px; /* 修正为 8px */
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.ci-edit-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #aaa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ci-edit-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.ci-edit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 75vh !important;
+  overflow-y: auto !important;
+  padding: 16px;
+}
+
+.ci-input-row {
+  display: flex;
+  gap: 12px;
+}
+
+.ci-input-group.half {
+  flex: 1;
+}
+
+.ci-input-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.ci-input-field {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.2s;
+  background: #fafafa;
+}
+
+.ci-input-field:focus {
+  background: #fff;
+  border-color: var(--ci-accent);
+  box-shadow: 0 0 0 2px rgba(var(--ci-accent-rgb), 0.1);
+}
+
+textarea.ci-input-field {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.ci-edit-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.ci-edit-save-btn {
+  width: auto;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  margin-top: 0;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.ci-edit-save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+}
+
+.ci-edit-delete-btn {
+  display: none; /* 隐藏删除按钮 */
+}
+
+/* 夜间模式适配 */
+.theme-night .ci-edit-header,
+.theme-night .ci-edit-footer {
+  border-color: #404040;
+}
+
+.theme-night .ci-edit-avatar {
+  background: #3a3a3a;
+  color: #666;
+}
+
+.theme-night .ci-edit-title {
+  color: #e0e0e0;
+}
+
+.theme-night .ci-input-label {
+  color: #999;
+}
+
+.theme-night .ci-input-field {
+  background: #333;
+  border-color: #505050;
+  color: #e0e0e0;
+}
+
+.theme-night .ci-input-field:focus {
+  background: #3a3a3a;
+  border-color: var(--ci-accent);
+}
+#ci-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  left: auto;
+  transform: none;
+  background: #4caf50;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  transform: translateY(-20px);
+}
+#ci-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ci-resize-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+  z-index: 10;
+  background: transparent !important;
+  color: transparent !important; /* 确保图标也透明 */
+  border: none !important; /* 确保没有边框 */
+  box-shadow: none !important; /* 确保没有阴影 */
+  outline: none !important; /* 确保没有轮廓 */
+}
+.ci-resize-handle:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1) !important;
+  color: inherit !important; /* 悬停时恢复颜色 */
+  border-radius: 50%;
+
+  /* 悬停时显示SVG图标 */
+  svg {
+    opacity: 1;
+  }
+}
+.ci-resize-br {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+.ci-resize-bl {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+/* [New] Pagination */
+.ci-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  margin-top: auto;
+}
+.ci-page-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ci-page-btn:hover {
+  border-color: var(--ci-accent);
+  color: var(--ci-accent);
+}
+.ci-page-btn.active {
+  background: var(--ci-accent);
+  color: white;
+  border-color: var(--ci-accent);
+}
+.ci-page-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* 夜间主题的深色元素样式 */
+body.theme-night .ci-card,
+body.theme-night .ci-nb-left,
+body.theme-night .ci-expanded-box,
+body.theme-night .ci-item-popup-card,
+body.theme-night .ci-edit-card {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+body.theme-night .ci-nb-right,
+body.theme-night .ci-card-role {
+  background: #353535;
+  color: #c0c0c0;
+}
+
+body.theme-night .ci-card-name,
+body.theme-night .ci-val,
+body.theme-night .ci-item-popup-title,
+body.theme-night .ci-item-row,
+body.theme-night .ci-edit-title {
+  color: #e0e0e0;
+}
+
+body.theme-night .ci-slot,
+body.theme-night .ci-bag-item,
+body.theme-night .ci-input-field,
+body.theme-night .ci-page-btn {
+  background: #3a3a3a;
+  border-color: #505050;
+  color: #d0d0d0;
+}
+
+body.theme-night .ci-bag-section {
+  background: #2d2d2d;
+  border-top-color: #404040;
+}
+
+body.theme-night .ci-long-goal {
+  background: #3d3d2d;
+  color: #ffd54f;
+  border-left-color: #ffd54f;
+}
+
+body.theme-night .ci-card-avatar {
+  background: #3a3a3a;
+  color: #666;
+}
+
+body.theme-night .ci-option-bubble {
+  background: #2a2a2a;
+  border-color: #505050;
+  color: #d0d0d0;
+}
+
+/* 深紫夜间主题的元素样式 */
+body.theme-night-purple .ci-card,
+body.theme-night-purple .ci-nb-left,
+body.theme-night-purple .ci-expanded-box,
+body.theme-night-purple .ci-item-popup-card,
+body.theme-night-purple .ci-edit-card {
+  background: #1f1628;
+  border-color: #3a2c4a;
+}
+
+body.theme-night-purple .ci-nb-right,
+body.theme-night-purple .ci-card-role {
+  background: #261c32;
+  color: #c5b3e6;
+}
+
+body.theme-night-purple .ci-card-name,
+body.theme-night-purple .ci-val,
+body.theme-night-purple .ci-item-popup-title,
+body.theme-night-purple .ci-item-row,
+body.theme-night-purple .ci-edit-title {
+  color: #d4c5f9;
+}
+
+body.theme-night-purple .ci-slot,
+body.theme-night-purple .ci-bag-item,
+body.theme-night-purple .ci-input-field,
+body.theme-night-purple .ci-page-btn {
+  background: #2a1f38;
+  border-color: #4a3a5c;
+  color: #c5b3e6;
+}
+
+body.theme-night-purple .ci-bag-section {
+  background: #1f1628;
+  border-top-color: #3a2c4a;
+}
+
+body.theme-night-purple .ci-long-goal {
+  background: #3a2848;
+  color: #e9b7ff;
+  border-left-color: #9c88ff;
+}
+
+body.theme-night-purple .ci-card-avatar {
+  background: #2a1f38;
+  color: #6a5a7c;
+}
+
+body.theme-night-purple .ci-option-bubble {
+  background: #1f1628;
+  border-color: #4a3a5c;
+  color: #c5b3e6;
+}
+
+/* 暖灰主题的卡片样式调整 */
+body.theme-grey-warm .ci-card {
+  background: #fafaf8;
+  border-color: rgba(121, 85, 72, 0.12);
+}
+
+body.theme-grey-warm .ci-nb-right {
+  background: #f0ece9;
+}
+
+body.theme-grey-warm .ci-slot,
+body.theme-grey-warm .ci-bag-item {
+  background: #f5f1ee;
+  border-color: rgba(121, 85, 72, 0.15);
+}
+
+/* ===== v8.7 地图显示优化 ===== */
+
+/* 分割条样式 - 可拖动调整外部区域高度 */
+.ci-split-handle {
+  height: 8px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.05) 40%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.05) 60%,
+    transparent 100%
+  );
+  cursor: ns-resize;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 4px;
+    background: var(--map-border);
+    border-radius: 2px;
+    opacity: 0.5;
+    transition:
+      opacity 0.2s,
+      width 0.2s;
+  }
+
+  &:hover {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 0, 0, 0.08) 40%,
+      rgba(0, 0, 0, 0.15) 50%,
+      rgba(0, 0, 0, 0.08) 60%,
+      transparent 100%
+    );
+
+    &::before {
+      opacity: 0.8;
+      width: 60px;
+    }
+  }
+
+  &:active {
+    &::before {
+      opacity: 1;
+      background: var(--map-accent);
+    }
+  }
+}
+
+/* 外部区域容器 - 支持多排显示和可调高度 */
+.ci-external-areas {
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.03);
+  border-top: 1px solid var(--map-border);
+  min-height: 50px;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-items: flex-start;
+  align-content: flex-start;
+  cursor: grab;
+  user-select: none;
+  transition: min-height 0.2s;
+
+  /* 隐藏滚动条但保留滚动功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  /* 空状态提示 */
+  &:empty::after {
+    content: '暂无外部区域';
+    color: var(--map-text);
+    opacity: 0.5;
+    font-size: 12px;
+    width: 100%;
+    text-align: center;
+    padding: 10px 0;
+  }
+}
+
+/* 外部区域按钮列表容器 */
+.ci-ext-btn-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* ========== 第二阶段：三合一标签栏样式 ========== */
+
+/* 标签栏容器 - 修改1: 靠左排列 */
+.ci-tab-bar {
+  display: flex;
+  justify-content: flex-start; /* 修改1: 标签靠左排列，不占满 */
+  align-items: center;
+  background: var(--ci-bg);
+  border-bottom: 1px solid var(--ci-border);
+  padding: 4px 8px;
+  gap: 6px; /* 稍微增加间距 */
+}
+
+/* 单个标签 */
+.ci-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  color: var(--ci-text);
+  opacity: 0.6;
+  font-size: 12px;
+  white-space: nowrap;
+
+  /* 未选中时只显示图标 */
+  .ci-tab-text {
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+
+  .ci-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &:hover {
+    opacity: 0.85;
+    background: var(--ci-hover);
+  }
+
+  /* 选中状态 - 展开显示文字 */
+  &.active {
+    opacity: 1;
+    background: var(--ci-primary);
+    color: white;
+
+    .ci-tab-text {
+      max-width: 100px;
+      opacity: 1;
+      margin-left: 4px;
+    }
+  }
+}
+
+/* 标签按钮统一使用黑色背景，固定宽度避免切换时位移 */
+.ci-tab[data-tab='main'],
+.ci-tab[data-tab='side'],
+.ci-tab[data-tab='retired'] {
+  min-width: 40px; /* 固定最小宽度避免位移 */
+
+  &.active {
+    background: #333;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    .ci-tab-text {
+      max-width: 80px;
+      opacity: 1;
+      margin-left: 4px;
+    }
+  }
+}
+
+/* 夜间模式下的标签样式调整 */
+.theme-night,
+.theme-night-purple {
+  .ci-tab-bar {
+    background: var(--ci-bg);
+    border-bottom-color: var(--ci-border);
+  }
+
+  .ci-tab {
+    color: var(--ci-text);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+/* 外部区域按钮样式 - 参考前端美化 */
+.ci-ext-btn {
+  background: var(--map-bg);
+  border: 1px solid var(--map-border);
+  color: var(--map-text);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease-in-out;
+  appearance: none;
+  -webkit-appearance: none;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  /* 图标样式 */
+  i,
+  .ci-ext-icon {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    background: var(--map-highlight);
+    color: #fff;
+    border-color: var(--map-highlight);
+
+    i,
+    .ci-ext-icon {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* 外部区域标题 */
+.ci-external-title {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed var(--map-border);
+  color: var(--map-text);
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0.8;
+
+  i {
+    color: var(--map-accent);
+  }
+}
+
+/* [Fix 7] Settings UI */
+.ci-settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s;
+}
+.ci-settings-card {
+  background: var(--ci-bg);
+  padding: 20px;
+  border-radius: 16px;
+  width: 320px;
+  box-shadow: var(--ci-shadow);
+  border: 1px solid var(--ci-border);
+  animation: popUp 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 800px !important;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+.ci-settings-section {
+  /* border-bottom: 1px solid rgba(0, 0, 0, 0.05); */ /* 移除原有边框 */
+  padding: 4px 0;
+  margin-bottom: 8px;
+}
+.ci-settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+.ci-settings-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ci-text-secondary);
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+/* 日间模式浮岛设置文字深灰色样式 */
+/* 手风琴样式 */
+.ci-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.ci-accordion-item {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+
+  &.active {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-color: rgba(0, 0, 0, 0.15);
+  }
+}
+
+.ci-accordion-header {
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ci-text);
+  user-select: none;
+  transition: background 0.2s;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.03);
+  }
+}
+
+.ci-accordion-arrow {
+  transition: transform 0.3s ease;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.ci-accordion-item.active .ci-accordion-arrow {
+  transform: rotate(180deg);
+}
+
+.ci-accordion-content {
+  display: none; /* 默认隐藏，由JS控制slideToggle */
+  padding: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: var(--ci-bg);
+}
+
+/* 夜间模式手风琴适配 */
+body.theme-night .ci-accordion-item {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+
+  &.active {
+    background: rgba(40, 40, 40, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+body.theme-night .ci-accordion-content {
+  border-top-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
+}
+
+body.theme-night .ci-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body:not(.theme-night) .ci-settings-card {
+  color: #424242 !important; /* 日间模式深灰色 - 应用到整个设置面板 */
+}
+
+body:not(.theme-night) .ci-settings-card .ci-settings-title {
+  color: #424242 !important; /* 日间模式深灰色 - 设置标题 */
+}
+
+body:not(.theme-night) .ci-settings-card .ci-settings-section,
+body:not(.theme-night) .ci-settings-card .ci-map-notice,
+body:not(.theme-night) .ci-settings-card .ci-notice-title,
+body:not(.theme-night) .ci-settings-card .ci-notice-content,
+body:not(.theme-night) .ci-settings-card .ci-step-content {
+  color: #424242 !important; /* 日间模式深灰色 - 设置内容 */
+}
+
+/* 日间模式再利用弹窗文字颜色 */
+body:not(.theme-night) .ci-recycle-sentence,
+body:not(.theme-night) .ci-recycle-options {
+  color: #424242 !important;
+}
+
+/* 日间模式大纲内容文字颜色 */
+body:not(.theme-night) .ci-worldinfo-matched-outline {
+  color: #666 !important; /* 日间模式大纲内容文字颜色 */
+}
+
+/* 日间模式最新报道摘要文字颜色 */
+body:not(.theme-night) .ci-worldinfo-headline-summary {
+  color: #666 !important; /* 日间模式摘要文字颜色 */
+}
+
+/* 日间模式编辑弹窗标题颜色 */
+body:not(.theme-night) .ci-input-group label {
+  color: #666 !important; /* 日间模式编辑标题文字颜色 */
+}
+
+/* 再利用弹窗样式微调 */
+.ci-recycle-options input[type='radio'] {
+  accent-color: var(--ci-accent);
+  cursor: pointer;
+}
+
+/* 夜间模式往期报道内容面板样式 */
+.theme-night .ci-history-item-content,
+.theme-night-purple .ci-history-item-content {
+  background: #333 !important; /* 夜间模式往期报道内容面板背景色 */
+  color: inherit !important; /* 删除文字颜色，使用继承的颜色 */
+}
+
+/* 夜间模式关闭按钮适配 */
+.theme-night .ci-edit-close,
+.theme-night-purple .ci-edit-close {
+  background: #444 !important; /* 夜间模式关闭按钮背景色 */
+  color: #ccc !important; /* 夜间模式关闭按钮文字颜色 */
+}
+
+.theme-night .ci-edit-close:hover,
+.theme-night-purple .ci-edit-close:hover {
+  background: #555 !important; /* 夜间模式关闭按钮悬浮背景色 */
+  color: #fff !important; /* 夜间模式关闭按钮悬浮文字颜色 */
+}
+.ci-color-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ci-color-opt {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: 0.2s;
+  position: relative;
+}
+.ci-color-opt:hover {
+  transform: scale(1.1);
+}
+.ci-color-opt.active::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid var(--ci-accent);
+  border-radius: 50%;
+}
+
+/* [Fix 4] Highlight - 编辑模式高亮整个右侧区域 */
+.ci-editing .ci-nb-right {
+  position: relative;
+}
+.ci-editing .ci-nb-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--ci-edit-highlight);
+  box-shadow: inset 0 0 0 2px var(--ci-edit-border);
+  z-index: 200;
+  pointer-events: none;
+  border-radius: 0 16px 16px 0;
+}
+.ci-editing .ci-bag-section {
+  cursor: pointer;
+  position: relative;
+  z-index: 201;
+}
+
+/* [Fix 4] Inventory Modal CSS */
+.ci-inv-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s;
+}
+.ci-inv-card {
+  width: 500px;
+  height: 70%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+.ci-inv-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+.ci-inv-add-btn {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
+}
+.ci-inv-add-btn:hover {
+  background: #1557b0;
+}
+.ci-inv-row {
+  display: flex;
+  padding: 10px;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: center;
+}
+.ci-inv-row:hover {
+  background: #f9f9f9;
+}
+.ci-inv-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.ci-inv-btn-sm {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  background: #fff;
+  cursor: pointer;
+}
+.ci-inv-btn-sm:hover {
+  background: #f0f0f0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes popUp {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ===== v8.6新增: 地图功能开关样式 ===== */
+.ci-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.ci-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ci-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.ci-slider:before {
+  position: absolute;
+  content: '';
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .ci-slider {
+  background-color: #4caf50;
+}
+
+input:focus + .ci-slider {
+  box-shadow: 0 0 1px #4caf50;
+}
+
+input:checked + .ci-slider:before {
+  transform: translateX(20px);
+}
+
+/* 提示词弹窗样式 */
+.ci-prompt-overlay {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
+
+/* 设置卡片滚动条样式优化 */
+.ci-settings-card {
+  max-height: 80vh;
+  overflow-y: auto;
+
+  /* 隐藏滚动条但保留功能 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// ========== 通用面板图标样式 ==========
+.ci-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+}
+
+// ========== 人物关系面板内容样式 ==========
+// 面板基础样式已在通用面板样式中定义（#ci-panel, #ci-relation-panel等）
+.ci-relation-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: var(--ci-bg-secondary, #f8f9fa);
+  min-height: 300px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  // 任务4修复：确保SVG正确显示
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    overflow: visible;
+  }
+
+  // 任务4修复：foreignObject需要正确显示HTML内容
+  foreignObject {
+    overflow: visible;
+
+    // 任务4修复：确保foreignObject内的div正确显示
+    > div,
+    div[xmlns] {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}

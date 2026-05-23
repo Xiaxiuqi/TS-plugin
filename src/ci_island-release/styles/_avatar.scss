@@ -1,0 +1,234 @@
+// 头像选择与裁剪 - 从原 style.scss:7960-8190 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+
+.ci-avatar-selection-modal .ci-modal-body,
+.ci-cropper-modal .ci-modal-body {
+  background: var(--ci-bg);
+  padding: 20px;
+  border-radius: 16px;
+  width: 320px;
+  max-width: 90vw; /* Responsive width */
+  box-shadow: var(--ci-shadow);
+  border: 1px solid var(--ci-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+
+  /* Hide scrollbar but allow scrolling if needed */
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin; /* Restore scrollbar for usability */
+
+  /* Reset positioning to rely on flexbox centering from parent */
+  margin: 0 !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+
+.ci-avatar-preview-container {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.ci-preview-avatar-placeholder {
+  font-size: 48px;
+  color: #aaa;
+  font-weight: bold;
+}
+
+.ci-upload-section {
+  display: flex;
+  justify-content: center;
+}
+
+.ci-btn-primary {
+  background: var(--ci-accent);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: 0.2s;
+
+  &:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--ci-accent-rgb), 0.3);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+}
+
+.ci-url-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 16px;
+}
+
+.ci-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.ci-url-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--ci-border-color);
+  border-radius: 8px;
+  background: var(--ci-bg-secondary);
+  color: var(--ci-text);
+  font-size: 13px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--ci-accent);
+  }
+}
+
+.ci-btn-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ci-border-color);
+  border-radius: 8px;
+  background: var(--ci-bg);
+  color: var(--ci-accent);
+  cursor: pointer;
+  transition: 0.2s;
+
+  &:hover {
+    background: var(--ci-accent);
+    color: #fff;
+    border-color: var(--ci-accent);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+}
+
+/* Cropper Modal Styles */
+.ci-cropper-container {
+  height: 300px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  /* Use fit-content and auto margins to center the container itself */
+  width: fit-content;
+  min-width: 250px; /* Ensure reasonable size */
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
+
+.ci-cropper-actions {
+  display: flex;
+  justify-content: center; /* Center the buttons */
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.ci-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--ci-border-color);
+  color: var(--ci-text);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.ci-confirm-btn {
+  background: var(--ci-accent);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: 0.2s;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
+/* Night Mode Adaptations */
+.theme-night .ci-avatar-selection-modal .ci-modal-body,
+.theme-night .ci-cropper-modal .ci-modal-body {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.theme-night .ci-avatar-preview-container {
+  background: #333;
+  border-color: #444;
+}
+
+.theme-night .ci-url-input {
+  background: #333;
+  border-color: #505050;
+  color: #e0e0e0;
+}
+
+.theme-night .ci-btn-icon {
+  background: #333;
+  border-color: #505050;
+
+  &:hover {
+    background: var(--ci-accent);
+    border-color: var(--ci-accent);
+  }
+}
+
+.theme-night .ci-btn-secondary {
+  border-color: #505050;
+  color: #ccc;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}

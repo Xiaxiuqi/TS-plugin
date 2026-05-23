@@ -1,0 +1,2427 @@
+// 世界信息面板 - 从原 style.scss:5066-7489 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+
+// 世界信息面板空状态样式
+.ci-worldinfo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  padding: 40px;
+  text-align: center;
+  color: var(--ci-text-secondary, #888);
+
+  .ci-worldinfo-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+
+    svg {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  .ci-worldinfo-empty-text {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .ci-worldinfo-empty-hint {
+    font-size: 12px;
+    opacity: 0.7;
+    max-width: 220px;
+  }
+}
+
+// ========== 滚动信息条样式 ==========
+.ci-news-ticker {
+  min-height: 40px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(21, 101, 192, 0.05));
+  border-bottom: 1px solid rgba(30, 136, 229, 0.2);
+  overflow: hidden;
+  position: relative;
+  margin-right: 12px;
+  margin-top: 0 !important;
+  z-index: 10;
+  box-sizing: border-box;
+
+  .ci-ticker-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: ci-ticker-scroll 12s linear infinite;
+    white-space: nowrap;
+    &:hover {
+      animation-play-state: paused;
+    }
+  }
+
+  .ci-ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    font-size: 12px;
+    color: var(--ci-text);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    animation: ci-ticker-glow 3s ease-in-out infinite alternate;
+  }
+}
+// ========== 世界信息面板内容区样式（TypeScript生成的类名） ==========
+.ci-worldinfo-latest {
+  flex: 1.5;
+  background: var(--ci-bg-primary, #fff);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* 高度自适应撑满父容器 */
+  padding: 12px;
+  box-sizing: border-box;
+
+  .ci-worldinfo-headline-header {
+    flex-shrink: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(var(--ci-text-rgb), 0.05);
+    padding-bottom: 6px;
+  }
+
+  .ci-worldinfo-headline-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .ci-headline-main-title {
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--ci-accent);
+    }
+
+    .ci-worldinfo-headline-index {
+      font-size: 11px;
+      opacity: 0.5;
+      color: var(--ci-text-secondary);
+    }
+
+    .ci-news-history-btn {
+      margin-left: auto;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: 0.2s;
+      &:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  .ci-worldinfo-headline-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px 0 12px; /* 对称填充 */
+    font-size: 12px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+  }
+
+  .ci-worldinfo-headline-content {
+    margin-top: 0;
+    color: var(--ci-text-primary);
+    white-space: pre-wrap;
+    padding: 4px 0;
+    width: 100%; /* 占满宽度 */
+    text-align: left;
+  }
+
+  .ci-worldinfo-headline-time {
+    margin-top: 8px;
+    font-size: 10px;
+    color: #777;
+    text-align: left; /* 改为左对齐 */
+    width: 100%;
+  }
+}
+
+/* 聊天气泡显示格式 - 优化居中与平衡 */
+.ci-chat-bubble-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 子项水平居中 */
+  gap: 6px;
+  margin: 5px 0 5px 0;
+  width: 100%;
+}
+
+.ci-chat-bubble {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  width: fit-content; /* 根据内容自适应 */
+  max-width: 90%;
+  position: relative;
+
+  .speaker-name {
+    font-weight: bold;
+    margin-right: 6px;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    padding-right: 6px;
+  }
+
+  /* 角色颜色分配 */
+  &.bubble-protagonist {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+  }
+  &.bubble-color-1 {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+  }
+  &.bubble-color-2 {
+    background: #f3e5f5;
+    color: #7b1fa2;
+    border: 1px solid #e1bee7;
+  }
+  &.bubble-color-3 {
+    background: #fff8e1;
+    color: #f57f17;
+    border: 1px solid #ffecb3;
+  }
+  &.bubble-default {
+    background: #f5f5f5;
+    color: #616161;
+    border: 1px solid #e0e0e0;
+  }
+}
+
+.ci-worldinfo-details-box {
+  padding: 0;
+  border: 1px dashed rgba(var(--ci-text-rgb), 0.15);
+  border-radius: 8px;
+  background: rgba(var(--ci-text-rgb), 0.02);
+  display: flex;
+  flex-direction: row; /* 恢复为横向 */
+  flex-wrap: wrap; /* 自动换行 */
+  justify-content: center; /* 内容居中 */
+  gap: 6px;
+  margin-bottom: 4px;
+  width: 100%;
+  box-sizing: border-box;
+
+  .ci-worldinfo-detail-item {
+    font-size: 11px;
+    color: var(--ci-text-secondary);
+    line-height: 1.5;
+    background: rgba(var(--ci-text-rgb), 0.04);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+}
+
+.ci-event-section-title {
+  font-weight: 900;
+  font-size: 14px;
+  color: #5c7cfa; /* 统一的蓝色调 */
+  position: relative;
+  padding-left: 12px;
+  display: flex;
+  align-items: center;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 4px;
+    height: 14px;
+    background: linear-gradient(to bottom, #5c7cfa, #4c63d2);
+    border-radius: 2px;
+  }
+}
+
+/* 势力信息区样式 */
+.ci-worldinfo-forces {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 10px; /* 修正为 10px */
+}
+
+.ci-worldinfo-section-title {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f5f5f5, #eeeeee);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: -10px -10px 10px -10px; /* 同步修正负边距 */
+}
+
+.ci-worldinfo-forces-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.ci-worldinfo-forces-empty,
+.ci-worldinfo-events-empty {
+  padding: 30px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+}
+
+.ci-worldinfo-force-item {
+  margin-bottom: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+
+  &.expanded {
+    .ci-worldinfo-force-arrow {
+      transform: rotate(90deg);
+    }
+
+    .ci-worldinfo-force-content {
+      display: block;
+    }
+  }
+}
+
+.ci-worldinfo-force-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.02);
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.ci-worldinfo-force-arrow {
+  font-size: 10px;
+  color: #888;
+  transition: transform 0.2s ease;
+}
+
+.ci-worldinfo-force-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.ci-worldinfo-force-leader {
+  font-size: 12px;
+  color: #666;
+}
+
+.ci-worldinfo-force-content {
+  display: none;
+  padding: 6px; /* 修正为 6px */
+  background: #fff;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+  font-size: 11px; /* 修正为 11px */
+  line-height: 1.6;
+  color: #555;
+}
+
+.ci-worldinfo-force-purpose,
+.ci-worldinfo-force-desc,
+.ci-worldinfo-force-detail {
+  margin-bottom: 6px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// 事件信息区样式
+.ci-worldinfo-events {
+  margin: 0 8px 8px 8px; /* 修正 margin */
+  display: flex; /* 关键：启用 flex 布局 */
+  flex-direction: column;
+  padding: 12px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  flex-shrink: 0; /* 防止被挤压 */
+}
+
+.ci-worldinfo-events-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+}
+
+.ci-worldinfo-event-card {
+  flex: 1 1 200px;
+  min-width: 180px;
+  max-width: 300px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(30, 136, 229, 0.05);
+    border-color: rgba(30, 136, 229, 0.2);
+  }
+}
+
+.ci-worldinfo-event-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.ci-worldinfo-event-status {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(30, 136, 229, 0.1);
+  color: #1e88e5;
+  font-size: 10px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.ci-worldinfo-event-desc {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.ci-worldinfo-event-time {
+  font-size: 10px;
+  color: #999;
+}
+
+@keyframes ci-news-glow {
+  0% {
+    left: -100%;
+  }
+  50%,
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes ci-ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ci-ticker-glow {
+  0% {
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  }
+  100% {
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  }
+}
+
+// ========== 主内容区布局 ==========
+.ci-worldinfo-main {
+  height: 320px !important;
+  flex: 0 0 320px !important;
+  margin-top: 0 !important; /* 强制不许上移 */
+  display: flex;
+  flex-direction: row;
+  padding: 10px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+// 世界信息面板编辑模式遮罩
+.ci-editing #ci-worldinfo-panel .ci-worldinfo-main {
+  position: relative;
+  cursor: pointer;
+}
+
+.ci-editing #ci-worldinfo-panel .ci-worldinfo-main::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--ci-edit-highlight);
+  box-shadow: inset 0 0 0 2px var(--ci-edit-border);
+  z-index: 200;
+  pointer-events: none;
+  border-radius: 8px;
+}
+
+// 势力信息编辑遮罩
+.ci-editing .ci-worldinfo-force-header {
+  position: relative;
+  cursor: pointer;
+}
+
+.ci-editing .ci-worldinfo-force-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--ci-edit-highlight);
+  box-shadow: inset 0 0 0 2px var(--ci-edit-border);
+  z-index: 200;
+  pointer-events: none;
+  border-radius: 6px;
+}
+
+// 事件信息编辑遮罩
+.ci-editing .ci-worldinfo-event-card {
+  position: relative;
+  cursor: pointer;
+}
+
+.ci-editing .ci-worldinfo-event-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--ci-edit-highlight);
+  box-shadow: inset 0 0 0 2px var(--ci-edit-border);
+  z-index: 200;
+  pointer-events: none;
+  border-radius: 8px;
+}
+// 上部区域：最新信息 + 势力信息
+.ci-worldinfo-top {
+  display: flex;
+  gap: 16px;
+  min-height: 280px;
+}
+
+// ========== 最新信息区（左侧大版面） ==========
+.ci-latest-news {
+  flex: 1.5;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  // 报纸头条标题
+  .ci-news-headline {
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #f5f5f5, #eeeeee);
+    border-bottom: 2px solid #1e88e5;
+
+    .ci-headline-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .ci-headline-icon {
+        font-size: 18px;
+      }
+
+      .ci-headline-index {
+        font-size: 11px;
+        font-weight: 400;
+        color: #888;
+        margin-left: auto;
+      }
+    }
+  }
+
+  // 新闻内容
+  .ci-news-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+
+    // 隐藏滚动条
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // 消息摘要
+  .ci-news-summary {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #555;
+    padding: 12px;
+    background: rgba(30, 136, 229, 0.05);
+    border-left: 3px solid #1e88e5;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 12px;
+  }
+
+  // 主要内容
+  .ci-news-content {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #444;
+    margin-bottom: 12px;
+  }
+
+  // 时间戳
+  .ci-news-time {
+    font-size: 11px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+
+    .ci-time-icon {
+      font-size: 12px;
+    }
+  }
+
+  // 其他列虚线框
+  .ci-news-extra {
+    padding: 12px;
+    border: 1px dashed rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.02);
+
+    .ci-extra-title {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .ci-extra-item {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 6px;
+      display: flex;
+
+      .ci-extra-label {
+        font-weight: 600;
+        color: #666;
+        margin-right: 8px;
+        white-space: nowrap;
+      }
+
+      .ci-extra-value {
+        flex: 1;
+      }
+    }
+  }
+
+  // 空状态
+  .ci-news-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-size: 13px;
+
+    .ci-empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+  }
+}
+
+// ========== 势力信息区（右侧手风琴） ==========
+.ci-forces-panel {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  // 标题栏
+  .ci-forces-header {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f5f5f5, #eeeeee);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    .ci-forces-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .ci-forces-icon {
+        font-size: 16px;
+      }
+    }
+  }
+
+  // 手风琴容器
+  .ci-forces-accordion {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+
+    // 隐藏滚动条
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // 手风琴项
+  .ci-force-item {
+    margin-bottom: 6px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+
+    // 收起状态头部
+    .ci-force-header {
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.02);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(30, 136, 229, 0.08);
+      }
+
+      .ci-force-toggle {
+        font-size: 10px;
+        color: #888;
+        transition: transform 0.3s ease;
+      }
+
+      .ci-force-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        flex: 1;
+      }
+
+      // 组织名称标签化
+      .ci-force-tag {
+        padding: 2px 8px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 500;
+      }
+
+      .ci-force-leader {
+        font-size: 11px;
+        color: #888;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .ci-leader-icon {
+          font-size: 12px;
+        }
+      }
+    }
+
+    // 展开内容
+    .ci-force-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: #fff;
+
+      &.expanded {
+        max-height: 200px;
+      }
+
+      .ci-force-details {
+        padding: 12px;
+        border-top: 1px dashed rgba(0, 0, 0, 0.1);
+      }
+
+      .ci-force-row {
+        font-size: 12px;
+        margin-bottom: 6px;
+        display: flex;
+
+        .ci-force-label {
+          color: #888;
+          font-weight: 500;
+          width: 60px;
+          flex-shrink: 0;
+        }
+
+        .ci-force-value {
+          color: #444;
+          flex: 1;
+        }
+      }
+    }
+
+    // 展开状态
+    &.expanded {
+      .ci-force-header {
+        background: rgba(30, 136, 229, 0.1);
+
+        .ci-force-toggle {
+          transform: rotate(90deg);
+        }
+      }
+    }
+  }
+
+  // 空状态
+  .ci-forces-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-size: 13px;
+    padding: 20px;
+
+    .ci-empty-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+  }
+}
+
+// ========== 事件信息区（底部横向卡片） ==========
+.ci-events-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+
+  // 标题栏
+  .ci-events-header {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f5f5f5, #eeeeee);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    .ci-events-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .ci-events-icon {
+        font-size: 16px;
+      }
+    }
+  }
+
+  // 事件卡片容器
+  .ci-events-cards {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    overflow-x: auto;
+
+    // 隐藏滚动条
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // 事件卡片
+  .ci-event-card {
+    flex: 0 0 180px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(30, 136, 229, 0.05);
+      border-color: rgba(30, 136, 229, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .ci-event-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .ci-event-type {
+      display: inline-block;
+      padding: 2px 8px;
+      background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+      color: white;
+      border-radius: 10px;
+      font-size: 10px;
+      margin-bottom: 8px;
+
+      &.task {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+      }
+
+      &.event {
+        background: linear-gradient(135deg, #e91e63 0%, #c2185b 100%);
+      }
+
+      &.schedule {
+        background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+      }
+    }
+
+    .ci-event-desc {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .ci-event-time {
+      font-size: 10px;
+      color: #999;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  // 空状态
+  .ci-events-empty {
+    padding: 30px;
+    text-align: center;
+    color: #aaa;
+    font-size: 13px;
+
+    .ci-empty-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+  }
+}
+
+// ========== 夜间模式适配 ==========
+.theme-night,
+.theme-night-purple {
+  #ci-worldinfo-panel {
+    background: var(--ci-bg);
+
+    .ci-panel-header {
+      background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+    }
+  }
+
+  .ci-news-ticker {
+    background: linear-gradient(135deg, rgba(21, 101, 192, 0.2), rgba(13, 71, 161, 0.1));
+    border-bottom-color: rgba(21, 101, 192, 0.3);
+
+    .ci-ticker-item {
+      background: rgba(var(--ci-bg-rgb), 0.9);
+      color: var(--ci-text);
+    }
+  }
+
+  .ci-latest-news,
+  .ci-forces-panel,
+  .ci-events-section {
+    background: var(--ci-bg);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    .ci-news-headline,
+    .ci-forces-header,
+    .ci-events-header {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  .ci-latest-news {
+    .ci-news-summary {
+      background: rgba(21, 101, 192, 0.15);
+    }
+
+    .ci-news-content {
+      color: var(--ci-text);
+    }
+  }
+
+  /* 夜间模式世界信息颜色调整 */
+  .ci-worldinfo-section-title,
+  .ci-worldinfo-force-name,
+  .ci-worldinfo-force-content {
+    color: #aaa;
+  }
+
+  .ci-worldinfo-event-desc {
+    color: #ccc;
+  }
+
+  .ci-worldinfo-event-time {
+    color: #dbdbd6;
+  }
+
+  /* 夜间模式世界信息标签和气泡透明度调整 */
+  .ci-force-tag,
+  .ci-event-type {
+    opacity: 0.8;
+  }
+
+  /* 气泡样式透明度调整 */
+  .ci-bubble-element-btn,
+  .ci-bubble-interact-btn {
+    opacity: 0.85;
+  }
+
+  .ci-news-extra {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    .ci-extra-item {
+      color: var(--ci-text);
+    }
+  }
+}
+
+.ci-forces-panel {
+  .ci-force-item {
+    border-color: rgba(255, 255, 255, 0.1);
+
+    .ci-force-header {
+      background: rgba(255, 255, 255, 0.03);
+
+      &:hover {
+        background: rgba(21, 101, 192, 0.15);
+      }
+
+      .ci-force-name {
+        color: var(--ci-text);
+      }
+    }
+
+    .ci-force-content {
+      background: transparent;
+
+      .ci-force-details {
+        border-top-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .ci-force-value {
+        color: var(--ci-text);
+      }
+    }
+  }
+}
+
+.ci-events-section {
+  .ci-event-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      background: rgba(21, 101, 192, 0.15);
+      border-color: rgba(21, 101, 192, 0.3);
+    }
+
+    .ci-event-title {
+      color: var(--ci-text);
+    }
+
+    .ci-event-desc {
+      color: rgba(var(--ci-text-rgb), 0.7);
+    }
+  }
+}
+
+// ========== 世界信息面板内容样式（匹配TypeScript中的类名） ==========
+// 滚动信息条
+.ci-worldinfo-ticker {
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(21, 101, 192, 0.05));
+  border-bottom: 1px solid rgba(30, 136, 229, 0.2);
+  overflow: hidden;
+  position: relative;
+
+  // 呼吸光效
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: ci-news-glow 3s infinite;
+  }
+
+  .ci-worldinfo-ticker-content {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    animation: ci-ticker-scroll 25s linear infinite;
+    white-space: nowrap;
+
+    &:hover {
+      animation-play-state: paused;
+    }
+  }
+
+  .ci-worldinfo-ticker-text {
+    font-size: 13px;
+    color: var(--ci-text-primary, #333);
+    font-weight: 500;
+  }
+}
+
+// 空状态
+.ci-worldinfo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  color: var(--ci-text-secondary, #888);
+  text-align: center;
+  padding: 40px;
+
+  .ci-worldinfo-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+
+    svg {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  .ci-worldinfo-empty-text {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .ci-worldinfo-empty-hint {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+}
+
+// 夜间模式适配 - 世界信息面板
+.theme-night,
+.theme-night-purple {
+  .ci-worldinfo-ticker {
+    background: linear-gradient(135deg, rgba(21, 101, 192, 0.2), rgba(13, 71, 161, 0.1));
+    border-bottom-color: rgba(21, 101, 192, 0.3);
+
+    .ci-worldinfo-ticker-text {
+      color: var(--ci-text-primary);
+    }
+  }
+
+  .ci-worldinfo-latest,
+  .ci-worldinfo-forces,
+  .ci-worldinfo-events {
+    background: var(--ci-bg-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    .ci-worldinfo-section-title {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  .ci-worldinfo-latest {
+    .ci-worldinfo-headline-summary {
+      background: rgba(21, 101, 192, 0.15);
+    }
+
+    .ci-worldinfo-details-box {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .ci-worldinfo-forces {
+    .ci-worldinfo-force-item {
+      border-color: rgba(255, 255, 255, 0.1);
+
+      .ci-worldinfo-force-header {
+        background: rgba(255, 255, 255, 0.03);
+
+        &:hover {
+          background: rgba(21, 101, 192, 0.15);
+        }
+      }
+
+      .ci-worldinfo-force-content {
+        background: rgba(255, 255, 255, 0.02);
+        border-top-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+  }
+
+  .ci-worldinfo-events {
+    .ci-worldinfo-event-card {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.1);
+
+      &:hover {
+        background: rgba(21, 101, 192, 0.15);
+        border-color: rgba(21, 101, 192, 0.3);
+      }
+    }
+  }
+}
+
+// ========== 物品仓库内容视图样式 ==========
+.ci-inv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  color: var(--ci-text-secondary, #888);
+  font-size: 14px;
+}
+
+.ci-inv-content {
+  min-height: 300px;
+
+  &.edit-mode {
+    .ci-inv-item-card {
+      cursor: pointer;
+
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(var(--ci-accent-rgb), 0.3);
+      }
+    }
+  }
+}
+
+// ========== 物品仓库角色区域样式 ==========
+.ci-inv-char-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ci-inv-char-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+
+  .ci-inv-char-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ci-text-primary, #333);
+  }
+
+  .ci-inv-char-count {
+    font-size: 11px;
+    color: var(--ci-text-secondary, #666);
+    background: rgba(var(--ci-text-rgb), 0.08);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+}
+
+// 物品翻页导航
+.ci-inv-char-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(var(--ci-text-rgb), 0.1);
+
+  .ci-inv-nav-prev,
+  .ci-inv-nav-next {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(var(--ci-text-rgb), 0.05);
+    color: var(--ci-text-secondary, #888);
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--ci-accent);
+      color: white;
+    }
+
+    &.disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      &:hover {
+        background: rgba(var(--ci-text-rgb), 0.05);
+        color: var(--ci-text-secondary, #888);
+      }
+    }
+  }
+
+  .ci-inv-nav-dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .ci-inv-page-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(var(--ci-text-rgb), 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.active {
+      background: var(--ci-accent);
+      width: 16px;
+      border-radius: 3px;
+    }
+
+    &:hover:not(.active) {
+      background: rgba(var(--ci-text-rgb), 0.4);
+    }
+  }
+}
+
+// 仓库视图样式
+.ci-warehouse-view {
+  padding: 12px 0;
+
+  .ci-warehouse-cat-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ci-text-primary, #333);
+    padding: 8px 0;
+    margin-top: 16px;
+    border-bottom: 1px solid rgba(var(--ci-text-rgb), 0.1);
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .ci-warehouse-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+    padding: 12px 0;
+  }
+}
+
+// ========== v8.9 地图气泡弹窗样式 ==========
+// 气泡弹窗（无遮罩层，跟随点击位置）
+.ci-map-bubble {
+  position: fixed;
+  z-index: 10010;
+  background: var(--map-bg, #fdfaf5);
+  border: 2px solid var(--map-border, #8c6e54);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 220px;
+  max-width: 320px;
+  animation: ci-bubble-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: visible;
+
+  // 气泡箭头（左侧指向）
+  .ci-bubble-arrow {
+    position: absolute;
+    left: -8px;
+    top: 20px;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 8px solid var(--map-border, #8c6e54);
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: -6px;
+      width: 0;
+      height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-right: 6px solid var(--map-bg, #fdfaf5);
+    }
+  }
+
+  // 右侧箭头模式
+  &.arrow-right .ci-bubble-arrow {
+    left: auto;
+    right: -8px;
+    border-right: none;
+    border-left: 8px solid var(--map-border, #8c6e54);
+
+    &::after {
+      left: auto;
+      right: 2px;
+      border-right: none;
+      border-left: 6px solid var(--map-bg, #fdfaf5);
+    }
+  }
+
+  // 气泡头部
+  .ci-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, var(--map-accent, #8c6e54) 0%, var(--map-highlight, #b48a5c) 100%);
+    color: #fff;
+    border-radius: 10px 10px 0 0;
+
+    .ci-bubble-title {
+      font-size: 14px;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .ci-bubble-type-tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+
+    .ci-bubble-close {
+      cursor: pointer;
+      opacity: 0.8;
+      padding: 2px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+
+  // 气泡内容
+  .ci-bubble-body {
+    padding: 12px 14px;
+    color: var(--map-text, #5a3e2b);
+
+    .ci-bubble-desc {
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .ci-bubble-status {
+      font-size: 11px;
+      color: rgba(90, 62, 43, 0.7);
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 6px;
+    }
+  }
+
+  // 气泡分区
+  .ci-bubble-section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(var(--map-border-rgb, 140, 110, 84), 0.3);
+
+    .ci-bubble-section-title {
+      font-size: 11px;
+      color: rgba(90, 62, 43, 0.6);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      &::before {
+        content: '';
+        width: 3px;
+        height: 3px;
+        background: var(--map-accent, #8c6e54);
+        border-radius: 50%;
+      }
+    }
+  }
+
+  // 元素按钮列表
+  .ci-bubble-elements {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ci-bubble-element-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: rgba(var(--map-accent-rgb, 140, 110, 84), 0.1);
+    border: 1px solid rgba(var(--map-accent-rgb, 140, 110, 84), 0.3);
+    border-radius: 16px;
+    color: var(--map-text, #5a3e2b);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .ci-el-name {
+      font-weight: 500;
+    }
+
+    .ci-el-status {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    &:hover {
+      background: var(--map-accent, #8c6e54);
+      border-color: var(--map-accent, #8c6e54);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+  }
+
+  // 互动按钮列表
+  .ci-bubble-interactions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ci-bubble-interact-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(var(--map-accent-rgb, 140, 110, 84), 0.08);
+    border: 1px solid rgba(var(--map-accent-rgb, 140, 110, 84), 0.2);
+    border-radius: 8px;
+    color: var(--map-text, #5a3e2b);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(var(--map-accent-rgb, 140, 110, 84), 0.15);
+      border-color: var(--map-accent, #8c6e54);
+      transform: translateX(3px);
+    }
+  }
+
+  // 气泡底部
+  .ci-bubble-footer {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(var(--map-border-rgb, 140, 110, 84), 0.2);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    .ci-bubble-action-btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &.ci-go-here-btn {
+        background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+      }
+    }
+  }
+}
+
+@keyframes ci-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+// 夜间模式气泡弹窗适配
+.theme-night,
+.theme-night-purple {
+  .ci-map-bubble {
+    background: var(--map-bg);
+    border-color: var(--map-border);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      0 2px 8px rgba(0, 0, 0, 0.2);
+
+    .ci-bubble-arrow {
+      border-right-color: var(--map-border);
+
+      &::after {
+        border-right-color: var(--map-bg);
+      }
+    }
+
+    &.arrow-right .ci-bubble-arrow {
+      border-left-color: var(--map-border);
+
+      &::after {
+        border-left-color: var(--map-bg);
+      }
+    }
+
+    .ci-bubble-body {
+      color: var(--map-text);
+
+      .ci-bubble-status {
+        background: rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    .ci-bubble-element-btn,
+    .ci-bubble-interact-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: var(--map-text);
+    }
+  }
+}
+
+// ========== 物品仓库 Action Bar 样式 ==========
+.ci-inv-action-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: rgba(var(--ci-text-rgb), 0.03);
+  border-radius: 10px;
+}
+
+.ci-gift-btn-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.ci-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid rgba(var(--ci-text-rgb), 0.15);
+  background: var(--ci-bg-primary, #fff);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--ci-text-primary, #333);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  .ci-btn-icon {
+    display: flex;
+    align-items: center;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  &:hover {
+    background: rgba(var(--ci-accent-rgb), 0.1);
+    border-color: var(--ci-accent);
+  }
+
+  &.active {
+    background: var(--ci-accent);
+    color: #fff;
+    border-color: var(--ci-accent);
+  }
+}
+
+.ci-gift-submenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--ci-bg-primary, #fff);
+  border: 1px solid rgba(var(--ci-text-rgb), 0.1);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  min-width: 100px;
+
+  &.expanded {
+    display: flex;
+  }
+
+  .ci-submenu-btn {
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: var(--ci-text-primary, #333);
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: left;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(var(--ci-accent-rgb), 0.1);
+    }
+  }
+}
+
+// 物品卡片选中状态
+.ci-inv-item-card.selected {
+  border-color: var(--ci-accent);
+  background: rgba(var(--ci-accent-rgb), 0.15);
+  box-shadow: 0 0 0 2px rgba(var(--ci-accent-rgb), 0.3);
+}
+
+// 物品仓库编辑模式/赠予模式/拿取模式
+.ci-inv-content {
+  &.gift-mode,
+  &.take-mode,
+  &.synthesize-mode {
+    .ci-inv-item-card {
+      cursor: pointer;
+
+      &:hover {
+        transform: scale(1.05);
+        border-color: var(--ci-accent);
+      }
+    }
+  }
+
+  &.destroy-mode {
+    .ci-inv-item-card {
+      cursor: pointer;
+
+      &:hover {
+        transform: scale(1.05);
+        border-color: #d32f2f;
+        background: rgba(211, 47, 47, 0.05);
+      }
+    }
+  }
+}
+
+// 物品详情弹窗补充样式
+.ci-item-detail-overlay {
+  .ci-item-detail-card {
+    .ci-item-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--ci-accent), rgba(var(--ci-accent-rgb), 0.8));
+      border-radius: 16px 16px 0 0;
+      color: #fff;
+
+      .ci-item-detail-icon {
+        font-size: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        svg {
+          width: 32px;
+          height: 32px;
+        }
+      }
+
+      .ci-item-detail-title {
+        flex: 1;
+
+        .ci-item-detail-name {
+          font-size: 16px;
+          font-weight: 600;
+          display: block;
+          margin-bottom: 4px;
+        }
+
+        .ci-item-detail-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+
+          .ci-item-tag {
+            padding: 2px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            font-size: 10px;
+          }
+        }
+      }
+    }
+
+    .ci-item-detail-body {
+      padding: 16px;
+
+      .ci-item-detail-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 13px;
+
+        .label {
+          width: 60px;
+          color: rgba(var(--ci-text-rgb), 0.6);
+          flex-shrink: 0;
+        }
+
+        .value {
+          flex: 1;
+          color: var(--ci-text);
+        }
+      }
+    }
+  }
+}
+
+// 角色选择弹窗
+.ci-char-select-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999 !important;
+  backdrop-filter: blur(2px);
+}
+
+.ci-char-select-card {
+  background: var(--ci-bg-primary, #fff);
+  border-radius: 12px;
+  width: 300px;
+  max-width: 90vw;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+
+  .ci-char-select-header {
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #9c88ff 0%, #7c68ef 100%);
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .ci-char-select-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ci-char-select-close {
+      cursor: pointer;
+      opacity: 0.8;
+
+      &:hover {
+        opacity: 1;
+      }
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .ci-char-select-list {
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ci-char-select-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(var(--ci-text-rgb), 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(var(--ci-accent-rgb), 0.1);
+    }
+
+    .ci-char-select-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: bold;
+      font-size: 14px;
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .ci-char-select-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ci-text-primary, #333);
+    }
+  }
+}
+
+// 夜间模式物品仓库适配
+.theme-night,
+.theme-night-purple {
+  .ci-inv-action-bar {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .ci-action-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--ci-text);
+  }
+
+  .ci-gift-submenu {
+    background: var(--ci-bg-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    .ci-submenu-btn {
+      color: var(--ci-text);
+    }
+  }
+
+  .ci-char-select-card {
+    background: var(--ci-bg-primary);
+
+    .ci-char-select-item {
+      background: rgba(255, 255, 255, 0.03);
+
+      .ci-char-select-name {
+        color: var(--ci-text);
+      }
+    }
+  }
+}
+
+// ========== 档案编辑弹窗样式 ==========
+.ci-archive-edit-section {
+  margin-bottom: 16px;
+}
+
+.ci-archive-edit-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+  padding-left: 4px;
+  border-left: 3px solid var(--ci-accent);
+}
+
+.ci-archive-edit-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ci-archive-edit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.ci-archive-label-input {
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  font-size: 11px;
+  border-bottom: 1px dashed #ccc;
+  width: 100%;
+
+  &:focus {
+    border-bottom-color: var(--ci-accent);
+    background: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.ci-archive-value-input {
+  font-size: 12px;
+  border: 1px solid #eee;
+  background: #fff;
+  padding: 6px;
+  border-radius: 4px;
+  width: 100%;
+  resize: vertical;
+  min-height: 40px;
+
+  &:focus {
+    border-color: var(--ci-accent);
+  }
+}
+
+.ci-archive-empty-edit {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+}
+
+// 夜间模式适配
+.theme-night,
+.theme-night-purple {
+  .ci-archive-edit-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .ci-archive-label-input {
+    border-bottom-color: #555;
+
+    &:focus {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .ci-archive-value-input {
+    background: rgba(0, 0, 0, 0.2);
+    border-color: #555;
+  }
+
+  .ci-archive-empty-edit {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: #555;
+  }
+}
+
+// 角色关系气泡补充样式 - 已废弃 (改为复用角色卡样式)
+
+/* V8.9.1 UI Fix */
+.ci-inv-action-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+  margin-top: auto;
+  margin-bottom: 2px;
+  transition: gap 0.3s;
+}
+
+.ci-gift-middle-panel,
+.ci-recycle-middle-panel {
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+  align-items: center;
+  transition:
+    width 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.ci-tag-btn {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  background: #f9f9f9;
+  color: #666;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ci-tag-btn:hover {
+  background: #eee;
+  color: #333;
+  border-color: #ccc;
+  transform: translateY(-1px);
+}
+
+.ci-gift-cancel {
+  color: #d32f2f;
+  background: #ffebee;
+  border-color: #ffcdd2;
+}
+.ci-gift-cancel:hover {
+  background: #ffcdd2;
+}
+
+.ci-gift-select {
+  color: #1976d2;
+  background: #e3f2fd;
+  border-color: #bbdefb;
+}
+.ci-gift-select:hover {
+  background: #bbdefb;
+}
+
+.ci-destroy-cancel {
+  color: #d32f2f;
+  background: #ffebee;
+  border-color: #ffcdd2;
+}
+.ci-destroy-cancel:hover {
+  background: #ffcdd2;
+}
+
+.ci-destroy-confirm {
+  color: #fff;
+  background: linear-gradient(135deg, #ef5350, #e53935);
+  border-color: #b71c1c;
+}
+.ci-destroy-confirm:hover {
+  background: linear-gradient(135deg, #e53935, #c62828);
+}
+
+.ci-gift-btn-wrapper {
+  display: contents !important;
+}
+
+/* V8.9.31 Warehouse Fix Styles */
+
+/* 物品详情弹窗 Tags */
+.ci-item-popup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ci-item-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #666;
+}
+
+/* 夜间模式适配 Tags */
+.theme-night .ci-item-tag,
+.theme-night-purple .ci-item-tag {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ccc;
+}
+
+/* 仓库视图重构样式 */
+
+.ci-inv-cat-tab {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #666;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+
+  .count {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-left: 2px;
+  }
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  &.active {
+    background: var(--ci-accent);
+    color: #fff;
+    font-weight: 500;
+  }
+}
+
+.theme-night .ci-inv-cat-tab,
+.theme-night-purple .ci-inv-cat-tab {
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.05);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &.active {
+    background: var(--ci-accent);
+    color: #fff;
+  }
+}
+
+.ci-inv-empty-tip {
+  width: 100%;
+  padding: 40px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* V8.9.33 Fix: 弹窗响应式修复 (参考兼容性可视化表格9.0) */
+.ci-edit-overlay,
+.ci-settings-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  z-index: 10010 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+
+.ci-edit-card,
+.ci-settings-card,
+.ci-settings-dialog {
+  background: var(--ci-bg) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+  width: 90% !important;
+  max-width: 600px !important;
+  max-height: 80vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: auto !important; /* 改为auto以支持滚动 */
+  position: relative !important;
+  /* 重置可能影响布局的旧属性 */
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+}
+
+.ci-info-scroll,
+.ci-settings-content {
+  overflow-y: auto !important;
+  flex: 1 !important;
+  min-height: 0 !important; /* 关键：允许 flex item 缩小 */
+}
+
+/* ========== Map v9.0.2 Fixes ========== */
+.map-location-label {
+  font-size: 32px !important;
+  font-weight: bold;
+  pointer-events: none;
+  fill: var(--map-text);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.ci-map-location-popup {
+  position: fixed !important;
+  z-index: 3000 !important;
+  /* ʽƷ鿨߼ */
+}
+
+.ci-map-location-popup.active {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+.ci-map-splitter {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  cursor: ns-resize;
+  transition: background 0.2s;
+  z-index: 10;
+}
+.ci-map-splitter:hover {
+  background: var(--ci-accent);
+}
+
+.ci-map-loc-group {
+  transition: all 0.2s ease;
+}
+.ci-map-loc-group:hover rect {
+  fill: rgba(180, 138, 92, 0.2) !important;
+  stroke-width: 2px;
+}
+
+.ci-map-pulse-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ci-pulse-wave-animation 2s infinite cubic-bezier(0.445, 0.05, 0.55, 0.95);
+}
+
+@keyframes ci-pulse-wave-animation {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.ci-ext-area-btn:hover {
+  background: var(--ci-accent) !important;
+  color: #fff !important;
+  border-color: var(--ci-accent) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ci-map-controls {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ci-map-action-tag:hover {
+  background: var(--ci-accent) !important;
+  color: #fff !important;
+}
+
+.ci-map-go-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(var(--ci-accent-rgb), 0.3);
+}
+
+/* ========== 角色属性雷达图样式 ========== */
+.radar-chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  position: relative;
+}

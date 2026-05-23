@@ -1,0 +1,2574 @@
+.acu-theme-retro {
+  --acu-primary: #8c6e54;
+  --acu-secondary: #f5ebdc;
+  --acu-background: #fdfaf5;
+  --acu-area-bg: rgba(245, 235, 220, 0.85); /* 经典羊皮 */
+  --acu-text: #5a3e2b;
+  --acu-border: #d4c4a8;
+  --acu-highlight: #b48a5c;
+  --acu-hover-bg: #eadcc7;
+  --acu-hover-bg-soft: rgba(180, 138, 92, 0.15);
+  --acu-hover-bg-strong: #f0e6d5;
+  --acu-table-even-row-bg: rgba(250, 245, 235, 0.9);
+  --acu-save-hover: #6aa86a;
+  --acu-refresh-hover: #735842;
+  --acu-row-sort-hover: rgba(180, 138, 92, 0.12);
+  --acu-row-drop-bg: rgba(140, 110, 84, 0.18);
+  --acu-row-drop-border: #8c6e54;
+}
+.acu-theme-dark {
+  --acu-primary: #8479b8;
+  --acu-secondary: #f0ebff;
+  --acu-background: #f8f5ff;
+  --acu-area-bg: rgba(240, 235, 255, 0.8); /* 浅紫灰 */
+  --acu-text: #5a4f7c;
+  --acu-border: #d4cce8;
+  --acu-highlight: #958ac5;
+  --acu-hover-bg: #e4def8;
+  --acu-hover-bg-soft: rgba(132, 121, 184, 0.16);
+  --acu-hover-bg-strong: #dad2f2;
+  --acu-table-even-row-bg: rgba(246, 243, 255, 0.92);
+  --acu-save-hover: #6aa878;
+  --acu-refresh-hover: #6f64a8;
+  --acu-row-sort-hover: rgba(132, 121, 184, 0.14);
+  --acu-row-drop-bg: rgba(132, 121, 184, 0.2);
+  --acu-row-drop-border: #8479b8;
+}
+.acu-theme-modern {
+  --acu-primary: #5c9dff;
+  --acu-secondary: #f0f4f8;
+  --acu-background: #ffffff;
+  --acu-area-bg: rgba(245, 248, 252, 0.9); /* 极致冷白 */
+  --acu-text: #444;
+  --acu-border: #d0d0d0;
+  --acu-highlight: #4a8ae6;
+  --acu-hover-bg: #e4efff;
+  --acu-hover-bg-soft: rgba(92, 157, 255, 0.14);
+  --acu-hover-bg-strong: #d8e9ff;
+  --acu-table-even-row-bg: rgba(245, 249, 255, 0.94);
+  --acu-save-hover: #4fa85c;
+  --acu-refresh-hover: #286090;
+  --acu-row-sort-hover: rgba(92, 157, 255, 0.12);
+  --acu-row-drop-bg: rgba(92, 157, 255, 0.2);
+  --acu-row-drop-border: #5c9dff;
+}
+.acu-theme-forest {
+  --acu-primary: #4a8c5c;
+  --acu-secondary: #e8f0e8;
+  --acu-background: #ffffff;
+  --acu-area-bg: rgba(240, 248, 240, 0.9); /* 清爽浅绿 */
+  --acu-text: #3a6b4a;
+  --acu-border: #b8d0b8;
+  --acu-highlight: #5a9c6c;
+  --acu-hover-bg: #dcebdd;
+  --acu-hover-bg-soft: rgba(74, 140, 92, 0.14);
+  --acu-hover-bg-strong: #d2e6d4;
+  --acu-table-even-row-bg: rgba(243, 250, 243, 0.94);
+  --acu-save-hover: #3f7f50;
+  --acu-refresh-hover: #3b744a;
+  --acu-row-sort-hover: rgba(74, 140, 92, 0.12);
+  --acu-row-drop-bg: rgba(74, 140, 92, 0.2);
+  --acu-row-drop-border: #4a8c5c;
+}
+.acu-theme-ocean {
+  --acu-primary: #4a7ca8;
+  --acu-secondary: #e8f0f8;
+  --acu-background: #ffffff;
+  --acu-area-bg: rgba(240, 245, 250, 0.9); /* 冰海浅蓝 */
+  --acu-text: #3a6c98;
+  --acu-border: #b8d0e0;
+  --acu-highlight: #5a8cb8;
+  --acu-hover-bg: #dceaf5;
+  --acu-hover-bg-soft: rgba(74, 124, 168, 0.14);
+  --acu-hover-bg-strong: #d2e3f1;
+  --acu-table-even-row-bg: rgba(242, 248, 253, 0.94);
+  --acu-save-hover: #4f9a68;
+  --acu-refresh-hover: #3c678c;
+  --acu-row-sort-hover: rgba(74, 124, 168, 0.12);
+  --acu-row-drop-bg: rgba(74, 124, 168, 0.2);
+  --acu-row-drop-border: #4a7ca8;
+}
+
+.acu-table-container.night-mode.acu-theme-dark {
+  --acu-secondary: #3a3a3a;
+  --acu-background: #2d2d2d;
+  --acu-area-bg: rgba(45, 45, 45, 0.9); /* 深色透明 */
+  --acu-text: #dbdbd6;
+  --acu-border: #444;
+  --acu-danger: #c44d4d;
+  --acu-info: #4a8ca8;
+}
+
+/* 统一通知样式 */
+.acu-notification {
+  color: white;
+  padding: 12px 20px;
+  border-radius: 4px;
+  position: fixed;
+  top: 20px; /* 初始顶部位置 */
+  right: 20px;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: acu-fadeInOut 3s ease-in-out;
+  font-family: 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  transition: top 0.3s ease;
+}
+
+.acu-notification.success {
+  background-color: #66bb6a;
+}
+
+.acu-notification.error {
+  background-color: #ef5350;
+}
+
+.acu-notification.warning {
+  background-color: #ffa726;
+}
+
+.acu-notification.info {
+  background-color: #42a5f5;
+}
+
+/* =========================================
+                   [修复] 编辑单元格弹窗全局样式 (强制覆盖)
+                   ========================================= */
+.acu-edit-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10002;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.acu-edit-dialog {
+  width: 400px;
+  background: #ffffff !important; /* 日间模式强制白底 */
+  color: #333333 !important; /* 日间模式强制深色字 */
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.acu-edit-header {
+  /* 使用半透明黑底确保白色文字可见，或者直接用主色 */
+  background: var(--acu-primary);
+  color: #ffffff !important;
+  padding: 12px 15px;
+  font-weight: bold;
+  font-size: 14px;
+  /* 增加文字阴影，防止背景色过浅导致看不清 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.acu-edit-content {
+  padding: 15px;
+}
+.acu-edit-textarea {
+  width: 100%;
+  height: 150px;
+  margin-bottom: 10px;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  font-family: inherit;
+  /* 核心修复：日间模式强制白底黑字 */
+  background-color: #ffffff !important;
+  color: #333333 !important;
+}
+.acu-edit-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.acu-edit-buttons button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.acu-save-btn {
+  background-color: var(--acu-primary);
+  color: white;
+}
+.acu-cancel-btn {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+/* 夜间模式适配 */
+.acu-edit-overlay.night-mode .acu-edit-dialog {
+  background-color: #2d2d2d !important;
+  color: #dbdbd6 !important;
+  border: 1px solid #444;
+}
+.acu-edit-overlay.night-mode .acu-edit-textarea {
+  background-color: #3a3a3a !important;
+  color: #dbdbd6 !important;
+  border-color: #555;
+}
+.acu-edit-overlay.night-mode .acu-cancel-btn {
+  background-color: #4a4a4a;
+  color: #fff;
+}
+
+/* 保留兼容性 */
+.acu-load-success-notification {
+  background-color: #66bb6a;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 4px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: acu-fadeInOut 3s ease-in-out;
+  font-family: 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+}
+
+@keyframes acu-fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.acu-tab-btn.has-updates {
+  position: relative;
+}
+
+.acu-tab-btn .acu-update-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px !important;
+  height: 6px !important;
+  background-color: var(--acu-primary, #5c9dff);
+  border-radius: 50% !important;
+  animation: acu-pulse 2s infinite;
+  z-index: 10;
+  box-shadow: 0 0 4px var(--acu-primary, #5c9dff);
+}
+
+@keyframes acu-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.acu-table-container {
+  position: relative !important;
+  margin: 15px 0 !important;
+  border: 1px solid var(--acu-border) !important;
+  border-radius: 8px !important;
+  background: var(--acu-background) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.3s ease !important;
+  color: var(--acu-text) !important;
+}
+.acu-table-container.night-mode {
+  border-color: #444 !important;
+  background: #2d2d2d !important;
+  color: #dbdbd6 !important;
+}
+.acu-table-container summary {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  padding: 5px 10px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-weight: bold !important;
+  border: none !important;
+  border-radius: 6px 6px 0 0 !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  font-size: 14px !important;
+  transition: background-color 0.2s ease !important;
+}
+.acu-table-container.night-mode summary {
+  background: var(--acu-primary) !important;
+  color: white !important;
+}
+.acu-table-container summary:hover {
+  opacity: 0.9 !important;
+}
+.acu-table-container summary::-webkit-details-marker {
+  display: none !important;
+}
+.acu-table-container .acu-content-wrapper {
+  padding: 5px !important;
+  background: var(--acu-background) !important;
+  border-radius: 0 0 8px 8px !important;
+  transition: all 0.3s ease !important;
+}
+.acu-table-container.night-mode .acu-content-wrapper {
+  background: #2d2d2d !important;
+}
+.acu-table-container .table-content-area {
+  height: 60vh !important;
+  max-height: 60vh !important;
+  min-height: 200px !important;
+  overflow: auto !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  border-radius: 4px !important;
+  background: var(--acu-area-bg) !important; /* 个性化背景 */
+  padding: 5px !important;
+  margin: 5px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.3s ease !important;
+  scroll-behavior: auto !important;
+}
+.acu-table-container.night-mode .table-content-area {
+  border-color: #444 !important;
+  background: rgba(45, 45, 45, 0.9) !important;
+}
+.acu-scroll-container {
+  height: 60vh !important;
+  max-height: 60vh !important;
+  min-height: 200px !important;
+  overflow: auto !important;
+}
+.acu-table-container .acu-tabs-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 5px !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+.acu-table-container .acu-tabs-title {
+  font-family: 'Noto Serif SC', serif !important;
+  font-size: 16px !important;
+  color: var(--acu-text) !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  transition: color 0.3s ease !important;
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  text-align: center !important;
+}
+.acu-table-container.night-mode .acu-tabs-title {
+  color: #dbdbd6 !important;
+}
+/* ========== 极致月相/太阳切换器 (结构化绑定版) ========== */
+.acu-mode-toggle.acu-moon-box {
+  width: 32px !important;
+  height: 24px !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+/* 锁定容器位置：取消由于 hover 或 active 引起的 translateY 位移 */
+.acu-mode-toggle.acu-moon-box:hover,
+.acu-mode-toggle.acu-moon-box:active {
+  transform: translate(0, 0) !important;
+}
+
+.acu-moon-orb {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: #fff9c4 !important; /* 精致香槟金 */
+  box-shadow: 0 0 10px rgba(255, 241, 118, 0.4) !important;
+  position: relative !important;
+  filter: blur(0.5px) !important;
+  z-index: 2;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: auto !important;
+  overflow: visible !important;
+}
+
+/* 遮罩：默认处于滑出状态 (日间状态：位于左侧隐藏) */
+.acu-moon-orb::after {
+  content: '' !important;
+  position: absolute !important;
+  top: -10% !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 120% !important;
+  background: var(--acu-primary) !important;
+  border-radius: 45% !important;
+  filter: blur(1.5px) !important;
+  transform: translateX(-110%);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 3;
+}
+
+/* 夜间模式：月亮形态 (滑入遮罩) */
+.night-mode .acu-moon-orb {
+  background: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5) !important;
+}
+.night-mode .acu-moon-orb::after {
+  transform: translateX(-35%) !important;
+}
+
+/* 缥缈流云：右侧对向滑入 */
+.acu-moon-cloud {
+  position: absolute !important;
+  width: 22px !important;
+  height: 6px !important;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.9) 100%) !important;
+  filter: blur(1.5px) !important;
+  border-radius: 10px !important;
+  top: 55% !important;
+  right: -7px !important;
+  opacity: 0 !important;
+  z-index: 10 !important;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: none !important;
+}
+.acu-moon-cloud::after {
+  display: none !important;
+}
+.night-mode .acu-moon-cloud {
+  right: 2px !important;
+  opacity: 0.7 !important;
+}
+
+/* 太阳日冕动画：绝对中心锁定 */
+.acu-moon-orb::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 241, 118, 0.6) !important;
+  opacity: 0;
+  z-index: 15 !important; /* 提到最高层，穿透日间背景 */
+  box-sizing: border-box !important;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: none !important;
+  will-change: transform, opacity;
+  animation: acu-sun-corona 2.5s infinite ease-out !important;
+}
+.acu-mode-toggle.acu-moon-box,
+.acu-moon-orb {
+  overflow: visible !important;
+}
+
+@keyframes acu-sun-corona {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* 夜间模式：彻底隐藏日冕 */
+.night-mode .acu-moon-orb::before {
+  display: none !important;
+}
+
+/* 增强版粒子特效 */
+.acu-glow-particle {
+  position: absolute !important;
+  width: 1.5px !important;
+  height: 1.5px !important;
+  background: #ffffff !important;
+  border-radius: 50% !important;
+  opacity: 0;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  box-shadow:
+    0 0 3px #fff,
+    0 0 6px rgba(255, 255, 255, 0.6) !important;
+}
+
+.acu-p1 {
+  animation: acu-p-top 4s infinite linear;
+}
+.acu-p2 {
+  animation: acu-p-bottom 5s infinite linear;
+  animation-delay: 1s;
+}
+.acu-p3 {
+  animation: acu-p-left 3s infinite linear;
+  animation-delay: 0.5s;
+}
+.acu-p4 {
+  animation: acu-p-right 6s infinite linear;
+  animation-delay: 2s;
+}
+.acu-p5 {
+  animation: acu-p-tr 5s infinite linear;
+  animation-delay: 1.5s;
+}
+.acu-p6 {
+  animation: acu-p-tl 4s infinite linear;
+  animation-delay: 2.5s;
+}
+.acu-p7 {
+  animation: acu-p-br 6s infinite linear;
+  animation-delay: 3s;
+}
+.acu-p8 {
+  animation: acu-p-bl 4s infinite linear;
+  animation-delay: 0.2s;
+}
+
+@keyframes acu-p-top {
+  0% {
+    transform: translate(0, -7px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(0, -18px);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-bottom {
+  0% {
+    transform: translate(0, 7px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(0, 18px);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-left {
+  0% {
+    transform: translate(-7px, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-18px, 0);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-right {
+  0% {
+    transform: translate(7px, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(18px, 0);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-tr {
+  0% {
+    transform: translate(5px, -5px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(12px, -12px);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-tl {
+  0% {
+    transform: translate(-5px, -5px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-12px, -12px);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-br {
+  0% {
+    transform: translate(5px, 5px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(12px, 12px);
+    opacity: 0;
+  }
+}
+@keyframes acu-p-bl {
+  0% {
+    transform: translate(-5px, 5px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-12px, 12px);
+    opacity: 0;
+  }
+}
+
+.acu-star-dust {
+  position: absolute !important;
+  color: #ffffff !important;
+  opacity: 0;
+  animation: acu-twinkle 4s infinite ease-in-out !important;
+  z-index: 4;
+  display: block !important;
+  line-height: 1 !important;
+  pointer-events: none !important;
+  text-align: center !important;
+}
+/* 星尘 (随机错位布局) */
+.acu-star-dust.s1 {
+  top: 2px !important;
+  right: 4px !important;
+  font-size: 5px !important;
+  width: 5px !important;
+  height: 5px !important;
+  animation: acu-twinkle 3.3s infinite ease-in-out !important;
+  animation-delay: 0.5s !important;
+}
+.acu-star-dust.s2 {
+  bottom: 3px !important;
+  left: 3px !important;
+  font-size: 3px !important;
+  width: 3px !important;
+  height: 3px !important;
+  animation: acu-twinkle 4.7s infinite ease-in-out !important;
+  animation-delay: 2.1s !important;
+}
+.acu-star-dust.s3 {
+  top: 4px !important;
+  left: 5px !important;
+  font-size: 4px !important;
+  width: 4px !important;
+  height: 4px !important;
+  animation: acu-twinkle 5.9s infinite ease-in-out !important;
+  animation-delay: 1.2s !important;
+}
+.acu-star-dust.s4 {
+  bottom: 2px !important;
+  right: 6px !important;
+  font-size: 2px !important;
+  width: 2px !important;
+  height: 2px !important;
+  animation: acu-twinkle 7.1s infinite ease-in-out !important;
+  animation-delay: 3.5s !important;
+}
+.acu-star-dust.s5 {
+  top: 50% !important;
+  right: 2px !important;
+  transform: translateY(-50%) !important;
+  font-size: 3px !important;
+  width: 3px !important;
+  height: 3px !important;
+  animation: acu-twinkle 3.8s infinite ease-in-out !important;
+  animation-delay: 0.1s !important;
+}
+
+@keyframes acu-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+.acu-mode-toggle:hover .acu-moon-orb {
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 设置按钮样式 */
+.acu-table-container .acu-settings-btn-header {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.2s ease !important;
+}
+.acu-table-container .acu-settings-btn-header:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+.acu-table-container.night-mode .acu-settings-btn-header {
+  background: var(--acu-primary) !important;
+}
+
+.acu-table-container .acu-order-edit-btn {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.2s ease !important;
+}
+.acu-table-container.night-mode .acu-order-edit-btn {
+  background: var(--acu-primary) !important;
+}
+.acu-table-container .acu-order-edit-btn:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+.acu-table-container .acu-theme-btn {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 6px 10px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.2s ease !important;
+  margin-left: 8px !important;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.acu-table-container .acu-theme-btn:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+.acu-table-container.night-mode .acu-theme-btn {
+  background: var(--acu-primary) !important;
+}
+.acu-table-container .acu-order-controls {
+  display: none !important;
+  gap: 8px !important;
+  margin-bottom: 15px !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+}
+.acu-table-container .acu-order-controls.visible {
+  display: flex !important;
+}
+.acu-table-container .acu-save-order-btn,
+.acu-table-container .acu-cancel-order-btn {
+  padding: 8px 16px !important;
+  border: none !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.3s ease !important;
+}
+.acu-table-container .acu-save-order-btn {
+  background: #5cb85c !important;
+  color: white !important;
+}
+.acu-table-container .acu-cancel-order-btn {
+  background: var(--acu-secondary) !important;
+  color: var(--acu-text) !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-table-container.night-mode .acu-cancel-order-btn {
+  background: #3a3a3a !important;
+  color: #dbdbd6 !important;
+  border-color: #555 !important;
+}
+.acu-table-container .acu-tabs-container {
+  display: flex !important;
+  gap: 5px !important;
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 10px !important;
+}
+.acu-table-container .acu-pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 6px 0;
+  flex-wrap: wrap;
+}
+.acu-table-container .acu-page-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--acu-border);
+  background: var(--acu-secondary);
+  color: var(--acu-text);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  min-width: 30px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.acu-table-container.night-mode .acu-page-btn {
+  background: #3a3a3a !important;
+  color: #dbdbd6 !important;
+  border-color: #555 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+.acu-table-container .acu-page-btn:hover {
+  background: var(--acu-primary);
+  color: white;
+  border-color: var(--acu-primary);
+}
+.acu-table-container.night-mode .acu-page-btn:hover {
+  background: #4a4a4a !important;
+  color: #ffffff !important;
+  border-color: var(--acu-highlight, var(--acu-primary)) !important;
+}
+.acu-table-container .acu-page-btn.active {
+  background: var(--acu-primary);
+  color: white;
+  border-color: var(--acu-primary);
+  font-weight: bold;
+}
+.acu-table-container.night-mode .acu-page-btn.active {
+  background: var(--acu-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--acu-highlight, var(--acu-primary)) !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.35) !important;
+}
+.acu-table-container .acu-page-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.acu-table-container.night-mode .acu-page-btn.disabled {
+  background: #333333 !important;
+  color: #9a9a9a !important;
+  border-color: #444 !important;
+}
+.acu-table-container .acu-tab-btn {
+  background: var(--acu-secondary) !important;
+  border: 1px solid var(--acu-border) !important;
+  color: var(--acu-text) !important;
+  padding: 6px 5px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+  font-family: 'Noto Serif SC', serif !important;
+  box-shadow: 0 2px 4px rgba(62, 39, 26, 0.1) !important;
+  margin: 2px !important;
+  white-space: nowrap !important;
+}
+.acu-table-container.night-mode .acu-tab-btn {
+  background: #3a3a3a !important;
+  border-color: #555 !important;
+  color: #dbdbd6 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+.acu-table-container .acu-tab-btn:hover {
+  background: var(--acu-hover-bg, var(--acu-secondary)) !important;
+}
+.acu-table-container.night-mode .acu-tab-btn:hover {
+  background: #4a4a4a !important;
+}
+.acu-table-container .acu-tab-btn.active {
+  background: var(--acu-highlight) !important;
+  color: white !important;
+  border-color: var(--acu-highlight) !important;
+}
+.acu-table-container.night-mode .acu-tab-btn.active {
+  background: var(--acu-highlight) !important;
+  border-color: var(--acu-highlight) !important;
+}
+.acu-table-container .acu-tab-btn.dragging {
+  opacity: 0.5 !important;
+  cursor: grabbing !important;
+}
+.acu-table-container.editing-order .acu-tab-btn {
+  cursor: grab !important;
+  border: 2px dashed var(--acu-primary) !important;
+}
+.acu-table-container.night-mode.editing-order .acu-tab-btn {
+  border-color: var(--acu-primary) !important;
+}
+.acu-table-container.editing-order .acu-tab-btn:hover {
+  background: var(--acu-hover-bg-strong, var(--acu-hover-bg, var(--acu-secondary))) !important;
+}
+.acu-table-container.night-mode.editing-order .acu-tab-btn:hover {
+  background: #4a4a4a !important;
+}
+.acu-table-container .acu-table-section {
+  display: none !important;
+}
+.acu-table-container .acu-table-section.active {
+  display: block !important;
+}
+.acu-table-container .section-title {
+  font-family: 'Noto Serif SC', serif !important;
+  font-size: 18px !important;
+  color: var(--acu-text) !important;
+  margin-bottom: 5px !important;
+  padding-bottom: 5px !important;
+  border-bottom: 2px solid rgba(90, 62, 43, 0.3) !important;
+  font-weight: 700 !important;
+  transition: all 0.3s ease !important;
+}
+.acu-table-container.night-mode .section-title {
+  color: #dbdbd6 !important;
+  border-bottom-color: #555 !important;
+}
+.acu-table-container .data-table-wrapper {
+  margin-bottom: 20px !important;
+  border: 1px solid rgba(90, 62, 43, 0.2) !important;
+  border-radius: 4px !important;
+  background: white !important;
+  transition: all 0.3s ease !important;
+  overflow-x: auto;
+}
+.acu-table-container.night-mode .data-table-wrapper {
+  border-color: #444 !important;
+  background: #363636 !important;
+}
+/* 行拖动样式 */
+.acu-table-container.editing-row-order .data-table tbody tr {
+  cursor: move !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.acu-table-container.editing-row-order .data-table tbody tr:hover {
+  background-color: var(--acu-row-sort-hover, var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15))) !important;
+}
+.acu-table-container:not(.editing-row-order) .data-table tbody tr {
+  cursor: default !important;
+}
+.acu-table-container .data-table tbody tr.dragging {
+  opacity: 0.5 !important;
+  transform: scale(1.02) !important;
+  background-color: rgba(255, 215, 0, 0.3) !important;
+  cursor: grabbing !important;
+}
+.acu-table-container.night-mode .data-table tbody tr.dragging {
+  background-color: rgba(255, 215, 0, 0.2) !important;
+}
+.acu-table-container .data-table tbody tr.drag-over-before,
+.acu-table-container .data-table tbody tr.drag-over-after {
+  background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
+}
+.acu-table-container .data-table tbody tr.drag-over-before td {
+  border-top: 3px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+}
+.acu-table-container .data-table tbody tr.drag-over-after td {
+  border-bottom: 3px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+}
+.acu-table-container.night-mode .data-table tbody tr.drag-over-before,
+.acu-table-container.night-mode .data-table tbody tr.drag-over-after {
+  background-color: rgba(135, 206, 250, 0.15) !important;
+}
+
+.acu-table-container .data-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 13px !important;
+  min-width: 600px !important;
+}
+.acu-table-container .data-table th {
+  background-color: var(--acu-primary) !important;
+  color: #fdfaf5 !important;
+  padding: 5px 5px !important;
+  text-align: center !important;
+  font-weight: bold !important;
+  border: 1px solid rgba(90, 62, 43, 0.3) !important;
+  font-family: 'Noto Serif SC', serif !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+.acu-table-container.night-mode .data-table th {
+  background-color: var(--acu-primary) !important;
+  border-color: #555 !important;
+}
+.acu-table-container .data-table td {
+  padding: 5px 5px !important;
+  text-align: left !important;
+  border: 1px solid rgba(90, 62, 43, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+  word-wrap: break-word !important;
+  font-size: 13px !important;
+  color: var(--acu-text) !important;
+  font-weight: 500 !important;
+}
+.acu-table-container.night-mode .data-table td {
+  background-color: rgba(54, 54, 54, 0.9) !important;
+  border-color: #444 !important;
+  color: #dbdbd6 !important;
+}
+.acu-table-container .data-table tr:nth-child(even) td {
+  background-color: var(--acu-table-even-row-bg, rgba(250, 245, 235, 0.9)) !important;
+}
+.acu-table-container.night-mode .data-table tr:nth-child(even) td {
+  background-color: rgba(58, 58, 58, 0.9) !important;
+}
+.acu-table-container .acu-editable-cell:hover {
+  background-color: var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15)) !important;
+}
+.acu-table-container.night-mode .acu-editable-cell:hover {
+  background-color: rgba(132, 121, 184, 0.2) !important;
+}
+.acu-table-container .data-table tr.pending-deletion td {
+  background-color: rgba(255, 200, 200, 0.6) !important;
+  border-color: rgba(255, 100, 100, 0.4) !important;
+  color: #8b0000 !important;
+}
+.acu-table-container.night-mode .data-table tr.pending-deletion td {
+  background-color: rgba(139, 0, 0, 0.3) !important;
+  border-color: rgba(255, 100, 100, 0.3) !important;
+  color: #ff9999 !important;
+}
+
+.acu-highlight-user-edit {
+  background-color: #90ee9080 !important;
+  border: 2px solid #32cd32 !important;
+  color: #2d5016 !important;
+  font-weight: 600 !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+.acu-highlight-user-edit::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: #90ee9080 !important;
+  z-index: -1 !important;
+}
+.acu-table-container.night-mode .acu-highlight-user-edit {
+  background-color: rgba(76, 175, 80, 0.85) !important;
+  color: #c8ffc8 !important;
+}
+
+.acu-highlight-changed {
+  background-color: #8795fa61 !important;
+  border: 2px solid #00a3e0 !important;
+  color: #1a5490 !important;
+  font-weight: 600 !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+.acu-highlight-changed::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: #8795fa61 !important;
+  z-index: -1 !important;
+}
+.acu-table-container.night-mode .acu-highlight-changed {
+  background-color: rgba(33, 150, 243, 0.85) !important;
+  color: #bbdefb !important;
+}
+
+.acu-table-container .acu-save-db-btn-header {
+  background: #5cb85c !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.2s ease !important;
+}
+.acu-table-container.night-mode .acu-save-db-btn-header {
+  background: var(--acu-primary) !important;
+}
+.acu-table-container .acu-save-db-btn-header:hover {
+  background: var(--acu-save-hover, #6fc86f) !important;
+  transform: translateY(-1px) !important;
+}
+.acu-table-container.night-mode .acu-save-db-btn-header:hover {
+  background: var(--acu-highlight) !important;
+}
+.acu-table-container .acu-save-db-btn-header:disabled {
+  background: #cccccc !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+.acu-table-container.night-mode .acu-save-db-btn-header:disabled {
+  background: #666 !important;
+}
+.acu-table-container .acu-refresh-btn-header {
+  background: #337ab7 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.2s ease !important;
+}
+.acu-table-container.night-mode .acu-refresh-btn-header {
+  background: var(--acu-primary) !important;
+}
+.acu-table-container .acu-refresh-btn-header:hover {
+  background: var(--acu-refresh-hover, #286090) !important;
+  transform: translateY(-1px) !important;
+}
+.acu-table-container.night-mode .acu-refresh-btn-header:hover {
+  background: var(--acu-highlight) !important;
+}
+
+.acu-table-container .empty-message {
+  text-align: center !important;
+  padding: 40px 20px !important;
+  color: var(--acu-text) !important;
+  font-style: italic !important;
+  font-size: 16px !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 6px !important;
+  margin: 10px 0 !important;
+  transition: all 0.3s ease !important;
+}
+.acu-table-container.night-mode .empty-message {
+  color: #dbdbd6 !important;
+  background: rgba(58, 58, 58, 0.7) !important;
+}
+
+.acu-cell-menu {
+  position: fixed !important;
+  background: white !important;
+  border: 1px solid var(--acu-primary) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  z-index: 10000 !important;
+  min-width: 150px !important;
+  max-width: 90vw !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+}
+.acu-cell-menu.night-mode {
+  background: #3a3a3a !important;
+  border-color: var(--acu-primary) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 刷新按钮菜单（4项）- 高对比、非透明、跟随日夜 */
+.acu-cell-menu.acu-refresh-menu {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.18) !important;
+  min-width: 220px !important;
+  padding: 6px !important;
+  overflow: hidden !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.acu-cell-menu.acu-refresh-menu.night-mode {
+  background: rgba(34, 34, 34, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55) !important;
+}
+.acu-cell-menu.acu-refresh-menu .acu-cell-menu-item {
+  border-bottom: none !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  font-size: 13px !important;
+  color: #2b2b2b !important;
+  transition:
+    background-color 0.12s ease,
+    transform 0.12s ease !important;
+}
+.acu-cell-menu.acu-refresh-menu.night-mode .acu-cell-menu-item {
+  color: #e7e7e1 !important;
+}
+.acu-cell-menu.acu-refresh-menu .acu-cell-menu-item:hover {
+  background: var(--acu-hover-bg-soft, rgba(0, 0, 0, 0.05)) !important;
+}
+.acu-cell-menu.acu-refresh-menu.night-mode .acu-cell-menu-item:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+.acu-cell-menu.acu-refresh-menu .acu-cell-menu-item:active {
+  transform: translateY(1px) !important;
+}
+.acu-cell-menu.acu-refresh-menu .acu-cell-menu-item.close {
+  opacity: 0.85 !important;
+}
+
+/* 快捷选项：托管数据库面板时的“新CSS架构” */
+.auto-card-updater-popup.acu-db-shortcut-layout {
+  padding: 12px !important;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout .acu-layout {
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+/* 只要三页按钮，且横排置顶（更符合快捷弹窗） */
+.auto-card-updater-popup.acu-db-shortcut-layout .acu-tabs-nav {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  overflow-x: auto !important;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout .acu-tab-button {
+  flex: 1 1 0 !important;
+  min-width: 140px !important;
+  justify-content: center !important;
+  border-radius: 12px !important;
+  padding: 12px 12px !important;
+  font-size: 13px !important;
+  letter-spacing: 0.2px !important;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout .acu-tab-button::after {
+  display: none !important;
+}
+
+/* 仅在 status 页激活时做左右分栏，避免破坏分页 */
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status.active {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(360px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 780px) {
+  .auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status.active {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 标记卡片：用 JS 打 class 后做定位 */
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-core {
+  grid-column: 1;
+  grid-row: 1;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-common {
+  grid-column: 1;
+  grid-row: 2;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-config {
+  grid-column: 1;
+  grid-row: 3;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-manual {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* 状态表：限制高度并可滚动，减少横向占用 */
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status tbody {
+  display: block;
+  max-height: 240px;
+  overflow: auto;
+}
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status thead,
+.auto-card-updater-popup.acu-db-shortcut-layout #acu-tab-status .acu-sc-card-status tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.acu-shortcut-lite-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.38) !important;
+  z-index: 10050 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.acu-shortcut-lite-overlay.night-mode {
+  background: rgba(0, 0, 0, 0.55) !important;
+}
+.acu-shortcut-lite-dialog {
+  width: min(420px, 94vw) !important;
+  max-height: 80vh !important;
+  background: var(--acu-background, #fafafa) !important;
+  color: var(--acu-text, #333) !important;
+  border: 1px solid var(--acu-border, #ddd) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-dialog {
+  background: #2d2d2d !important;
+  color: #dbdbd6 !important;
+  border-color: #444 !important;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45) !important;
+}
+.acu-shortcut-lite-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 14px !important;
+  background: var(--acu-primary, #5c9dff) !important;
+  color: #fff !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+.acu-shortcut-lite-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+}
+.acu-shortcut-lite-close {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  line-height: 24px !important;
+  text-align: center !important;
+}
+.acu-shortcut-lite-body {
+  padding: 16px 18px 20px !important;
+  overflow: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+.acu-shortcut-lite-info {
+  font-size: 12px !important;
+  text-align: center !important;
+  color: var(--acu-text, #444) !important;
+  opacity: 0.88 !important;
+}
+.acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-info {
+  color: #dbdbd6 !important;
+  opacity: 0.95 !important;
+}
+.acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-info strong {
+  color: var(--acu-primary, #9d94cc) !important;
+}
+
+.acu-shortcut-lite-config-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 10px !important;
+}
+.acu-shortcut-lite-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  text-align: center !important;
+}
+.acu-shortcut-lite-field label {
+  font-size: 11px !important;
+  opacity: 0.75 !important;
+  color: inherit !important;
+}
+.acu-shortcut-lite-field input {
+  width: 100% !important;
+  padding: 9px 12px !important;
+  border-radius: 5px !important;
+  border: 1.5px solid var(--acu-primary, #5c9dff) !important;
+  background: #ffffff !important;
+  color: #333333 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+}
+.acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-field input {
+  background: #2b2b2b !important;
+  color: #e0e0e0 !important;
+}
+.acu-shortcut-lite-btns {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 4px !important;
+}
+.acu-shortcut-lite-btn {
+  width: 100% !important;
+  max-width: 220px !important;
+  padding: 9px 16px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--acu-border, #bbb) !important;
+  background: var(--acu-background, #fff) !important;
+  color: var(--acu-text, #333) !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  text-align: center !important;
+}
+.acu-shortcut-lite-overlay.night-mode .acu-shortcut-lite-btn {
+  border-color: #555 !important;
+  background: #3a3a3a !important;
+  color: #dbdbd6 !important;
+}
+.acu-shortcut-lite-btn.accent {
+  max-width: 260px !important;
+  padding: 12px 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 3px 10px rgba(255, 126, 95, 0.35) !important;
+  margin-top: 6px !important;
+}
+
+.acu-svg-icon {
+  width: 1em !important;
+  height: 1em !important;
+  display: inline-block !important;
+  vertical-align: -0.15em !important;
+  flex-shrink: 0 !important;
+  stroke: currentColor !important;
+}
+.acu-menu-icon {
+  width: 18px !important;
+  min-width: 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-right: 8px !important;
+  color: currentColor !important;
+}
+.acu-menu-icon .acu-svg-icon {
+  width: 15px !important;
+  height: 15px !important;
+}
+.acu-menu-label {
+  flex: 1 1 auto !important;
+}
+.acu-inline-svg-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+.acu-notification .acu-svg-icon,
+.acu-save-db-btn-header .acu-svg-icon {
+  margin-right: 5px !important;
+}
+.acu-cell-menu-item {
+  padding: 10px 15px !important;
+  cursor: pointer !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+  font-size: 13px !important;
+  color: #626262 !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: background-color 0.2s !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item {
+  border-bottom-color: #555 !important;
+  color: #ffffff !important;
+}
+.acu-cell-menu-item:hover {
+  background-color: var(--acu-hover-bg, var(--acu-secondary)) !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item:hover {
+  background-color: #4a4a4a !important;
+}
+.acu-cell-menu-item:last-child {
+  border-bottom: none !important;
+}
+.acu-cell-menu-item.edit {
+  font-weight: 600 !important;
+  color: #626262 !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item.edit {
+  color: #ffffff !important;
+}
+.acu-cell-menu-item.insert {
+  font-weight: 600 !important;
+  color: #4a7ca8 !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item.insert {
+  color: #87ceeb !important;
+}
+.acu-cell-menu-item.delete {
+  font-weight: 600 !important;
+  color: #cc0000 !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item.delete {
+  color: #ff6666 !important;
+}
+.acu-cell-menu-item.restore {
+  font-weight: 600 !important;
+  color: #5cb85c !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item.restore {
+  color: #66cc66 !important;
+}
+.acu-cell-menu-item.close {
+  font-weight: 600 !important;
+  border-top: 1px solid #f0f0f0 !important;
+  color: #666 !important;
+}
+.acu-cell-menu.night-mode .acu-cell-menu-item.close {
+  color: #ffffff !important;
+  border-top-color: #555 !important;
+}
+
+.acu-edit-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+.acu-edit-overlay.night-mode {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+.acu-edit-dialog {
+  background: white !important;
+  border: 2px solid var(--acu-highlight) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  width: 90% !important;
+  max-width: 600px !important;
+  max-height: 85vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+}
+.acu-edit-overlay.night-mode .acu-edit-dialog {
+  background: #3a3a3a !important;
+  border-color: var(--acu-highlight) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+.acu-edit-header {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  padding: 12px 16px !important;
+  border-radius: 6px 6px 0 0 !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+  flex-shrink: 0 !important;
+  transition: all 0.3s ease !important;
+}
+.acu-edit-overlay.night-mode .acu-edit-header {
+  background: var(--acu-primary) !important;
+}
+.acu-edit-content {
+  padding: 16px !important;
+  flex-grow: 1 !important;
+  overflow-y: auto !important;
+}
+.acu-edit-textarea {
+  width: 100% !important;
+  min-height: 120px !important;
+  border: 1px solid var(--acu-border) !important;
+  border-radius: 4px !important;
+  padding: 10px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  color: rgb(140, 191, 64) !important;
+  resize: vertical !important;
+  box-sizing: border-box !important;
+  background: white !important;
+  transition: all 0.3s ease !important;
+}
+.acu-edit-overlay.night-mode .acu-edit-textarea {
+  background: #2d2d2d !important;
+  border-color: #555 !important;
+  color: rgb(140, 191, 64) !important;
+}
+.acu-edit-textarea:focus {
+  outline: none !important;
+  border-color: var(--acu-highlight) !important;
+}
+.acu-edit-overlay.night-mode .acu-edit-textarea:focus {
+  border-color: var(--acu-highlight) !important;
+}
+.acu-edit-buttons {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid #e8dfd0 !important;
+  flex-shrink: 0 !important;
+  transition: all 0.3s ease !important;
+}
+.acu-edit-overlay.night-mode .acu-edit-buttons {
+  border-top-color: #555 !important;
+}
+.acu-save-btn,
+.acu-cancel-btn {
+  padding: 8px 16px !important;
+  border: none !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+}
+.acu-edit-overlay:not(.night-mode) .acu-save-btn {
+  background-color: #4caf50 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 8px 16px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+.acu-edit-overlay:not(.night-mode) .acu-save-btn:hover {
+  background-color: #45a049 !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1px);
+}
+.acu-edit-overlay.night-mode .acu-save-btn {
+  background-color: #2e7d32 !important;
+  color: white !important;
+  border: none !important;
+}
+.acu-edit-overlay.night-mode .acu-save-btn:hover {
+  background-color: #1b5e20 !important;
+}
+.acu-edit-overlay:not(.night-mode) .acu-cancel-btn {
+  background-color: #f0f0f0 !important;
+  color: #626262 !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 8px 16px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+.acu-edit-overlay:not(.night-mode) .acu-cancel-btn:hover {
+  background-color: #e0e0e0 !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+.acu-edit-overlay.night-mode .acu-cancel-btn {
+  background-color: #333 !important;
+  color: #ccc !important;
+  border: 1px solid #555 !important;
+}
+.acu-edit-overlay.night-mode .acu-cancel-btn:hover {
+  background-color: #444 !important;
+  border-color: #666 !important;
+}
+
+.acu-theme-menu .acu-cell-menu-item.active {
+  background-color: var(--acu-hover-bg-strong, var(--acu-hover-bg, var(--acu-secondary))) !important;
+  font-weight: bold !important;
+}
+.acu-theme-menu.night-mode .acu-cell-menu-item.active {
+  background-color: #4a4a4a !important;
+}
+.acu-theme-menu .acu-cell-menu-item {
+  color: #626262 !important;
+}
+.acu-theme-menu.night-mode .acu-cell-menu-item {
+  color: #dbdbd6 !important;
+}
+
+/* 新增：保存按钮待删除状态样式 */
+.acu-table-container .acu-save-db-btn-header.has-pending-deletes {
+  background: #e74c3c !important;
+  color: white !important;
+  animation: acu-pulse 1.5s infinite;
+}
+.acu-table-container.night-mode .acu-save-db-btn-header.has-pending-deletes {
+  background: #c0392b !important;
+}
+
+/* 【新增】设置界面样式 */
+.acu-settings-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  z-index: 10010 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+.acu-settings-overlay.night-mode {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+.acu-settings-dialog {
+  background: var(--acu-background) !important;
+  border: 2px solid var(--acu-highlight) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  width: 90% !important;
+  max-width: 800px !important;
+  max-height: 85vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+  color: var(--acu-text) !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-dialog {
+  border-color: var(--acu-highlight) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+.acu-settings-header {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  padding: 15px 20px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-radius: 8px 8px 0 0 !important;
+  flex-shrink: 0 !important;
+}
+.acu-settings-header h3 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+}
+.acu-settings-close {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s !important;
+}
+.acu-settings-close:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+.acu-settings-tabs {
+  display: flex !important;
+  background: var(--acu-secondary) !important;
+  border-bottom: 1px solid var(--acu-border) !important;
+  flex-shrink: 0 !important;
+}
+.acu-settings-tab {
+  flex: 1 !important;
+  padding: 12px 15px !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--acu-text) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.3s ease !important;
+  border-bottom: 3px solid transparent !important;
+}
+.acu-settings-tab:hover {
+  background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
+}
+.acu-settings-tab.active {
+  background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.15) !important;
+  color: var(--acu-primary) !important;
+  border-bottom-color: var(--acu-primary) !important;
+  font-weight: bold !important;
+}
+.acu-settings-content {
+  flex-grow: 1 !important;
+  overflow-y: auto !important;
+  padding: 20px !important;
+}
+.acu-settings-tab-content {
+  display: none !important;
+}
+.acu-settings-tab-content.active {
+  display: block !important;
+}
+.acu-settings-footer {
+  padding: 15px 20px !important;
+  border-top: 1px solid var(--acu-border) !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  background: var(--acu-secondary) !important;
+}
+.acu-settings-status {
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.8 !important;
+  transition: all 0.3s ease !important;
+}
+.acu-settings-status.success {
+  color: var(--acu-success) !important;
+  opacity: 1 !important;
+}
+.acu-settings-status.error {
+  color: var(--acu-danger) !important;
+  opacity: 1 !important;
+}
+.acu-settings-status.info {
+  color: var(--acu-info) !important;
+  opacity: 1 !important;
+}
+.acu-settings-buttons {
+  display: flex !important;
+  gap: 10px !important;
+}
+.acu-btn {
+  padding: 8px 16px !important;
+  border: none !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  font-family: 'Microsoft YaHei', sans-serif !important;
+  transition: all 0.3s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+.acu-btn-primary {
+  background: var(--acu-primary) !important;
+  color: white !important;
+}
+.acu-btn-primary:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+.acu-btn-secondary {
+  background: var(--acu-secondary) !important;
+  color: var(--acu-text) !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-btn-secondary:hover {
+  background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
+}
+.acu-btn-danger {
+  background: var(--acu-danger) !important;
+  color: white !important;
+}
+.acu-btn-danger:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+.acu-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+/* 存储信息样式 */
+.acu-storage-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+.acu-storage-summary {
+  background: var(--acu-secondary) !important;
+  border-radius: 8px !important;
+  padding: 15px !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-storage-summary h4 {
+  margin-top: 0 !important;
+  margin-bottom: 15px !important;
+  font-size: 14px !important;
+  color: var(--acu-text) !important;
+}
+.acu-storage-bar {
+  height: 20px !important;
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  margin-bottom: 10px !important;
+}
+.acu-storage-bar-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, var(--acu-primary), var(--acu-highlight)) !important;
+  border-radius: 10px !important;
+  transition: width 0.5s ease !important;
+}
+.acu-storage-stats {
+  display: flex !important;
+  justify-content: space-between !important;
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+}
+.acu-storage-stats strong {
+  font-weight: bold !important;
+}
+.acu-cleanable {
+  color: var(--acu-success) !important;
+}
+/* 警告框样式 */
+.acu-warning-box {
+  background: rgba(var(--acu-warning-rgb, 255, 193, 7), 0.1) !important;
+  border: 1px solid var(--acu-warning) !important;
+  border-radius: 8px !important;
+  padding: 15px !important;
+  display: flex !important;
+  gap: 12px !important;
+  align-items: flex-start !important;
+}
+.acu-warning-icon {
+  font-size: 20px !important;
+  flex-shrink: 0 !important;
+}
+.acu-warning-content {
+  flex-grow: 1 !important;
+}
+.acu-warning-content strong {
+  color: var(--acu-warning) !important;
+  font-size: 13px !important;
+  display: block !important;
+  margin-bottom: 5px !important;
+}
+.acu-warning-content p {
+  margin: 5px 0 !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: var(--acu-text) !important;
+}
+.acu-highlight-warning {
+  color: var(--acu-danger) !important;
+  font-weight: bold !important;
+  text-decoration: underline !important;
+}
+/* 清理选项样式 */
+.acu-cleanup-options {
+  background: var(--acu-secondary) !important;
+  border-radius: 8px !important;
+  padding: 15px !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-cleanup-options h4 {
+  margin-top: 0 !important;
+  margin-bottom: 15px !important;
+  font-size: 14px !important;
+  color: var(--acu-text) !important;
+}
+.acu-option-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+.acu-checkbox {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+}
+.acu-checkbox input[type='checkbox'] {
+  margin-right: 8px !important;
+}
+.acu-checkbox span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--acu-text) !important;
+}
+.acu-checkbox small {
+  font-size: 11px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.7 !important;
+  margin-left: 22px !important;
+}
+.acu-checkbox.protected {
+  opacity: 0.7 !important;
+}
+.acu-checkbox.protected input[type='checkbox'] {
+  cursor: not-allowed !important;
+}
+.acu-protected-settings {
+  margin-top: 20px !important;
+  padding-top: 15px !important;
+  border-top: 1px dashed var(--acu-border) !important;
+}
+.acu-protected-settings h5 {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  font-size: 13px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.8 !important;
+}
+/* 清理操作按钮 */
+.acu-cleanup-actions {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  margin-top: 10px !important;
+}
+/* 外观设置样式 */
+.acu-appearance-options {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+.acu-theme-selector {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+}
+.acu-theme-option {
+  border: 2px solid var(--acu-border) !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+.acu-theme-option:hover {
+  border-color: var(--acu-primary) !important;
+  transform: translateY(-2px) !important;
+}
+.acu-theme-option.active {
+  border-color: var(--acu-highlight) !important;
+  background: rgba(var(--acu-highlight-rgb, 180, 138, 92), 0.1) !important;
+}
+.acu-theme-option input {
+  display: none !important;
+}
+.acu-theme-icon {
+  font-size: 24px !important;
+}
+.acu-theme-name {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--acu-text) !important;
+}
+.acu-radio-group span {
+  display: block !important;
+  margin-bottom: 5px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--acu-text) !important;
+}
+.acu-slider-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+.acu-slider-group span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--acu-text) !important;
+}
+.acu-slider-group input[type='range'] {
+  width: 100% !important;
+  height: 6px !important;
+  background: var(--acu-secondary) !important;
+  border-radius: 3px !important;
+  outline: none !important;
+  -webkit-appearance: none !important;
+}
+.acu-slider-group input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  background: var(--acu-primary) !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+}
+/* 高级选项样式 */
+.acu-advanced-options {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+.acu-storage-details {
+  background: var(--acu-secondary) !important;
+  border-radius: 8px !important;
+  padding: 15px !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-storage-details h5 {
+  margin-top: 0 !important;
+  margin-bottom: 15px !important;
+  font-size: 14px !important;
+  color: var(--acu-text) !important;
+}
+.acu-storage-items {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 15px !important;
+}
+.acu-storage-section h6 {
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.8 !important;
+}
+.acu-storage-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 8px 10px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  margin-bottom: 5px !important;
+}
+.acu-storage-item.critical {
+  border-left: 3px solid var(--acu-success) !important;
+}
+.acu-storage-item.cleanable {
+  border-left: 3px solid var(--acu-warning) !important;
+}
+.acu-storage-item-name {
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+}
+.acu-storage-item-size {
+  font-size: 11px !important;
+  font-weight: bold !important;
+  color: var(--acu-text) !important;
+  opacity: 0.8 !important;
+}
+.acu-advanced-actions {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  margin-top: 20px !important;
+}
+/* 确认对话框样式 */
+.acu-confirm-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  z-index: 10020 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+.acu-confirm-dialog {
+  background: var(--acu-background) !important;
+  border: 2px solid var(--acu-danger) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+  width: 90% !important;
+  max-width: 500px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  color: var(--acu-text) !important;
+}
+.acu-confirm-header {
+  background: var(--acu-danger) !important;
+  color: white !important;
+  padding: 15px 20px !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+.acu-confirm-header h3 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+}
+.acu-confirm-content {
+  padding: 20px !important;
+  flex-grow: 1 !important;
+}
+.acu-cleanup-list {
+  margin: 15px 0 !important;
+  padding-left: 20px !important;
+}
+.acu-cleanup-list li {
+  margin-bottom: 5px !important;
+  font-size: 13px !important;
+  color: var(--acu-text) !important;
+}
+.acu-confirm-question {
+  margin-top: 20px !important;
+  padding-top: 15px !important;
+  border-top: 1px solid var(--acu-border) !important;
+  text-align: center !important;
+}
+.acu-confirm-question p {
+  margin: 0 !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+  color: var(--acu-text) !important;
+}
+.acu-confirm-buttons {
+  padding: 15px 20px !important;
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  border-top: 1px solid var(--acu-border) !important;
+  background: var(--acu-secondary) !important;
+}
+/* 设置界面夜间模式适配 */
+.acu-settings-overlay.night-mode .acu-settings-dialog {
+  background: #2d2d2d !important;
+  color: #dbdbd6 !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-header {
+  background: var(--acu-primary) !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-tabs {
+  background: #3a3a3a !important;
+  border-bottom-color: #555 !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-tab {
+  background: rgba(132, 121, 184, 0.3) !important;
+  color: #dbdbd6 !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-footer {
+  background: #3a3a3a !important;
+  border-top-color: #555 !important;
+}
+.acu-settings-overlay.night-mode .acu-warning-box {
+  background: rgba(212, 161, 92, 0.15) !important;
+  border-color: var(--acu-warning) !important;
+}
+.acu-settings-overlay.night-mode .acu-storage-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+.acu-settings-overlay.night-mode .acu-btn-secondary {
+  background: #3a3a3a !important;
+  color: #dbdbd6 !important;
+  border-color: #555 !important;
+}
+
+/* 历史记录弹窗样式 */
+.acu-history-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  z-index: 10015 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+.acu-history-overlay.night-mode {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+.acu-history-dialog {
+  background: var(--acu-background) !important;
+  border: 2px solid var(--acu-highlight) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  width: 90% !important;
+  max-width: 700px !important;
+  max-height: 80vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  color: var(--acu-text) !important;
+}
+.acu-history-header {
+  background: var(--acu-primary) !important;
+  color: white !important;
+  padding: 15px 20px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-radius: 8px 8px 0 0 !important;
+  flex-shrink: 0 !important;
+}
+.acu-history-header h3 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+}
+.acu-history-close {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s !important;
+}
+.acu-history-close:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+.acu-history-content {
+  flex-grow: 1 !important;
+  overflow-y: auto !important;
+  padding: 20px !important;
+}
+.acu-history-info {
+  display: flex !important;
+  justify-content: space-between !important;
+  margin-bottom: 15px !important;
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.8 !important;
+}
+.acu-history-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+.acu-history-item {
+  background: var(--acu-secondary) !important;
+  border: 1px solid var(--acu-border) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+}
+.acu-history-item:hover {
+  background: var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15)) !important;
+  border-color: var(--acu-highlight) !important;
+  transform: translateX(4px) !important;
+}
+.acu-history-item-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid rgba(var(--acu-border-rgb, 212, 196, 168), 0.5) !important;
+}
+.acu-history-item-number {
+  font-size: 11px !important;
+  font-weight: bold !important;
+  color: var(--acu-primary) !important;
+  background: rgba(var(--acu-primary-rgb, 140, 110, 84), 0.1) !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+}
+.acu-history-item-date {
+  font-size: 11px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.7 !important;
+}
+.acu-history-item-content {
+  font-size: 13px !important;
+  color: var(--acu-text) !important;
+  line-height: 1.6 !important;
+  word-wrap: break-word !important;
+  white-space: pre-wrap !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  padding: 8px !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-radius: 4px !important;
+}
+.acu-history-footer {
+  padding: 15px 20px !important;
+  border-top: 1px solid var(--acu-border) !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  background: var(--acu-secondary) !important;
+}
+.acu-history-hint {
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.7 !important;
+}
+
+/* 夜间模式适配增强 */
+.acu-history-overlay.night-mode .acu-history-dialog {
+  background: #2d2d2d !important;
+  color: #dbdbd6 !important;
+}
+.acu-history-overlay.night-mode .acu-history-footer {
+  background: #3a3a3a !important;
+  border-top-color: #555 !important;
+}
+.acu-history-overlay.night-mode .acu-history-item {
+  background: #3a3a3a !important;
+  border-color: #555 !important;
+}
+.acu-history-overlay.night-mode .acu-history-item:hover {
+  background: #4a4a4a !important;
+}
+.acu-history-overlay.night-mode .acu-history-info {
+  color: #dbdbd6 !important;
+}
+.acu-history-overlay.night-mode .acu-history-item-date {
+  color: #dbdbd6 !important;
+}
+.acu-history-overlay.night-mode .acu-history-item-content {
+  color: #dbdbd6 !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+.acu-history-overlay.night-mode .acu-history-hint {
+  color: #dbdbd6 !important;
+}
+
+/* 设置面板 - 夜间模式完整适配 */
+.acu-settings-overlay.night-mode .acu-settings-dialog {
+  background: #2d2d2d !important;
+  color: #dbdbd6 !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-header {
+  background: var(--acu-primary) !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-tabs {
+  background: #3a3a3a !important;
+  border-bottom-color: #555 !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-tab {
+  color: #dbdbd6 !important;
+  background: rgba(132, 121, 184, 0.3) !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-tab:hover {
+  background: rgba(132, 121, 184, 0.2) !important;
+}
+.acu-settings-overlay.night-mode .acu-settings-footer {
+  background: #3a3a3a !important;
+  border-top-color: #555 !important;
+}
+
+.acu-settings-overlay.night-mode .acu-cleanup-options,
+.acu-settings-overlay.night-mode .acu-storage-summary,
+.acu-settings-overlay.night-mode .acu-storage-details {
+  background: #3a3a3a !important;
+  border-color: #555 !important;
+}
+
+.acu-settings-overlay.night-mode .acu-warning-box {
+  background: rgba(212, 161, 92, 0.15) !important;
+  border-color: var(--acu-warning) !important;
+}
+.acu-settings-overlay.night-mode .acu-warning-content p,
+.acu-settings-overlay.night-mode .acu-warning-content strong {
+  color: #dbdbd6 !important;
+}
+
+.acu-settings-overlay.night-mode .acu-cleanup-options h4,
+.acu-settings-overlay.night-mode .acu-storage-summary h4,
+.acu-settings-overlay.night-mode .acu-storage-details h5,
+.acu-settings-overlay.night-mode .acu-protected-settings h5 {
+  color: #dbdbd6 !important;
+}
+
+.acu-settings-overlay.night-mode .acu-checkbox span,
+.acu-settings-overlay.night-mode .acu-checkbox small {
+  color: #dbdbd6 !important;
+}
+
+.acu-settings-overlay.night-mode .acu-storage-stats,
+.acu-settings-overlay.night-mode .acu-storage-item-name,
+.acu-settings-overlay.night-mode .acu-storage-item-size {
+  color: #dbdbd6 !important;
+}
+
+.acu-settings-overlay.night-mode .acu-storage-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.acu-settings-overlay.night-mode .acu-btn-secondary {
+  background: #3a3a3a !important;
+  color: #dbdbd6 !important;
+  border-color: #555 !important;
+}
+
+/* 修复确认对话框的夜间模式 */
+.acu-confirm-overlay.night-mode .acu-confirm-dialog {
+  background: #2d2d2d !important;
+  color: #dbdbd6 !important;
+}
+.acu-confirm-overlay.night-mode .acu-cleanup-list li,
+.acu-confirm-overlay.night-mode .acu-confirm-question p {
+  color: #dbdbd6 !important;
+}
+
+/* 历史记录弹窗：夜间模式按钮变量 */
+.acu-history-overlay.night-mode {
+  --acu-secondary: #3a3a3a !important;
+  --acu-text: #dbdbd6 !important;
+  --acu-border: #555 !important;
+}
+.acu-history-overlay.night-mode .acu-btn-secondary,
+.acu-history-overlay.night-mode button.acu-history-close-btn.acu-btn.acu-btn-secondary {
+  background: var(--acu-secondary) !important;
+  color: var(--acu-text) !important;
+  border: 1px solid var(--acu-border) !important;
+}
+.acu-history-overlay.night-mode .acu-btn-secondary:hover,
+.acu-history-overlay.night-mode button.acu-history-close-btn.acu-btn.acu-btn-secondary:hover {
+  background: #4a4a4a !important;
+  color: #fff !important;
+  border-color: #666 !important;
+}

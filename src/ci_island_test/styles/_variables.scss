@@ -1,0 +1,252 @@
+// CSS变量与主题 - 从原 style.scss:1-267 抽取
+// 注：本文件为模块化拆分备份，活动入口仍为 src/ci_island_test/style.scss
+
+:root {
+  /* 默认主题：日间白色 */
+  --ci-bg: rgba(255, 255, 255, 0.96);
+  --ci-bg-primary: rgba(255, 255, 255, 0.98);
+  --ci-bg-secondary: #f8f9fa;
+  --ci-glass: blur(20px);
+  --ci-border: 1px solid rgba(0, 0, 0, 0.08);
+  --ci-border-color: #eee;
+  --ci-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --ci-card-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  --ci-card-shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
+  --ci-text: #333;
+  --ci-text-primary: #333;
+  --ci-text-secondary: #666;
+  --ci-text-rgb: 51, 51, 51;
+  --ci-accent: #1a73e8;
+  --ci-accent-rgb: 26, 115, 232;
+  --ci-line-color: #ccc;
+  --ci-edit-highlight: rgba(76, 175, 80, 0.15);
+  --ci-edit-border: #4caf50;
+
+  /* Map Panel Variables */
+  --map-bg: #fdfaf5;
+  --map-text: #5a3e2b;
+  --map-border: #8c6e54;
+  --map-accent: #8c6e54;
+  --map-highlight: #b48a5c;
+}
+
+/* 主题3：夜间基础黑 - 护眼低对比 */
+body.theme-night {
+  --ci-bg: rgba(32, 32, 32, 0.95);
+  --ci-bg-primary: rgba(40, 40, 40, 0.98);
+  --ci-bg-secondary: #2a2a2a;
+  --ci-glass: blur(20px);
+  --ci-border: 1px solid rgba(255, 255, 255, 0.1);
+  --ci-border-color: #444;
+  --ci-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  --ci-card-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  --ci-card-shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.4);
+  --ci-text: #d0d0d0;
+  --ci-text-primary: #d0d0d0;
+  --ci-text-secondary: #999;
+  --ci-text-rgb: 208, 208, 208;
+  --ci-accent: #5c7cfa;
+  --ci-accent-rgb: 92, 124, 250;
+  --ci-line-color: #555;
+  --ci-edit-highlight: rgba(76, 175, 80, 0.2);
+
+  --map-bg: #2d2d2d;
+  --map-text: #c0c0c0;
+  --map-border: #505050;
+  --map-accent: #5c7cfa;
+  --map-highlight: #748ffc;
+}
+
+/* 夜间模式地图按钮特殊样式 */
+body.theme-night .ci-map-btn-circle {
+  background: #444;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.theme-night .ci-map-btn-circle:hover {
+  background: #555;
+}
+
+/* 夜间模式面板头部文字颜色 */
+body.theme-night .ci-panel-header {
+  color: #dae1e8;
+}
+
+/* 夜间模式面板圆角确认 */
+body.theme-night #ci-panel,
+body.theme-night #ci-map-panel,
+body.theme-night .ci-panel.ci-sub-panel {
+  border-radius: 16px;
+}
+
+/* 夜间模式角色卡文字清晰度优化 */
+body.theme-night .ci-left-status-item .ci-status-value {
+  color: #689f38;
+}
+
+/* 夜间模式编辑遮罩修复 */
+body.theme-night .ci-editing .ci-nb-left::before {
+  background-color: rgba(76, 175, 80, 0.25) !important;
+  box-shadow: inset 0 0 0 2px #4caf50 !important;
+}
+
+/* 实验性功能标签样式 */
+.ci-experimental-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  background: linear-gradient(135deg, #1976d2, #42a5f5);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: ci-experimental-pulse 2s ease-in-out infinite;
+  box-shadow: 0 1px 3px rgba(25, 118, 210, 0.3);
+}
+
+@keyframes ci-experimental-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* 地图功能说明容器样式 */
+.ci-map-notice {
+  background: linear-gradient(135deg, #ff980024, #ff57222e);
+  border: 2px solid #ff9800;
+  border-radius: 12px;
+  padding: 8px;
+  margin: 5px 0;
+  color: #333; /* 日间模式深灰文字 */
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.15);
+  animation: ci-notice-glow 3s ease-in-out infinite alternate;
+}
+
+.ci-notice-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #e65100;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.ci-notice-content {
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.ci-notice-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ci-step {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.ci-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #ff9800, #ff5722);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.ci-step-content {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* 夜间模式地图说明容器样式 */
+body.theme-night .ci-map-notice {
+  color: #ccc; /* 夜间模式浅灰文字 */
+  border-color: #ff9800;
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 87, 34, 0.2));
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.25);
+}
+
+body.theme-night .ci-notice-title {
+  color: #ffb74d;
+}
+
+body.theme-night .ci-step-number {
+  background: linear-gradient(135deg, #ff9800, #ff5722);
+}
+
+@keyframes ci-notice-glow {
+  0% {
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.15);
+  }
+  100% {
+    box-shadow: 0 4px 16px rgba(255, 152, 0, 0.25);
+  }
+}
+
+body.theme-night .ci-archive-item.block-style .ci-archive-label {
+  color: #ccc;
+}
+
+body.theme-night .ci-archive-item.block-style .ci-archive-value {
+  color: #aaa;
+}
+
+/* 夜间模式关系面板和世界信息面板标题栏渐变背景 */
+.theme-night #ci-relation-panel .ci-panel-header,
+.theme-night-purple #ci-relation-panel .ci-panel-header {
+  background: linear-gradient(135deg, #212122 0%, #333 100%) !important;
+}
+
+.theme-night #ci-worldinfo-panel .ci-panel-header {
+  background: linear-gradient(135deg, #212122 0%, #333 100%) !important;
+}
+
+/* 浮岛主容器：高度由内部子按钮 display 切换自然驱动（无过渡，瞬切） */
+#ci-island-container {
+  position: fixed;
+  top: 150px;
+  right: 80px;
+  width: 44px;
+  background: var(--ci-bg);
+  backdrop-filter: var(--ci-glass);
+  -webkit-backdrop-filter: var(--ci-glass);
+  border: var(--ci-border);
+  border-radius: 22px;
+  box-shadow: var(--ci-shadow);
+  z-index: 2000;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  overflow: visible;
+  user-select: none;
+  gap: 4px;
+  box-sizing: border-box;
+  height: auto;
+
+  /* 直接子元素不被压缩 */
+  & > * {
+    flex-shrink: 0;
+  }
+}
