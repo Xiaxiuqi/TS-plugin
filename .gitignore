@@ -19,7 +19,7 @@ tmp/
 plans/
 public/acu_visualizer_test/docs
 .limcode/
-src/数据库前端
+数据库前端/
 src/output-phrasing-engineering-main
 src/phone
 src/ci_island_map
