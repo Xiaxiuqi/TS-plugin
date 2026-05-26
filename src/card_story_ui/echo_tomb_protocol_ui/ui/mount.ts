@@ -1,60 +1,56 @@
 /**
  * UI 挂载管理
- * 在 AI 楼层底部挂载状态栏容器
+ * 职责：在 AI 楼层底部创建容器，推送 SFC 样式到页面 head，挂载 Vue 应用
  */
 
+import type { App as VueApp } from 'vue';
 import { createScriptIdDiv, teleportStyle } from '@util/script';
 import { registerCleanup } from '../core/memory';
-import { renderShell } from './shell';
-import type { Settings } from '../settings';
-import type { TavernBridge } from '../core/tavern';
-import type { DatabaseAPI } from '../core/database';
 
 const CONTAINER_CLASS = 'echo-tomb-status-bar';
 
 let _$container: JQuery<HTMLDivElement> | null = null;
 let _styleDestroy: (() => void) | null = null;
-
-export interface MountContext {
-  settings: Settings;
-  bridge: TavernBridge;
-  db: DatabaseAPI;
-}
+let _vueApp: VueApp | null = null;
+let _onRenderedHandler: (() => void) | null = null;
 
 /**
- * 挂载状态栏到 AI 楼层底部
- * 策略：监听消息渲染事件，在最新 AI 楼层底部插入容器
+ * 创建容器并挂载 Vue 应用。
+ * 策略：
+ *  - 容器只创建一次，Vue 只 mount 一次
+ *  - 在 AI 消息渲染事件中动态 attach 到最新 AI 楼层底部（酒馆会重新渲染消息导致原容器被丢弃，需重新 attach）
  */
-export function mountStatusBar(ctx: MountContext): void {
+export function mountStatusBar(vueApp: VueApp): void {
   // 创建容器
   _$container = createScriptIdDiv() as JQuery<HTMLDivElement>;
   _$container.addClass(CONTAINER_CLASS);
 
-  // 将样式传送到酒馆页面 head
+  // SFC 样式从 iframe head 克隆到页面 head
   const { destroy } = teleportStyle();
   _styleDestroy = destroy;
 
-  // 监听 AI 消息渲染完成，将容器插入最新 AI 楼层底部
-  const onMessageRendered = () => {
-    attachToLastAiMessage();
-    renderShell(_$container!, ctx);
-  };
+  // 挂载 Vue
+  _vueApp = vueApp;
+  vueApp.mount(_$container[0]);
 
-  eventOn(tavern_events.CHARACTER_MESSAGE_RENDERED, onMessageRendered);
-  registerCleanup(() => eventRemoveListener(tavern_events.CHARACTER_MESSAGE_RENDERED, onMessageRendered));
-
-  // 立即尝试挂载一次（如果已有消息）
+  // 首次 attach
   attachToLastAiMessage();
-  if (_$container && _$container.parent().length > 0) {
-    renderShell(_$container, ctx);
-  }
+
+  // 监听后续消息渲染，重新 attach
+  _onRenderedHandler = () => attachToLastAiMessage();
+  eventOn(tavern_events.CHARACTER_MESSAGE_RENDERED, _onRenderedHandler);
+  registerCleanup(() => {
+    if (_onRenderedHandler) {
+      eventRemoveListener(tavern_events.CHARACTER_MESSAGE_RENDERED, _onRenderedHandler);
+      _onRenderedHandler = null;
+    }
+  });
 }
 
-/** 将容器附加到最新 AI 消息楼层底部 */
+/** 将容器附加到最新 AI 消息楼层底部；如已存在则不重复插入 */
 function attachToLastAiMessage(): void {
   if (!_$container) return;
 
-  // 查找最新的 AI 消息楼层 DOM
   const $messages = $('.mes[is_user="false"]');
   if ($messages.length === 0) return;
 
@@ -62,14 +58,23 @@ function attachToLastAiMessage(): void {
   const $mesText = $lastAi.find('.mes_text');
   if ($mesText.length === 0) return;
 
-  // 避免重复挂载
+  // 如果最新 AI 楼层里已有容器，不重复追加
   if ($mesText.find(`.${CONTAINER_CLASS}`).length > 0) return;
 
+  // 从旧位置移到新位置（保持 Vue mount 状态不变）
   $mesText.append(_$container);
 }
 
-/** 卸载状态栏 */
+/** 卸载状态栏：unmount Vue 、移除 DOM 、销毁样式 */
 export function unmountStatusBar(): void {
+  if (_vueApp) {
+    try {
+      _vueApp.unmount();
+    } catch (e) {
+      console.error('[EchoTomb] unmount Vue app failed:', e);
+    }
+    _vueApp = null;
+  }
   if (_$container) {
     _$container.remove();
     _$container = null;
@@ -79,5 +84,3 @@ export function unmountStatusBar(): void {
     _styleDestroy = null;
   }
 }
-
-registerCleanup(unmountStatusBar);

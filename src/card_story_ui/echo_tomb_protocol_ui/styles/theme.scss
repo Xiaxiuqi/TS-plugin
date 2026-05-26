@@ -1,0 +1,580 @@
+/**
+ * 回响坟冢 · 状态栏 主题与全局样式
+ * 设计语言：未来感、高对比、带 holographic 质感，所有颜色使用 CSS 变量
+ * 主题切换只换变量，不重建 DOM
+ * 命名空间：.echo-tomb-status-bar 作为顶层隔离，所有选择器下沉在其下
+ */
+
+/* === 全局重置：仅限状态栏下 === */
+.echo-tomb-status-bar {
+  /* 公共字体与动效 */
+  --et-font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --et-radius-sm: 4px;
+  --et-radius-md: 8px;
+  --et-radius-lg: 12px;
+  --et-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --et-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.18);
+  --et-shadow-glow: 0 0 12px var(--et-accent-glow);
+  --et-transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  font-family: var(--et-font-family);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--et-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* === 外壳 === */
+.echo-tomb-status-bar .et-shell {
+  position: relative;
+  margin-top: 12px;
+  padding: 14px 14px 10px;
+  border-radius: var(--et-radius-lg);
+  background: var(--et-bg);
+  color: var(--et-text);
+  border: 1px solid var(--et-border);
+  overflow: hidden;
+  box-shadow: var(--et-shadow-md);
+  transition: background-color var(--et-transition), color var(--et-transition), border-color var(--et-transition);
+
+  /* 带一条高光拦位线，加强未来感 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--et-accent) 25%,
+      var(--et-accent-bright) 50%,
+      var(--et-accent) 75%,
+      transparent 100%
+    );
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+/* === 日间主题 === */
+.echo-tomb-status-bar .et-theme-day {
+  --et-bg: linear-gradient(135deg, rgba(238, 244, 255, 0.94), rgba(220, 230, 248, 0.92));
+  --et-bg-card: rgba(255, 255, 255, 0.78);
+  --et-bg-card-hover: rgba(255, 255, 255, 0.92);
+  --et-bg-elevated: rgba(255, 255, 255, 0.95);
+  --et-text: #1a2238;
+  --et-text-muted: #5a6378;
+  --et-text-faint: #8b94a8;
+  --et-border: rgba(80, 110, 180, 0.18);
+  --et-border-strong: rgba(80, 110, 180, 0.35);
+  --et-accent: #3a6fb5;
+  --et-accent-bright: #5b8fd5;
+  --et-accent-glow: rgba(91, 143, 213, 0.35);
+  --et-success: #2c8a5d;
+  --et-warning: #c47a1f;
+  --et-danger: #c0392b;
+  --et-tab-active-bg: linear-gradient(135deg, #3a6fb5, #5b8fd5);
+  --et-tab-active-text: #ffffff;
+}
+
+/* === 夜间主题 === */
+.echo-tomb-status-bar .et-theme-night {
+  --et-bg: linear-gradient(135deg, rgba(12, 16, 32, 0.96), rgba(20, 24, 48, 0.94));
+  --et-bg-card: rgba(28, 34, 58, 0.72);
+  --et-bg-card-hover: rgba(38, 46, 78, 0.85);
+  --et-bg-elevated: rgba(34, 40, 68, 0.92);
+  --et-text: #e6eaf6;
+  --et-text-muted: #98a0b8;
+  --et-text-faint: #6c748a;
+  --et-border: rgba(120, 140, 200, 0.2);
+  --et-border-strong: rgba(140, 160, 220, 0.35);
+  --et-accent: #6b8cce;
+  --et-accent-bright: #9ab4e8;
+  --et-accent-glow: rgba(107, 140, 206, 0.4);
+  --et-success: #4fc188;
+  --et-warning: #e0a050;
+  --et-danger: #e57373;
+  --et-tab-active-bg: linear-gradient(135deg, #5675b8, #8aa8e0);
+  --et-tab-active-text: #ffffff;
+}
+
+/* === 顶部 === */
+.echo-tomb-status-bar .et-shell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--et-border);
+}
+
+.echo-tomb-status-bar .et-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.echo-tomb-status-bar .et-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--et-bg-card);
+  font-size: 11.5px;
+  color: var(--et-text-muted);
+  border: 1px solid var(--et-border);
+  white-space: nowrap;
+  transition: background var(--et-transition), border-color var(--et-transition);
+}
+.echo-tomb-status-bar .et-chip .et-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.echo-tomb-status-bar .et-chip-combat {
+  border-color: var(--et-danger);
+  color: var(--et-danger);
+  background: color-mix(in srgb, var(--et-danger) 8%, var(--et-bg-card));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--et-danger) 40%, transparent);
+}
+
+/* === Tab 导航 === */
+.echo-tomb-status-bar .et-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+.echo-tomb-status-bar .et-tab-bar::-webkit-scrollbar {
+  height: 4px;
+}
+.echo-tomb-status-bar .et-tab-bar::-webkit-scrollbar-thumb {
+  background: var(--et-border-strong);
+  border-radius: 2px;
+}
+
+.echo-tomb-status-bar .et-tab {
+  position: relative;
+  padding: 5px 14px;
+  border-radius: var(--et-radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  background: var(--et-bg-card);
+  color: var(--et-text-muted);
+  border: 1px solid var(--et-border);
+  user-select: none;
+  transition: background var(--et-transition), color var(--et-transition), border-color var(--et-transition),
+    transform var(--et-transition);
+}
+.echo-tomb-status-bar .et-tab:hover {
+  background: var(--et-bg-card-hover);
+  color: var(--et-text);
+  border-color: var(--et-border-strong);
+}
+.echo-tomb-status-bar .et-tab--active {
+  background: var(--et-tab-active-bg);
+  color: var(--et-tab-active-text);
+  border-color: transparent;
+  box-shadow: 0 0 10px var(--et-accent-glow);
+}
+.echo-tomb-status-bar .et-tab--player::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: var(--et-accent-bright);
+  vertical-align: middle;
+  box-shadow: 0 0 6px var(--et-accent-glow);
+}
+
+/* === 内容区 === */
+.echo-tomb-status-bar .et-content {
+  min-height: 80px;
+  padding: 10px;
+  background: var(--et-bg-card);
+  border-radius: var(--et-radius-md);
+  border: 1px solid var(--et-border);
+}
+
+.echo-tomb-status-bar .et-empty,
+.echo-tomb-status-bar .et-loading {
+  text-align: center;
+  color: var(--et-text-muted);
+  padding: 24px 12px;
+  font-size: 12px;
+}
+.echo-tomb-status-bar .et-loading::after {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: var(--et-accent-bright);
+  vertical-align: middle;
+  animation: et-blink 1.2s ease-in-out infinite;
+}
+@keyframes et-blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* === 底部按钮区 === */
+.echo-tomb-status-bar .et-shell-footer {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+.echo-tomb-status-bar .et-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--et-radius-sm);
+  border: 1px solid var(--et-border-strong);
+  background: var(--et-bg-card);
+  color: var(--et-text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--et-transition), border-color var(--et-transition), transform var(--et-transition),
+    box-shadow var(--et-transition);
+}
+.echo-tomb-status-bar .et-btn:hover {
+  background: var(--et-bg-card-hover);
+  border-color: var(--et-accent);
+  box-shadow: 0 0 8px var(--et-accent-glow);
+}
+.echo-tomb-status-bar .et-btn:active {
+  transform: translateY(1px);
+}
+.echo-tomb-status-bar .et-btn--active {
+  background: var(--et-tab-active-bg);
+  color: var(--et-tab-active-text);
+  border-color: transparent;
+}
+.echo-tomb-status-bar .et-btn .et-icon {
+  width: 14px;
+  height: 14px;
+}
+.echo-tomb-status-bar .et-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--et-text-muted);
+  padding: 4px 8px;
+}
+.echo-tomb-status-bar .et-btn--ghost:hover {
+  background: var(--et-bg-card);
+  color: var(--et-text);
+  box-shadow: none;
+}
+
+/* === 卡片、列表公用原子 === */
+.echo-tomb-status-bar .et-card {
+  padding: 10px 12px;
+  background: var(--et-bg-elevated);
+  border-radius: var(--et-radius-md);
+  border: 1px solid var(--et-border);
+  box-shadow: var(--et-shadow-sm);
+}
+.echo-tomb-status-bar .et-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--et-text);
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.echo-tomb-status-bar .et-card-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  background: var(--et-accent);
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--et-accent-glow);
+}
+
+.echo-tomb-status-bar .et-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--et-text-muted);
+}
+.echo-tomb-status-bar .et-list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+}
+.echo-tomb-status-bar .et-list-row > .et-key {
+  color: var(--et-text-faint);
+  flex-shrink: 0;
+}
+.echo-tomb-status-bar .et-list-row > .et-val {
+  color: var(--et-text);
+  text-align: right;
+  word-break: break-all;
+}
+
+/* === 进度条 === */
+.echo-tomb-status-bar .et-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--et-bg-card);
+  overflow: hidden;
+  border: 1px solid var(--et-border);
+}
+.echo-tomb-status-bar .et-bar-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--et-accent), var(--et-accent-bright));
+  transition: width var(--et-transition);
+  box-shadow: 0 0 6px var(--et-accent-glow);
+}
+.echo-tomb-status-bar .et-bar-fill--hp {
+  background: linear-gradient(90deg, #d65a5a, #f08585);
+}
+.echo-tomb-status-bar .et-bar-fill--mp {
+  background: linear-gradient(90deg, #5a78d6, #85a8f0);
+}
+.echo-tomb-status-bar .et-bar-fill--exp {
+  background: linear-gradient(90deg, #d6a45a, #f0c785);
+}
+
+/* === 雷达图 === */
+.echo-tomb-status-bar .et-radar {
+  display: block;
+  margin: 0 auto;
+}
+.echo-tomb-status-bar .et-radar-axis {
+  stroke: var(--et-border-strong);
+  fill: none;
+  stroke-width: 1;
+}
+.echo-tomb-status-bar .et-radar-grid {
+  stroke: var(--et-border);
+  fill: none;
+  stroke-width: 0.5;
+}
+.echo-tomb-status-bar .et-radar-shape {
+  fill: var(--et-accent-glow);
+  stroke: var(--et-accent-bright);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.echo-tomb-status-bar .et-radar-label {
+  fill: var(--et-text-muted);
+  font-size: 10px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.echo-tomb-status-bar .et-radar-value {
+  fill: var(--et-text);
+  font-size: 9px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+/* === 背包、装备、技能列表 === */
+.echo-tomb-status-bar .et-grid {
+  display: grid;
+  gap: 6px;
+}
+.echo-tomb-status-bar .et-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.echo-tomb-status-bar .et-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 480px) {
+  .echo-tomb-status-bar .et-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.echo-tomb-status-bar .et-slot {
+  padding: 6px 8px;
+  border-radius: var(--et-radius-sm);
+  background: var(--et-bg-card);
+  border: 1px solid var(--et-border);
+  font-size: 11.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  transition: border-color var(--et-transition), background var(--et-transition);
+}
+.echo-tomb-status-bar .et-slot:hover {
+  border-color: var(--et-accent);
+  background: var(--et-bg-card-hover);
+}
+.echo-tomb-status-bar .et-slot-key {
+  color: var(--et-text-faint);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.echo-tomb-status-bar .et-slot-val {
+  color: var(--et-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.echo-tomb-status-bar .et-slot-empty .et-slot-val {
+  color: var(--et-text-faint);
+  font-style: italic;
+}
+
+/* === 地图面板 === */
+.echo-tomb-status-bar .et-map-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--et-radius-md);
+  overflow: hidden;
+  background: #0a0d1a;
+  border: 1px solid var(--et-border-strong);
+  cursor: grab;
+}
+.echo-tomb-status-bar .et-map-wrapper:active {
+  cursor: grabbing;
+}
+.echo-tomb-status-bar .et-map-wrapper svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: center;
+  transition: transform 80ms linear;
+}
+.echo-tomb-status-bar .et-map-error {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  font-size: 11px;
+  color: var(--et-warning);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+  border-radius: var(--et-radius-sm);
+}
+
+/* === 升级面板 === */
+.echo-tomb-status-bar .et-stat-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 80px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+.echo-tomb-status-bar .et-stat-row__label {
+  color: var(--et-text-muted);
+  font-size: 12px;
+}
+.echo-tomb-status-bar .et-stat-row__bar {
+  position: relative;
+  height: 6px;
+  background: var(--et-bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.echo-tomb-status-bar .et-stat-row__bar-fill {
+  position: absolute;
+  inset: 0;
+  width: var(--ratio, 0%);
+  background: linear-gradient(90deg, var(--et-accent), var(--et-accent-bright));
+}
+.echo-tomb-status-bar .et-stat-row__ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.echo-tomb-status-bar .et-stat-row__num {
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.echo-tomb-status-bar .et-stepper {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--et-border-strong);
+  background: var(--et-bg-card);
+  color: var(--et-text);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: background var(--et-transition), border-color var(--et-transition);
+}
+.echo-tomb-status-bar .et-stepper:hover:not(:disabled) {
+  background: var(--et-accent);
+  color: var(--et-tab-active-text);
+  border-color: var(--et-accent);
+}
+.echo-tomb-status-bar .et-stepper:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* === 表单 === */
+.echo-tomb-status-bar .et-input,
+.echo-tomb-status-bar .et-textarea,
+.echo-tomb-status-bar .et-select {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--et-radius-sm);
+  border: 1px solid var(--et-border-strong);
+  background: var(--et-bg-card);
+  color: var(--et-text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--et-transition), box-shadow var(--et-transition);
+}
+.echo-tomb-status-bar .et-input:focus,
+.echo-tomb-status-bar .et-textarea:focus,
+.echo-tomb-status-bar .et-select:focus {
+  border-color: var(--et-accent);
+  box-shadow: 0 0 6px var(--et-accent-glow);
+}
+.echo-tomb-status-bar .et-textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+/* === 图标：本身不带颜色，stroke=currentColor === */
+.echo-tomb-status-bar .et-icon {
+  display: inline-block;
+  vertical-align: middle;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

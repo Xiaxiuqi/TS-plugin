@@ -51,6 +51,13 @@ export function findRowByCharId(table: ParsedTable, charId: string): TableRow | 
 }
 
 /**
+ * 按角色ID 查找所有行（属性表 6 行、装备表 12 行、技能表 N 行均按此定位）
+ */
+export function filterRowsByCharId(table: ParsedTable, charId: string): TableRow[] {
+  return table.rows.filter(row => row['角色ID'] === charId);
+}
+
+/**
  * 过滤在场角色（是否离场 === '否'）
  */
 export function filterPresent(table: ParsedTable): TableRow[] {
