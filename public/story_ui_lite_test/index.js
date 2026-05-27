@@ -520,10 +520,18 @@
       if (!block) return;
       const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
       const slice = String(rawText || '').slice(startIndex);
-      const match = slice.match(pattern);
+      let match = slice.match(pattern);
+
+      // fallback: bp-panel-newvars 裸标签匹配
+      if (!match && module?.id === 'bp-panel-newvars') {
+        match = slice.match(/<bp_panel_(?:player|enemy)\b[^>]*>[\s\S]*<\/bp_panel_(?:player|enemy)>/i);
+      }
+
       if (!match || match.index === undefined) return;
-      const absoluteStart = startIndex + match.index;
-      const absoluteEnd = absoluteStart + match[0].length;
+      const matchStart = match.index;
+      const matchEnd = matchStart + match[0].length;
+      const absoluteStart = startIndex + matchStart;
+      const absoluteEnd = startIndex + matchEnd;
       if (
         !best ||
         absoluteStart < best.start ||
