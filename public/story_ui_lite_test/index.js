@@ -454,14 +454,6 @@
       );
     }
 
-    if (!match && module?.id === 'bp-panel-newvars') {
-      // fallback: 没有外层 <bp_panel> 时，匹配裸 <bp_panel_player>/<bp_panel_enemy> 块
-      const fbMatch = source.match(/<bp_panel_(?:player|enemy)\b[^>]*>[\s\S]*<\/bp_panel_(?:player|enemy)>/i);
-      if (fbMatch) {
-        match = fbMatch;
-      }
-    }
-
     if (!match) return null;
 
     return {
@@ -520,13 +512,7 @@
       if (!block) return;
       const pattern = new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i');
       const slice = String(rawText || '').slice(startIndex);
-      let match = slice.match(pattern);
-
-      // fallback: bp-panel-newvars 裸标签匹配
-      if (!match && module?.id === 'bp-panel-newvars') {
-        match = slice.match(/<bp_panel_(?:player|enemy)\b[^>]*>[\s\S]*<\/bp_panel_(?:player|enemy)>/i);
-      }
-
+      const match = slice.match(pattern);
       if (!match || match.index === undefined) return;
       const matchStart = match.index;
       const matchEnd = matchStart + match[0].length;
