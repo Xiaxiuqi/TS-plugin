@@ -96,3 +96,23 @@ story_ui_lite_test/
   - `mvu-status-newvars`: `0.1.1-releasetest-newvars-inline-update` → `0.1.1-lite_test-newvars-inline-update`
   - `story-engine`: `0.3.0-prod-template-aligned` → `0.3.0-lite_test`
 - 审计修复：清理 `getExclusiveModuleId` 注释中的旧模块 ID 残留
+
+
+### v1.0.0 (2026-05-27)
+
+**BP战力雷达模块完全重写**
+
+- 适配新的 BP 数据格式：`<bp_panel_player>` / `<bp_panel_enemy>` 分区结构
+- 新解析器：逐行 `key: value` 解析，支持中英文冒号，支持多 player/enemy 块
+- 新UI布局：左右双栏（player 左 / enemy 右）+ 侧边竖向 tab 切换
+- 单 player + 单 enemy 时隐藏 tab，多角色时显示 tab 可切换
+- 完整日/夜主题支持
+- 响应式布局（移动端自动切换为纵向堆叠）
+- 事件委托到 document 级别，解决 after-native 挂载后事件丢失问题
+- 字段映射：名称、最终BP、战力等级、行为模式、咒力量上限/当前/精度、总肉体值_BPA、基础肉体、武艺、术式名称/强度_BPB/潜力/精通、熔断状态、生理状态、特性备注
+- 审计修复：
+  - 缺失名称时给默认名而非丢弃整块
+  - 生理状态 0% 时正确显示
+  - 正则标签匹配增强（容忍属性和空格）
+  - 保留 `_BPA` / `_BPB` 指标语义标签
+- MODULE_VERSION: `1.0.0-lite_test-dual-panel`

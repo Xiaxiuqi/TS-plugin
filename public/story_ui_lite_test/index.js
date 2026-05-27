@@ -25,7 +25,7 @@
     'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
-    'bp-panel-newvars': ['BP战力雷达', '已扫描目标', '扫描状态', '总BP', 'BP总值'],
+    'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'BP战力雷达', '最终BP', '战力等级'],
     'story-engine': ['故事引擎', '全域锚定', '行为逻辑锁', '故事主线', '最终修正', 'NPC驱动', '对战双方'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
     'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
