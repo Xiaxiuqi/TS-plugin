@@ -5,8 +5,8 @@
   const MODULE_ID = 'bp-panel-newvars';
   const MODULE_VERSION = '1.0.0-lite_test-dual-panel';
   const BLOCK = {
-    open: '<bp_panel_player>',
-    close: '</bp_panel_player>',
+    open: '<bp_panel>',
+    close: '</bp_panel>',
   };
 
   // ─── 工具函数 ───

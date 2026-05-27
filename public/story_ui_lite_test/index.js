@@ -1,16 +1,16 @@
 (() => {
   const CONFIG = {
-    env: 'lite_test',
-    displayEnv: '精简测试版',
-    version: 'lite_test-0.1.0',
-    publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
-    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_ui_lite_test/',
+    env: 'releasetest',
+    displayEnv: '发布测试版',
+    version: 'releasetest-0.1.1',
+    publicBaseUrl: 'https://ts-plugin.pages.dev/story_regex_ui_releasetest/',
+    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_regex_ui_releasetest/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
     reloadButtonName: '重载美化',
-    managerRootId: 'jjks-story-ui-manager-lite_test',
+    managerRootId: 'jjks-story-ui-manager-releasetest',
   };
 
   const INDEX_FLAG = `__jjksStoryUiIndex_${CONFIG.env}`;
@@ -22,13 +22,24 @@
     'bp-panel-newvars': 'BP战力雷达（兼容）',
     'world-log': '世界运行报告',
     'relation-status': '角色羁绊档案',
+    'variable-update': '变量更新',
+    'mvu-status': 'MVU状态栏',
     'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
-    'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'BP战力雷达', '最终BP', '战力等级'],
+    'bp-panel-newvars': ['BP战力雷达', '已扫描目标', '扫描状态', '总BP', 'BP总值'],
     'story-engine': ['故事引擎', '全域锚定', '行为逻辑锁', '故事主线', '最终修正', 'NPC驱动', '对战双方'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
     'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
+    'variable-update': ['变量更新', '本回合变量变动记录', 'UpdateVariable', '战技', '咒力', '世界状态'],
+    'mvu-status': [
+      '<StatusPlaceHolderImpl/>',
+      'StatusPlaceHolderImpl',
+      'MVU状态栏',
+      '世界状态',
+      '亲密状态',
+      '变量更新',
+    ],
     'mvu-status-newvars': [
       '<StatusPlaceHolderImpl/>',
       'StatusPlaceHolderImpl',
@@ -43,6 +54,8 @@
     'bp-panel-newvars',
     'relation-status',
     'world-log',
+    'variable-update',
+    'mvu-status',
     'mvu-status-newvars',
   ];
 
@@ -126,7 +139,7 @@
 
     const scriptSrc = Array.from(document.scripts)
       .map(script => script.src)
-      .find(src => src.includes('/story_ui_lite_test/index.js'));
+      .find(src => src.includes('/story_regex_ui_releasetest/index.js'));
     const fromScriptList = normalizeBaseUrl(scriptSrc || '');
     if (fromScriptList) return fromScriptList;
 
@@ -514,10 +527,8 @@
       const slice = String(rawText || '').slice(startIndex);
       const match = slice.match(pattern);
       if (!match || match.index === undefined) return;
-      const matchStart = match.index;
-      const matchEnd = matchStart + match[0].length;
-      const absoluteStart = startIndex + matchStart;
-      const absoluteEnd = startIndex + matchEnd;
+      const absoluteStart = startIndex + match.index;
+      const absoluteEnd = absoluteStart + match[0].length;
       if (
         !best ||
         absoluteStart < best.start ||
@@ -1282,7 +1293,8 @@
   }
 
   function getExclusiveModuleId(moduleId) {
-    // 精简版无互斥模块配置
+    if (moduleId === 'mvu-status') return 'mvu-status-newvars';
+    if (moduleId === 'mvu-status-newvars') return 'mvu-status';
     return '';
   }
 
