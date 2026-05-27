@@ -23,9 +23,9 @@
 /* ═══ Night Theme ═══ */
 
 .bp-radar-widget.bp-night-ui {
-  --bp-bg: #1a1a22;
-  --bp-panel: rgba(26, 26, 34, 0.97);
-  --bp-card: rgba(32, 32, 42, 0.92);
+  --bp-bg: #141418;
+  --bp-panel: rgba(22, 22, 30, 0.97);
+  --bp-card: rgba(42, 42, 56, 0.94);
   --bp-text: #e0dcd6;
   --bp-muted: #9a9488;
   --bp-faint: #6a6458;
@@ -213,8 +213,11 @@
 }
 
 .bp-tab-item {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: auto;
+  padding: 6px 4px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -250,11 +253,6 @@
   border-radius: 10px;
   background: var(--bp-card);
   box-shadow: var(--bp-shadow-soft);
-  border-left: 3px solid var(--bp-player-accent);
-}
-
-.bp-target-card.bp-role-enemy {
-  border-left-color: var(--bp-enemy-accent);
 }
 
 .bp-target-header {
@@ -296,6 +294,37 @@
   color: var(--bp-gold);
   background: rgba(183, 154, 98, 0.12);
   letter-spacing: 0.06em;
+}
+
+/* 等级染色 */
+.bp-target-tier[data-tier*="四级"] {
+  color: #6a8f6a;
+  background: rgba(106, 143, 106, 0.12);
+}
+
+.bp-target-tier[data-tier*="三级"] {
+  color: #5a7a8f;
+  background: rgba(90, 122, 143, 0.12);
+}
+
+.bp-target-tier[data-tier*="二级"] {
+  color: #7a6f94;
+  background: rgba(122, 111, 148, 0.12);
+}
+
+.bp-target-tier[data-tier*="一级"] {
+  color: #b79a62;
+  background: rgba(183, 154, 98, 0.15);
+}
+
+.bp-target-tier[data-tier*="特级"] {
+  color: #c45a4a;
+  background: rgba(196, 90, 74, 0.12);
+}
+
+.bp-target-tier[data-tier*="强特级"] {
+  color: #d4364a;
+  background: rgba(212, 54, 74, 0.15);
 }
 
 /* ═══ BP Row ═══ */

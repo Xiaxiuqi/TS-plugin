@@ -248,11 +248,10 @@
 
   function renderSideTab(targets, role, activeIndex) {
     if (targets.length <= 1) return '';
-    const roleLabel = role === 'player' ? 'P' : 'E';
     const items = targets
       .map(
         (target, index) =>
-          `<button class="bp-tab-item ${index === activeIndex ? 'active' : ''}" data-bp-tab-role="${role}" data-bp-tab-index="${index}" type="button" title="${escapeHtml(target.name)}">${roleLabel}${index + 1}</button>`,
+          `<button class="bp-tab-item ${index === activeIndex ? 'active' : ''}" data-bp-tab-role="${role}" data-bp-tab-index="${index}" type="button" title="${escapeHtml(target.name)}">${escapeHtml(target.name.slice(0, 4))}</button>`,
       )
       .join('');
     return `<div class="bp-side-tabs bp-tabs-${role}">${items}</div>`;
@@ -304,7 +303,7 @@
       <div class="story-ui-root story-ui-bp story-ui-bp-newvars bp-radar-widget ${wrapperClass}" data-story-ui-module="${MODULE_ID}">
         <details>
           <summary class="bp-summary" aria-label="展开或收起BP战力雷达">
-            <span class="bp-toggle-icon">✦</span>
+            <span class="bp-toggle-icon" data-story-ui-theme-toggle title="切换日夜主题">✦</span>
             <span class="bp-summary-text">
               <span class="bp-toggle-title">BP战力雷达</span>
               <span class="bp-toggle-subtitle">${escapeHtml(subtitle)}</span>
