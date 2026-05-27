@@ -454,6 +454,14 @@
       );
     }
 
+    if (!match && module?.id === 'bp-panel-newvars') {
+      // fallback: 没有外层 <bp_panel> 时，匹配裸 <bp_panel_player>/<bp_panel_enemy> 块
+      const fbMatch = source.match(/<bp_panel_(?:player|enemy)\b[^>]*>[\s\S]*<\/bp_panel_(?:player|enemy)>/i);
+      if (fbMatch) {
+        match = fbMatch;
+      }
+    }
+
     if (!match) return null;
 
     return {
