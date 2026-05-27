@@ -182,7 +182,7 @@
   function renderStatLine(label, value) {
     if (!value && value !== 0) return '';
     const text = String(value);
-    if (!text || text === '0' && label !== '咒力操纵精度') return '';
+    if (!text) return '';
     return `<div class="bp-stat-line"><span class="bp-stat-label">${escapeHtml(label)}</span><span class="bp-stat-value">${escapeHtml(text)}</span></div>`;
   }
 
@@ -203,21 +203,21 @@
         <div class="bp-target-header">
           <span class="bp-role-icon">${roleIcon}</span>
           <span class="bp-target-name">${escapeHtml(target.name)}</span>
-          <span class="bp-target-tier" data-tier="${escapeHtml(target.battleTier)}">${escapeHtml(target.battleTier)}</span>
+          ${target.battleTier ? `<span class="bp-target-tier" data-tier="${escapeHtml(target.battleTier)}">${escapeHtml(target.battleTier)}</span>` : ''}
         </div>
 
-        <div class="bp-target-bp-row">
+        ${target.totalBp ? `<div class="bp-target-bp-row">
           <div class="bp-bp-number">${escapeHtml(target.totalBp)}</div>
           <div class="bp-bp-label">最终BP</div>
           <div class="bp-meter-track bp-bp-track">
             <span class="bp-meter-fill bp-fill-bp" style="--bp-meter:${bpPercent}%"></span>
           </div>
-        </div>
+        </div>` : ''}
 
         ${target.actionMode ? `<div class="bp-action-mode"><span class="bp-action-label">行为模式</span>${escapeHtml(target.actionMode)}</div>` : ''}
 
         <div class="bp-meters-section">
-          ${ceMaxNum > 0 || ceNum > 0 ? renderMeter('咒力', target.ceCurrent, target.ceMax, 'bp-fill-ce') : `<div class="bp-stat-line"><span class="bp-stat-label">咒力</span><span class="bp-stat-value bp-zero">0</span></div>`}
+          ${target.ceCurrent || target.ceMax ? renderMeter('咒力', target.ceCurrent || '0', target.ceMax || '0', 'bp-fill-ce') : ''}
           ${hasPhysicalState ? renderMeter('生理状态', String(parseNumber(target.physicalState)), '100', 'bp-fill-hp') : ''}
         </div>
 
