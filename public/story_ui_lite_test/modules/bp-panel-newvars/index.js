@@ -251,7 +251,7 @@
     const items = targets
       .map(
         (target, index) =>
-          `<button class="bp-tab-item ${index === activeIndex ? 'active' : ''}" data-bp-tab-role="${role}" data-bp-tab-index="${index}" type="button" title="${escapeHtml(target.name)}">${escapeHtml(target.name.slice(0, 4))}</button>`,
+          `<button class="bp-tab-item ${index === activeIndex ? 'active' : ''}" data-bp-tab-role="${role}" data-bp-tab-index="${index}" type="button" title="${escapeHtml(target.name)}">${escapeHtml(target.name)}</button>`,
       )
       .join('');
     return `<div class="bp-side-tabs bp-tabs-${role}">${items}</div>`;
