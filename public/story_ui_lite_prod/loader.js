@@ -34,11 +34,6 @@
         script: 'modules/bp-panel-newvars/index.js',
       },
       {
-        id: 'story-engine',
-        css: 'modules/story-engine/style.css',
-        script: 'modules/story-engine/index.js',
-      },
-      {
         id: 'world-log',
         css: 'modules/world-log/style.css',
         script: 'modules/world-log/index.js',

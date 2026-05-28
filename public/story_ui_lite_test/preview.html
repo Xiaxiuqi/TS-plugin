@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BP战力雷达 - 前端预览</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+      background: #f0ebe3;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    body.night {
+      background: #141418;
+    }
+    .preview-controls {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 999;
+      display: flex;
+      gap: 8px;
+    }
+    .preview-controls button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      background: #a07e74;
+      color: #fff;
+      transition: all 0.2s;
+    }
+    .preview-controls button:hover { opacity: 0.85; }
+    .preview-controls button.active { background: #5a7a8f; }
+    .preview-title {
+      text-align: center;
+      color: #756b60;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+    }
+    body.night .preview-title { color: #9a9488; }
+  </style>
+  <link rel="stylesheet" href="modules/bp-panel-newvars/style.css">
+</head>
+<body>
+  <div class="preview-controls">
+    <button onclick="toggleTheme()" id="themeBtn">切换夜间模式</button>
+    <button onclick="showSingle()">单人模式</button>
+    <button onclick="showMulti()">多人模式</button>
+  </div>
+  <div class="preview-title">BP战力雷达 · 前端预览 · story_ui_lite_test</div>
+  <div id="container"></div>
+
+  <script>
+    // Mock StoryRegexUI DOM helper
+    window.StoryRegexUI = window.StoryRegexUI || {};
+    window.StoryRegexUI.dom = {
+      escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = String(value ?? '');
+        return div.innerHTML;
+      },
+      createElement(tag, options = {}) {
+        const el = document.createElement(tag);
+        if (options.className) el.className = options.className;
+        if (options.html) el.innerHTML = options.html;
+        return el;
+      }
+    };
+    window.StoryRegexUI.theme = {
+      getTheme() { return document.body.classList.contains('night') ? 'night' : 'day'; }
+    };
+    window.StoryRegexUI.registry = {
+      register(module) {
+        window.__bpModule = module;
+        console.log('[Preview] Module registered:', module.id, module.version);
+      }
+    };
+  </script>
+  <script src="modules/bp-panel-newvars/index.js"></script>
+  <script>
+    const SINGLE_DATA = `<bp_panel>
+<bp_panel_player>
+名称: 王皓光
+最终BP: 74
+战力等级: 四级
+行为模式：使用无为转变攻击
+咒力量上限: 200
+咒力量当前: 200
+咒力操纵精度: 0.1
+总肉体值_BPA: 62
+基础肉体: 50
+武艺: 10
+术式名称: 无为转变
+术式强度_BPB: 124
+术式潜力: 1200
+术式精通: 1
+熔断状态: 未熔断
+生理状态: 40%
+特性备注: 灵魂庇护（被动）
+</bp_panel_player>
+<bp_panel_enemy>
+名称: 伏黑甚尔
+最终BP: 3328
+战力等级: 强特级
+行为模式：纯肉搏，配合海量咒具
+咒力量上限: 0
+咒力量当前: 0
+咒力操纵精度: 0
+总肉体值_BPA: 2800
+基础肉体: 2000
+武艺: 800
+术式名称: 无
+术式强度_BPB: 0
+术式潜力: 0
+术式精通: 0
+熔断状态:未熔断
+生理状态: 90%
+特性备注: 天与咒缚（纯肉体）: 以咒力归零为代价，获得极端强化的肉体与物理攻击补正。（战力补正标签：最终BP*2）
+</bp_panel_enemy>
+</bp_panel>`;
+
+    const MULTI_DATA = `<bp_panel>
+<bp_panel_player>
+名称: 王皓光
+最终BP: 74
+战力等级: 四级
+行为模式：使用无为转变攻击
+咒力量上限: 200
+咒力量当前: 150
+咒力操纵精度: 0.1
+总肉体值_BPA: 62
+基础肉体: 50
+武艺: 10
+术式名称: 无为转变
+术式强度_BPB: 124
+术式潜力: 1200
+术式精通: 1
+熔断状态: 未熔断
+生理状态: 40%
+特性备注: 灵魂庇护（被动）
+</bp_panel_player>
+<bp_panel_player>
+名称: 五条悟
+最终BP: 9500
+战力等级: 特级
+行为模式：无下限术式输出
+咒力量上限: 99999
+咒力量当前: 99999
+咒力操纵精度: 0.01
+总肉体值_BPA: 1800
+基础肉体: 1200
+武艺: 600
+术式名称: 无下限咒术
+术式强度_BPB: 8000
+术式潜力: 99999
+术式精通: 10
+熔断状态: 未熔断
+生理状态: 100%
+特性备注: 反转术式红（自动）、六眼、无量空处
+</bp_panel_player>
+<bp_panel_enemy>
+名称: 伏黑甚尔
+最终BP: 3328
+战力等级: 强特级
+行为模式：纯肉搏，配合海量咒具
+咒力量上限: 0
+咒力量当前: 0
+咒力操纵精度: 0
+总肉体值_BPA: 2800
+基础肉体: 2000
+武艺: 800
+术式名称: 无
+术式强度_BPB: 0
+术式潜力: 0
+术式精通: 0
+熔断状态: 未熔断
+生理状态: 90%
+特性备注: 天与咒缚（纯肉体）
+</bp_panel_enemy>
+<bp_panel_enemy>
+名称: 两面宿傩
+最终BP: 12000
+战力等级: 特级
+行为模式：领域展开 + 式神召唤
+咒力量上限: 80000
+咒力量当前: 75000
+咒力操纵精度: 0.01
+总肉体值_BPA: 1600
+基础肉体: 1000
+武艺: 600
+术式名称: 十种影法
+术式强度_BPB: 10000
+术式潜力: 99999
+术式精通: 10
+熔断状态: 未熔断
+生理状态: 100%
+特性备注: 式神「魔虚罗」、领域展开「幻影天地」
+</bp_panel_enemy>
+</bp_panel>`;
+
+    function render(rawText) {
+      const module = window.__bpModule;
+      if (!module) { console.error('Module not registered'); return; }
+      const node = module.renderContent('', { rawText });
+      const container = document.getElementById('container');
+      container.innerHTML = '';
+      if (node) {
+        container.appendChild(node);
+        module.mount(node);
+      } else {
+        container.innerHTML = '<div style="text-align:center;color:#a07e74;padding:40px;">No render output. Check console.</div>';
+      }
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('night');
+      const btn = document.getElementById('themeBtn');
+      btn.textContent = document.body.classList.contains('night') ? '切换日间模式' : '切换夜间模式';
+      // Re-render with current data
+      const current = document.getElementById('container').dataset.mode || 'single';
+      render(current === 'multi' ? MULTI_DATA : SINGLE_DATA);
+    }
+
+    function showSingle() {
+      document.getElementById('container').dataset.mode = 'single';
+      render(SINGLE_DATA);
+    }
+
+    function showMulti() {
+      document.getElementById('container').dataset.mode = 'multi';
+      render(MULTI_DATA);
+    }
+
+    // Initial render
+    showSingle();
+  </script>
+</body>
+</html>

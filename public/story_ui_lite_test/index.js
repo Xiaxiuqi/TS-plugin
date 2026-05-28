@@ -18,7 +18,6 @@
   const LOADER_MARK = `jjks-story-ui-loader-${CONFIG.env}`;
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
   const MODULE_LABELS = {
-    'story-engine': '故事引擎',
     'bp-panel-newvars': 'BP战力雷达（兼容）',
     'world-log': '世界运行报告',
     'relation-status': '角色羁绊档案',
@@ -26,7 +25,6 @@
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
-    'story-engine': ['故事引擎', '全域锚定', '行为逻辑锁', '故事主线', '最终修正', 'NPC驱动', '对战双方'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
     'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
     'mvu-status-newvars': [
@@ -38,7 +36,7 @@
       '变量更新',
     ],
   };
-  const BEFORE_NATIVE_MODULE_IDS = ['story-engine'];
+  const BEFORE_NATIVE_MODULE_IDS = [];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'relation-status',
@@ -447,12 +445,6 @@
 
     const source = String(rawText || '').replace(/\r\n?/g, '\n');
     let match = source.match(new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i'));
-
-    if (!match && module?.id === 'story-engine') {
-      match = source.match(
-        /<story_driver>[\s\S]*?(?:<combat_driver>[\s\S]*?<\/combat_driver>[\s\S]*?)?(?:━━\s*3[.．、]\s*最终修正\s*━━[\s\S]*)?/i,
-      );
-    }
 
     if (!match) return null;
 
