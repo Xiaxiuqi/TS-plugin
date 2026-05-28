@@ -344,7 +344,7 @@
 .story-ui-wlog.story-ui-night .wlog-panel-foot {
   color: var(--wlog-faint);
   letter-spacing: 0.14em;
-  background: rgba(0, 0, 0, 0.16);
+  background: linear-gradient(90deg, transparent, rgba(160, 126, 116, 0.06), transparent);
   position: relative;
   z-index: 1;
 }
