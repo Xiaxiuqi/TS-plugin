@@ -766,7 +766,27 @@
       node: mountHost,
       match,
     });
+    restoreDetailsOpenState(mountHost, match.module.id);
     return mountHost;
+  }
+
+  function getDetailsStateKey(moduleId) {
+    return `jjks_story_ui_details_${moduleId}`;
+  }
+
+  function restoreDetailsOpenState(host, moduleId) {
+    const details = host?.querySelector?.('details');
+    if (!details) return;
+    try {
+      const stored = localStorage.getItem(getDetailsStateKey(moduleId));
+      if (stored === 'open') details.setAttribute('open', '');
+      else if (stored === 'closed') details.removeAttribute('open');
+    } catch (e) { /* ignore */ }
+    details.addEventListener('toggle', () => {
+      try {
+        localStorage.setItem(getDetailsStateKey(moduleId), details.open ? 'open' : 'closed');
+      } catch (e) { /* ignore */ }
+    });
   }
 
   function mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement) {
