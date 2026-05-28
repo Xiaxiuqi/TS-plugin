@@ -279,15 +279,11 @@
 
 .story-ui-wlog.story-ui-night .wlog-summary {
   color: var(--wlog-text);
-  background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent),
-    rgba(255, 255, 255, 0.035);
+  background: linear-gradient(90deg, rgba(160, 126, 116, 0.08), transparent);
 }
 
 .story-ui-wlog.story-ui-night .wlog-summary:hover {
-  filter: brightness(1.08);
-  background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.22), rgba(136, 174, 184, 0.1), transparent), rgba(255, 255, 255, 0.06);
+  background: linear-gradient(90deg, rgba(160, 126, 116, 0.14), transparent);
 }
 
 .story-ui-wlog.story-ui-night .wlog-toggle-icon {

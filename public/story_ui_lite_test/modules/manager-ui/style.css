@@ -111,8 +111,7 @@
 }
 
 .jjks-manager-night .jjks-manager-head {
-  background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent), rgba(255, 255, 255, 0.03);
+  background: linear-gradient(90deg, rgba(160, 126, 116, 0.08), transparent);
 }
 
 .jjks-manager-eyebrow {

@@ -153,10 +153,10 @@
 }
 
 .bp-radar-widget .bp-panel-foot {
-  padding: 6px 12px;
+  padding: 8px 14px 10px;
   text-align: center;
   color: var(--bp-faint);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   background: linear-gradient(90deg, transparent, rgba(160, 126, 116, 0.06), transparent);
