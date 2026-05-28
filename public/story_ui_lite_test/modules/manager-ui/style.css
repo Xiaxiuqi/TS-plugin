@@ -74,11 +74,9 @@
 .jjks-manager-night .jjks-manager-panel {
   border-radius: 10px;
   color: var(--jm-text);
-  background:
-    linear-gradient(135deg, rgba(200, 168, 108, 0.1), transparent 22%),
-    radial-gradient(circle at 90% 0%, rgba(136, 174, 184, 0.12), transparent 30%),
-    linear-gradient(180deg, var(--jm-panel), var(--jm-space));
+  background: var(--jm-panel);
   box-shadow: var(--jm-shadow);
+  position: relative;
 }
 
 .jjks-manager-night .jjks-manager-panel::before {
@@ -86,10 +84,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  border-radius: 10px;
   background:
-    linear-gradient(90deg, rgba(200, 168, 108, 0.24), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.14)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 84px);
-  opacity: 0.62;
+    linear-gradient(90deg, rgba(200, 168, 108, 0.28), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 80px);
+  opacity: 0.58;
+  z-index: 0;
 }
 
 .jjks-manager-head,

@@ -66,6 +66,20 @@
   border-radius: var(--bp-radius);
   background: var(--bp-panel);
   box-shadow: var(--bp-shadow);
+  position: relative;
+}
+
+.bp-radar-widget.bp-night-ui details::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--bp-radius);
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.28), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 80px);
+  opacity: 0.58;
+  z-index: 0;
 }
 
 /* ═══ Summary ═══ */
