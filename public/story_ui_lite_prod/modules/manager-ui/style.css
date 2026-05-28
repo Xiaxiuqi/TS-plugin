@@ -47,18 +47,18 @@
 }
 
 .jjks-manager-night {
-  --jm-space: #171b22;
-  --jm-panel: rgba(29, 35, 44, 0.98);
-  --jm-card: rgba(38, 45, 56, 0.92);
+  --jm-space: #1a1a1c;
+  --jm-panel: rgba(26, 26, 28, 0.98);
+  --jm-card: rgba(40, 40, 43, 0.95);
   --jm-card-2: rgba(255, 255, 255, 0.052);
-  --jm-text: #ede7dc;
-  --jm-muted: #b8afa1;
-  --jm-faint: #807d78;
+  --jm-text: #ddd9d3;
+  --jm-muted: #a09a90;
+  --jm-faint: #6a6560;
   --jm-cyan: #88aeb8;
   --jm-blue: #8091ad;
   --jm-rose: #b9877e;
   --jm-gold: #c8a86c;
-  --jm-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+  --jm-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
   --jm-shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
@@ -228,16 +228,6 @@
   position: relative;
 }
 
-.jjks-manager-night .jjks-manager-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--jm-blue);
-  opacity: 0.72;
-}
 
 .jjks-manager-card h3 {
   margin: 0;
@@ -252,7 +242,6 @@
 }
 
 .jjks-manager-night .jjks-manager-card h3 {
-  padding-left: 12px;
   letter-spacing: 0.11em;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
 }

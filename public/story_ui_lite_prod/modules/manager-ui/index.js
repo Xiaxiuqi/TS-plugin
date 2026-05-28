@@ -9,7 +9,7 @@
         <header class="jjks-manager-head">
           <div>
             <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${displayEnv}</span>
-            <h2>咒回前端管理</h2>
+            <h2>咒回前端管理·lite</h2>
             <p>统一查看 Story UI 模块装载、扫描结果与前端主题状态。</p>
           </div>
           <button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button>

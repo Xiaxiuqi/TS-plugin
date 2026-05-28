@@ -253,10 +253,7 @@
 
 .story-ui-wlog.story-ui-night details {
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(200, 168, 108, 0.1), transparent 22%),
-    radial-gradient(circle at 90% 0%, rgba(136, 174, 184, 0.12), transparent 30%),
-    linear-gradient(180deg, var(--wlog-panel), var(--wlog-space));
+  background: var(--wlog-panel);
   box-shadow: var(--wlog-shadow);
   position: relative;
 }
