@@ -1,0 +1,357 @@
+.story-ui-wlog {
+  width: 100%;
+  margin: 0.8em auto;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.story-ui-wlog,
+.story-ui-wlog * {
+  box-sizing: border-box;
+}
+
+.story-ui-wlog details {
+  width: min(96%, 900px);
+  overflow: hidden;
+}
+
+.story-ui-wlog summary {
+  list-style: none;
+}
+
+.story-ui-wlog summary::-webkit-details-marker {
+  display: none;
+}
+
+.story-ui-wlog .wlog-summary {
+  width: 100%;
+  min-height: 38px;
+  cursor: pointer;
+  user-select: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 12px;
+  transition:
+    background 0.22s ease,
+    filter 0.22s ease;
+}
+
+.story-ui-wlog .wlog-summary-text {
+  min-width: 0;
+}
+
+.story-ui-wlog .wlog-toggle-title {
+  display: block;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.story-ui-wlog .wlog-toggle-subtitle {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.story-ui-wlog .wlog-toggle-icon {
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.story-ui-wlog .wlog-toggle-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.story-ui-wlog .toggle-icon {
+  transition: transform 0.24s ease;
+  flex: 0 0 auto;
+  font-size: 12px;
+  letter-spacing: 0;
+  opacity: 1;
+}
+
+.story-ui-wlog details:not([open]) .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.story-ui-wlog .wlog-panel {
+  width: 100%;
+  overflow: hidden;
+  border: none;
+}
+
+.story-ui-wlog .wlog-body {
+  display: grid;
+}
+
+.story-ui-wlog .wlog-card {
+  min-width: 0;
+  border: none;
+  overflow: hidden;
+}
+
+.story-ui-wlog .wlog-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.story-ui-wlog .wlog-card-mark {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.story-ui-wlog .wlog-card-title {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.story-ui-wlog .wlog-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+}
+
+.story-ui-wlog .wlog-panel-foot {
+  padding: 8px 14px 10px;
+  text-align: center;
+  font-size: 10px;
+}
+
+.story-ui-wlog.story-ui-day {
+  --wlog-bg: #f7f1e6;
+  --wlog-panel: rgba(251, 247, 238, 0.97);
+  --wlog-card: rgba(255, 253, 247, 0.86);
+  --wlog-card-2: rgba(236, 226, 207, 0.46);
+  --wlog-text: #342f29;
+  --wlog-muted: #756b60;
+  --wlog-faint: #a39889;
+  --wlog-sage: #7f927c;
+  --wlog-blue: #748b9d;
+  --wlog-rose: #a07e74;
+  --wlog-gold: #b79a62;
+  --wlog-line: rgba(117, 107, 96, 0.13);
+  --wlog-shadow: 0 4px 10px rgba(71, 58, 42, 0.07);
+  --wlog-shadow-soft: 0 2px 6px rgba(71, 58, 42, 0.045);
+  color: var(--wlog-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+  line-height: 1.52;
+}
+
+.story-ui-wlog.story-ui-day details {
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    radial-gradient(circle at top left, rgba(127, 146, 124, 0.13), transparent 30%), var(--wlog-panel);
+  box-shadow: var(--wlog-shadow);
+}
+
+.story-ui-wlog.story-ui-day .wlog-summary {
+  color: var(--wlog-text);
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
+}
+
+.story-ui-wlog.story-ui-day .wlog-summary:hover {
+  filter: brightness(1.015);
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.86), rgba(255, 253, 247, 0.56));
+}
+
+.story-ui-wlog.story-ui-day .wlog-toggle-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--wlog-sage);
+  background: rgba(127, 146, 124, 0.13);
+}
+
+.story-ui-wlog.story-ui-day .wlog-toggle-title {
+  letter-spacing: 0.1em;
+  color: var(--wlog-text);
+}
+
+.story-ui-wlog.story-ui-day .wlog-toggle-subtitle {
+  letter-spacing: 0.08em;
+  color: var(--wlog-muted);
+}
+
+.story-ui-wlog.story-ui-day .toggle-icon {
+  color: var(--wlog-gold);
+}
+
+.story-ui-wlog.story-ui-day .wlog-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    radial-gradient(circle at top left, rgba(127, 146, 124, 0.12), transparent 30%), var(--wlog-panel);
+  box-shadow: var(--wlog-shadow);
+}
+
+.story-ui-wlog.story-ui-day .wlog-body {
+  padding: 10px 12px 12px;
+  gap: 9px;
+}
+
+.story-ui-wlog.story-ui-day .wlog-card {
+  border-radius: 8px;
+  background: var(--wlog-card);
+  box-shadow: var(--wlog-shadow-soft);
+}
+
+.story-ui-wlog.story-ui-day .wlog-card-head {
+  padding: 8px 10px 7px;
+  background: linear-gradient(90deg, rgba(236, 226, 207, 0.52), transparent);
+}
+
+.story-ui-wlog.story-ui-day .wlog-card-mark {
+  color: var(--wlog-gold);
+}
+
+.story-ui-wlog.story-ui-day .wlog-card-title {
+  color: var(--wlog-text);
+  letter-spacing: 0.1em;
+}
+
+.story-ui-wlog.story-ui-day .wlog-text {
+  padding: 8px 10px 9px;
+  color: var(--wlog-text);
+  background: rgba(255, 253, 247, 0.42);
+  line-height: 1.68;
+}
+
+.story-ui-wlog.story-ui-day .wlog-panel-foot {
+  color: var(--wlog-faint);
+  letter-spacing: 0.12em;
+  background: rgba(236, 226, 207, 0.42);
+}
+
+.story-ui-wlog.story-ui-night {
+  --wlog-space: #171b22;
+  --wlog-panel: rgba(29, 35, 44, 0.97);
+  --wlog-panel-2: rgba(38, 45, 56, 0.92);
+  --wlog-row: rgba(255, 255, 255, 0.055);
+  --wlog-row-2: rgba(255, 255, 255, 0.082);
+  --wlog-text: #ede7dc;
+  --wlog-muted: #b8afa1;
+  --wlog-faint: #807d78;
+  --wlog-gold: #c8a86c;
+  --wlog-cyan: #88aeb8;
+  --wlog-blue: #8091ad;
+  --wlog-rose: #b9877e;
+  --wlog-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+  --wlog-shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.12);
+  color: var(--wlog-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Microsoft YaHei', serif;
+  line-height: 1.5;
+}
+
+.story-ui-wlog.story-ui-night details {
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(200, 168, 108, 0.1), transparent 22%),
+    radial-gradient(circle at 90% 0%, rgba(136, 174, 184, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--wlog-panel), var(--wlog-space));
+  box-shadow: var(--wlog-shadow);
+  position: relative;
+}
+
+.story-ui-wlog.story-ui-night details::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.28), transparent 18%, transparent 82%, rgba(136, 174, 184, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 80px);
+  opacity: 0.58;
+  z-index: 0;
+}
+
+.story-ui-wlog.story-ui-night .wlog-summary,
+.story-ui-wlog.story-ui-night .wlog-panel,
+.story-ui-wlog.story-ui-night .wlog-panel-foot {
+  position: relative;
+  z-index: 1;
+}
+
+.story-ui-wlog.story-ui-night .wlog-summary {
+  color: var(--wlog-text);
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.14), rgba(136, 174, 184, 0.06), transparent),
+    rgba(255, 255, 255, 0.035);
+}
+
+.story-ui-wlog.story-ui-night .wlog-summary:hover {
+  filter: brightness(1.08);
+  background:
+    linear-gradient(90deg, rgba(200, 168, 108, 0.22), rgba(136, 174, 184, 0.1), transparent), rgba(255, 255, 255, 0.06);
+}
+
+.story-ui-wlog.story-ui-night .wlog-toggle-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: 6px;
+  color: var(--wlog-gold);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.story-ui-wlog.story-ui-night .wlog-toggle-title {
+  color: var(--wlog-text);
+  letter-spacing: 0.12em;
+}
+
+.story-ui-wlog.story-ui-night .wlog-toggle-subtitle {
+  color: var(--wlog-muted);
+  letter-spacing: 0.1em;
+}
+
+.story-ui-wlog.story-ui-night .toggle-icon {
+  color: var(--wlog-gold);
+}
+
+.story-ui-wlog.story-ui-night .wlog-body {
+  padding: 10px 12px 12px;
+  gap: 8px;
+}
+
+.story-ui-wlog.story-ui-night .wlog-card {
+  border-radius: 6px;
+  background: var(--wlog-panel-2);
+  box-shadow: var(--wlog-shadow-soft);
+  position: relative;
+}
+
+.story-ui-wlog.story-ui-night .wlog-card-head {
+  padding: 8px 10px 7px 12px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
+}
+
+.story-ui-wlog.story-ui-night .wlog-card-mark {
+  color: var(--wlog-gold);
+}
+
+.story-ui-wlog.story-ui-night .wlog-card-title {
+  color: var(--wlog-text);
+  letter-spacing: 0.11em;
+}
+
+.story-ui-wlog.story-ui-night .wlog-text {
+  padding: 8px 10px 9px 12px;
+  color: var(--wlog-text);
+  background: rgba(255, 255, 255, 0.025);
+  line-height: 1.66;
+}
+
+.story-ui-wlog.story-ui-night .wlog-panel-foot {
+  color: var(--wlog-faint);
+  letter-spacing: 0.14em;
+  background: rgba(0, 0, 0, 0.16);
+  position: relative;
+  z-index: 1;
+}

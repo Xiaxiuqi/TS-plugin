@@ -23,7 +23,7 @@
 /* ═══ Night Theme ═══ */
 
 .bp-radar-widget.bp-night-ui {
-  --bp-bg: #1c1c1f;
+  --bp-bg: #171b22;
   --bp-panel: rgba(23, 27, 34, 0.97);
   --bp-card: rgba(38, 45, 56, 0.92);
   --bp-text: #ede7dc;
