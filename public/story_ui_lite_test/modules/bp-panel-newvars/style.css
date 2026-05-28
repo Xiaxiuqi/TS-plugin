@@ -23,12 +23,12 @@
 /* ═══ Night Theme ═══ */
 
 .bp-radar-widget.bp-night-ui {
-  --bp-bg: #1c1c1f;
-  --bp-panel: rgba(23, 27, 34, 0.97);
-  --bp-card: rgba(38, 45, 56, 0.92);
-  --bp-text: #ede7dc;
-  --bp-muted: #b8afa1;
-  --bp-faint: #807d78;
+  --bp-bg: #1a1a1c;
+  --bp-panel: rgba(26, 26, 28, 0.97);
+  --bp-card: rgba(40, 40, 43, 0.95);
+  --bp-text: #ddd9d3;
+  --bp-muted: #a09a90;
+  --bp-faint: #6a6560;
   --bp-accent: #b9877e;
   --bp-blue: #88aeb8;
   --bp-gold: #c8a86c;

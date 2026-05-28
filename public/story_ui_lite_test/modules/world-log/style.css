@@ -232,14 +232,14 @@
 }
 
 .story-ui-wlog.story-ui-night {
-  --wlog-space: #171b22;
-  --wlog-panel: rgba(29, 35, 44, 0.97);
-  --wlog-panel-2: rgba(38, 45, 56, 0.92);
+  --wlog-space: #1a1a1c;
+  --wlog-panel: rgba(26, 26, 28, 0.97);
+  --wlog-panel-2: rgba(40, 40, 43, 0.95);
   --wlog-row: rgba(255, 255, 255, 0.055);
   --wlog-row-2: rgba(255, 255, 255, 0.082);
-  --wlog-text: #ede7dc;
-  --wlog-muted: #b8afa1;
-  --wlog-faint: #807d78;
+  --wlog-text: #ddd9d3;
+  --wlog-muted: #a09a90;
+  --wlog-faint: #6a6560;
   --wlog-gold: #c8a86c;
   --wlog-cyan: #88aeb8;
   --wlog-blue: #8091ad;
