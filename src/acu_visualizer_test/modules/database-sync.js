@@ -51,12 +51,14 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
     let saveSuccessful = false;
     let usedMethod = 'none';
     let needsBulkFallback = false;
+    let cellEditDone = false;
 
     try {
+      let hasDeletes = false;
       if (api) {
         const hasCellEdit = updateContext && updateContext.type === 'cell_edit';
         const deletions = getPendingDeletions(state.pendingDeletes);
-        const hasDeletes = Object.keys(deletions).length > 0;
+        hasDeletes = Object.keys(deletions).length > 0;
         const rowUpdates = collectRowUpdates(state.currentUserEditMap, updateContext);
         const hasRowUpdates = Object.keys(rowUpdates).length > 0;
 
@@ -66,6 +68,7 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
             const success = await api.updateCell(tableName, rowIndex + 1, colIndex, newValue);
             if (success) {
               saveSuccessful = true;
+              cellEditDone = true;
               usedMethod = 'api_updateCell';
             } else needsBulkFallback = true;
           } catch (e) {
@@ -102,7 +105,7 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
           }
         }
 
-        if (hasRowUpdates && !needsBulkFallback) {
+        if (hasRowUpdates && !needsBulkFallback && !cellEditDone) {
           try {
             let allUpdatesSuccess = true;
             for (const tableName of Object.keys(rowUpdates)) {
@@ -157,7 +160,8 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
       }
 
       if (saveSuccessful) {
-        if (api && typeof api.refreshDataAndWorldbook === 'function') {
+        const skipPostReload = cellEditDone && !hasDeletes && !needsBulkFallback;
+        if (api && typeof api.refreshDataAndWorldbook === 'function' && !skipPostReload) {
           try {
             await api.refreshDataAndWorldbook();
           } catch (refreshErr) {
@@ -176,8 +180,10 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
           state.currentDiffMap = generateDiffMap(tableData);
           state.currentUserEditMap.forEach(key => state.currentDiffMap.delete(key));
           cleanupRuntimeState(tableData, state);
-          if (typeof deps.updateTableContentOnly === 'function') deps.updateTableContentOnly();
-          else if (typeof deps.insertTableAfterLatestAIMessage === 'function') deps.insertTableAfterLatestAIMessage();
+          if (!skipPostReload) {
+            if (typeof deps.updateTableContentOnly === 'function') deps.updateTableContentOnly();
+            else if (typeof deps.insertTableAfterLatestAIMessage === 'function') deps.insertTableAfterLatestAIMessage();
+          }
           deps.updateSaveBtnState?.();
         }, 50);
         return true;
