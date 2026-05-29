@@ -247,16 +247,7 @@ export async function handleCellAction(
         if (saveSuccess) {
           $(cell).addClass('acu-highlight-user-edit');
         } else {
-          const oldFormatted = String(cellContent ?? '').replace(/\n/g, '<br>');
-          $(cell).html(oldFormatted);
-          deps.currentUserEditMap?.delete(`${tableName}-${rowIndex}-${colIndex}`);
-          if (rawData?.[tableKey]?.content) {
-            const actualIdx = rowIndex + 1;
-            if (rawData[tableKey].content[actualIdx]?.[colIndex] !== undefined) {
-              rawData[tableKey].content[actualIdx][colIndex] = cellContent;
-            }
-          }
-          deps.showNotification?.('保存失败，已恢复原始值', 'error');
+          console.warn('保存失败，但编辑已应用到本地');
         }
       };
 
