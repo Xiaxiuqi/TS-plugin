@@ -10,7 +10,13 @@
   const MAP_SVG_ALLOWED_ATTRS = new Set(['xmlns', 'viewbox', 'class', 'id', 'data-idx', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'width', 'height', 'd', 'points', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'fill-opacity', 'stroke-opacity', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline', 'transform', 'clip-path', 'style']);
   const MAP_SVG_ALLOWED_STYLE_PROPS = new Set(['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'fill-opacity', 'stroke-opacity', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline']);
   const EMPTY_MAP_CONFIG = {
-    apiUrl: '', apiKey: '', model: '', preset: ''
+    followDatabaseApi: true,
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    source: '',
+    proxyPreset: '',
+    modelList: [],
   };
 
 
@@ -39,17 +45,39 @@
     return String(value ?? '').trim();
   }
 
+  function normalizeMapModelList(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
+  }
+
+  function hasLegacyMapCustomConfig(parsed) {
+    return Boolean(
+      normalizeMapConfigValue(parsed?.apiUrl) ||
+        normalizeMapConfigValue(parsed?.apiKey) ||
+        normalizeMapConfigValue(parsed?.model) ||
+        normalizeMapConfigValue(parsed?.source) ||
+        normalizeMapConfigValue(parsed?.proxyPreset || parsed?.proxy_preset || parsed?.preset),
+    );
+  }
+
   function getMapAiConfig() {
     try {
       const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
       if (!raw) return { ...EMPTY_MAP_CONFIG };
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') return { ...EMPTY_MAP_CONFIG };
+      const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
+      const modelList = normalizeMapModelList(parsed.modelList);
+      const model = normalizeMapConfigValue(parsed.model);
+      if (model && !modelList.includes(model)) modelList.unshift(model);
       return {
+        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasLegacyMapCustomConfig(parsed),
         apiUrl: normalizeMapConfigValue(parsed.apiUrl),
         apiKey: normalizeMapConfigValue(parsed.apiKey),
-        model: normalizeMapConfigValue(parsed.model),
-        preset: normalizeMapConfigValue(parsed.preset),
+        model,
+        source: normalizeMapConfigValue(parsed.source),
+        proxyPreset: normalizeMapConfigValue(parsed.proxyPreset || parsed.proxy_preset || parsed.preset),
+        modelList,
       };
     } catch (e) {
       console.warn('[db-status-bar] read map AI config failed:', e);
@@ -61,67 +89,73 @@
     return { max_tokens: 4000 };
   }
 
-  function hasMapDirectApiConfig(config) {
-    return Boolean(config?.apiUrl && config?.model);
+  function hasMapCustomApiConfig(config) {
+    return config?.followDatabaseApi === false && Boolean(config.proxyPreset || config.apiUrl || config.apiKey || config.model || config.source);
   }
 
-  function buildMapTempApiPresetName() {
-    return `story-ui-lite-map-${MAP_INSTANCE_ID}`;
+  function getTavernHelperGenerate() {
+    const candidates = [];
+    try { candidates.push(window.TavernHelper); } catch { /* ignore */ }
+    try { candidates.push(parent?.TavernHelper); } catch { /* ignore */ }
+    try { candidates.push(globalThis.TavernHelper); } catch { /* ignore */ }
+    try { candidates.push(window); } catch { /* ignore */ }
+    try { candidates.push(parent); } catch { /* ignore */ }
+    for (const candidate of candidates) {
+      if (typeof candidate?.generate === 'function') return candidate.generate.bind(candidate);
+    }
+    return null;
   }
 
-  function buildMapTempApiPreset(config, name) {
-    return {
-      name,
-      apiMode: 'custom',
-      apiConfig: {
-        customApiUrl: config.apiUrl,
-        customApiKey: config.apiKey,
-        customApiModel: config.model,
-      },
-      tavernProfile: '',
-    };
+  function buildMapCustomApi(config) {
+    if (config?.followDatabaseApi !== false) return null;
+    const customApi = {};
+    if (config.proxyPreset) customApi.proxy_preset = config.proxyPreset;
+    if (config.apiUrl) customApi.apiurl = config.apiUrl;
+    if (config.apiKey) customApi.key = config.apiKey;
+    if (config.model) customApi.model = config.model;
+    if (config.source || config.apiUrl) customApi.source = config.source || 'openai';
+    if (Object.keys(customApi).length === 0) return null;
+    customApi.max_tokens = 4000;
+    return customApi;
   }
 
   async function callMapAI(api, prompt) {
     const messages = [{ role: 'user', content: prompt }];
     const options = buildMapAiOptions();
     const config = getMapAiConfig();
-    const canSwitchPlotPreset = typeof api.getPlotApiPreset === 'function' && typeof api.setPlotApiPreset === 'function';
-    const canSaveTempPreset =
-      hasMapDirectApiConfig(config) &&
-      canSwitchPlotPreset &&
-      typeof api.saveApiPreset === 'function' &&
-      typeof api.deleteApiPreset === 'function';
+    const generate = getTavernHelperGenerate();
+    const customApi = buildMapCustomApi(config);
+    const shouldUseCustomApi = hasMapCustomApiConfig(config);
 
-    if (!canSwitchPlotPreset || (!config.preset && !canSaveTempPreset)) {
-      return api.callAI(messages, options);
+    if (generate && shouldUseCustomApi && customApi) {
+      try {
+        const result = await generate({
+          user_input: prompt,
+          should_silence: true,
+          max_chat_history: 0,
+          custom_api: customApi,
+        });
+        if (typeof result === 'string' && result.trim()) return result;
+        console.warn('[db-status-bar] TavernHelper.generate returned no usable map text, falling back to database plugin API');
+      } catch (e) {
+        console.warn('[db-status-bar] TavernHelper.generate failed, falling back to database plugin API:', e);
+      }
     }
 
-    const previousPreset = api.getPlotApiPreset() || '';
-    let tempPresetName = '';
-    let switched = false;
+    if (!api || typeof api.callAI !== 'function') {
+      console.warn('[db-status-bar] no available map AI generator');
+      return '';
+    }
+
+    if (shouldUseCustomApi && !generate) {
+      console.warn('[db-status-bar] TavernHelper.generate unavailable, using current database plugin API config');
+    }
+
     try {
-      if (canSaveTempPreset) {
-        tempPresetName = buildMapTempApiPresetName();
-        const saved = api.saveApiPreset(buildMapTempApiPreset(config, tempPresetName));
-        if (!saved) {
-          console.warn('[db-status-bar] map temp API preset save failed, using current AI config');
-          return api.callAI(messages, options);
-        }
-        switched = api.setPlotApiPreset(tempPresetName);
-      } else if (config.preset) {
-        switched = api.setPlotApiPreset(config.preset);
-      }
-
-      if (!switched) {
-        console.warn('[db-status-bar] map API preset switch failed, using current AI config');
-        return api.callAI(messages, options);
-      }
-
-      return api.callAI(messages, options);
-    } finally {
-      if (switched) api.setPlotApiPreset(previousPreset);
-      if (tempPresetName) api.deleteApiPreset(tempPresetName);
+      return await api.callAI(messages, options);
+    } catch (e) {
+      console.warn('[db-status-bar] database plugin callAI failed:', e);
+      return '';
     }
   }
 
@@ -696,7 +730,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       let aiReturnedSvg = false;
       try {
         const api = ui.dbStatusData?.getAutoCardAPI?.();
-        if (api && typeof api.callAI === 'function') {
+        if ((api && typeof api.callAI === 'function') || getTavernHelperGenerate()) {
           const prompt = buildMapPrompt(S);
           const result = await callMapAI(api, prompt);
           if (result) {

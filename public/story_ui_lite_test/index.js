@@ -13,7 +13,15 @@
     managerRootId: 'jjks-story-ui-manager-lite_test',
   };
   const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
-  const EMPTY_MAP_CONFIG = { apiUrl: '', apiKey: '', model: '', preset: '' };
+  const EMPTY_MAP_CONFIG = {
+    followDatabaseApi: true,
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    source: '',
+    proxyPreset: '',
+    modelList: [],
+  };
 
   const INDEX_FLAG = `__jjksStoryUiIndex_${CONFIG.env}`;
   const STYLE_MARK = `jjks-manager-style-${CONFIG.env}`;
@@ -21,12 +29,14 @@
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
   const MODULE_LABELS = {
     'bp-panel-newvars': 'BP战力雷达（兼容）',
+    'db-status-bar': '数据库状态栏',
     'world-log': '世界运行报告',
     'relation-status': '角色羁绊档案',
     'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
+    'db-status-bar': ['<DbStatusBar/>', 'DbStatusBar', '数据库状态栏', '地图元素表', '任务与事件表'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
     'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
     'mvu-status-newvars': [
@@ -43,6 +53,7 @@
     'bp-panel-newvars',
     'relation-status',
     'world-log',
+    'db-status-bar',
     'mvu-status-newvars',
   ];
 
@@ -462,11 +473,36 @@
   }
 
   function moduleMatchesSingleTag(module, rawText) {
-    return Boolean(module?.singleTag) && String(rawText || '').includes(module.singleTag);
+    return Boolean(findSingleTagIndex(module, rawText, 0));
+  }
+
+  function buildSingleTagPattern(module) {
+    const tag = String(module?.singleTag || '').trim();
+    const match = tag.match(/^<\s*([a-zA-Z][\w:-]*)\s*\/>$/);
+    if (!match) return null;
+    return new RegExp(`<\\s*${escapeRegex(match[1])}\\s*\\/>`, 'i');
+  }
+
+  function findSingleTagIndex(module, rawText, startIndex) {
+    const text = String(rawText || '');
+    const target = String(module?.singleTag || '');
+    if (!target) return null;
+
+    const exactIndex = text.indexOf(target, startIndex);
+    if (exactIndex >= 0) {
+      return { index: exactIndex, fullMatch: target };
+    }
+
+    const pattern = buildSingleTagPattern(module);
+    if (!pattern) return null;
+    const slice = text.slice(startIndex);
+    const match = slice.match(pattern);
+    if (!match || match.index === undefined) return null;
+    return { index: startIndex + match.index, fullMatch: match[0] };
   }
 
   function buildNodeForModule(module, rawText, context) {
-    if (typeof module?.renderContent === 'function' && module?.singleTag === '<StatusPlaceHolderImpl/>') {
+    if (typeof module?.renderContent === 'function' && moduleMatchesSingleTag(module, rawText)) {
       return getUi()?.registry?.safelyCall(module, 'renderContent', '', {
         ...context,
         rawText,
@@ -528,21 +564,21 @@
     return best;
   }
 
-  function findStatusPlaceholderMatch(modules, rawText, startIndex) {
-    const target = '<StatusPlaceHolderImpl/>';
+  function findSingleTagMatch(modules, rawText, startIndex) {
+    const text = String(rawText || '');
     let best = null;
     modules.forEach(module => {
-      if (module?.singleTag !== target) return;
-      const index = String(rawText || '').indexOf(target, startIndex);
-      if (index < 0) return;
+      const found = findSingleTagIndex(module, text, startIndex);
+      if (!found) return;
+      const index = found.index;
       if (!best || index < best.start || (index === best.start && module.priority > best.module.priority)) {
         best = {
           module,
           start: index,
-          end: index + target.length,
-          fullMatch: target,
+          end: index + found.fullMatch.length,
+          fullMatch: found.fullMatch,
           content: '',
-          singleTag: target,
+          singleTag: found.fullMatch,
         };
       }
     });
@@ -550,7 +586,7 @@
   }
 
   function findNextRenderableMatch(modules, rawText, startIndex) {
-    const placeholderMatch = findStatusPlaceholderMatch(modules, rawText, startIndex);
+    const placeholderMatch = findSingleTagMatch(modules, rawText, startIndex);
     const blockMatch = findNextModuleMatch(modules, rawText, startIndex);
 
     if (!placeholderMatch) return blockMatch;
@@ -1054,7 +1090,22 @@
   }
 
   function getEmptyMapAiConfig() {
-    return { ...EMPTY_MAP_CONFIG };
+    return { ...EMPTY_MAP_CONFIG, modelList: [] };
+  }
+
+  function normalizeMapModelList(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
+  }
+
+  function hasLegacyMapCustomConfig(parsed) {
+    return Boolean(
+      normalizeMapConfigValue(parsed?.apiUrl) ||
+        normalizeMapConfigValue(parsed?.apiKey) ||
+        normalizeMapConfigValue(parsed?.model) ||
+        normalizeMapConfigValue(parsed?.source) ||
+        normalizeMapConfigValue(parsed?.proxyPreset || parsed?.proxy_preset || parsed?.preset),
+    );
   }
 
   function readMapAiConfig() {
@@ -1063,11 +1114,18 @@
       if (!raw) return getEmptyMapAiConfig();
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') return getEmptyMapAiConfig();
+      const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
+      const modelList = normalizeMapModelList(parsed.modelList);
+      const model = normalizeMapConfigValue(parsed.model);
+      if (model && !modelList.includes(model)) modelList.unshift(model);
       return {
+        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasLegacyMapCustomConfig(parsed),
         apiUrl: normalizeMapConfigValue(parsed.apiUrl),
         apiKey: normalizeMapConfigValue(parsed.apiKey),
-        model: normalizeMapConfigValue(parsed.model),
-        preset: normalizeMapConfigValue(parsed.preset),
+        model,
+        source: normalizeMapConfigValue(parsed.source),
+        proxyPreset: normalizeMapConfigValue(parsed.proxyPreset || parsed.proxy_preset || parsed.preset),
+        modelList,
       };
     } catch (error) {
       console.warn(`${logPrefix} 读取地图 AI 配置失败`, error);
@@ -1077,10 +1135,13 @@
 
   function writeMapAiConfig(config) {
     const normalized = {
+      followDatabaseApi: config?.followDatabaseApi !== false,
       apiUrl: normalizeMapConfigValue(config?.apiUrl),
       apiKey: normalizeMapConfigValue(config?.apiKey),
       model: normalizeMapConfigValue(config?.model),
-      preset: normalizeMapConfigValue(config?.preset),
+      source: normalizeMapConfigValue(config?.source),
+      proxyPreset: normalizeMapConfigValue(config?.proxyPreset),
+      modelList: normalizeMapModelList(config?.modelList),
     };
     try {
       localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
@@ -1110,24 +1171,129 @@
     if (input) input.value = normalizeMapConfigValue(value);
   }
 
+  function getManagerMapMode(form) {
+    return form.querySelector('[name="apiMode"]:checked')?.value === 'custom' ? 'custom' : 'database';
+  }
+
+  function setManagerMapMode(form, followDatabaseApi) {
+    const mode = followDatabaseApi === false ? 'custom' : 'database';
+    form.querySelectorAll('[name="apiMode"]').forEach(input => {
+      input.checked = input.value === mode;
+    });
+  }
+
+  function refreshManagerModelOptions(root, config = readMapAiConfig()) {
+    const select = root?.querySelector?.('[data-jjks-map-model-select]');
+    if (!select) return;
+    const modelList = normalizeMapModelList(config.modelList);
+    const selectedModel = normalizeMapConfigValue(config.model);
+    const options = modelList.length > 0 ? modelList : selectedModel ? [selectedModel] : [];
+    select.innerHTML = options.length
+      ? options.map(model => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('')
+      : '<option value="">先拉取模型列表</option>';
+    select.value = selectedModel && options.includes(selectedModel) ? selectedModel : options[0] || '';
+
+    const status = root.querySelector('[data-jjks-map-model-status]');
+    if (status) {
+      status.textContent = options.length ? `已载入 ${options.length} 个模型。` : '模型列表尚未拉取。';
+    }
+  }
+
+  function setManagerMapCustomFieldsEnabled(root, enabled) {
+    root?.querySelectorAll?.('[data-jjks-map-custom-field]').forEach(field => {
+      field.disabled = !enabled;
+    });
+    const fetchButton = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
+    if (fetchButton) fetchButton.disabled = !enabled;
+  }
+
   function fillManagerMapConfigForm(root, config = readMapAiConfig()) {
     const form = getManagerMapConfigForm(root);
     if (!form) return;
+    setManagerMapMode(form, config.followDatabaseApi);
     setManagerMapConfigValue(form, 'apiUrl', config.apiUrl);
     setManagerMapConfigValue(form, 'apiKey', config.apiKey);
-    setManagerMapConfigValue(form, 'model', config.model);
-    setManagerMapConfigValue(form, 'preset', config.preset);
+    setManagerMapConfigValue(form, 'source', config.source);
+    setManagerMapConfigValue(form, 'proxyPreset', config.proxyPreset);
+    refreshManagerModelOptions(root, config);
+    setManagerMapCustomFieldsEnabled(root, config.followDatabaseApi === false);
+  }
+
+  function getTavernHelperApi() {
+    return hostWindow.TavernHelper || window.TavernHelper || globalThis.TavernHelper || null;
+  }
+
+  function refreshManagerProxyPresetOptions(root) {
+    const list = root?.querySelector?.('[data-jjks-map-proxy-presets]');
+    if (!list) return;
+    const getNames = getTavernHelperApi()?.getProxyPresetNames || hostWindow.getProxyPresetNames || window.getProxyPresetNames;
+    if (typeof getNames !== 'function') return;
+    try {
+      const names = getNames();
+      list.innerHTML = Array.isArray(names)
+        ? names.map(name => `<option value="${escapeHtml(normalizeMapConfigValue(name))}"></option>`).join('')
+        : '';
+    } catch (error) {
+      console.warn(`${logPrefix} 读取酒馆代理预设列表失败`, error);
+    }
   }
 
   function collectManagerMapConfig(root) {
     const form = getManagerMapConfigForm(root);
     if (!form) return null;
+    const modelList = normalizeMapModelList(
+      Array.from(form.querySelectorAll('[data-jjks-map-model-select] option')).map(option => option.value),
+    );
     return {
+      followDatabaseApi: getManagerMapMode(form) !== 'custom',
       apiUrl: normalizeMapConfigValue(form.querySelector('[name="apiUrl"]')?.value),
       apiKey: normalizeMapConfigValue(form.querySelector('[name="apiKey"]')?.value),
       model: normalizeMapConfigValue(form.querySelector('[name="model"]')?.value),
-      preset: normalizeMapConfigValue(form.querySelector('[name="preset"]')?.value),
+      source: normalizeMapConfigValue(form.querySelector('[name="source"]')?.value),
+      proxyPreset: normalizeMapConfigValue(form.querySelector('[name="proxyPreset"]')?.value),
+      modelList,
     };
+  }
+
+  async function fetchManagerMapModels(root) {
+    const config = collectManagerMapConfig(root);
+    if (!config) {
+      notify('地图配置表单未就绪', 'error');
+      return;
+    }
+    if (config.followDatabaseApi) {
+      notify('跟随数据库 API 模式不需要拉取模型列表', 'info');
+      return;
+    }
+    if (!config.apiUrl) {
+      notify('请先填写 API 地址，再拉取模型列表', 'error');
+      return;
+    }
+    const getModelList = getTavernHelperApi()?.getModelList || hostWindow.getModelList || window.getModelList;
+    if (typeof getModelList !== 'function') {
+      notify('酒馆助手 getModelList 不可用，无法拉取模型列表', 'error');
+      return;
+    }
+
+    const button = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
+    setManagerButtonBusy(button, '拉取中', true);
+    try {
+      const models = normalizeMapModelList(await getModelList({ apiurl: config.apiUrl, key: config.apiKey }));
+      if (models.length === 0) {
+        notify('模型列表为空，请检查 API 地址和密钥', 'error');
+        return;
+      }
+      const nextModel = config.model && models.includes(config.model) ? config.model : models[0];
+      const nextConfig = { ...config, model: nextModel, modelList: models };
+      fillManagerMapConfigForm(root, nextConfig);
+      notify(`已拉取 ${models.length} 个模型，请选择模型后保存`, 'success');
+    } catch (error) {
+      console.warn(`${logPrefix} 拉取地图 API 模型列表失败`, error);
+      notify(`模型列表拉取失败：${error?.message || error}`, 'error');
+    } finally {
+      setManagerButtonBusy(button, '', false);
+      setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
+    }
   }
 
   function saveManagerMapConfig(root) {
@@ -1141,7 +1307,7 @@
       return;
     }
     fillManagerMapConfigForm(root, config);
-    notify('地图 AI 配置已保存', 'success');
+    notify(config.followDatabaseApi ? '地图生成已设置为跟随当前数据库 API' : '地图生成自定义 API 设置已保存', 'success');
   }
 
   function resetManagerMapConfig(root) {
@@ -1150,7 +1316,7 @@
       return;
     }
     fillManagerMapConfigForm(root, getEmptyMapAiConfig());
-    notify('地图 AI 配置已重置', 'success');
+    notify('地图生成已清空本地设置并跟随当前数据库 API', 'success');
   }
 
 
@@ -1334,6 +1500,13 @@
         return;
       }
 
+      const mapModeInput = target.closest?.('[data-jjks-map-mode]');
+      if (mapModeInput) {
+        setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
+        refreshManagerState();
+        return;
+      }
+
       const mapActionButton = target.closest?.('[data-jjks-map-action]');
       if (mapActionButton) {
         event.preventDefault();
@@ -1351,6 +1524,14 @@
       if (moduleButton) {
         toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'), moduleButton);
       }
+    });
+
+    root.addEventListener('change', event => {
+      const target = event.target;
+      if (!target?.closest?.('[data-jjks-map-mode]')) return;
+      const form = getManagerMapConfigForm(root);
+      setManagerMapCustomFieldsEnabled(root, form ? getManagerMapMode(form) === 'custom' : false);
+      refreshManagerState();
     });
 
     root.addEventListener('submit', event => {
@@ -1375,6 +1556,7 @@
     await ensureManagerAssetsReady();
     const root = ensureManagerDom();
     fillManagerMapConfigForm(root);
+    refreshManagerProxyPresetOptions(root);
     refreshManagerState();
     root.dataset.open = 'true';
     root.querySelector('[data-jjks-manager-close]')?.focus?.();
@@ -1392,17 +1574,21 @@
     const entries = Object.entries(MODULE_LABELS).map(([id, label]) => ({
       id,
       label,
-      enabled: registry?.isEnabled?.(id) !== false,
+      registered: Boolean(registry?.find?.(id)),
+      enabled: Boolean(registry?.find?.(id)) && registry?.isEnabled?.(id) !== false,
     }));
 
     listRoot.innerHTML = entries
       .map(
-        item => `
+        item => {
+          const status = item.registered ? (item.enabled ? '开启' : '关闭') : '未加载';
+          return `
           <div class="jjks-manager-module-item">
-            <span class="jjks-manager-module-name">${escapeHtml(item.label)}</span>
-            <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}">${item.enabled ? '开启' : '关闭'}</button>
+            <span class="jjks-manager-module-name">${escapeHtml(item.label)}<small>${escapeHtml(item.registered ? '已注册' : '未注册')}</small></span>
+            <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}" ${item.registered ? '' : 'disabled'}>${status}</button>
           </div>
-        `,
+        `;
+        },
       )
       .join('');
   }
@@ -1541,15 +1727,22 @@
       console.warn(`${logPrefix} scanner destroy 失败`, error);
     }
 
-    document
-      .querySelectorAll(
-        `script[data-jjks-story-ui-loader="${LOADER_MARK}"], script[data-story-ui-script*="/story_regex_ui_${CONFIG.env}/"], link[data-story-ui-css*="/story_regex_ui_${CONFIG.env}/"]`,
-      )
-      .forEach(node => node.remove());
+    hostDocument
+      .querySelectorAll('script[data-jjks-story-ui-loader], script[data-story-ui-script], link[data-story-ui-css]')
+      .forEach(node => {
+        const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
+        const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
+        const isCurrentLiteResource = String(resourceUrl).includes('/story_ui_lite_test/');
+        if (isCurrentLoader || isCurrentLiteResource) node.remove();
+      });
 
     try {
       window[CONFIG.loaderFlag] = false;
       window[CONFIG.globalKey] = undefined;
+      if (hostWindow && hostWindow !== window) {
+        hostWindow[CONFIG.loaderFlag] = false;
+        hostWindow[CONFIG.globalKey] = undefined;
+      }
     } catch {
       // ignore reset failures
     }
@@ -1573,6 +1766,10 @@
   }
 
   function handleManagerMapAction(action, root) {
+    if (action === 'fetch-models') {
+      fetchManagerMapModels(root);
+      return;
+    }
     if (action === 'save') {
       saveManagerMapConfig(root);
       return;

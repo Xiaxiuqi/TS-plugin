@@ -53,6 +53,11 @@
         css: 'modules/manager-ui/style.css',
         script: 'modules/manager-ui/index.js',
       },
+      {
+        id: 'db-status-bar',
+        css: 'modules/db-status-bar/style.css',
+        scripts: ['modules/db-status-bar/data.js', 'modules/db-status-bar/index.js'],
+      },
     ],
   };
 
@@ -110,8 +115,9 @@
       if (moduleDef.css) {
         await loadCss(moduleDef.css);
       }
-      if (moduleDef.script) {
-        await loadScript(moduleDef.script);
+      const scripts = Array.isArray(moduleDef.scripts) ? moduleDef.scripts : moduleDef.script ? [moduleDef.script] : [];
+      for (const script of scripts) {
+        await loadScript(script);
       }
     }
   }
