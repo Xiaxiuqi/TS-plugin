@@ -1174,7 +1174,6 @@
       apiKey: normalizeMapConfigValue(config?.apiKey),
       model: normalizeMapConfigValue(config?.model),
       enableMapGeneration: config?.enableMapGeneration !== false,
-      modelList: normalizeMapModelList(config?.modelList),
     };
     try {
       localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
@@ -1220,7 +1219,7 @@
     if (!select) return;
     const modelList = normalizeMapModelList(config.modelList);
     const selectedModel = normalizeMapConfigValue(config.model);
-    const options = modelList.length > 0 ? modelList : selectedModel ? [selectedModel] : [];
+    const options = modelList;
     select.innerHTML = options.length
       ? options.map(model => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('')
       : '<option value="">先拉取模型列表</option>';
@@ -1262,11 +1261,13 @@
     const modelList = normalizeMapModelList(
       Array.from(form.querySelectorAll('[data-jjks-map-model-select] option')).map(option => option.value),
     );
+    const selectedModel = normalizeMapConfigValue(form.querySelector('[name="model"]')?.value);
+    const savedModel = normalizeMapConfigValue(readMapAiConfig().model);
     return {
       followDatabaseApi: getManagerMapMode(form) !== 'custom',
       apiUrl: normalizeMapConfigValue(form.querySelector('[name="apiUrl"]')?.value),
       apiKey: normalizeMapConfigValue(form.querySelector('[name="apiKey"]')?.value),
-      model: normalizeMapConfigValue(form.querySelector('[name="model"]')?.value),
+      model: selectedModel || savedModel,
       enableMapGeneration: form.querySelector('[name="enableMapGeneration"]')?.checked !== false,
       modelList,
     };
@@ -1319,11 +1320,12 @@
       notify('地图配置表单未就绪', 'error');
       return;
     }
-    if (!writeMapAiConfig(config)) {
+    const savedConfig = { ...config, modelList: [] };
+    if (!writeMapAiConfig(savedConfig)) {
       notify('地图 AI 配置保存失败', 'error');
       return;
     }
-    fillManagerMapConfigForm(root, config);
+    fillManagerMapConfigForm(root, savedConfig);
     notify(config.followDatabaseApi ? '地图生成已设置为跟随当前数据库 API' : '地图生成自定义 API 设置已保存', 'success');
   }
 

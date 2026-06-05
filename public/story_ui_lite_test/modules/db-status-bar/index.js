@@ -909,7 +909,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       const mapActionBtn = e.target.closest('[data-map-action]');
       if (mapActionBtn && root.contains(mapActionBtn)) {
         const action = mapActionBtn.dataset.mapAction;
-        if (action === 'refresh') { doMap(root, false); }
+        if (action === 'refresh') { doMap(root, true); }
         else if (action === 'redraw') { doMap(root, true); }
         return;
       }

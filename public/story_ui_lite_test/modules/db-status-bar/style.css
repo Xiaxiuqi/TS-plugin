@@ -1181,7 +1181,10 @@
 
 .db-sb-fn-toolbar {
   display: flex;
+  justify-content: flex-start;
+  align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
   padding: 8px 0 12px;
 }
 
