@@ -12,6 +12,8 @@
     reloadButtonName: '重载美化',
     managerRootId: 'jjks-story-ui-manager-lite_test',
   };
+  const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
+  const EMPTY_MAP_CONFIG = { apiUrl: '', apiKey: '', model: '', preset: '' };
 
   const INDEX_FLAG = `__jjksStoryUiIndex_${CONFIG.env}`;
   const STYLE_MARK = `jjks-manager-style-${CONFIG.env}`;
@@ -444,7 +446,7 @@
     if (!block) return null;
 
     const source = String(rawText || '').replace(/\r\n?/g, '\n');
-    let match = source.match(new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i'));
+    const match = source.match(new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i'));
 
     if (!match) return null;
 
@@ -1047,6 +1049,111 @@
       // ignore persistence failures
     }
   }
+  function normalizeMapConfigValue(value) {
+    return String(value ?? '').trim();
+  }
+
+  function getEmptyMapAiConfig() {
+    return { ...EMPTY_MAP_CONFIG };
+  }
+
+  function readMapAiConfig() {
+    try {
+      const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
+      if (!raw) return getEmptyMapAiConfig();
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return getEmptyMapAiConfig();
+      return {
+        apiUrl: normalizeMapConfigValue(parsed.apiUrl),
+        apiKey: normalizeMapConfigValue(parsed.apiKey),
+        model: normalizeMapConfigValue(parsed.model),
+        preset: normalizeMapConfigValue(parsed.preset),
+      };
+    } catch (error) {
+      console.warn(`${logPrefix} 读取地图 AI 配置失败`, error);
+      return getEmptyMapAiConfig();
+    }
+  }
+
+  function writeMapAiConfig(config) {
+    const normalized = {
+      apiUrl: normalizeMapConfigValue(config?.apiUrl),
+      apiKey: normalizeMapConfigValue(config?.apiKey),
+      model: normalizeMapConfigValue(config?.model),
+      preset: normalizeMapConfigValue(config?.preset),
+    };
+    try {
+      localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
+      return true;
+    } catch (error) {
+      console.warn(`${logPrefix} 保存地图 AI 配置失败`, error);
+      return false;
+    }
+  }
+
+  function resetMapAiConfig() {
+    try {
+      localStorage.removeItem(MAP_CONFIG_STORAGE_KEY);
+      return true;
+    } catch (error) {
+      console.warn(`${logPrefix} 重置地图 AI 配置失败`, error);
+      return false;
+    }
+  }
+
+  function getManagerMapConfigForm(root) {
+    return root?.querySelector?.('[data-jjks-map-config-form]') || null;
+  }
+
+  function setManagerMapConfigValue(form, name, value) {
+    const input = form.querySelector(`[name="${name}"]`);
+    if (input) input.value = normalizeMapConfigValue(value);
+  }
+
+  function fillManagerMapConfigForm(root, config = readMapAiConfig()) {
+    const form = getManagerMapConfigForm(root);
+    if (!form) return;
+    setManagerMapConfigValue(form, 'apiUrl', config.apiUrl);
+    setManagerMapConfigValue(form, 'apiKey', config.apiKey);
+    setManagerMapConfigValue(form, 'model', config.model);
+    setManagerMapConfigValue(form, 'preset', config.preset);
+  }
+
+  function collectManagerMapConfig(root) {
+    const form = getManagerMapConfigForm(root);
+    if (!form) return null;
+    return {
+      apiUrl: normalizeMapConfigValue(form.querySelector('[name="apiUrl"]')?.value),
+      apiKey: normalizeMapConfigValue(form.querySelector('[name="apiKey"]')?.value),
+      model: normalizeMapConfigValue(form.querySelector('[name="model"]')?.value),
+      preset: normalizeMapConfigValue(form.querySelector('[name="preset"]')?.value),
+    };
+  }
+
+  function saveManagerMapConfig(root) {
+    const config = collectManagerMapConfig(root);
+    if (!config) {
+      notify('地图配置表单未就绪', 'error');
+      return;
+    }
+    if (!writeMapAiConfig(config)) {
+      notify('地图 AI 配置保存失败', 'error');
+      return;
+    }
+    fillManagerMapConfigForm(root, config);
+    notify('地图 AI 配置已保存', 'success');
+  }
+
+  function resetManagerMapConfig(root) {
+    if (!resetMapAiConfig()) {
+      notify('地图 AI 配置重置失败', 'error');
+      return;
+    }
+    fillManagerMapConfigForm(root, getEmptyMapAiConfig());
+    notify('地图 AI 配置已重置', 'success');
+  }
+
+
 
   function getManagerView() {
     return (
@@ -1139,6 +1246,8 @@
         }),
       );
     }
+
+    fillManagerMapConfigForm(panel);
   }
 
   function injectManagerStyle() {
@@ -1225,6 +1334,13 @@
         return;
       }
 
+      const mapActionButton = target.closest?.('[data-jjks-map-action]');
+      if (mapActionButton) {
+        event.preventDefault();
+        handleManagerMapAction(mapActionButton.dataset.jjksMapAction, root);
+        return;
+      }
+
       const actionButton = target.closest?.('[data-jjks-action]');
       if (actionButton) {
         handleManagerAction(actionButton.dataset.jjksAction);
@@ -1235,6 +1351,12 @@
       if (moduleButton) {
         toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'), moduleButton);
       }
+    });
+
+    root.addEventListener('submit', event => {
+      if (!event.target?.closest?.('[data-jjks-map-config-form]')) return;
+      event.preventDefault();
+      saveManagerMapConfig(root);
     });
 
     if (!hostDocument.documentElement.dataset.jjksStoryUiEscBound) {
@@ -1252,6 +1374,7 @@
   async function openManager() {
     await ensureManagerAssetsReady();
     const root = ensureManagerDom();
+    fillManagerMapConfigForm(root);
     refreshManagerState();
     root.dataset.open = 'true';
     root.querySelector('[data-jjks-manager-close]')?.focus?.();
@@ -1446,6 +1569,16 @@
       managerActionBusy = false;
       setManagerButtonBusy(reloadButton, '', false);
       refreshManagerState();
+    }
+  }
+
+  function handleManagerMapAction(action, root) {
+    if (action === 'save') {
+      saveManagerMapConfig(root);
+      return;
+    }
+    if (action === 'reset') {
+      resetManagerMapConfig(root);
     }
   }
 

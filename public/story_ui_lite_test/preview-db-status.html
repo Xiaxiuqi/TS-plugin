@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DB状态栏 - 前端预览 (v2 新模板)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+      background: #f0ebe3;
+      min-height: 100vh;
+    }
+    body.night { background: #141418; }
+    .preview-layout { display: grid; grid-template-columns: 1fr 360px; gap: 0; min-height: 100vh; }
+    .preview-main { padding: 20px; overflow-y: auto; }
+    .preview-sidebar { background: #fff; border-left: 1px solid #d0d7de; padding: 12px; overflow-y: auto; font-family: system-ui, sans-serif; font-size: 12px; }
+    body.night .preview-sidebar { background: #1c1c22; border-left-color: #333; color: #ccc; }
+    .preview-controls {
+      position: sticky; top: 0; z-index: 99; background: inherit;
+      padding: 8px 0 12px; border-bottom: 1px solid #e0e0e0;
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+    }
+    body.night .preview-controls { border-bottom-color: #333; }
+    .preview-controls button {
+      padding: 5px 12px; border: none; border-radius: 5px; cursor: pointer;
+      font-size: 11px; font-weight: 700; background: #a07e74; color: #fff; transition: all 0.2s;
+    }
+    .preview-controls button:hover { opacity: 0.85; }
+    .preview-controls button.active { background: #5a7a8f; }
+    .preview-title {
+      text-align: center; color: #756b60; font-size: 11px;
+      font-weight: 700; letter-spacing: 0.1em; margin-bottom: 16px;
+    }
+    body.night .preview-title { color: #9a9488; }
+    #container { max-width: 800px; margin: 0 auto; }
+    .sidebar-section { margin-bottom: 14px; }
+    .sidebar-section h3 { font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #555; }
+    body.night .sidebar-section h3 { color: #aaa; }
+    .sidebar-section pre {
+      background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 4px;
+      padding: 8px; font-size: 10px; max-height: 240px; overflow: auto;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    body.night .sidebar-section pre { background: #252530; border-color: #444; color: #ddd; }
+    .trace-entry { padding: 3px 0; border-bottom: 1px solid #eee; }
+    body.night .trace-entry { border-bottom-color: #333; }
+    @media (max-width: 900px) {
+      .preview-layout { grid-template-columns: 1fr; }
+      .preview-sidebar { border-left: none; border-top: 1px solid #d0d7de; max-height: 50vh; }
+    }
+    .mock-send-box {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--db-panel, #1d232c);
+      border-top: 1px solid var(--db-line, rgba(255, 255, 255, 0.08));
+      padding: 8px 12px;
+      z-index: 9000;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    .mock-send-textarea {
+      flex: 1;
+      resize: vertical;
+      background: var(--db-card, rgba(255, 255, 255, 0.055));
+      color: var(--db-text, #ede7dc);
+      border: 1px solid var(--db-line, rgba(255, 255, 255, 0.08));
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .mock-send-clear {
+      background: var(--db-card-2, rgba(255, 255, 255, 0.082));
+      color: var(--db-muted, #b8afa1);
+      border: 1px solid var(--db-line, rgba(255, 255, 255, 0.08));
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    body { padding-bottom: 70px !important; }
+  </style>
+  <link rel="stylesheet" href="modules/db-status-bar/style.css">
+</head>
+<body>
+  <div class="preview-layout">
+    <div class="preview-main">
+      <div class="preview-title">DB状态栏 · 前端预览 · 新模板对齐版</div>
+      <div id="container"></div>
+    </div>
+    <div class="preview-sidebar">
+      <div class="preview-controls">
+        <button onclick="toggleTheme()" id="themeBtn">切换夜间模式</button>
+        <button onclick="reloadData()">重载数据</button>
+        <button onclick="simulateUpdate()">模拟数据更新</button>
+        <button onclick="showGameState()">查看 GameState</button>
+        <button onclick="clearTrace()">清空 Trace</button>
+      </div>
+      <div class="sidebar-section">
+        <h3>API Call Trace</h3>
+        <pre id="api-trace">等待调用...</pre>
+      </div>
+      <div class="sidebar-section">
+        <h3>Live Database State</h3>
+        <pre id="db-state">等待加载...</pre>
+      </div>
+      <div class="sidebar-section">
+        <h3>GameState Snapshot</h3>
+        <pre id="game-state">点击"查看 GameState"按钮</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === API Trace System ===
+    const apiTrace = [];
+    function traceCall(name, args) {
+      const entry = { ts: new Date().toLocaleTimeString(), name, args: Array.from(args || []) };
+      apiTrace.push(entry);
+      renderTrace();
+    }
+    function renderTrace() {
+      const el = document.getElementById('api-trace');
+      if (apiTrace.length === 0) { el.textContent = '暂无调用'; return; }
+      el.textContent = apiTrace.map(e => `[${e.ts}] ${e.name}()`).join('\n');
+      el.scrollTop = el.scrollHeight;
+    }
+    function clearTrace() { apiTrace.length = 0; renderTrace(); }
+    function showGameState() {
+      const gs = window.StoryRegexUI?.dbStatusData?.GameState;
+      document.getElementById('game-state').textContent = gs ? JSON.stringify(gs, null, 2) : 'GameState 未初始化';
+    }
+    function renderDbState(tables) {
+      const el = document.getElementById('db-state');
+      const summary = {};
+      for (const [k, v] of Object.entries(tables)) {
+        summary[v.name || k] = (v.content ? v.content.length - 1 : 0) + ' rows';
+      }
+      el.textContent = JSON.stringify(summary, null, 2);
+    }
+  </script>
+
+  <script>
+    // === Mock StoryRegexUI ===
+    window.StoryRegexUI = window.StoryRegexUI || {};
+    window.StoryRegexUI.dom = {
+      escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = String(value ?? '');
+        return div.innerHTML;
+      },
+      createElement(tag, options = {}) {
+        const el = document.createElement(tag);
+        if (options.className) el.className = options.className;
+        if (options.html) el.innerHTML = options.html;
+        return el;
+      }
+    };
+    window.StoryRegexUI.theme = {
+      getTheme() { return document.body.classList.contains('night') ? 'night' : 'day'; },
+      applyTheme(node) {}
+    };
+    window.StoryRegexUI.registry = {
+      register(module) {
+        window.__dbModule = module;
+        console.log('[Preview] Module registered:', module.id, module.version);
+      }
+    };
+  </script>
+
+
+  <script>
+    // === Mock AutoCardUpdaterAPI (新模板列名对齐) ===
+    const MOCK_TABLES = {
+      sheet_global: {
+        name: '全局数据表',
+        content: [
+          ['row_id', '当前时间', '当前位置', '在场角色姓名', '经过的时间'],
+          [1, '2018年10月15日 14:30 (周一)', '东京都立咒术高等专门学校', '虎杖悠仁, 伏黑惠, 釘崎野蔷薇', '3小时']
+        ]
+      },
+      sheet_protag_info: {
+        name: '主角信息表',
+        content: [
+          ['row_id', '姓名', '性别/年龄', '外貌特征', '当前衣着/装扮', '当前状态/伤情', '职业/身份', '独特能力与咒力特性', '生得术式', '术式简介', '持有的咒具', '领域', '反转术式', '永久损伤'],
+          [1, '虎杖悠仁', '男/15岁', '粉色短发，体格健壮', '咒术高专制服', '正常', '咒术高专一年级学生', '超人体质，宿傩容器', '逕庭拳', '通过灵魂与肉体的时间差产生双重打击', '逐渐魂之枪', '未习得', '未习得', '无']
+        ]
+      },
+      sheet_protag_stats: {
+        name: '主角属性表',
+        content: [
+          ['row_id', '术式潜力等级', '术式潜力值', '术式精通等级', '术式熔断与修复', '等级', '经验值', '技能点', '咒力量(咒力总量)', '咒力当前值', '咒力操纵精度', '咒力消耗倍率', '基础肉体值', '武艺值'],
+          [1, 'A级', 850, '初窥', '否', 5, 45, 3, 800, 650, 0.3, 1.2, 180, 120]
+        ]
+      },
+      sheet_techniques: {
+        name: '扩展术式表',
+        content: [
+          ['row_id', '所属角色', '术式/能力名称', '类别', '熟练度/阶段', '效果描述', '简介'],
+          [1, '虎杖悠仁', '黑闪', '打击强化', '初步觉醒(25)', '将咒力在0.000001秒内施加于物理打击，威力提升2.5倍', '极难掌握的高等技巧'],
+          [2, '虎杖悠仁', '咒力强化', '基础', '初步觉醒(60)', '以咒力强化肉体攻防', '咒术师基本功'],
+          [3, '虎杖悠仁', '发劲', '体术', '初步觉醒(40)', '将咒力集中于一点释放的近距离冲击', '需要精确的咒力控制'],
+          [4, '伏黑惠', '领域展开·嵌合暗翳庭', '领域', '初步觉醒(15)', '将对手拉入影之领域', '十种影法术的极致'],
+          [5, '伏黑惠', '影之储存', '辅助', '入门(170)', '将物品存入影中随时取出', '十种影法术的基础应用']
+        ]
+      },
+      sheet_characters: {
+        name: '重要角色表',
+        content: [
+          ['row_id', '姓名', '性别/年龄', '当前状态/伤情', '是否离场', '职业/身份', '战力等级', '生得术式', 'BPA(总肉体值)', 'BPB(术式强度)', '领域', '好感度', '信任度', '关系阶段'],
+          [1, '伏黑惠', '男/15岁', '正常', '否', '咒术高专一年级', '准一级', '十种影法术', 320, 200, '嵌合暗翳庭', 65, 70, '挚友'],
+          [2, '釘崎野蔷薇', '女/15岁', '轻伤', '否', '咒术高专一年级', '三级', '芻灵咒法', 100, 80, '未习得', 55, 60, '同伴'],
+          [3, '五条悟', '男/28岁', '正常', '是', '咒术高专教师', '特级', '无下限咒术', 5000, 4999, '无量空处', 40, 50, '师生']
+        ]
+      },
+      sheet_shikigami: {
+        name: '咒灵/式神表',
+        content: [
+          ['row_id', '所属角色', '名称', '类型', '起源', '术式', '能力简介', 'BPA(总肉体值)', 'BPB(术式强度)', '战力等级', '当前状态'],
+          [1, '伏黑惠', '脱兔', '式神', '十种影法术', '无', '大量兔子式神用于侦察和干扰', 30, 20, '四级', '待命'],
+          [2, '伏黑惠', '玉犬·白', '式神', '十种影法术', '咒力追踪', '追踪咒力痕迹的犬型式神', 150, 50, '二级', '活跃'],
+          [3, '虎杖悠仁', '指之咒灵', '咒灵', '宿傩手指', '无', '因宿傩手指聚集的低级咒灵', 80, 0, '三级', '封印中']
+        ]
+      },
+      sheet_bindings: {
+        name: '束缚表',
+        content: [
+          ['row_id', '束缚名称', '缔结方', '成立条件', '代价与风险', '违约惩罚', '当前状态'],
+          [1, '宿傩之器', '虎杖悠仁/两面宿傩', '吞食宿傩手指', '宿傩可能夺取身体控制权', '死亡', '生效中'],
+          [2, '不杀之誓', '虎杖悠仁', '自愿缔结', '无法对人类使用致命攻击', '术式封印三日', '生效中'],
+          [3, '十种影法术之约', '伏黑惠/十种影法术', '继承术式', '式神被完全破坏后无法再召唤', '失去该式神', '生效中']
+        ]
+      },
+      sheet_inventory: {
+        name: '重要物品表',
+        content: [
+          ['row_id', '物品名称', '拥有人', '数量', '类别', '所在位置', '描述', '效果', '重要备注'],
+          [1, '咒力回复丸', '虎杖悠仁', 3, '消耗品', '随身', '服用后回复200点咒力', '咒力+200', ''],
+          [2, '特级咒物碎片', '虎杖悠仁', 1, '关键道具', '随身', '来源不明的咒物残片', '未知', '任务相关'],
+          [3, '学生证', '虎杖悠仁', 1, '其他', '随身', '咒术高专学生身份证明', '无', ''],
+          [4, '応急キット', '虎杖悠仁', 5, '消耗品', '背包', '简易止血用', 'HP回复50', ''],
+          [5, '宿傩手指(已吞)', '虎杖悠仁', 3, '关键道具', '体内', '已被虎杖吞食的宿傩手指', '宿傩力量增幅', '无法取出'],
+          [6, '強化手甲', '虎杖悠仁', 1, '武器', '装备中', '咒力强化型拳套', '近战伤害+15%', ''],
+          [7, '高専制服', '虎杖悠仁', 1, '衣物', '装备中', '咒术高专标准制服', '无', ''],
+          [8, '咒力探知器', '虎杖悠仁', 1, '饰品', '随身', '探测周围咒力波动', '感知范围+20m', ''],
+          [9, '結界札', '虎杖悠仁', 4, '消耗品', '随身', '设置简易结界', '结界展开', ''],
+          [10, '呪骸修理素材', '虎杖悠仁', 6, '材料', '随身', '修复咒骸用零件', '无', ''],
+          [11, '任務報酬金', '虎杖悠仁', 50000, '货币', '随身', '完成任务获得的报酬', '无', ''],
+          [12, '高専食堂券', '虎杖悠仁', 10, '其他', '随身', '食堂用餐券', '无', ''],
+          [13, '黒閃記録手帳', '虎杖悠仁', 1, '文件', '随身', '记录黑闪发动条件的笔记', '无', ''],
+          [14, '咒符·壱', '虎杖悠仁', 2, '消耗品', '随身', '一次性防御咒符', '抵挡一次攻击', ''],
+          [15, '通信用咒具', '虎杖悠仁', 1, '饰品', '随身', '与高专联络用', '远程通信', ''],
+          [16, '十種影法術式書', '伏黒惠', 1, '文件', '随身', '十种影法的术式记录', '无', ''],
+          [17, '玉犬召喚符', '伏黒惠', 3, '消耗品', '随身', '快速召唤玉犬的辅助符', '召唤加速', ''],
+          [18, '防護外套', '伏黒惠', 1, '护具', '装备中', '咒力编织的防护外套', '防御+10%', ''],
+          [19, '影の欠片', '伏黒惠', 2, '材料', '随身', '影法术式的副产物', '无', '可合成'],
+          [20, '通信用咒具', '伏黒惠', 1, '饰品', '随身', '与高专联络用', '远程通信', ''],
+          [21, '釘崎専用金槌', '釘崎野蔷薇', 1, '武器', '装备中', '芻灵咒法专用金槌', '咒力传导', ''],
+          [22, '藁人形セット', '釘崎野蔷薇', 5, '消耗品', '随身', '芻灵咒法用稻草人', '远程攻击媒介', ''],
+          [23, '高専購買部ポイント', '釘崎野蔷薇', 3200, '货币', '随身', '购买部积分', '无', '']
+        ]
+      },
+      sheet_quests: {
+        name: '任务与事件表',
+        content: [
+          ['row_id', '任务名称', '任务评级', '目标情报', '委派方/辅助监督', '详细描述', '当前进度', '报酬与风险'],
+          [1, '收集宿傩手指', '特级', '寻找散落各地的宿傩手指', '咒术高专', '作为宿傩容器需收集所有20根手指后一并祓除', '3/20', '免除死刑'],
+          [2, '百鬼夜行调查', 'B级', '调查涉谷地区异常咒力波动', '辅助监督·伊地知', '近期涉谷地区出现大量低级咒灵聚集现象', '未开始', 'KP+2, 经验+30 / 可能遭遇准一级咒灵']
+        ]
+      },
+      sheet_map: {
+        name: '地图元素表',
+        content: [
+          ['row_id', '元素名称', '元素类型', 'X坐标', 'Y坐标', '状态', '描述', '所属区域', '传说背景'],
+          [1, '虎杖悠仁', '主角', 400, 300, '正常', '站在校园中央', '咒术高专', ''],
+          [2, '训练场入口', '地标', 600, 200, '正常', '通往地下训练场的入口', '咒术高专', '高专建校时由结界师设置'],
+          [3, '伏黑惠', '友方', 420, 310, '正常', '站在主角旁边', '咒术高专', ''],
+          [4, '咒灵反应点', '敌方', 700, 450, '活跃', '检测到微弱咒力波动', '咒术高专·东区', '偶尔有低级咒灵出没']
+        ]
+      }
+    };
+
+    // === Traced AutoCardUpdaterAPI ===
+    window.AutoCardUpdaterAPI = {
+      exportTableAsJson() {
+        traceCall('exportTableAsJson');
+        renderDbState(MOCK_TABLES);
+        return Promise.resolve(MOCK_TABLES);
+      },
+      registerTableUpdateCallback(cb) {
+        traceCall('registerTableUpdateCallback');
+        window.__dbUpdateCallback = cb;
+        console.log('[Preview] Table update callback registered');
+      }
+    };
+  </script>
+
+
+  <!-- Load module -->
+  <script src="modules/db-status-bar/data.js"></script>
+  <script src="modules/db-status-bar/index.js"></script>
+
+  <script>
+    // === Render & Controls ===
+    function render() {
+      const module = window.__dbModule;
+      if (!module) { console.error('Module not registered!'); return; }
+      const node = module.renderContent('', {});
+      const container = document.getElementById('container');
+      container.innerHTML = '';
+      container.appendChild(node);
+      module.mount(container, {});
+      // Update debug panels after render
+      setTimeout(showGameState, 100);
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('night');
+      const btn = document.getElementById('themeBtn');
+      btn.textContent = document.body.classList.contains('night') ? '切换日间模式' : '切换夜间模式';
+      btn.classList.toggle('active', document.body.classList.contains('night'));
+      render();
+    }
+
+    function reloadData() {
+      traceCall('reloadData (manual)');
+      if (window.__dbUpdateCallback) {
+        window.__dbUpdateCallback();
+      } else {
+        render();
+      }
+    }
+
+    function simulateUpdate() {
+      traceCall('simulateUpdate');
+      // Simulate a data change: advance time
+      const globalContent = MOCK_TABLES.sheet_global.content;
+      globalContent[1][1] = '2018年10月15日 16:00 (周一)';
+      globalContent[1][4] = '5小时';
+      // Simulate cursed energy consumption
+      const statsContent = MOCK_TABLES.sheet_protag_stats.content;
+      statsContent[1][9] = 500; // cursed energy current drops
+      // Trigger update callback
+      if (window.__dbUpdateCallback) {
+        window.__dbUpdateCallback();
+      } else {
+        render();
+      }
+      renderDbState(MOCK_TABLES);
+    }
+
+    // Initial render
+    render();
+    renderDbState(MOCK_TABLES);
+  </script>
+
+<!-- 模拟酒馆输入框 (用于测试再利用功能) -->
+<div class="mock-send-box">
+  <textarea id="send_textarea" class="mock-send-textarea" rows="2" placeholder="模拟酒馆输入框 — 再利用文案会注入到这里..."></textarea>
+  <button class="mock-send-clear" onclick="document.getElementById('send_textarea').value=''">清空</button>
+</div>
+
+</body>
+</html>

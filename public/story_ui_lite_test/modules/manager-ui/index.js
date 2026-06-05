@@ -47,6 +47,33 @@
             <div class="jjks-manager-actions jjks-manager-actions-tools" data-jjks-maintenance-actions></div>
           </section>
 
+          <section class="jjks-manager-card jjks-manager-map-config jjks-manager-row-full">
+            <h3>${title('地图 AI 配置')}</h3>
+            <p class="jjks-manager-tool-note">配置数据库状态栏地图生成使用的 API 参数。留空字段会使用酒馆助手或状态栏模块的默认配置。</p>
+            <form class="jjks-manager-map-config-form" data-jjks-map-config-form novalidate>
+              <label class="jjks-manager-map-field">
+                <span>API URL</span>
+                <input type="text" name="apiUrl" autocomplete="off" placeholder="留空使用默认 API URL" />
+              </label>
+              <label class="jjks-manager-map-field">
+                <span>API Key</span>
+                <input type="password" name="apiKey" autocomplete="off" placeholder="留空使用默认 API Key" />
+              </label>
+              <label class="jjks-manager-map-field">
+                <span>模型</span>
+                <input type="text" name="model" autocomplete="off" placeholder="留空使用默认模型" />
+              </label>
+              <label class="jjks-manager-map-field">
+                <span>代理预设</span>
+                <input type="text" name="preset" autocomplete="off" placeholder="留空使用默认代理预设" />
+              </label>
+              <div class="jjks-manager-actions jjks-manager-actions-map-config">
+                <button class="jjks-manager-button" type="button" data-jjks-map-action="save">保存地图配置</button>
+                <button class="jjks-manager-button" type="button" data-jjks-map-action="reset">重置地图配置</button>
+              </div>
+            </form>
+          </section>
+
           <section class="jjks-manager-card jjks-manager-row-full">
             <h3>${title('模块状态')}</h3>
             <div class="jjks-manager-module-list" data-jjks-module-list></div>
