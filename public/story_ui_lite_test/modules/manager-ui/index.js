@@ -49,49 +49,37 @@
 
           <section class="jjks-manager-card jjks-manager-map-config jjks-manager-row-full">
             <h3>${title('地图生成 API 设置')}</h3>
-            <p class="jjks-manager-tool-note">只影响数据库状态栏里的 AI 地图生成。选择“跟随当前数据库 API”时直接复用数据库插件当前 API；选择“自行设置 API”时按酒馆助手 custom_api 调用。</p>
-            <p class="jjks-manager-tool-note secondary">自行设置时先填写 API 地址和密钥，再点击“拉取模型列表”，从模型下拉框选择模型后保存。代理预设对应 custom_api.proxy_preset。</p>
+            <p class="jjks-manager-tool-note">只影响数据库状态栏里的 AI 地图生成。可选择跟随当前数据库 API，或填写自定义 API 地址、API Key 与模型名称。</p>
+            <p class="jjks-manager-tool-note secondary">关闭“启用 AI 地图生成”后，状态栏不会调用 AI，会直接使用默认地图。</p>
             <form class="jjks-manager-map-config-form" data-jjks-map-config-form novalidate>
               <div class="jjks-manager-map-mode jjks-manager-map-field-wide">
                 <label>
                   <input type="radio" name="apiMode" value="database" data-jjks-map-mode />
-                  <span>跟随当前数据库 API</span>
+                  <span>API 来源：跟随当前数据库 API</span>
                 </label>
                 <label>
                   <input type="radio" name="apiMode" value="custom" data-jjks-map-mode />
-                  <span>自行设置 API</span>
+                  <span>API 来源：自定义 API</span>
                 </label>
               </div>
               <label class="jjks-manager-map-field">
-                <span>API 地址 apiurl</span>
+                <span>API 地址</span>
                 <input type="text" name="apiUrl" data-jjks-map-custom-field autocomplete="off" placeholder="例如 https://api.openai.com/v1" />
               </label>
               <label class="jjks-manager-map-field">
-                <span>API 密钥 key</span>
+                <span>API Key</span>
                 <input type="password" name="apiKey" data-jjks-map-custom-field autocomplete="off" placeholder="填写中转或模型服务密钥" />
               </label>
               <label class="jjks-manager-map-field">
-                <span>API 源 source</span>
-                <input type="text" name="source" data-jjks-map-custom-field autocomplete="off" placeholder="默认 openai" />
-              </label>
-              <label class="jjks-manager-map-field">
-                <span>模型 model</span>
+                <span>模型名称</span>
                 <select name="model" data-jjks-map-model-select data-jjks-map-custom-field>
                   <option value="">先拉取模型列表</option>
                 </select>
               </label>
-              <label class="jjks-manager-map-field jjks-manager-map-field-wide">
-                <span>酒馆代理预设 proxy_preset</span>
-                <input
-                  type="text"
-                  name="proxyPreset"
-                  data-jjks-map-custom-field
-                  autocomplete="off"
-                  list="jjks-map-proxy-presets"
-                  placeholder="填写 getProxyPresetNames() 返回的预设名称；留空不指定"
-                />
+              <label class="jjks-manager-map-checkbox jjks-manager-map-field-wide">
+                <input type="checkbox" name="enableMapGeneration" />
+                <span>启用 AI 地图生成</span>
               </label>
-              <datalist id="jjks-map-proxy-presets" data-jjks-map-proxy-presets></datalist>
               <p class="jjks-manager-map-model-status jjks-manager-map-field-wide" data-jjks-map-model-status>模型列表尚未拉取。</p>
               <div class="jjks-manager-actions jjks-manager-actions-map-config">
                 <button class="jjks-manager-button" type="button" data-jjks-map-action="fetch-models">拉取模型列表</button>

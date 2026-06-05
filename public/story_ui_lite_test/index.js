@@ -18,8 +18,7 @@
     apiUrl: '',
     apiKey: '',
     model: '',
-    source: '',
-    proxyPreset: '',
+    enableMapGeneration: true,
     modelList: [],
   };
 
@@ -49,6 +48,7 @@
     ],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
+  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'relation-status',
@@ -502,6 +502,13 @@
   }
 
   function buildNodeForModule(module, rawText, context) {
+    if (context?.match?.defaultRender && typeof module?.renderContent === 'function') {
+      return getUi()?.registry?.safelyCall(module, 'renderContent', '', {
+        ...context,
+        rawText,
+      });
+    }
+
     if (typeof module?.renderContent === 'function' && moduleMatchesSingleTag(module, rawText)) {
       return getUi()?.registry?.safelyCall(module, 'renderContent', '', {
         ...context,
@@ -613,6 +620,22 @@
     return matches;
   }
 
+  function getDefaultAfterNativeMatches(modules, rawText) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    return DEFAULT_AFTER_NATIVE_MODULE_IDS.map(moduleId => modules.find(module => module.id === moduleId))
+      .filter(Boolean)
+      .filter(module => !moduleMatchesRawText(module, text) && !moduleMatchesSingleTag(module, text))
+      .map(module => ({
+        module,
+        start: text.length,
+        end: text.length,
+        fullMatch: '',
+        content: '',
+        singleTag: '',
+        defaultRender: true,
+      }));
+  }
+
   function renderMessageHtmlByModules(messageId, rawText, modules) {
     const text = String(rawText || '').replace(/\r\n?/g, '\n');
     let cursor = 0;
@@ -646,12 +669,13 @@
     return { html, mounted };
   }
 
-  function createAfterNativeMountHost(module, moduleHtml, messageId) {
+  function createAfterNativeMountHost(module, moduleHtml, messageId, match) {
     const mountHost = createElementInHost('section');
     mountHost.className = 'story-ui-after-native-mount';
     mountHost.dataset.storyUiAfterNativeMount = 'true';
     mountHost.dataset.storyUiModule = module.id;
     mountHost.dataset.storyUiMessageId = String(messageId);
+    if (match?.defaultRender) mountHost.dataset.storyUiDefaultRender = 'true';
     mountHost.innerHTML = moduleHtml;
     return mountHost;
   }
@@ -786,7 +810,7 @@
   }
 
   function appendMountHostToStack(stackHost, match, moduleHtml, messageId, rawText, registry) {
-    const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
+    const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId, match);
     stackHost.appendChild(mountHost);
     getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
     registry.safelyCall(match.module, 'mount', mountHost, {
@@ -873,13 +897,23 @@
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
 
+    const renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
+    const latestRenderedMessageId = renderedIds[renderedIds.length - 1];
+    const allowDefaultAfterNative = messageId === latestRenderedMessageId;
+    if (allowDefaultAfterNative) clearDefaultAfterNativeMountedDom('db-status-bar', messageId);
+
     const ui = getUi();
     const registry = ui?.registry;
     if (!registry) return false;
 
     const modules = registry
       .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+      .filter(
+        module =>
+          moduleMatchesRawText(module, rawText) ||
+          moduleMatchesSingleTag(module, rawText) ||
+          (allowDefaultAfterNative && DEFAULT_AFTER_NATIVE_MODULE_IDS.includes(module.id)),
+      );
     if (modules.length === 0) {
       mountedModulesByMessage.delete(messageId);
       return false;
@@ -889,7 +923,10 @@
     if (!textElement) return false;
 
     clearMountedStoryUi(messageElement);
-    const matches = getRenderableMatchesInOrder(modules, rawText);
+    const explicitMatches = getRenderableMatchesInOrder(modules, rawText);
+    const explicitModuleIds = new Set(explicitMatches.map(match => match.module.id));
+    const defaultMatches = getDefaultAfterNativeMatches(modules, rawText).filter(match => !explicitModuleIds.has(match.module.id));
+    const matches = [...explicitMatches, ...defaultMatches];
     const mounted = mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement);
 
     if (mounted.length > 0) {
@@ -1098,13 +1135,11 @@
     return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
   }
 
-  function hasLegacyMapCustomConfig(parsed) {
+  function hasUsableMapCustomConfig(parsed) {
     return Boolean(
       normalizeMapConfigValue(parsed?.apiUrl) ||
         normalizeMapConfigValue(parsed?.apiKey) ||
-        normalizeMapConfigValue(parsed?.model) ||
-        normalizeMapConfigValue(parsed?.source) ||
-        normalizeMapConfigValue(parsed?.proxyPreset || parsed?.proxy_preset || parsed?.preset),
+        normalizeMapConfigValue(parsed?.model),
     );
   }
 
@@ -1119,12 +1154,11 @@
       const model = normalizeMapConfigValue(parsed.model);
       if (model && !modelList.includes(model)) modelList.unshift(model);
       return {
-        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasLegacyMapCustomConfig(parsed),
+        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasUsableMapCustomConfig(parsed),
         apiUrl: normalizeMapConfigValue(parsed.apiUrl),
         apiKey: normalizeMapConfigValue(parsed.apiKey),
         model,
-        source: normalizeMapConfigValue(parsed.source),
-        proxyPreset: normalizeMapConfigValue(parsed.proxyPreset || parsed.proxy_preset || parsed.preset),
+        enableMapGeneration: parsed.enableMapGeneration !== false,
         modelList,
       };
     } catch (error) {
@@ -1139,8 +1173,7 @@
       apiUrl: normalizeMapConfigValue(config?.apiUrl),
       apiKey: normalizeMapConfigValue(config?.apiKey),
       model: normalizeMapConfigValue(config?.model),
-      source: normalizeMapConfigValue(config?.source),
-      proxyPreset: normalizeMapConfigValue(config?.proxyPreset),
+      enableMapGeneration: config?.enableMapGeneration !== false,
       modelList: normalizeMapModelList(config?.modelList),
     };
     try {
@@ -1213,29 +1246,14 @@
     setManagerMapMode(form, config.followDatabaseApi);
     setManagerMapConfigValue(form, 'apiUrl', config.apiUrl);
     setManagerMapConfigValue(form, 'apiKey', config.apiKey);
-    setManagerMapConfigValue(form, 'source', config.source);
-    setManagerMapConfigValue(form, 'proxyPreset', config.proxyPreset);
+    const enableMapGenerationInput = form.querySelector('[name="enableMapGeneration"]');
+    if (enableMapGenerationInput) enableMapGenerationInput.checked = config.enableMapGeneration !== false;
     refreshManagerModelOptions(root, config);
     setManagerMapCustomFieldsEnabled(root, config.followDatabaseApi === false);
   }
 
   function getTavernHelperApi() {
     return hostWindow.TavernHelper || window.TavernHelper || globalThis.TavernHelper || null;
-  }
-
-  function refreshManagerProxyPresetOptions(root) {
-    const list = root?.querySelector?.('[data-jjks-map-proxy-presets]');
-    if (!list) return;
-    const getNames = getTavernHelperApi()?.getProxyPresetNames || hostWindow.getProxyPresetNames || window.getProxyPresetNames;
-    if (typeof getNames !== 'function') return;
-    try {
-      const names = getNames();
-      list.innerHTML = Array.isArray(names)
-        ? names.map(name => `<option value="${escapeHtml(normalizeMapConfigValue(name))}"></option>`).join('')
-        : '';
-    } catch (error) {
-      console.warn(`${logPrefix} 读取酒馆代理预设列表失败`, error);
-    }
   }
 
   function collectManagerMapConfig(root) {
@@ -1249,8 +1267,7 @@
       apiUrl: normalizeMapConfigValue(form.querySelector('[name="apiUrl"]')?.value),
       apiKey: normalizeMapConfigValue(form.querySelector('[name="apiKey"]')?.value),
       model: normalizeMapConfigValue(form.querySelector('[name="model"]')?.value),
-      source: normalizeMapConfigValue(form.querySelector('[name="source"]')?.value),
-      proxyPreset: normalizeMapConfigValue(form.querySelector('[name="proxyPreset"]')?.value),
+      enableMapGeneration: form.querySelector('[name="enableMapGeneration"]')?.checked !== false,
       modelList,
     };
   }
@@ -1451,6 +1468,19 @@
     });
   }
 
+  function clearDefaultAfterNativeMountedDom(moduleId, keepMessageId) {
+    hostDocument
+      .querySelectorAll(
+        `[data-story-ui-after-native-mount="true"][data-story-ui-module="${moduleId}"][data-story-ui-default-render="true"]`,
+      )
+      .forEach(node => {
+        if (String(node.dataset.storyUiMessageId || '') === String(keepMessageId)) return;
+        const stack = node.closest?.('[data-story-ui-after-native-stack="true"]');
+        node.remove();
+        if (stack && stack.childElementCount === 0) stack.remove();
+      });
+  }
+
   function clearModuleCaches(moduleId) {
     mountedModulesByMessage.forEach((mounted, messageId) => {
       if (Array.isArray(mounted) && mounted.includes(moduleId)) {
@@ -1556,7 +1586,6 @@
     await ensureManagerAssetsReady();
     const root = ensureManagerDom();
     fillManagerMapConfigForm(root);
-    refreshManagerProxyPresetOptions(root);
     refreshManagerState();
     root.dataset.open = 'true';
     root.querySelector('[data-jjks-manager-close]')?.focus?.();
@@ -1581,7 +1610,7 @@
     listRoot.innerHTML = entries
       .map(
         item => {
-          const status = item.registered ? (item.enabled ? '开启' : '关闭') : '未加载';
+          const status = item.registered ? (item.enabled ? '关闭' : '开启') : '未加载';
           return `
           <div class="jjks-manager-module-item">
             <span class="jjks-manager-module-name">${escapeHtml(item.label)}<small>${escapeHtml(item.registered ? '已注册' : '未注册')}</small></span>
