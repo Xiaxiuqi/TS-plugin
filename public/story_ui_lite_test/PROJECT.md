@@ -82,11 +82,13 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-05
+更新时间：2026-06-06
 
 | 项目项 | 状态 | 证据 | 下一步 |
 | --- | --- | --- | --- |
 | 数据库状态栏基础模块 | 已实现 | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css` | 继续按实际反馈修复 |
+| 状态栏默认挂载位置 | 已修复，待酒馆运行时复核 | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后 | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内 |
+| 角色头像弹窗 | 已回退未授权外观改动，待酒馆运行时复核 | `modules/db-status-bar/index.js` 将头像弹窗恢复挂载到状态栏根节点；`modules/db-status-bar/style.css` 已撤销 body 级弹窗主题变量，避免影响 `preview-db-status.html` 原始预览外观 | 点击主角/重要角色头像，验证弹窗显示、关闭、保存和移除头像；若仍被容器遮挡，需先征得授权再设计外观/挂载方案 |
 | 状态栏地图刷新按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="refresh"`、`doMap(root, false)`、SVG 清理后写入 DOM | 验证缓存命中、空数据 fallback、按钮防重入 |
 | 状态栏地图重绘按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="redraw"`、`doMap(root, true)`、失败保留旧图逻辑 | 验证强制重绘、AI 失败 fallback、SVG 注入风险 |
 | 地图 AI 生成链路 | 已加固，待运行时验证 | `callMapAI()` 使用 `callAI(messages, { max_tokens })`，并通过 `saveApiPreset()`/`setPlotApiPreset()` 桥接 API URL、模型和代理预设 | 运行时复核临时 API 预设切换与恢复是否符合酒馆环境 |
@@ -102,6 +104,25 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.2-status-placement-avatar-modal (2026-06-06)
+
+**状态栏挂载位置与头像弹窗修复**
+
+- 修复 `db-status-bar` 默认挂载目标：`index.js` 不再用“最后渲染楼层”判断默认状态栏位置，而是定位最后 AI/角色消息；用户消息渲染会触发最后 AI 消息刷新，避免状态栏出现在用户输入消息后。
+- 保留显式 `<DbStatusBar/>` 与模块块渲染路径，不改变 `world-log`、`bp-panel-newvars`、`relation-status`、`mvu-status-newvars` 的既有扫描机制。
+- 角色头像弹窗曾尝试改为 body 级挂载并补齐独立主题变量，但该外观相关改动已在 v1.1.3 中撤销；当前实现以状态栏根节点内挂载为准。
+- 如需再次处理头像弹窗被容器遮挡问题，必须先确认授权，并提供不污染 `preview-db-status.html` 原始预览外观的方案。
+- 已通过 `node --check public\\story_ui_lite_test\\index.js` 与 `node --check public\\story_ui_lite_test\\modules\\db-status-bar\\index.js`；仍需在酒馆运行时验证实际 DOM 事件与弹窗显示。
+
+### v1.1.3-preview-css-revert (2026-06-06)
+
+**预览外观回退与未授权 CSS 撤销**
+
+- 经全量检查确认 `public/story_ui_lite_test/preview-db-status.html` 文件本体相对 HEAD 无改动；预览外观风险来自其引用的 `modules/db-status-bar/style.css`。
+- 撤销上一轮未授权新增的 body 级头像弹窗主题变量与弹窗 font-family，不再通过额外 CSS 改变预览外观。
+- 将头像弹窗恢复挂载到状态栏根节点，避免为了 body 级挂载继续扩散 CSS 变量补丁；头像弹窗容器遮挡风险重新标记为运行时待复核。
+- 已搜索确认当前状态栏代码中没有移动端 hover 专项规则或触摸/鼠标悬停事件残留。
 
 ### v1.1.1-map-admin-validation (2026-06-05)
 

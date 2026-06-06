@@ -323,8 +323,8 @@
   function renderCharacterPanel(S, theme) {
     const chars = (S.characters || []).filter(c => !c.isAbsent);
     const pName = (S.protagonist && S.protagonist.name) || '主角';
-    let tabs = `<button class="db-sb-tab active" data-tab="char-protagonist">${esc(pName)}</button>`;
-    chars.forEach((c, i) => { tabs += `<button class="db-sb-tab" data-tab="char-${i}">${esc(c.name)}</button>`; });
+    let tabs = `<span class="db-sb-tab active" data-tab="char-protagonist">${esc(pName)}</span>`;
+    chars.forEach((c, i) => { tabs += `<span class="db-sb-tab" data-tab="char-${i}">${esc(c.name)}</span>`; });
 
     let contents = `<div class="db-sb-tab-content active" data-tab-content="char-protagonist">${renderProtagonistContent(S)}</div>`;
     chars.forEach((c, i) => { contents += `<div class="db-sb-tab-content" data-tab-content="char-${i}">${renderCharacterContent(c, S)}</div>`; });
@@ -591,7 +591,7 @@
     html += '</div>';
 
     // Recycle panel (hidden) - full action bar
-    html += '<div class="db-sb-inv-recycle-panel" id="db-inv-recycle" style="display:none"><div class="db-sb-inv-recycle-header"><span class="db-sb-inv-recycle-hint">选择物品后执行动作</span><div class="db-sb-inv-recycle-actions"><button class="db-sb-tab active" data-recycle-mode="use">使用</button><button class="db-sb-tab" data-recycle-mode="destroy">销毁</button><button class="db-sb-tab" data-recycle-mode="synthesize">合成</button><button class="db-sb-tab" data-recycle-mode="gift">赠予</button><button class="db-sb-tab" data-recycle-mode="request">索取</button><button class="db-sb-tab" data-recycle-mode="discard">丢弃</button></div></div><div class="db-sb-inv-recycle-target" style="display:none"><span class="db-sb-inv-recycle-target-label">目标角色:</span><select class="db-sb-inv-recycle-target-select"></select></div><div class="db-sb-inv-recycle-footer"><button data-inv-action="recycle-confirm">确认</button><button data-inv-action="recycle-cancel">取消</button></div></div>';
+    html += '<div class="db-sb-inv-recycle-panel" id="db-inv-recycle" style="display:none"><div class="db-sb-inv-recycle-header"><span class="db-sb-inv-recycle-hint">选择物品后执行动作</span><div class="db-sb-inv-recycle-actions"><span class="db-sb-tab active" data-recycle-mode="use">使用</span><span class="db-sb-tab" data-recycle-mode="destroy">销毁</span><span class="db-sb-tab" data-recycle-mode="synthesize">合成</span><span class="db-sb-tab" data-recycle-mode="gift">赠予</span><span class="db-sb-tab" data-recycle-mode="request">索取</span><span class="db-sb-tab" data-recycle-mode="discard">丢弃</span></div></div><div class="db-sb-inv-recycle-target" style="display:none"><span class="db-sb-inv-recycle-target-label">目标角色:</span><select class="db-sb-inv-recycle-target-select"></select></div><div class="db-sb-inv-recycle-footer"><button data-inv-action="recycle-confirm">确认</button><button data-inv-action="recycle-cancel">取消</button></div></div>';
 
     html += '</div></div>';
     return html;
@@ -1266,7 +1266,10 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
   function showAvatarModal(charName, root) {
     const oldModal = root.querySelector('.db-sb-avatar-modal');
-    if (oldModal) { if (oldModal._cropper) { oldModal._cropper.destroy(); } oldModal.remove(); }
+    if (oldModal) {
+      if (oldModal._cropper) oldModal._cropper.destroy();
+      oldModal.remove();
+    }
 
     const modal = document.createElement('div');
     modal.className = 'db-sb-avatar-modal';
