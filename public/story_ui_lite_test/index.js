@@ -382,6 +382,46 @@
     }
   }
 
+  function isAssistantChatMessage(chatMessage) {
+    if (!chatMessage || typeof chatMessage !== 'object') return null;
+    if (chatMessage.is_user === true) return false;
+    if (chatMessage.is_user === false) return true;
+    if (chatMessage.is_system === true) return false;
+    if (chatMessage.extra?.type === 'system') return false;
+    return null;
+  }
+
+  function isAssistantMessageElement(messageElement) {
+    if (!messageElement) return null;
+    const attrNames = ['is_user', 'data-is-user', 'is-user'];
+    for (const attrName of attrNames) {
+      const attrValue = messageElement.getAttribute?.(attrName);
+      if (attrValue === 'true' || attrValue === '1') return false;
+      if (attrValue === 'false' || attrValue === '0') return true;
+    }
+    if (messageElement.classList?.contains('user_mes')) return false;
+    if (messageElement.classList?.contains('system_mes')) return false;
+    if (messageElement.classList?.contains('ai_mes')) return true;
+    if (messageElement.classList?.contains('char_mes')) return true;
+    return null;
+  }
+
+  function isAssistantMessage(messageId) {
+    const fromData = isAssistantChatMessage(readRawMessage(messageId));
+    if (fromData !== null) return fromData;
+    const fromDom = isAssistantMessageElement(getDisplayedMessageElement(messageId));
+    if (fromDom !== null) return fromDom;
+    return false;
+  }
+
+  function getLatestAssistantMessageId(renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER)) {
+    for (let index = renderedIds.length - 1; index >= 0; index -= 1) {
+      const messageId = renderedIds[index];
+      if (isAssistantMessage(messageId)) return messageId;
+    }
+    return null;
+  }
+
   function computeSignature(rawText) {
     const text = String(rawText || '');
     if (!text) return 'empty:0';
@@ -898,8 +938,8 @@
     if (!messageElement) return false;
 
     const renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
-    const latestRenderedMessageId = renderedIds[renderedIds.length - 1];
-    const allowDefaultAfterNative = messageId === latestRenderedMessageId;
+    const latestAssistantMessageId = getLatestAssistantMessageId(renderedIds);
+    const allowDefaultAfterNative = messageId === latestAssistantMessageId;
     if (allowDefaultAfterNative) clearDefaultAfterNativeMountedDom('db-status-bar', messageId);
 
     const ui = getUi();
@@ -987,16 +1027,21 @@
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const renderWindowIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
-    const activeSet = new Set([...uniqueIds, ...renderWindowIds]);
+    const latestAssistantMessageId = getLatestAssistantMessageId(getRenderedMessageIds(Number.MAX_SAFE_INTEGER));
+    const scanIds = Array.from(
+      new Set([...uniqueIds, ...(Number.isFinite(latestAssistantMessageId) ? [latestAssistantMessageId] : [])]),
+    );
+    const activeSet = new Set([...scanIds, ...renderWindowIds]);
 
-    uniqueIds.forEach(messageId => {
+    scanIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       const signature = computeSignature(rawText);
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
+      const forceDefaultTargetRefresh = messageId === latestAssistantMessageId;
+      if (!forceDefaultTargetRefresh && previousSignature === signature && hasDisplayHost && hasMountedUi) return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
@@ -1011,7 +1056,7 @@
       mountCollapsedPlaceholderForMessage(messageId, rawText);
     });
 
-    rememberRecentScannedMessageIds(uniqueIds);
+    rememberRecentScannedMessageIds(scanIds);
   }
 
   function normalizeScanTargets(input) {

@@ -195,8 +195,8 @@ function get(headers, row, colName) {
 - 当前代码已不再是纯占位：`modules/db-status-bar/index.js` 中存在 `renderMapTab(S)`、`doMap(root, force)`、`buildMapPrompt(S)`、`fbMap(S)`、`defMap(S)`。
 - 工具条已包含任务、刷新地图、重绘地图三个入口；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本已移除 emoji，并保留项目规范允许的 Unicode 几何符号。
 - 地图数据来源为 `GameState.location` 与 `GameState.mapElements`，其中 `mapElements` 由 `data.js` 的 `parseMapElements()` 从“地图元素表”解析。
-- AI 生成当前走 `AutoCardUpdaterAPI.callAI()`；`callMapAI()` 仅向 `callAI()` 传文档确认的 `max_tokens`，API URL/API Key/模型/代理预设通过 shujuku API 预设接口临时切换，失败时保留旧图，只有无旧图时回退到清理后的 `fbMap(S)` 或 `defMap(S)`。
-- 已补实现但待验证：管理界面地图配置分页已在 `modules/manager-ui/index.js` 和主入口事件链中补齐；SVG 清理、失败路径、按钮防重入、无 emoji 与 API 预设桥接仍需本轮验证和高性能模型审计确认。
+- 自动/非强制地图路径只允许使用缓存或本地 fallback：`doMap(root, false)` 不调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`，避免发送消息后的状态栏刷新触发额外生成事件。
+- 手动 AI 生成仅保留在显式重绘路径：用户点击重绘进入 `doMap(root, true)` 后才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`；失败时保留旧图或回退到清理后的 `fbMap(S)` / `defMap(S)`。
 
 ---
 
@@ -438,7 +438,8 @@ function onTableUpdate() {
 | AI SVG 未清理 | XSS、外链资源加载、地图 DOM 被污染 | 代码已接入 SVG 白名单清理与原子替换，本轮需验证 |
 | AI 失败路径破坏旧图 | 用户点击重绘后地图消失 | 代码已改为失败保留旧图；本轮需验证 fallback 与缓存路径 |
 | 管理界面配置分页回归 | 用户无法配置地图 AI/API 参数 | 已补 UI、读写事件链与每次打开回填；本轮需用代码搜索、语法检查和审计防止回归 |
-| 地图 API 预设桥接失败 | 用户填写的 API URL/API Key/模型/代理预设不生效 | 使用 `saveApiPreset()`/`setPlotApiPreset()` 临时切换并在 finally 恢复；运行时仍需验证 |
+| 自动地图 AI 干扰数据库推进/召回 | 发送消息后状态栏刷新触发额外 AI 生成事件，干扰数据库插件生成生命周期 | `doMap(root, false)` 已限制为缓存或本地 fallback，不调用 `TavernHelper.generate()` / `AutoCardUpdaterAPI.callAI()`；仅显式重绘路径允许 AI |
+| 地图自定义 API 配置不生效 | 用户填写的 API URL/API Key/模型未用于手动地图生成 | 当前实现通过 `TavernHelper.generate({ custom_api })` 传入自定义 API，不切换酒馆全局预设 |
 | 束缚表缔结方格式不确定 | 筛选逻辑错误 | 用 includes() 模糊匹配 |
 | 状态栏默认挂到用户消息后 | 用户输入后状态栏位置错乱，和世界运行报告/BP战力雷达的 AI 消息内定位不一致 | `index.js` 改为定位最后 AI/角色消息；用户消息触发扫描时会刷新最后 AI 消息并移除其他默认状态栏实例 |
 | 头像弹窗挂在消息容器内不可见 | 点击角色头像无弹窗，或被消息容器层级、overflow、状态栏 rerender 影响 | 本轮为恢复 `preview-db-status.html` 原始外观，已撤销 body 级挂载与额外主题变量；若运行时仍需 body 级方案，必须先确认授权并单独设计不污染预览外观的实现 |

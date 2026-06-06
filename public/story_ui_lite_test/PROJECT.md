@@ -91,7 +91,7 @@ story_ui_lite_test/
 | 角色头像弹窗 | 已回退未授权外观改动，待酒馆运行时复核 | `modules/db-status-bar/index.js` 将头像弹窗恢复挂载到状态栏根节点；`modules/db-status-bar/style.css` 已撤销 body 级弹窗主题变量，避免影响 `preview-db-status.html` 原始预览外观 | 点击主角/重要角色头像，验证弹窗显示、关闭、保存和移除头像；若仍被容器遮挡，需先征得授权再设计外观/挂载方案 |
 | 状态栏地图刷新按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="refresh"`、`doMap(root, false)`、SVG 清理后写入 DOM | 验证缓存命中、空数据 fallback、按钮防重入 |
 | 状态栏地图重绘按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="redraw"`、`doMap(root, true)`、失败保留旧图逻辑 | 验证强制重绘、AI 失败 fallback、SVG 注入风险 |
-| 地图 AI 生成链路 | 已加固，待运行时验证 | `callMapAI()` 使用 `callAI(messages, { max_tokens })`，并通过 `saveApiPreset()`/`setPlotApiPreset()` 桥接 API URL、模型和代理预设 | 运行时复核临时 API 预设切换与恢复是否符合酒馆环境 |
+| 地图 AI 生成链路 | 已加固，待运行时验证 | `doMap(root, false)` 仅使用缓存或本地 fallback，不触发 AI；只有用户显式点击重绘进入 `doMap(root, true)` 时才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()` | 运行时复核发送消息和刷新地图后不新增静默生成事件，重绘按钮仍可生成或失败回退 |
 | 管理界面地图配置分页 | 已补实现，待本轮验证/审计 | `index.js` 中地图配置读写与事件链；`modules/manager-ui/index.js` 中 `data-jjks-map-config-form` 和 `data-jjks-map-action` 按钮 | 运行语法、ESLint、emoji 搜索和高性能模型审计 |
 | 浮岛误改回滚 | 已完成 | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空 | 后续默认不碰 ci_island 路径 |
 

@@ -718,6 +718,20 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       return;
     }
 
+    if (!force) {
+      if (viewport) {
+        const elements = S.mapElements || [];
+        const fallbackSvg = sanitizeSVG(elements.length > 0 ? fbMap(S) : defMap(S));
+        if (fallbackSvg) {
+          viewport.innerHTML = fallbackSvg;
+          normalizeMapClickTargets(root);
+        } else {
+          console.warn('[db-status-bar] fallback map SVG rejected by sanitizer');
+        }
+      }
+      return;
+    }
+
     mapBusy = true;
     const refreshBtn = root.querySelector('[data-map-action="refresh"]');
     const redrawBtn = root.querySelector('[data-map-action="redraw"]');
@@ -909,7 +923,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       const mapActionBtn = e.target.closest('[data-map-action]');
       if (mapActionBtn && root.contains(mapActionBtn)) {
         const action = mapActionBtn.dataset.mapAction;
-        if (action === 'refresh') { doMap(root, true); }
+        if (action === 'refresh') { doMap(root, false); }
         else if (action === 'redraw') { doMap(root, true); }
         return;
       }
@@ -1409,7 +1423,11 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
   }
 
   let debounceTimer = null;
+  let activeDataRoot = null;
+  let registeredTableUpdateApi = null;
+
   async function initData(root) {
+    activeDataRoot = root;
     const api = ui.dbStatusData?.getAutoCardAPI?.();
     if (api) {
       try {
@@ -1419,21 +1437,27 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         console.warn('[db-status-bar] API load failed, using test data:', e);
         ui.dbStatusData.loadTestData();
       }
-      api.registerTableUpdateCallback?.(() => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(async () => {
-          try {
-            const t = await api.exportTableAsJson();
-            ui.dbStatusData.parseTables(typeof t === 'string' ? JSON.parse(t) : t);
-            root = rerender(root) || root;
-            maybeAutoMap(root);
-          } catch (e) { console.error('[db-status-bar] Update failed:', e); }
-        }, 300);
-      });
+      if (registeredTableUpdateApi !== api && typeof api.registerTableUpdateCallback === 'function') {
+        registeredTableUpdateApi = api;
+        api.registerTableUpdateCallback(() => {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(async () => {
+            const targetRoot = activeDataRoot;
+            if (!targetRoot?.isConnected) return;
+            try {
+              const t = await api.exportTableAsJson();
+              ui.dbStatusData.parseTables(typeof t === 'string' ? JSON.parse(t) : t);
+              activeDataRoot = rerender(targetRoot) || targetRoot;
+              maybeAutoMap(activeDataRoot);
+            } catch (e) { console.error('[db-status-bar] Update failed:', e); }
+          }, 300);
+        });
+      }
     } else {
       ui.dbStatusData?.loadTestData?.();
     }
     root = rerender(root) || root;
+    activeDataRoot = root;
     maybeAutoMap(root);
   }
 
