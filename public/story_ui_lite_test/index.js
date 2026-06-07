@@ -1180,6 +1180,59 @@
     return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
   }
 
+  const MAP_DEBUG_PREFIX = '[db-status-bar][map-debug]';
+
+  function mapDebugLog(event, details = {}, level = 'info') {
+    try {
+      const fn = level === 'warn' ? console.warn : console.info;
+      fn(MAP_DEBUG_PREFIX, event, details);
+    } catch {
+      // debug logging must not affect manager UI
+    }
+  }
+
+  function maskMapSecret(value) {
+    const text = normalizeMapConfigValue(value);
+    if (!text) return { present: false, tail: '' };
+    return { present: true, tail: text.slice(-4) };
+  }
+
+  function summarizeMapUrl(value) {
+    const text = normalizeMapConfigValue(value);
+    if (!text) return { present: false, summary: '' };
+    try {
+      const url = new URL(text);
+      return { present: true, summary: `${url.origin}${url.pathname}` };
+    } catch {
+      return { present: true, summary: text.replace(/[?#].*$/, '').slice(0, 80) };
+    }
+  }
+
+  function summarizeMapConfig(config) {
+    return {
+      followDatabaseApi: config?.followDatabaseApi !== false,
+      apiUrl: summarizeMapUrl(config?.apiUrl),
+      apiKey: maskMapSecret(config?.apiKey),
+      modelPresent: Boolean(normalizeMapConfigValue(config?.model)),
+      model: normalizeMapConfigValue(config?.model),
+      enableMapGeneration: config?.enableMapGeneration !== false,
+      modelCount: Array.isArray(config?.modelList) ? config.modelList.length : 0,
+    };
+  }
+
+  function summarizeModelFetch(config, extra = {}) {
+    return {
+      config: summarizeMapConfig(config),
+      request: {
+        hasApiurl: Boolean(normalizeMapConfigValue(config?.apiUrl)),
+        hasKey: Boolean(normalizeMapConfigValue(config?.apiKey)),
+        apiurl: summarizeMapUrl(config?.apiUrl),
+        key: maskMapSecret(config?.apiKey),
+      },
+      ...extra,
+    };
+  }
+
   function hasUsableMapCustomConfig(parsed) {
     return Boolean(
       normalizeMapConfigValue(parsed?.apiUrl) ||
@@ -1191,14 +1244,22 @@
   function readMapAiConfig() {
     try {
       const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
-      if (!raw) return getEmptyMapAiConfig();
+      if (!raw) {
+        const emptyConfig = getEmptyMapAiConfig();
+        mapDebugLog('manager:config:read:empty', summarizeMapConfig(emptyConfig));
+        return emptyConfig;
+      }
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') return getEmptyMapAiConfig();
+      if (!parsed || typeof parsed !== 'object') {
+        const emptyConfig = getEmptyMapAiConfig();
+        mapDebugLog('manager:config:read:invalid', { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) }, 'warn');
+        return emptyConfig;
+      }
       const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
       const modelList = normalizeMapModelList(parsed.modelList);
       const model = normalizeMapConfigValue(parsed.model);
       if (model && !modelList.includes(model)) modelList.unshift(model);
-      return {
+      const config = {
         followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasUsableMapCustomConfig(parsed),
         apiUrl: normalizeMapConfigValue(parsed.apiUrl),
         apiKey: normalizeMapConfigValue(parsed.apiKey),
@@ -1206,8 +1267,11 @@
         enableMapGeneration: parsed.enableMapGeneration !== false,
         modelList,
       };
+      mapDebugLog('manager:config:read:ok', summarizeMapConfig(config));
+      return config;
     } catch (error) {
       console.warn(`${logPrefix} 读取地图 AI 配置失败`, error);
+      mapDebugLog('manager:config:read:failed', { reason: error?.message || String(error), config: summarizeMapConfig(getEmptyMapAiConfig()) }, 'warn');
       return getEmptyMapAiConfig();
     }
   }
@@ -1222,9 +1286,11 @@
     };
     try {
       localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
+      mapDebugLog('manager:config:write:ok', summarizeMapConfig(normalized));
       return true;
     } catch (error) {
       console.warn(`${logPrefix} 保存地图 AI 配置失败`, error);
+      mapDebugLog('manager:config:write:failed', { reason: error?.message || String(error), config: summarizeMapConfig(normalized) }, 'warn');
       return false;
     }
   }
@@ -1232,9 +1298,11 @@
   function resetMapAiConfig() {
     try {
       localStorage.removeItem(MAP_CONFIG_STORAGE_KEY);
+      mapDebugLog('manager:config:reset:ok', summarizeMapConfig(getEmptyMapAiConfig()));
       return true;
     } catch (error) {
       console.warn(`${logPrefix} 重置地图 AI 配置失败`, error);
+      mapDebugLog('manager:config:reset:failed', { reason: error?.message || String(error) }, 'warn');
       return false;
     }
   }
@@ -1321,19 +1389,23 @@
   async function fetchManagerMapModels(root) {
     const config = collectManagerMapConfig(root);
     if (!config) {
+      mapDebugLog('manager:models:fetch:failed', { reason: 'form-not-ready' }, 'warn');
       notify('地图配置表单未就绪', 'error');
       return;
     }
     if (config.followDatabaseApi) {
+      mapDebugLog('manager:models:fetch:skipped', summarizeModelFetch(config, { reason: 'follow-database-api' }));
       notify('跟随数据库 API 模式不需要拉取模型列表', 'info');
       return;
     }
     if (!config.apiUrl) {
+      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { reason: 'missing-api-url' }), 'warn');
       notify('请先填写 API 地址，再拉取模型列表', 'error');
       return;
     }
     const getModelList = getTavernHelperApi()?.getModelList || hostWindow.getModelList || window.getModelList;
     if (typeof getModelList !== 'function') {
+      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { reason: 'getModelList-unavailable' }), 'warn');
       notify('酒馆助手 getModelList 不可用，无法拉取模型列表', 'error');
       return;
     }
@@ -1341,17 +1413,21 @@
     const button = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
     setManagerButtonBusy(button, '拉取中', true);
     try {
+      mapDebugLog('manager:models:fetch:start', summarizeModelFetch(config, { generatorAvailable: true }));
       const models = normalizeMapModelList(await getModelList({ apiurl: config.apiUrl, key: config.apiKey }));
       if (models.length === 0) {
+        mapDebugLog('manager:models:fetch:empty', summarizeModelFetch(config, { modelCount: 0 }), 'warn');
         notify('模型列表为空，请检查 API 地址和密钥', 'error');
         return;
       }
       const nextModel = config.model && models.includes(config.model) ? config.model : models[0];
       const nextConfig = { ...config, model: nextModel, modelList: models };
       fillManagerMapConfigForm(root, nextConfig);
+      mapDebugLog('manager:models:fetch:ok', summarizeModelFetch(nextConfig, { modelCount: models.length, selectedModel: nextModel }));
       notify(`已拉取 ${models.length} 个模型，请选择模型后保存`, 'success');
     } catch (error) {
       console.warn(`${logPrefix} 拉取地图 API 模型列表失败`, error);
+      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { reason: error?.message || String(error) }), 'warn');
       notify(`模型列表拉取失败：${error?.message || error}`, 'error');
     } finally {
       setManagerButtonBusy(button, '', false);

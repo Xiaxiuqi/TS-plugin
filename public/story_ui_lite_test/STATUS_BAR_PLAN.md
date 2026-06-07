@@ -193,11 +193,50 @@ function get(headers, row, colName) {
 #### 地图TAB内容（已进入实现与验收阶段）
 
 - 当前代码已不再是纯占位：`modules/db-status-bar/index.js` 中存在 `renderMapTab(S)`、`doMap(root, force)`、`buildMapPrompt(S)`、`callMapAI()` 与失败通知链路，不再维护默认地图生成函数。
-- 工具条已包含任务、刷新地图、重绘地图三个入口；任务按钮在左，刷新/重绘地图按钮组在右；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本保留项目规范允许的 Unicode 几何符号。
+- 工具条已包含任务、刷新地图、重绘地图三个入口；任务按钮在左，刷新/重绘地图按钮组在右；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本保留项目规范允许的 Unicode 几何符号；但本轮反馈显示 `.db-sb-fn-toolbar` 存在异常增高，需按下方方案修复后才能验收。
 - 地图数据来源为 `GameState.location` 与 `GameState.mapElements`，其中 `mapElements` 由 `data.js` 的 `parseMapElements()` 从“地图元素表”解析。
 - 自动地图路径已改为受控生成：`registerTableUpdateCallback()` 在 300ms 防抖、重新解析数据库表并 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`。
 - `doMap(root, false, options)` 会基于地点与地图元素签名复用缓存；只有签名变化或当前位置缺少有效签名缓存且 `allowGenerate` 为 true 时，才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`。
-- 普通刷新按钮仍触发 `doMap(root, false)`，只复用缓存，不无条件生成；显式重绘按钮触发 `doMap(root, true)`，会清当前地点缓存并强制 AI 生成，失败时通知用户并保留旧图，无旧图时显示空状态。
+- 普通刷新按钮仍触发 `doMap(root, false)`，只复用缓存，不无条件生成；显式重绘按钮触发 `doMap(root, true)`，会清当前地点缓存并强制 AI 生成，失败时通知用户并保留旧图，无旧图时显示空状态；但本轮反馈显示点击重绘后缺少即时“正在重绘地图”状态，且 API 失败定位信息不足，需按下方方案修复。
+
+#### 本轮反馈修复方案（先文档确认，后代码实施）
+
+| 问题 | 已确认成因 | 修改方案 | 影响范围 | 验收方式 |
+| --- | --- | --- | --- | --- |
+| 地图和 API 配置缺 debug log | `callMapAI()` 目前只在失败时输出 `console.warn`，没有记录使用 TavernHelper 还是数据库 `callAI`、是否启用 custom_api、模型/API URL 脱敏摘要、prompt 长度、返回类型/长度、SVG 提取和 sanitizer 结果。参考 `数据库前端/咒回前端/regex-状态栏.json` 的地图系统在缓存、状态、刷新、角色 marker 绑定处有连续日志。 | 增加统一前缀 `[db-status-bar][map-debug]` 的 debug 日志：读取配置、保存配置、重置配置、进入 `doMap()`、缓存命中/清除、调用 `TavernHelper.generate` 或 `AutoCardUpdaterAPI.callAI`、返回值类型和长度、`extractSvgMarkup` 是否命中、`sanitizeSVG` 是否通过、失败 reason。API Key 只记录是否存在和脱敏尾号，禁止完整输出。 | `public/story_ui_lite_test/index.js` 的管理页配置读写；`public/story_ui_lite_test/modules/db-status-bar/index.js` 的 `getMapAiConfig()`、`callMapAI()`、`doMap()`。 | 保存地图 API 设置、清空设置、点击刷新、点击重绘各触发一组可读日志；失败时日志能定位“接口不可用/返回空/非 SVG/sanitizer 拒绝/custom_api 参数问题”，且不泄露完整 key。 |
+| `.db-sb-fn-toolbar` 高度异常到 131.56 | `.db-sb-fn-toolbar` 当前 `flex-wrap: wrap`，左右按钮组也 `flex-wrap: wrap`，只要容器宽度不足、字体缩放或按钮文本无法压缩，就会跨多行撑高；现有 CSS 没有约束工具条行高、最小高度、按钮不换行或溢出策略。131.56 需要浏览器 computed style 复核，但从代码看“允许多行换行”是直接风险。 | 工具条改为单行稳定布局：`.db-sb-fn-toolbar` 禁止换行并限制垂直 padding；按钮使用 `white-space: nowrap`；右侧按钮组不足时横向滚动或压缩 gap，不把面板撑高；保留左任务、右刷新/重绘的视觉结构。 | `public/story_ui_lite_test/modules/db-status-bar/style.css`；只在必要时调整 `renderFunctionPanel()` 按钮文案长度。 | 浏览器检查 `.db-sb-fn-toolbar` computed height，目标为一行按钮高度加固定 padding，不再出现 131.56；窄宽度下按钮仍可点击，不覆盖地图区域。 |
+| 点击重绘地图没有即时反应且失败 | `doMap(root, true)` 进入生成后只禁用按钮，没有立即设置 `[data-map-status]` 或 viewport 的“正在重绘地图”；若 `TavernHelper.generate` 返回空/非字符串，会走 `TavernHelper.generate returned no usable map text`，最后在无旧图时显示失败空状态。参考 `数据库前端/咒回前端/regex-状态栏.json` 有固定 `mapContainer`、`mapStatusText` 和缓存/显示更新日志，当前状态栏缺少等价的运行中状态和足够日志。 | 重绘入口进入生成前立即更新状态文本为“正在重绘地图...”，viewport 无旧图时显示生成中占位；成功后先通过 `sanitizeSVG()`，再原子替换 DOM 和缓存；失败时保留旧图，无旧图显示明确空状态。同步补 debug log，记录 force、loc、signature、cache、generator、result、svg/sanitizer。不得恢复默认地图 fallback。 | `public/story_ui_lite_test/modules/db-status-bar/index.js` 的 `doMap()`、`callMapAI()`、`notifyMap()`/`setMapViewportMarkup()`。 | 点击“重绘地图”后立即看到按钮禁用和“正在重绘地图”；AI 成功时显示 SVG 地图区域；AI 空返回、非 SVG 或失败时有可见状态和脱敏日志，不写入默认地图，不静默吞错。 |
+
+##### 与阿斯特里亚成功项目的地图/API 链路对比
+
+本轮地图问题不能只按“按钮没触发”处理。对照 `nailongwang/奶龙王一键制卡/projects/阿斯特里亚王国/王国卡状态栏场景地图实现说明.md` 和实际源码 `nailongwang/奶龙王一键制卡/projects/阿斯特里亚王国/frontend/status-bar.html`，当前链路失败点如下：
+
+| 对比项 | 阿斯特里亚成功链路 | 当前 `story_ui_lite_test` 链路 | 结论与后续修法 |
+| --- | --- | --- | --- |
+| 生成器入口 | `frontend/status-bar.html` 第668-681行直接使用 `api.callAI([{ role:'user', content: prompt }], { max_tokens:4000 })`，成功项目说明第547-557行也记录为 `api.callAI` 后正则提取 `<svg>...</svg>`。 | `public/story_ui_lite_test/modules/db-status-bar/index.js` 第130-139行在自定义 API 分支改走 `TavernHelper.generate({ user_input, custom_api })`；返回值必须是非空字符串，否则报 `TavernHelper.generate returned no usable map text`。 | 当前报错说明已经进入 `TavernHelper.generate` 分支，但返回值不满足字符串检查。后续代码实施必须记录生成器类型、返回类型、返回长度和 custom_api 脱敏摘要，并验证 `TavernHelper.generate` 是否支持该参数结构；不能只假设 API Key 或模型错了。 |
+| 自定义 API 参数 | 阿斯特里亚源码没有 `custom_api` 分支，跟随数据库插件当前 `api.callAI` 配置。 | 当前通过 `buildMapCustomApi()` 组装 `custom_api` 后交给 `TavernHelper.generate`，并把 `apiUrl` 写成 `apiurl`，该键名是否被 TavernHelper 接受没有类型声明证据。 | API 配置“看起来填了”不等于调用链正确。后续必须在 debug log 中输出 custom_api 的字段存在性、API URL 脱敏域名/路径摘要、模型名和 key 尾号；禁止输出完整 key。 |
+| 运行中反馈 | 阿斯特里亚 `doMap(force)` 第668行进入生成后立即 `mapBusy=true`、显示 `#mapLoading`、禁用 `#btnR/#btnD`。说明文档第366-395行也把 `mapBusy` 定义为并发锁。 | 当前 `doMap()` 第808-812行只禁用按钮，没有立即更新 `[data-map-status]`，也没有在无旧图时写入生成中占位。 | 用户点击重绘后“无反应”的直接原因是可见反馈缺失。后续必须在 AI 调用前立即写“正在重绘地图...”，并在无旧图时显示生成中占位。 |
+| SVG 提取与写入 | 阿斯特里亚说明第547-573行：`String(result).match(/<svg[\s\S]*<\/svg>/i)` 提取 SVG，成功后写入 `mapCache[D.loc]` 和 `#mapBox`，再 `bindMC()`。 | 当前第821-828行会 `extractSvgMarkup(result.text)` 后再 `sanitizeSVG(rawSvg)`；这是更安全的方向，但缺少“返回文本是否包含 SVG、sanitizer 为什么拒绝”的日志。 | 当前链路不应恢复阿斯特里亚的裸 `innerHTML` 注入，也不得恢复默认地图 fallback；正确修法是在保留 sanitizer 的同时补足提取/拒绝原因日志。 |
+| 失败处理 | 阿斯特里亚说明第559-563行有 `fbMap()`/`defMap()` 两级 fallback；第805-807行把 fallback 写入一句话复现标准。 | 当前第851-865行失败时保留旧图，无旧图时显示失败空状态，并明确“未写入默认地图”。这是本项目已定边界。 | 阿斯特里亚 fallback 只能作为“成功项目如何保证有图”的差异说明，不能照搬。本轮修法必须保持“不恢复默认地图 fallback”，否则会掩盖 API 链路错误。 |
+| 数据与点击协议 | 阿斯特里亚说明第236-279行使用 `sheet_MapElements` 中文表头，点击协议为 `.cm[data-idx]` 对应 `D.mapEls` 下标；第621-658行说明 `bindMC()` 绑定规则。 | 当前地图数据来自 `GameState.location` 与 `GameState.mapElements`，并经过 `sanitizeSVG()` 和 `normalizeMapClickTargets(root)`，字段命名与阿斯特里亚中文表头并不完全一致。 | 后续 prompt/debug 需要记录地图元素数量、签名和索引协议，避免 AI 输出的 `data-idx` 与当前数据顺序错位。 |
+
+因此，`TavernHelper.generate returned no usable map text` 不是“地图按钮坏了”这么幼稚的结论。它至少说明：生成器函数可达，但 `TavernHelper.generate` 的参数结构、custom_api 字段、返回类型、返回文本中的 SVG 提取或 sanitizer 任一环节可能不符合当前检查。文档确认后的代码实施必须按这些节点逐项打日志、逐项验收；否则只是把错误从屏幕上挪到控制台里，毫无价值。
+
+##### 状态栏重绘地图参考工作流核对点
+
+后续代码实施必须按 `数据库前端/咒回前端/regex-状态栏.json` 的地图面板工作流拆解，而不是只把按钮接到 AI 调用上：
+
+1. 点击重绘后立即进入 running 状态，禁用刷新/重绘按钮，避免重复触发。
+2. 立即更新地图状态文本为“正在重绘地图...”，让用户看见操作已经开始。
+3. 若当前没有旧地图，先在地图 viewport 显示生成中占位，不能让地图区域消失。
+4. 基于当前位置、地图元素和当前签名构造地图 prompt，并记录 prompt 长度与地点摘要。
+5. 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`，日志记录生成器类型和 custom_api 脱敏摘要。
+6. 对返回值先做可用性检查，记录返回类型、字符串长度和空返回原因。
+7. 从返回文本提取 `<svg>...</svg>`，记录是否命中 SVG。
+8. 对 SVG 执行 `sanitizeSVG()`，记录通过或拒绝原因。
+9. 只有成功通过安全检查后，才原子替换地图 DOM 和缓存。
+10. 失败时保留旧图；没有旧图时显示明确失败空状态和状态文本。
+11. 全链路输出 `[db-status-bar][map-debug]` 脱敏日志，禁止泄露完整 API Key。
 
 ---
 
@@ -447,6 +486,9 @@ function onTableUpdate() {
 | 管理界面配置分页回归 | 用户无法配置地图 AI/API 参数 | 已补 UI、读写事件链与每次打开回填；本轮需用代码搜索、语法检查和审计防止回归 |
 | 自动地图 AI 干扰数据库推进/召回 | 发送消息后状态栏刷新可能重复触发 AI 生成，干扰数据库插件生成生命周期 | 表更新回调保留 300ms 防抖；自动路径只在地点/地图元素签名变化或有效缓存缺失时允许 AI，`mapBusy` 防重入，`enableMapGeneration=false` 时仅复用缓存或通知空状态；刷新按钮不无条件生成 |
 | 地图自定义 API 配置不生效 | 用户填写的 API URL/API Key/模型未用于手动地图生成 | 当前实现通过 `TavernHelper.generate({ custom_api })` 传入自定义 API，不切换酒馆全局预设 |
+| 地图/API debug 信息不足 | 失败时只能看到“returned no usable map text”，无法判断是配置、接口契约、返回格式还是 sanitizer 问题 | 已补 `[db-status-bar][map-debug]` 日志，覆盖配置读取/保存/重置、缓存命中/清除、生成器选择、脱敏 custom_api、返回类型/长度、SVG 提取、安全清理和失败 reason；仍需酒馆运行时触发确认日志链 |
+| 地图重绘缺少运行中状态 | 用户点击后没有地图区域，也看不到正在重绘，误判为按钮无效 | 已在 `doMap(root, true)` 生成分支立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位，成功后替换 SVG，失败保留旧图或显示明确空状态 |
+| 工具条高度异常 | `.db-sb-fn-toolbar` 和左右按钮组允许 wrap，窄宽度会多行撑高 | 改为单行稳定布局，按钮 `white-space: nowrap`，右侧按钮组不足时横向滚动或收缩 gap |
 | 束缚表缔结方格式不确定 | 筛选逻辑错误 | 用 includes() 模糊匹配 |
 | 状态栏默认挂到用户消息后 | 用户输入后状态栏位置错乱，和世界运行报告/BP战力雷达的 AI 消息内定位不一致 | `index.js` 改为定位最后 AI/角色消息；用户消息触发扫描时会刷新最后 AI 消息并移除其他默认状态栏实例 |
 | 头像弹窗挂在消息容器内不可见 | 点击角色头像无弹窗，或被消息容器层级、overflow、状态栏 rerender 影响 | 当前点击链路已复核为 `.db-sb-avatar-box` 事件委托到 `showAvatarModal()`，弹窗挂载到 `document.body`；仍需酒馆运行时复核 URL、本地上传、移除和裁剪 |
@@ -477,6 +519,9 @@ function onTableUpdate() {
 - [ ] 刷新地图按钮触发 `doMap(root, false)`，缓存存在时直接复用且不重复生成
 - [ ] 重绘地图按钮触发 `doMap(root, true)`，成功后才替换缓存与 DOM
 - [ ] 地图 AI 调用失败时保留旧图；无旧图时显示空状态并通过通知/状态文本提示失败，不生成默认地图
+- [x] 点击重绘地图后立即显示“正在重绘地图”状态和生成中占位，按钮禁用期间用户能看到反馈
+- [x] 地图/API debug log 覆盖配置读取/保存、生成器选择、脱敏 custom_api、返回类型/长度、SVG 提取和 sanitizer 结果
+- [ ] `.db-sb-fn-toolbar` 保持单行稳定高度，窄宽度不再因按钮换行撑到 131.56 一类异常高度
 - [ ] `.cm[data-idx]` 地图点击目标能显示对应元素详情
 - [ ] 数据库表更新后，地点或地图元素签名变化会自动触发受控 AI 地图重绘；签名未变且缓存命中时不重复生成
 - [ ] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存

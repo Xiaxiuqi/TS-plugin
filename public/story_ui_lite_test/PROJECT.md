@@ -82,17 +82,17 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-06
+更新时间：2026-06-07
 
 | 项目项 | 状态 | 证据 | 下一步 |
 | --- | --- | --- | --- |
 | 数据库状态栏基础模块 | 已实现 | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css` | 继续按实际反馈修复 |
 | 状态栏默认挂载位置 | 已修复，待酒馆运行时复核 | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后 | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内 |
 | 角色头像弹窗 | 已复核，待酒馆运行时复核 | `modules/db-status-bar/index.js` 中 `.db-sb-avatar-box` 点击委托调用 `showAvatarModal()`，弹窗挂载到 `document.body`，保留 URL、本地上传、移除和裁剪链路 | 点击主角/重要角色头像，验证弹窗显示、关闭、保存和移除头像 |
-| 状态栏地图刷新按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="refresh"` 调用 `doMap(root, false)`，只复用有效缓存；无缓存时显示空状态并通知 | 验证缓存命中、无缓存通知、按钮防重入 |
-| 状态栏地图重绘按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="redraw"` 调用 `doMap(root, true)`，强制清当前地点缓存并调用 AI，失败保留旧图或显示空状态 | 验证强制重绘、AI 失败通知、SVG 注入风险 |
-| 地图 AI 生成链路 | 已修正自动重绘与失败路径，待运行时验证 | `registerTableUpdateCallback()` 防抖后调用 `maybeAutoMap(...,{ allowGenerate:true })`；`doMap(root,false,...)` 仅在签名变化或缓存未命中时受控调用 `callMapAI()`，刷新按钮只复用缓存，不生成默认地图 | 运行时复核数据库填表完成后位置/地图元素变化会自动重绘，未变化不重复生成，失败路径可见通知 |
-| 管理界面地图配置分页 | 已补实现，待本轮验证/审计 | `index.js` 中地图配置读写与事件链；保存时保留当前模型并清除其他模型列表缓存；`modules/manager-ui/index.js` 文案同步 AI 关闭后的通知语义 | 运行语法、搜索验证和高性能模型审计 |
+| 状态栏地图刷新按钮 | 已补运行时反馈与日志，待酒馆运行时复核 | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志 | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位 |
+| 状态栏地图重绘按钮 | 已修复即时状态，待酒馆运行时复核 | `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位；失败保留旧图或显示明确空状态 | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态 |
+| 地图 AI 生成链路 | 已补 debug 定位，待酒馆运行时复核 | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志 | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整 |
+| 管理界面地图配置分页 | 已补配置 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的脱敏 `[db-status-bar][map-debug]` 日志，API Key 只输出存在性与尾号 | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key |
 | 浮岛误改回滚 | 已完成 | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空 | 后续默认不碰 ci_island 路径 |
 
 ## 当前工作边界
@@ -104,6 +104,25 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.7-map-debug-redraw-feedback (2026-06-07)
+
+**地图 AI debug 链路与重绘即时反馈修复**
+
+- `modules/db-status-bar/index.js` 新增并扩展 `[db-status-bar][map-debug]` 日志，覆盖地图配置读取、自定义 API 构建、AI 生成器选择、返回摘要、SVG 提取、sanitizer 结果、缓存读写/清除、`doMap()` 入口、自动地图判定和失败 reason。
+- `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时才显示“正在生成地图…”占位，避免清空旧图制造闪烁或失败丢图。
+- `index.js` 管理侧新增独立脱敏日志 helper，覆盖配置读取/保存/重置与模型拉取；API Key 只记录是否存在和末尾 4 位，URL 去除 query/fragment。
+- 同步 `STATUS_BAR_PLAN.md` 风险与验收项：地图/API debug log 与重绘即时反馈已完成代码侧修复，仍需酒馆运行时复核真实接口返回。
+
+### v1.1.6-feedback-doc-plan (2026-06-07)
+
+**本轮反馈成因分析与修复方案文档化**
+
+- 针对地图/API 配置缺 debug log，确认 `callMapAI()` 当前只有失败 `console.warn`，不足以定位 custom_api、TavernHelper 返回值、SVG 提取和 sanitizer 问题；下一步补统一 `[db-status-bar][map-debug]` 脱敏日志。
+- 针对 `.db-sb-fn-toolbar` 高度异常，确认 CSS 允许 toolbar 和左右按钮组 `flex-wrap: wrap`，窄宽度或字体缩放会多行撑高；下一步改为单行稳定布局，按钮不换行，空间不足时采用横向滚动或收缩 gap。
+- 针对重绘地图无即时反应，确认 `doMap(root, true)` 进入生成分支后只禁用按钮，没有立即写入“正在重绘地图”状态；下一步按 `数据库前端/咒回前端/regex-状态栏.json` 的地图状态/容器/缓存日志思路补运行中状态和失败可诊断路径。
+- v1.1.5 只完成入口布局、fallback 策略和模型缓存方向的调整，不代表本轮反馈中的 `.db-sb-fn-toolbar` 高度、重绘即时状态、地图/API debug log 已修复。
+- 本轮只修改文档，不修改业务 JS/CSS/HTML；后续代码实施必须按 `STATUS_BAR_PLAN.md` 的四项方案逐项执行并验收。
 
 ### v1.1.5-map-fallback-removal-toolbar-model-cache (2026-06-06)
 

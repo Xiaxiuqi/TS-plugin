@@ -49,6 +49,73 @@
     return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
   }
 
+  const MAP_DEBUG_PREFIX = '[db-status-bar][map-debug]';
+
+  function mapDebugLog(event, details = {}, level = 'info') {
+    try {
+      const fn = level === 'warn' ? console.warn : console.info;
+      fn(MAP_DEBUG_PREFIX, event, details);
+    } catch {
+      // debug logging must not affect map rendering
+    }
+  }
+
+  function maskMapSecret(value) {
+    const text = normalizeMapConfigValue(value);
+    if (!text) return { present: false, tail: '' };
+    return { present: true, tail: text.slice(-4) };
+  }
+
+  function summarizeMapUrl(value) {
+    const text = normalizeMapConfigValue(value);
+    if (!text) return { present: false, summary: '' };
+    try {
+      const url = new URL(text);
+      return { present: true, summary: `${url.origin}${url.pathname}` };
+    } catch {
+      return { present: true, summary: text.replace(/[?#].*$/, '').slice(0, 80) };
+    }
+  }
+
+  function summarizeMapConfig(config) {
+    return {
+      followDatabaseApi: config?.followDatabaseApi !== false,
+      apiUrl: summarizeMapUrl(config?.apiUrl),
+      apiKey: maskMapSecret(config?.apiKey),
+      modelPresent: Boolean(normalizeMapConfigValue(config?.model)),
+      model: normalizeMapConfigValue(config?.model),
+      enableMapGeneration: config?.enableMapGeneration !== false,
+      modelCount: Array.isArray(config?.modelList) ? config.modelList.length : 0,
+    };
+  }
+
+  function summarizeMapCustomApi(customApi) {
+    if (!customApi) return { present: false };
+    return {
+      present: true,
+      fields: Object.keys(customApi).sort(),
+      hasApiurl: Boolean(customApi.apiurl),
+      hasKey: Boolean(customApi.key),
+      key: maskMapSecret(customApi.key),
+      url: summarizeMapUrl(customApi.apiurl),
+      modelPresent: Boolean(customApi.model),
+      model: normalizeMapConfigValue(customApi.model),
+      maxTokens: customApi.max_tokens,
+    };
+  }
+
+  function summarizeMapAiResult(result) {
+    const type = Array.isArray(result) ? 'array' : typeof result;
+    const text = typeof result === 'string' ? result : '';
+    return {
+      type,
+      isString: typeof result === 'string',
+      length: text.length,
+      trimmedLength: text.trim().length,
+      hasSvg: /<svg[\s\S]*<\/svg>/i.test(text),
+    };
+  }
+
   function hasUsableMapCustomConfig(parsed) {
     return Boolean(
       normalizeMapConfigValue(parsed?.apiUrl) ||
@@ -60,14 +127,22 @@
   function getMapAiConfig() {
     try {
       const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
-      if (!raw) return { ...EMPTY_MAP_CONFIG };
+      if (!raw) {
+        const emptyConfig = { ...EMPTY_MAP_CONFIG };
+        mapDebugLog('config:read:empty', summarizeMapConfig(emptyConfig));
+        return emptyConfig;
+      }
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') return { ...EMPTY_MAP_CONFIG };
+      if (!parsed || typeof parsed !== 'object') {
+        const emptyConfig = { ...EMPTY_MAP_CONFIG };
+        mapDebugLog('config:read:invalid', { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) }, 'warn');
+        return emptyConfig;
+      }
       const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
       const modelList = normalizeMapModelList(parsed.modelList);
       const model = normalizeMapConfigValue(parsed.model);
       if (model && !modelList.includes(model)) modelList.unshift(model);
-      return {
+      const config = {
         followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasUsableMapCustomConfig(parsed),
         apiUrl: normalizeMapConfigValue(parsed.apiUrl),
         apiKey: normalizeMapConfigValue(parsed.apiKey),
@@ -75,8 +150,11 @@
         enableMapGeneration: parsed.enableMapGeneration !== false,
         modelList,
       };
+      mapDebugLog('config:read:ok', summarizeMapConfig(config));
+      return config;
     } catch (e) {
       console.warn('[db-status-bar] read map AI config failed:', e);
+      mapDebugLog('config:read:failed', { reason: e?.message || String(e), config: summarizeMapConfig(EMPTY_MAP_CONFIG) }, 'warn');
       return { ...EMPTY_MAP_CONFIG };
     }
   }
@@ -108,8 +186,12 @@
     if (config.apiUrl) customApi.apiurl = config.apiUrl;
     if (config.apiKey) customApi.key = config.apiKey;
     if (config.model) customApi.model = config.model;
-    if (Object.keys(customApi).length === 0) return null;
+    if (Object.keys(customApi).length === 0) {
+      mapDebugLog('custom-api:build:empty', { config: summarizeMapConfig(config) });
+      return null;
+    }
     customApi.max_tokens = 4000;
+    mapDebugLog('custom-api:build:ok', summarizeMapCustomApi(customApi));
     return customApi;
   }
 
@@ -124,17 +206,29 @@
     function fail(reason, error) {
       if (error) console.warn(`[db-status-bar] ${reason}:`, error);
       else console.warn(`[db-status-bar] ${reason}`);
+      mapDebugLog('ai:failed', { reason, error: error?.message || '', shouldUseCustomApi, customApi: summarizeMapCustomApi(customApi) }, 'warn');
       return { ok: false, text: '', reason };
     }
 
+    mapDebugLog('ai:start', {
+      promptLength: String(prompt || '').length,
+      shouldUseCustomApi,
+      hasTavernHelperGenerate: Boolean(generate),
+      hasDatabaseCallAI: typeof api?.callAI === 'function',
+      config: summarizeMapConfig(config),
+      customApi: summarizeMapCustomApi(customApi),
+    });
+
     if (generate && shouldUseCustomApi && customApi) {
       try {
+        mapDebugLog('ai:generator:selected', { generator: 'TavernHelper.generate', customApi: summarizeMapCustomApi(customApi) });
         const result = await generate({
           user_input: prompt,
           should_silence: true,
           max_chat_history: 0,
           custom_api: customApi,
         });
+        mapDebugLog('ai:result', { generator: 'TavernHelper.generate', result: summarizeMapAiResult(result) });
         if (typeof result === 'string' && result.trim()) return { ok: true, text: result, reason: '' };
         return fail('TavernHelper.generate returned no usable map text');
       } catch (e) {
@@ -151,7 +245,9 @@
     }
 
     try {
+      mapDebugLog('ai:generator:selected', { generator: 'AutoCardUpdaterAPI.callAI', options });
       const result = await api.callAI(messages, options);
+      mapDebugLog('ai:result', { generator: 'AutoCardUpdaterAPI.callAI', result: summarizeMapAiResult(result) });
       return typeof result === 'string' && result.trim() ? { ok: true, text: result, reason: '' } : fail('database plugin callAI returned no usable map text');
     } catch (e) {
       return fail('database plugin callAI failed', e);
@@ -209,26 +305,47 @@
 
   function sanitizeSVG(markup) {
     const raw = String(markup ?? '').trim();
-    if (!raw || typeof DOMParser !== 'function' || typeof XMLSerializer !== 'function') return '';
+    if (!raw) {
+      mapDebugLog('svg:sanitize:failed', { reason: 'empty-input' }, 'warn');
+      return '';
+    }
+    if (typeof DOMParser !== 'function' || typeof XMLSerializer !== 'function') {
+      mapDebugLog('svg:sanitize:failed', { reason: 'parser-unavailable' }, 'warn');
+      return '';
+    }
     try {
       const doc = new DOMParser().parseFromString(raw, 'image/svg+xml');
-      if (doc.querySelector('parsererror')) return '';
+      if (doc.querySelector('parsererror')) {
+        mapDebugLog('svg:sanitize:failed', { reason: 'parsererror', rawLength: raw.length }, 'warn');
+        return '';
+      }
       const svg = doc.documentElement;
-      if (!svg || String(svg.tagName || '').toLowerCase() !== 'svg') return '';
+      if (!svg || String(svg.tagName || '').toLowerCase() !== 'svg') {
+        mapDebugLog('svg:sanitize:failed', { reason: 'root-not-svg', tagName: svg?.tagName || '', rawLength: raw.length }, 'warn');
+        return '';
+      }
       sanitizeSvgNode(svg);
       const viewBox = svg.getAttribute('viewBox') || svg.getAttribute('viewbox') || '';
-      if (!/^\s*-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s*$/.test(viewBox)) return '';
+      if (!/^\s*-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s*$/.test(viewBox)) {
+        mapDebugLog('svg:sanitize:failed', { reason: 'invalid-viewBox', viewBox, rawLength: raw.length }, 'warn');
+        return '';
+      }
       svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      return new XMLSerializer().serializeToString(svg);
+      const safeSvg = new XMLSerializer().serializeToString(svg);
+      mapDebugLog('svg:sanitize:ok', { rawLength: raw.length, safeLength: safeSvg.length, viewBox });
+      return safeSvg;
     } catch (e) {
       console.warn('[db-status-bar] sanitize SVG failed:', e);
+      mapDebugLog('svg:sanitize:failed', { reason: e?.message || String(e), rawLength: raw.length }, 'warn');
       return '';
     }
   }
 
   function extractSvgMarkup(value) {
     const match = String(value ?? '').match(/<svg[\s\S]*<\/svg>/i);
-    return match ? match[0] : '';
+    const svg = match ? match[0] : '';
+    mapDebugLog('svg:extract', { inputType: typeof value, inputLength: typeof value === 'string' ? value.length : 0, found: Boolean(svg), svgLength: svg.length });
+    return svg;
   }
 
   function mapNum(v, fallback) {
@@ -648,33 +765,59 @@
 
   function getMapCacheEntry(loc) {
     const raw = mapCache[loc];
-    if (!raw) return null;
-    if (typeof raw === 'string') return { svg: raw, signature: '' };
+    if (!raw) {
+      mapDebugLog('cache:read:miss', { loc });
+      return null;
+    }
+    if (typeof raw === 'string') {
+      mapDebugLog('cache:read:hit:legacy', { loc, svgLength: raw.length });
+      return { svg: raw, signature: '' };
+    }
     if (typeof raw === 'object' && typeof raw.svg === 'string') {
+      mapDebugLog('cache:read:hit', { loc, svgLength: raw.svg.length, signaturePresent: Boolean(raw.signature) });
       return { svg: raw.svg, signature: String(raw.signature || '') };
     }
     delete mapCache[loc];
+    mapDebugLog('cache:read:invalid-cleared', { loc, rawType: typeof raw }, 'warn');
     return null;
   }
 
   function setMapCacheEntry(loc, svg, signature) {
-    if (!loc || !svg) return;
+    if (!loc || !svg) {
+      mapDebugLog('cache:write:skipped', { loc, hasSvg: Boolean(svg) }, 'warn');
+      return;
+    }
     mapCache[loc] = { svg, signature: String(signature || '') };
+    mapDebugLog('cache:write:ok', { loc, svgLength: svg.length, signaturePresent: Boolean(signature) });
   }
 
   function removeMapCacheEntry(loc) {
-    if (loc) delete mapCache[loc];
+    if (!loc) {
+      mapDebugLog('cache:clear:skipped', { loc }, 'warn');
+      return;
+    }
+    const existed = Boolean(mapCache[loc]);
+    delete mapCache[loc];
+    mapDebugLog('cache:clear', { loc, existed });
   }
 
   function getSafeCachedMap(loc) {
     const entry = getMapCacheEntry(loc);
-    if (!entry?.svg) return null;
+    if (!entry?.svg) {
+      mapDebugLog('cache:safe:miss', { loc });
+      return null;
+    }
     const safeSvg = sanitizeSVG(entry.svg);
     if (!safeSvg) {
       removeMapCacheEntry(loc);
+      mapDebugLog('cache:safe:rejected', { loc, originalLength: entry.svg.length }, 'warn');
       return null;
     }
-    if (safeSvg !== entry.svg || typeof mapCache[loc] === 'string') setMapCacheEntry(loc, safeSvg, entry.signature);
+    if (safeSvg !== entry.svg || typeof mapCache[loc] === 'string') {
+      setMapCacheEntry(loc, safeSvg, entry.signature);
+      mapDebugLog('cache:safe:normalized', { loc, originalLength: entry.svg.length, safeLength: safeSvg.length });
+    }
+    mapDebugLog('cache:safe:ok', { loc, svgLength: safeSvg.length, signaturePresent: Boolean(entry.signature) });
     return { svg: safeSvg, signature: entry.signature };
   }
 
@@ -759,7 +902,10 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
   }
 
   async function doMap(root, force, options = {}) {
-    if (mapBusy) return;
+    if (mapBusy) {
+      mapDebugLog('domap:skipped', { reason: 'busy', force: Boolean(force), options });
+      return;
+    }
     const S = getState();
     const loc = S.location || '未知';
     const signature = buildMapSignature(S);
@@ -774,6 +920,21 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     const cached = getSafeCachedMap(loc);
     const cacheSignatureMatches = cached && (cached.signature === signature || (!allowGenerate && !cached.signature));
 
+    mapDebugLog('domap:start', {
+      loc,
+      force: Boolean(force),
+      allowGenerate,
+      shouldTryGenerate,
+      shouldUpdateAutoSignature,
+      mapGenerationEnabled,
+      previousMarkupLength: previousMarkup.length,
+      safePreviousMarkupLength: safePreviousMarkup.length,
+      cached: Boolean(cached?.svg),
+      cachedSignaturePresent: Boolean(cached?.signature),
+      cacheSignatureMatches: Boolean(cacheSignatureMatches),
+      config: summarizeMapConfig(config),
+    });
+
     if (previousMarkup && safePreviousMarkup && previousMarkup !== safePreviousMarkup && viewport) {
       viewport.innerHTML = safePreviousMarkup;
       normalizeMapClickTargets(root);
@@ -782,6 +943,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     if (!force && cacheSignatureMatches) {
       if (viewport) {
         viewport.innerHTML = cached.svg;
+        mapDebugLog('domap:cache:render', { loc, svgLength: cached.svg.length, updateAutoSignature: shouldUpdateAutoSignature });
         normalizeMapClickTargets(root);
       }
       if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
@@ -790,6 +952,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
     if (!shouldTryGenerate) {
       if (cached?.svg && viewport) {
+        mapDebugLog('domap:no-generate:cached-render', { loc, reason: allowGenerate && !mapGenerationEnabled ? 'generation-disabled' : 'cache-only', svgLength: cached.svg.length });
         viewport.innerHTML = cached.svg;
         normalizeMapClickTargets(root);
       } else if (allowGenerate && !mapGenerationEnabled) {
@@ -803,13 +966,22 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       return;
     }
 
-    if (force) removeMapCacheEntry(loc);
+    if (force) {
+      mapDebugLog('domap:force:clear-cache', { loc });
+      removeMapCacheEntry(loc);
+    }
 
     mapBusy = true;
     const refreshBtn = root.querySelector('[data-map-action="refresh"]');
     const redrawBtn = root.querySelector('[data-map-action="redraw"]');
     if (refreshBtn) refreshBtn.disabled = true;
     if (redrawBtn) redrawBtn.disabled = true;
+    notifyMap(force ? '正在重绘地图…' : '正在生成地图…', 'info', root);
+    if (!safePreviousMarkup) {
+      mapDebugLog('domap:placeholder:render', { loc, reason: 'no-safe-previous-markup' });
+      setMapViewportMarkup(root, renderMapEmptyState('正在生成地图…'));
+    }
+    mapDebugLog('domap:generate:start', { loc, force: Boolean(force), hasPreviousSvg: Boolean(safePreviousMarkup), hasCachedSvg: Boolean(cached?.svg) });
 
     try {
       let svg = '';
@@ -825,6 +997,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
             svg = sanitizeSVG(rawSvg);
             if (rawSvg && !svg) {
               console.warn('[db-status-bar] AI map SVG rejected by sanitizer');
+              mapDebugLog('domap:generate:svg-rejected', { loc, rawSvgLength: rawSvg.length }, 'warn');
               notifyMap('AI 返回的地图 SVG 未通过安全检查，已保留旧图。', 'error', root);
             }
           } else if (result?.reason) {
@@ -840,6 +1013,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
       if (svg) {
         setMapCacheEntry(loc, svg, signature);
+        mapDebugLog('domap:generate:success', { loc, svgLength: svg.length, updateAutoSignature: shouldUpdateAutoSignature });
         if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
         if (viewport) {
           viewport.innerHTML = svg;
@@ -850,6 +1024,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
       const previousSvg = safePreviousMarkup || cached?.svg;
       if (previousSvg) {
+        mapDebugLog('domap:generate:failed-keep-previous', { loc, aiReturnedSvg, previousSvgLength: previousSvg.length }, 'warn');
         notifyMap(aiReturnedSvg ? '地图生成失败，已保留旧图。' : 'AI 未返回可用 SVG，已保留旧图。', 'error', root);
         if (viewport) {
           viewport.innerHTML = previousSvg;
@@ -861,11 +1036,13 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       }
 
       if (mapGenerationEnabled && !aiReturnedSvg) console.warn('[db-status-bar] AI map generation returned no SVG');
+      mapDebugLog('domap:generate:failed-empty', { loc, aiReturnedSvg, mapGenerationEnabled }, 'warn');
       setMapViewportMarkup(root, renderMapEmptyState('地图生成失败。请检查 API 设置后重试。'));
       notifyMap('地图生成失败，未写入默认地图。请检查 API 设置后重试。', 'error', root);
       if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
     } catch (e) {
       console.warn('[db-status-bar] map rendering failed:', e);
+      mapDebugLog('domap:render:failed', { loc, reason: e?.message || String(e) }, 'warn');
       notifyMap(`地图渲染失败：${e?.message || e}`, 'error', root);
     } finally {
       mapBusy = false;
@@ -874,6 +1051,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       const pending = pendingAutoMapRequest;
       pendingAutoMapRequest = null;
       if (pending?.root?.isConnected) {
+        mapDebugLog('domap:pending-auto:resume', { loc, pendingOptions: pending.options });
         setTimeout(() => {
           maybeAutoMap(pending.root, pending.options);
         }, 0);
@@ -1537,10 +1715,16 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
   }
 
   function maybeAutoMap(root, options = {}) {
-    if (!root) return;
+    if (!root) {
+      mapDebugLog('auto-map:skipped', { reason: 'missing-root', options }, 'warn');
+      return;
+    }
     if (mapBusy) {
       if (options.allowGenerate === true && root.isConnected) {
         pendingAutoMapRequest = { root, options: { ...options } };
+        mapDebugLog('auto-map:queued', { reason: 'busy', options });
+      } else {
+        mapDebugLog('auto-map:skipped', { reason: 'busy', rootConnected: Boolean(root.isConnected), options });
       }
       return;
     }
@@ -1551,6 +1735,15 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     const cached = getSafeCachedMap(loc);
     const cacheSignatureMatches = cached && (cached.signature === signature || (options.allowGenerate !== true && !cached.signature));
     const allowGenerate = options.allowGenerate === true && (signature !== lastAutoMapSignature || !cacheSignatureMatches);
+    mapDebugLog('auto-map:evaluate', {
+      loc,
+      requestedGenerate: options.allowGenerate === true,
+      allowGenerate,
+      cached: Boolean(cached?.svg),
+      cachedSignaturePresent: Boolean(cached?.signature),
+      cacheSignatureMatches: Boolean(cacheSignatureMatches),
+      signatureChanged: signature !== lastAutoMapSignature,
+    });
     doMap(root, false, { allowGenerate, updateAutoSignature: true });
   }
 
