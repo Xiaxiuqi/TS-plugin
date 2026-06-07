@@ -50,7 +50,7 @@
           <section class="jjks-manager-card jjks-manager-map-config jjks-manager-row-full">
             <h3>${title('地图生成 API 设置')}</h3>
             <p class="jjks-manager-tool-note">只影响数据库状态栏里的 AI 地图生成。可选择跟随当前数据库 API，或填写自定义 API 地址、API Key 与模型名称。</p>
-            <p class="jjks-manager-tool-note secondary">关闭“启用 AI 地图生成”后，状态栏不会调用 AI，会直接使用默认地图。</p>
+            <p class="jjks-manager-tool-note secondary">关闭“启用 AI 地图生成”后，状态栏不会调用 AI；保存设置会保留当前模型，并清除其他模型列表缓存。</p>
             <form class="jjks-manager-map-config-form" data-jjks-map-config-form novalidate>
               <div class="jjks-manager-map-mode jjks-manager-map-field-wide">
                 <label>

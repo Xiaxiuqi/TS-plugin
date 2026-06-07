@@ -121,6 +121,12 @@
     const customApi = buildMapCustomApi(config);
     const shouldUseCustomApi = hasMapCustomApiConfig(config);
 
+    function fail(reason, error) {
+      if (error) console.warn(`[db-status-bar] ${reason}:`, error);
+      else console.warn(`[db-status-bar] ${reason}`);
+      return { ok: false, text: '', reason };
+    }
+
     if (generate && shouldUseCustomApi && customApi) {
       try {
         const result = await generate({
@@ -129,30 +135,26 @@
           max_chat_history: 0,
           custom_api: customApi,
         });
-        if (typeof result === 'string' && result.trim()) return result;
-        console.warn('[db-status-bar] TavernHelper.generate returned no usable map text, using fallback map');
-        return '';
+        if (typeof result === 'string' && result.trim()) return { ok: true, text: result, reason: '' };
+        return fail('TavernHelper.generate returned no usable map text');
       } catch (e) {
-        console.warn('[db-status-bar] TavernHelper.generate failed, using fallback map:', e);
-        return '';
+        return fail('TavernHelper.generate failed', e);
       }
     }
 
     if (shouldUseCustomApi) {
-      console.warn('[db-status-bar] custom map API is configured but TavernHelper.generate is unavailable, using fallback map');
-      return '';
+      return fail('custom map API is configured but TavernHelper.generate is unavailable');
     }
 
     if (!api || typeof api.callAI !== 'function') {
-      console.warn('[db-status-bar] no available map AI generator');
-      return '';
+      return fail('no available map AI generator');
     }
 
     try {
-      return await api.callAI(messages, options);
+      const result = await api.callAI(messages, options);
+      return typeof result === 'string' && result.trim() ? { ok: true, text: result, reason: '' } : fail('database plugin callAI returned no usable map text');
     } catch (e) {
-      console.warn('[db-status-bar] database plugin callAI failed:', e);
-      return '';
+      return fail('database plugin callAI failed', e);
     }
   }
 
@@ -472,9 +474,13 @@
       <div class="db-sb-body" id="db-fn-body">
         <div class="db-sb-fn-layout">
           <div class="db-sb-fn-toolbar">
-            <button class="db-sb-fn-btn" data-fn-action="quest">任务</button>
-            <button class="db-sb-fn-btn" data-map-action="refresh">⟳ 刷新地图</button>
-            <button class="db-sb-fn-btn" data-map-action="redraw">✧ 重绘地图</button>
+            <div class="db-sb-fn-toolbar-left">
+              <button class="db-sb-fn-btn" data-fn-action="quest">任务</button>
+            </div>
+            <div class="db-sb-fn-toolbar-right">
+              <button class="db-sb-fn-btn" data-map-action="refresh">⟳ 刷新地图</button>
+              <button class="db-sb-fn-btn" data-map-action="redraw">✧ 重绘地图</button>
+            </div>
           </div>
           <div class="db-sb-quest-overlay" id="db-quest-overlay" style="display:none">
             <div class="db-sb-quest-header"><span class="db-sb-sub-title">任务列表</span><button class="db-sb-quest-close" data-quest-close>✕</button></div>
@@ -621,7 +627,56 @@
   const LAND_TYPES = ['landmark', 'obstacle', 'exit', '地标', '障碍物', '出口'];
   const mapCache = Object.create(null);
   let mapBusy = false;
+  let pendingAutoMapRequest = null;
+  let lastAutoMapSignature = '';
   let lastCity = '';
+
+  function buildMapSignature(S) {
+    const elements = Array.isArray(S?.mapElements) ? S.mapElements : [];
+    const compactElements = elements.map(el => ({
+      name: String(el?.name ?? ''),
+      type: String(el?.type ?? ''),
+      x: String(el?.x ?? el?.cx ?? ''),
+      y: String(el?.y ?? el?.cy ?? ''),
+      desc: String(el?.desc ?? el?.description ?? ''),
+    }));
+    return JSON.stringify({
+      location: String(S?.location || '未知'),
+      elements: compactElements,
+    });
+  }
+
+  function getMapCacheEntry(loc) {
+    const raw = mapCache[loc];
+    if (!raw) return null;
+    if (typeof raw === 'string') return { svg: raw, signature: '' };
+    if (typeof raw === 'object' && typeof raw.svg === 'string') {
+      return { svg: raw.svg, signature: String(raw.signature || '') };
+    }
+    delete mapCache[loc];
+    return null;
+  }
+
+  function setMapCacheEntry(loc, svg, signature) {
+    if (!loc || !svg) return;
+    mapCache[loc] = { svg, signature: String(signature || '') };
+  }
+
+  function removeMapCacheEntry(loc) {
+    if (loc) delete mapCache[loc];
+  }
+
+  function getSafeCachedMap(loc) {
+    const entry = getMapCacheEntry(loc);
+    if (!entry?.svg) return null;
+    const safeSvg = sanitizeSVG(entry.svg);
+    if (!safeSvg) {
+      removeMapCacheEntry(loc);
+      return null;
+    }
+    if (safeSvg !== entry.svg || typeof mapCache[loc] === 'string') setMapCacheEntry(loc, safeSvg, entry.signature);
+    return { svg: safeSvg, signature: entry.signature };
+  }
 
   function getMapScale(loc) {
     if (!loc) return 'scene';
@@ -634,6 +689,46 @@
     if (!loc) return '';
     const parts = loc.split(/[·—/-]/);
     return parts[0] || loc;
+  }
+
+  function notifyMap(message, type = 'info', root) {
+    const text = String(message || '').trim();
+    if (!text) return;
+    const candidates = [];
+    try { candidates.push(window); } catch { /* ignore */ }
+    try { candidates.push(parent); } catch { /* ignore */ }
+    try { candidates.push(globalThis); } catch { /* ignore */ }
+    for (const candidate of candidates) {
+      try {
+        const toastr = candidate?.toastr;
+        if (toastr?.[type]) {
+          toastr[type](text, '数据库状态栏地图');
+          break;
+        }
+        if (toastr?.info) {
+          toastr.info(text, '数据库状态栏地图');
+          break;
+        }
+      } catch {
+        // ignore toast failures
+      }
+    }
+    const status = root?.querySelector?.('[data-map-status]');
+    if (status) {
+      status.textContent = text;
+      status.dataset.mapStatusType = type;
+    }
+  }
+
+  function renderMapEmptyState(message) {
+    return `<div class="db-sb-map-empty">${esc(message)}</div>`;
+  }
+
+  function setMapViewportMarkup(root, markup) {
+    const viewport = root?.querySelector?.('.db-sb-map-viewport');
+    if (!viewport) return;
+    viewport.innerHTML = markup || renderMapEmptyState('暂无地图。点击重绘地图生成。');
+    normalizeMapClickTargets(root);
   }
 
   function buildMapPrompt(S) {
@@ -663,74 +758,52 @@
 SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(stroke-width:2, opacity:0.7)表现层次感。角色使用圆形标记，圆内显示姓名首字(白色)，圆下显示全名，圆形带柔和阴影。颜色：主角=#ff5f9e，友方=#6bb7ff，敌方=#e74c3c，NPC=#f39c12。地标用菱形◆标记=#a88545，障碍物=#7a8b99，出口=#45c78a。所有可点击元素必须加 class="cm" data-idx="对应索引"。只输出<svg>...</svg>，不要解释，不要Markdown。`;
   }
 
-  function fbMap(S) {
-    const elements = S.mapElements || [];
-    const area = S.location || '未知';
-    let svg = '<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">';
-    svg += '<rect width="800" height="600" fill="#f5ead0"/>';
-    svg += '<rect x="10" y="10" width="780" height="580" fill="none" stroke="#d4a853" stroke-width="2" stroke-dasharray="6,3" rx="12"/>';
-    svg += `<text x="400" y="35" text-anchor="middle" fill="#5c4033" font-size="16" font-weight="bold">${esc(area)}</text>`;
-    elements.forEach((el, i) => {
-      const color = MAP_COLOR_MAP[el.type] || '#8b7355';
-      const point = resolveMapPoint(el, i);
-      const { cx, cy } = point;
-      const isChar = CHAR_TYPES.includes(el.type);
-      if (isChar) {
-        svg += renderMapMarker(el, i, cx, cy, color, 16, 30);
-      } else {
-        svg += renderMapLandMarker(el, i, cx, cy, color, 16);
-      }
-    });
-    svg += '</svg>';
-    return svg;
-  }
-
-  function defMap(S) {
-    const area = S.location || '未知';
-    return `<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"><rect width="800" height="600" fill="#f5ead0"/><rect x="10" y="10" width="780" height="580" fill="none" stroke="#d4a853" stroke-width="2" stroke-dasharray="6,3" rx="12"/><text x="400" y="35" text-anchor="middle" fill="#5c4033" font-size="16" font-weight="bold">${esc(area)}</text><circle cx="400" cy="300" r="20" fill="#ff5f9e" stroke="#fff" stroke-width="2.5"/><text x="400" y="305" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">你</text><text x="400" y="330" text-anchor="middle" fill="#5c4033" font-size="10">当前位置</text></svg>`;
-  }
-
-  async function doMap(root, force) {
+  async function doMap(root, force, options = {}) {
     if (mapBusy) return;
     const S = getState();
     const loc = S.location || '未知';
+    const signature = buildMapSignature(S);
     const config = getMapAiConfig();
     const mapGenerationEnabled = config.enableMapGeneration !== false;
+    const allowGenerate = Boolean(force || options.allowGenerate);
+    const shouldTryGenerate = mapGenerationEnabled && allowGenerate;
+    const shouldUpdateAutoSignature = options.updateAutoSignature === true;
     const viewport = root.querySelector('.db-sb-map-viewport');
     const previousMarkup = viewport ? viewport.innerHTML.trim() : '';
-    const safePreviousMarkup = mapGenerationEnabled && previousMarkup ? sanitizeSVG(previousMarkup) : '';
-    const previousCached = mapCache[loc] || '';
-    const safePreviousCached = mapGenerationEnabled && previousCached ? sanitizeSVG(previousCached) : '';
-
-    if (previousCached && safePreviousCached) mapCache[loc] = safePreviousCached;
-    else if (previousCached) delete mapCache[loc];
+    const safePreviousMarkup = previousMarkup ? sanitizeSVG(previousMarkup) : '';
+    const cached = getSafeCachedMap(loc);
+    const cacheSignatureMatches = cached && (cached.signature === signature || (!allowGenerate && !cached.signature));
 
     if (previousMarkup && safePreviousMarkup && previousMarkup !== safePreviousMarkup && viewport) {
       viewport.innerHTML = safePreviousMarkup;
       normalizeMapClickTargets(root);
     }
 
-    if (!force && safePreviousCached) {
+    if (!force && cacheSignatureMatches) {
       if (viewport) {
-        viewport.innerHTML = safePreviousCached;
+        viewport.innerHTML = cached.svg;
         normalizeMapClickTargets(root);
       }
+      if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
       return;
     }
 
-    if (!force) {
-      if (viewport) {
-        const elements = S.mapElements || [];
-        const fallbackSvg = sanitizeSVG(elements.length > 0 ? fbMap(S) : defMap(S));
-        if (fallbackSvg) {
-          viewport.innerHTML = fallbackSvg;
-          normalizeMapClickTargets(root);
-        } else {
-          console.warn('[db-status-bar] fallback map SVG rejected by sanitizer');
-        }
+    if (!shouldTryGenerate) {
+      if (cached?.svg && viewport) {
+        viewport.innerHTML = cached.svg;
+        normalizeMapClickTargets(root);
+      } else if (allowGenerate && !mapGenerationEnabled) {
+        setMapViewportMarkup(root, renderMapEmptyState('AI 地图生成已关闭。请在咒回前端管理中启用后重绘。'));
+        notifyMap('AI 地图生成已关闭，未生成地图。', 'error', root);
+      } else {
+        setMapViewportMarkup(root, renderMapEmptyState('暂无地图缓存。请点击重绘地图生成。'));
+        notifyMap('暂无地图缓存，请点击重绘地图生成。', 'info', root);
       }
+      if (shouldUpdateAutoSignature && !allowGenerate) lastAutoMapSignature = signature;
       return;
     }
+
+    if (force) removeMapCacheEntry(loc);
 
     mapBusy = true;
     const refreshBtn = root.querySelector('[data-map-action="refresh"]');
@@ -743,22 +816,31 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       let aiReturnedSvg = false;
       try {
         const api = ui.dbStatusData?.getAutoCardAPI?.();
-        if (mapGenerationEnabled && ((api && typeof api.callAI === 'function') || getTavernHelperGenerate())) {
+        if ((api && typeof api.callAI === 'function') || getTavernHelperGenerate()) {
           const prompt = buildMapPrompt(S);
           const result = await callMapAI(api, prompt);
-          if (result) {
-            const rawSvg = extractSvgMarkup(result);
+          if (result?.ok && result.text) {
+            const rawSvg = extractSvgMarkup(result.text);
             aiReturnedSvg = Boolean(rawSvg);
             svg = sanitizeSVG(rawSvg);
-            if (rawSvg && !svg) console.warn('[db-status-bar] AI map SVG rejected by sanitizer');
+            if (rawSvg && !svg) {
+              console.warn('[db-status-bar] AI map SVG rejected by sanitizer');
+              notifyMap('AI 返回的地图 SVG 未通过安全检查，已保留旧图。', 'error', root);
+            }
+          } else if (result?.reason) {
+            notifyMap(`地图 AI 调用失败：${result.reason}`, 'error', root);
           }
+        } else {
+          notifyMap('没有可用的地图 AI 生成接口。', 'error', root);
         }
       } catch (e) {
         console.warn('[db-status-bar] AI map generation failed:', e);
+        notifyMap(`地图 AI 生成失败：${e?.message || e}`, 'error', root);
       }
 
       if (svg) {
-        mapCache[loc] = svg;
+        setMapCacheEntry(loc, svg, signature);
+        if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
         if (viewport) {
           viewport.innerHTML = svg;
           normalizeMapClickTargets(root);
@@ -766,33 +848,36 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         return;
       }
 
-      const previousSvg = safePreviousMarkup || safePreviousCached;
+      const previousSvg = safePreviousMarkup || cached?.svg;
       if (previousSvg) {
+        notifyMap(aiReturnedSvg ? '地图生成失败，已保留旧图。' : 'AI 未返回可用 SVG，已保留旧图。', 'error', root);
         if (viewport) {
           viewport.innerHTML = previousSvg;
           normalizeMapClickTargets(root);
         }
-        if (safePreviousCached) mapCache[loc] = safePreviousCached;
+        setMapCacheEntry(loc, previousSvg, signature);
+        if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
         return;
       }
 
-      if (mapGenerationEnabled && !aiReturnedSvg) console.warn('[db-status-bar] AI map generation returned no SVG, using fallback');
-      if (viewport) {
-        const elements = S.mapElements || [];
-        const fallbackSvg = sanitizeSVG(elements.length > 0 ? fbMap(S) : defMap(S));
-        if (fallbackSvg) {
-          viewport.innerHTML = fallbackSvg;
-          normalizeMapClickTargets(root);
-        } else {
-          console.warn('[db-status-bar] fallback map SVG rejected by sanitizer');
-        }
-      }
+      if (mapGenerationEnabled && !aiReturnedSvg) console.warn('[db-status-bar] AI map generation returned no SVG');
+      setMapViewportMarkup(root, renderMapEmptyState('地图生成失败。请检查 API 设置后重试。'));
+      notifyMap('地图生成失败，未写入默认地图。请检查 API 设置后重试。', 'error', root);
+      if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
     } catch (e) {
       console.warn('[db-status-bar] map rendering failed:', e);
+      notifyMap(`地图渲染失败：${e?.message || e}`, 'error', root);
     } finally {
       mapBusy = false;
       if (refreshBtn) refreshBtn.disabled = false;
       if (redrawBtn) redrawBtn.disabled = false;
+      const pending = pendingAutoMapRequest;
+      pendingAutoMapRequest = null;
+      if (pending?.root?.isConnected) {
+        setTimeout(() => {
+          maybeAutoMap(pending.root, pending.options);
+        }, 0);
+      }
     }
   }
 
@@ -812,19 +897,6 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       '障碍物': '#7a8b99',
       '出口': '#45c78a'
     };
-    // --- Fallback SVG 渲染 ---
-    let svgElements = '';
-    elements.forEach((el, i) => {
-      const color = MAP_COLOR_MAP[el.type] || colorMap[el.type] || '#999';
-      const point = resolveMapPoint(el, i);
-      const { cx, cy } = point;
-      if (CHAR_TYPES.includes(el.type)) {
-        svgElements += renderMapMarker(el, i, cx, cy, color, 10, 22);
-      } else {
-        svgElements += renderMapLandMarker(el, i, cx, cy, color, 16);
-      }
-    });
-
     let legend = '';
     Object.entries(colorMap).forEach(([type, color]) => {
       legend += `<span class="db-sb-map-legend-item"><span class="db-sb-map-legend-color" style="background:${color}"></span>${type}</span>`;
@@ -836,12 +908,9 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         <span class="db-sb-label">当前区域: ${esc(area)}</span>
       </div>
       <div class="db-sb-map-viewport">
-        <svg viewBox="0 0 800 600" class="db-sb-map-svg" id="db-map-svg">
-          <rect width="800" height="600" fill="#f5ead0"/>
-          <text x="400" y="30" text-anchor="middle" fill="#5c4033" font-size="14" font-weight="bold" opacity="0.8">${esc(area)}</text>
-          ${svgElements}
-        </svg>
+        ${renderMapEmptyState('暂无地图缓存。点击重绘地图生成。')}
       </div>
+      <div class="db-sb-map-status" data-map-status></div>
       <div class="db-sb-map-legend">${legend}</div>
       <div class="db-sb-map-detail" id="db-map-detail"></div>
     </div>`;
@@ -1279,7 +1348,13 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
   }
 
   function showAvatarModal(charName, root) {
-    const oldModal = root.querySelector('.db-sb-avatar-modal');
+    const name = String(charName || '').trim();
+    if (!name) {
+      notifyMap('未识别头像所属角色，无法打开头像设置。', 'error', root);
+      return;
+    }
+    const modalHost = document.body || root;
+    const oldModal = modalHost.querySelector('.db-sb-avatar-modal');
     if (oldModal) {
       if (oldModal._cropper) oldModal._cropper.destroy();
       oldModal.remove();
@@ -1290,12 +1365,12 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     modal.innerHTML = `
       <div class="db-sb-avatar-modal-overlay"></div>
       <div class="db-sb-avatar-modal-body">
-        <div class="db-sb-avatar-modal-title">\u8BBE\u7F6E\u5934\u50CF: ${esc(charName)}</div>
+        <div class="db-sb-avatar-modal-title">\u8BBE\u7F6E\u5934\u50CF: ${esc(name)}</div>
         <div class="db-sb-avatar-crop-area" style="display:none">
           <img class="db-sb-avatar-crop-img" style="max-width:100%;display:block">
         </div>
         <div class="db-sb-avatar-crop-actions" style="display:none"><button class="db-sb-avatar-crop-ok">\u786E\u8BA4\u88C1\u526A</button><button class="db-sb-avatar-crop-cancel">\u53D6\u6D88</button></div>
-        <div class="db-sb-avatar-preview">${(() => { try { return avatarContent(localStorage.getItem('db-avatar-' + charName) || '', charName, 'width:90px;height:120px;object-fit:cover;border-radius:6px'); } catch(e) { return avatarContent('', charName); } })()}</div>
+        <div class="db-sb-avatar-preview">${(() => { try { return avatarContent(localStorage.getItem('db-avatar-' + name) || '', name, 'width:90px;height:120px;object-fit:cover;border-radius:6px'); } catch(e) { return avatarContent('', name); } })()}</div>
         <div class="db-sb-avatar-actions">
           <div class="db-sb-avatar-url-row">
             <input type="text" class="db-sb-avatar-url-input" placeholder="\u8F93\u5165\u56FE\u7247URL..." />
@@ -1310,7 +1385,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         <button class="db-sb-avatar-close-btn">\u2715</button>
       </div>`;
 
-    root.appendChild(modal);
+    modalHost.appendChild(modal);
 
     const preview = modal.querySelector('.db-sb-avatar-preview');
     const urlInput = modal.querySelector('.db-sb-avatar-url-input');
@@ -1325,7 +1400,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       if (!canvas) return;
       let dataURL;
       try { dataURL = canvas.toDataURL('image/jpeg', 0.7); } catch(e) { console.warn('[avatar] Canvas tainted:', e); return; }
-      try { localStorage.setItem('db-avatar-' + charName, dataURL); } catch(e) { console.warn('[avatar] Storage failed:', e); return; }
+      try { localStorage.setItem('db-avatar-' + name, dataURL); } catch(e) { console.warn('[avatar] Storage failed:', e); return; }
       cropper.destroy(); cropper = null;
       rerender(root.closest('.db-status-bar') || root);
       modal.remove();
@@ -1396,7 +1471,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
     // Remove avatar
     modal.querySelector('.db-sb-avatar-remove-btn').addEventListener('click', () => {
-      try { localStorage.removeItem('db-avatar-' + charName); } catch(e) { console.warn('[db-status-bar] remove avatar failed:', e); }
+      try { localStorage.removeItem('db-avatar-' + name); } catch(e) { console.warn('[db-status-bar] remove avatar failed:', e); }
       rerender(root.closest('.db-status-bar') || root);
       modal.remove();
     });
@@ -1448,7 +1523,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
               const t = await api.exportTableAsJson();
               ui.dbStatusData.parseTables(typeof t === 'string' ? JSON.parse(t) : t);
               activeDataRoot = rerender(targetRoot) || targetRoot;
-              maybeAutoMap(activeDataRoot);
+              maybeAutoMap(activeDataRoot, { allowGenerate: true });
             } catch (e) { console.error('[db-status-bar] Update failed:', e); }
           }, 300);
         });
@@ -1461,10 +1536,22 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     maybeAutoMap(root);
   }
 
-  function maybeAutoMap(root) {
-    if (!root || mapBusy) return;
+  function maybeAutoMap(root, options = {}) {
+    if (!root) return;
+    if (mapBusy) {
+      if (options.allowGenerate === true && root.isConnected) {
+        pendingAutoMapRequest = { root, options: { ...options } };
+      }
+      return;
+    }
     normalizeMapClickTargets(root);
-    doMap(root, false);
+    const S = getState();
+    const signature = buildMapSignature(S);
+    const loc = S.location || '未知';
+    const cached = getSafeCachedMap(loc);
+    const cacheSignatureMatches = cached && (cached.signature === signature || (options.allowGenerate !== true && !cached.signature));
+    const allowGenerate = options.allowGenerate === true && (signature !== lastAutoMapSignature || !cacheSignatureMatches);
+    doMap(root, false, { allowGenerate, updateAutoSignature: true });
   }
 
   function rerender(root) {

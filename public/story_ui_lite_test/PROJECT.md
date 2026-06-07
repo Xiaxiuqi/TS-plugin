@@ -88,11 +88,11 @@ story_ui_lite_test/
 | --- | --- | --- | --- |
 | 数据库状态栏基础模块 | 已实现 | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css` | 继续按实际反馈修复 |
 | 状态栏默认挂载位置 | 已修复，待酒馆运行时复核 | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后 | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内 |
-| 角色头像弹窗 | 已回退未授权外观改动，待酒馆运行时复核 | `modules/db-status-bar/index.js` 将头像弹窗恢复挂载到状态栏根节点；`modules/db-status-bar/style.css` 已撤销 body 级弹窗主题变量，避免影响 `preview-db-status.html` 原始预览外观 | 点击主角/重要角色头像，验证弹窗显示、关闭、保存和移除头像；若仍被容器遮挡，需先征得授权再设计外观/挂载方案 |
-| 状态栏地图刷新按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="refresh"`、`doMap(root, false)`、SVG 清理后写入 DOM | 验证缓存命中、空数据 fallback、按钮防重入 |
-| 状态栏地图重绘按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="redraw"`、`doMap(root, true)`、失败保留旧图逻辑 | 验证强制重绘、AI 失败 fallback、SVG 注入风险 |
-| 地图 AI 生成链路 | 已加固，待运行时验证 | `doMap(root, false)` 仅使用缓存或本地 fallback，不触发 AI；只有用户显式点击重绘进入 `doMap(root, true)` 时才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()` | 运行时复核发送消息和刷新地图后不新增静默生成事件，重绘按钮仍可生成或失败回退 |
-| 管理界面地图配置分页 | 已补实现，待本轮验证/审计 | `index.js` 中地图配置读写与事件链；`modules/manager-ui/index.js` 中 `data-jjks-map-config-form` 和 `data-jjks-map-action` 按钮 | 运行语法、ESLint、emoji 搜索和高性能模型审计 |
+| 角色头像弹窗 | 已复核，待酒馆运行时复核 | `modules/db-status-bar/index.js` 中 `.db-sb-avatar-box` 点击委托调用 `showAvatarModal()`，弹窗挂载到 `document.body`，保留 URL、本地上传、移除和裁剪链路 | 点击主角/重要角色头像，验证弹窗显示、关闭、保存和移除头像 |
+| 状态栏地图刷新按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="refresh"` 调用 `doMap(root, false)`，只复用有效缓存；无缓存时显示空状态并通知 | 验证缓存命中、无缓存通知、按钮防重入 |
+| 状态栏地图重绘按钮 | 已修复，待本轮验证/审计 | `modules/db-status-bar/index.js` 中 `data-map-action="redraw"` 调用 `doMap(root, true)`，强制清当前地点缓存并调用 AI，失败保留旧图或显示空状态 | 验证强制重绘、AI 失败通知、SVG 注入风险 |
+| 地图 AI 生成链路 | 已修正自动重绘与失败路径，待运行时验证 | `registerTableUpdateCallback()` 防抖后调用 `maybeAutoMap(...,{ allowGenerate:true })`；`doMap(root,false,...)` 仅在签名变化或缓存未命中时受控调用 `callMapAI()`，刷新按钮只复用缓存，不生成默认地图 | 运行时复核数据库填表完成后位置/地图元素变化会自动重绘，未变化不重复生成，失败路径可见通知 |
+| 管理界面地图配置分页 | 已补实现，待本轮验证/审计 | `index.js` 中地图配置读写与事件链；保存时保留当前模型并清除其他模型列表缓存；`modules/manager-ui/index.js` 文案同步 AI 关闭后的通知语义 | 运行语法、搜索验证和高性能模型审计 |
 | 浮岛误改回滚 | 已完成 | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空 | 后续默认不碰 ci_island 路径 |
 
 ## 当前工作边界
@@ -105,14 +105,32 @@ story_ui_lite_test/
 
 ## 变更日志
 
+### v1.1.5-map-fallback-removal-toolbar-model-cache (2026-06-06)
+
+**地图 fallback 删除、按钮布局与模型缓存修复**
+
+- 删除 `db-status-bar` 地图默认生成回退策略：地图 AI 关闭、无缓存、AI 调用失败、AI 返回非 SVG 或 SVG 未通过安全检查时，不再静默写入默认地图；改为 toastr 通知、地图面板状态文本、保留旧图或显示空状态。
+- 重绘地图按钮强制清当前地点缓存并调用 AI；成功后才写入 DOM 与缓存，失败时不覆盖旧图。
+- 地图工具栏改为左侧任务按钮、右侧刷新/重绘按钮组，避免刷新和重绘入口挤在左侧。
+- 头像点击链路复核为 `.db-sb-avatar-box` 事件委托到 `showAvatarModal()`，弹窗挂载到 `document.body` 并保留 URL、本地上传、移除和裁剪操作。
+- 保存地图 API 设置时只清除其他模型列表缓存，保留当前选中的模型；管理面板说明同步为 AI 关闭后不调用 AI、不使用默认地图。
+
+### v1.1.4-map-auto-redraw-correction (2026-06-06)
+
+**数据库填表后的地图自动重绘修正**
+
+- 修正上一轮“自动地图不调用 AI”的错误策略：数据库表更新回调在 300ms 防抖、重新解析并 rerender 后，会以受控自动路径触发地图重绘。
+- `modules/db-status-bar/index.js` 增加地图签名与缓存条目签名，只有地点或地图元素数据变化、或当前位置缺少有效缓存时，自动路径才允许调用 `callMapAI()`；普通刷新按钮仍不无条件生成。
+- 保留 `mapBusy` 防重入、`enableMapGeneration` 开关、SVG 白名单清理、AI 失败保留旧图或空状态通知的行为，避免数据库推进/召回链路被重复生成拖慢。
+
 ### v1.1.2-status-placement-avatar-modal (2026-06-06)
 
 **状态栏挂载位置与头像弹窗修复**
 
 - 修复 `db-status-bar` 默认挂载目标：`index.js` 不再用“最后渲染楼层”判断默认状态栏位置，而是定位最后 AI/角色消息；用户消息渲染会触发最后 AI 消息刷新，避免状态栏出现在用户输入消息后。
 - 保留显式 `<DbStatusBar/>` 与模块块渲染路径，不改变 `world-log`、`bp-panel-newvars`、`relation-status`、`mvu-status-newvars` 的既有扫描机制。
-- 角色头像弹窗曾尝试改为 body 级挂载并补齐独立主题变量，但该外观相关改动已在 v1.1.3 中撤销；当前实现以状态栏根节点内挂载为准。
-- 如需再次处理头像弹窗被容器遮挡问题，必须先确认授权，并提供不污染 `preview-db-status.html` 原始预览外观的方案。
+- 角色头像弹窗曾尝试改为 body 级挂载并补齐独立主题变量，但该外观相关改动已在 v1.1.3 中撤销；此段为历史记录，当前挂载层级以 v1.1.5 记录为准。
+- 如需再次处理头像弹窗外观问题，必须先确认授权，并提供不污染 `preview-db-status.html` 原始预览外观的方案。
 - 已通过 `node --check public\\story_ui_lite_test\\index.js` 与 `node --check public\\story_ui_lite_test\\modules\\db-status-bar\\index.js`；仍需在酒馆运行时验证实际 DOM 事件与弹窗显示。
 
 ### v1.1.3-preview-css-revert (2026-06-06)
@@ -121,14 +139,14 @@ story_ui_lite_test/
 
 - 经全量检查确认 `public/story_ui_lite_test/preview-db-status.html` 文件本体相对 HEAD 无改动；预览外观风险来自其引用的 `modules/db-status-bar/style.css`。
 - 撤销上一轮未授权新增的 body 级头像弹窗主题变量与弹窗 font-family，不再通过额外 CSS 改变预览外观。
-- 将头像弹窗恢复挂载到状态栏根节点，避免为了 body 级挂载继续扩散 CSS 变量补丁；头像弹窗容器遮挡风险重新标记为运行时待复核。
+- 此历史版本曾将头像弹窗恢复挂载到状态栏根节点，避免为了 body 级挂载继续扩散 CSS 变量补丁；当前挂载层级以 v1.1.5 记录为准。
 - 已搜索确认当前状态栏代码中没有移动端 hover 专项规则或触摸/鼠标悬停事件残留。
 
 ### v1.1.1-map-admin-validation (2026-06-05)
 
 **地图安全与管理界面配置闭环修复**
 
-- 加固 `db-status-bar` 地图刷新/重绘链路：缓存、AI 输出与 fallback SVG 均进入 DOM 前清理；重绘失败保留旧图；按钮文本移除 emoji；地图缓存改用无原型对象。
+- 加固 `db-status-bar` 地图刷新/重绘链路：缓存与 AI 输出进入 DOM 前清理；重绘失败保留旧图；按钮文本移除 emoji；地图缓存改用无原型对象。
 - 补齐管理界面地图配置：`manager-ui/index.js` 提供 API URL、API Key、模型、代理预设四字段；`index.js` 使用 `db-status-map-config` 统一保存、读取、重置并接入 `data-jjks-map-action` 事件链。
 - 修复管理面板样式：新增地图配置表单布局，拉平嵌套 CSS，补充移动端单列与按钮宽度规则。
 - 复核 `callAI(messages, options)` 静态文档：确认 `max_tokens/maxTokens` 支持；API URL、API Key、模型与代理预设改为通过 shujuku API 预设接口桥接，不再把未文档化字段塞进 `callAI()` options。

@@ -1365,7 +1365,8 @@
       notify('地图配置表单未就绪', 'error');
       return;
     }
-    const savedConfig = { ...config, modelList: [] };
+    const currentModel = normalizeMapConfigValue(config.model);
+    const savedConfig = { ...config, model: currentModel, modelList: currentModel ? [currentModel] : [] };
     if (!writeMapAiConfig(savedConfig)) {
       notify('地图 AI 配置保存失败', 'error');
       return;

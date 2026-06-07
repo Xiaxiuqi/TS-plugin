@@ -11,7 +11,7 @@
 ### 1.3 非目标
 - 不涉及 `mvu-status-newvars`、`bp-panel-newvars`、`world-log` 等其他模块的代码修改
 - 不涉及势力表、地点表、性爱信息表、NSFW表、备忘录表、纪要表、选项表、数值规则表的前端展示
-- 不实现独立于数据库状态栏的外部地图面板；状态栏内置地图的 `defMap()` / `fbMap()` / AI prompt / 刷新重绘链路以 `modules/db-status-bar/index.js` 的现有实现为准，安全加固和管理界面配置仍待验收
+- 不实现独立于数据库状态栏的外部地图面板；状态栏内置地图的 AI prompt、刷新、重绘、失败通知、空状态与缓存链路以 `modules/db-status-bar/index.js` 的现有实现为准，安全加固和管理界面配置仍待验收
 - 不修改模板 JSON 本身
 
 ---
@@ -398,17 +398,21 @@ const tabDefs = [
 
 - `renderFunctionPanel(S, theme)` 提供任务、刷新地图、重绘地图入口。
 - `renderMapTab(S)` 渲染地图容器、SVG 视口、图例和详情区域。
-- `do(root, false)` 用于刷新，优先复用 `mapCache[loc]`。
+- `doMap(root, false)` 用于刷新，优先复用 `mapCache[loc]`。
 - `doMap(root, true)` 用于重绘，会清理当前地点缓存并重新生成。
 - `buildMapPrompt(S)` 基于 `GameState.location` 与 `GameState.mapElements` 构造 AI 地图提示词。
-- AI 生成当前通过 `AutoCardUpdaterAPI.callAI()` 尝试完成，失败时回退 `fbMap(S)` 或 `defMap(S)`。
+- AI 生成当前通过 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()` 尝试完成，失败时通知用户并保留旧图；无旧图时显示空状态，不生成默认地图。
 
 ```html
 <div class="db-sb-fn-layout">
   <div class="db-sb-fn-toolbar">
-    <button data-fn-action="quest">任务</button>
-    <button data-map-action="refresh">刷新地图</button>
-    <button data-map-action="redraw">重绘地图</button>
+    <div class="db-sb-fn-toolbar-left">
+      <button data-fn-action="quest">任务</button>
+    </div>
+    <div class="db-sb-fn-toolbar-right">
+      <button data-map-action="refresh">刷新地图</button>
+      <button data-map-action="redraw">重绘地图</button>
+    </div>
   </div>
   <div class="db-sb-map-viewport">
     <svg viewBox="0 0 800 600" class="db-sb-map-svg" id="db-map-svg">
@@ -450,7 +454,7 @@ mapElements.forEach((el, i) => {
 | 文件 | 变更类型 | 说明 |
 |---|---|---|
 | `data.js` | 重构 | GameState 结构修正；所有 parse 函数列名对齐新模板；loadTestData 同步更新 |
-| `index.js` | 重构 | renderHeaderPanel 改为 renderWorldStrip；renderProtagonistContent 左右分栏；renderCharacterContent 左右分栏；renderFunctionPanel 缩减为地图与任务布局；renderMapTab/doMap/buildMapPrompt/fbMap/defMap 构成状态栏地图链路；删除 renderTechniqueTab/renderShikigamiTab/renderBindingTab 的独立调用（逻辑移入角色右栏） |
+| `index.js` | 重构 | renderHeaderPanel 改为 renderWorldStrip；renderProtagonistContent 左右分栏；renderCharacterContent 左右分栏；renderFunctionPanel 缩减为地图与任务布局；renderMapTab/doMap/buildMapPrompt/callMapAI 构成状态栏地图链路；删除 renderTechniqueTab/renderShikigamiTab/renderBindingTab 的独立调用（逻辑移入角色右栏） |
 | `style.css` | 修改 | 新增 .db-sb-world-strip、.db-sb-char-layout/-left/-right、.db-sb-map-* 样式；删除 .db-sb-world-grid/.db-sb-world-card；新增窄屏 media query |
 | `preview-db-status.html` | 修改 | loadTestData 调用同步更新 |
 | `STATUS_BAR_PLAN.md` | 重写 | 数据映射章节全部对齐新模板 |
@@ -474,7 +478,7 @@ mapElements.forEach((el, i) => {
 左右分栏在 `max-width: 360px` 时 fallback 为纵向堆叠。需要一条 media query。
 
 ### 6.4 地图实现边界
-当前已做：状态栏内置 SVG 地图、地图元素点击详情、`mapCache` 无原型缓存、`mapBusy` 防重入、刷新/重绘按钮、`buildMapPrompt(S)`、`AutoCardUpdaterAPI.callAI()` 尝试生成、shujuku API 预设桥接、`fbMap(S)` / `defMap(S)` fallback、进入 DOM 前的 `sanitizeSVG()` 白名单清理。
+当前已做：状态栏内置 SVG 地图、地图元素点击详情、`mapCache` 无原型缓存、`mapBusy` 防重入、刷新/重绘按钮、`buildMapPrompt(S)`、`TavernHelper.generate()` / `AutoCardUpdaterAPI.callAI()` 尝试生成、shujuku API 预设桥接、失败通知、旧图保留、空状态、进入 DOM 前的 `sanitizeSVG()` 白名单清理。
 
 当前未闭环：
 - 管理界面地图配置分页已补 API URL、API Key、模型、代理预设四字段和保存/读取/重置/每次打开回填链路，仍需本轮验证与审计确认。

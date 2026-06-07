@@ -1181,11 +1181,24 @@
 
 .db-sb-fn-toolbar {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   padding: 8px 0 12px;
+}
+
+.db-sb-fn-toolbar-left,
+.db-sb-fn-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.db-sb-fn-toolbar-right {
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .db-sb-fn-btn {

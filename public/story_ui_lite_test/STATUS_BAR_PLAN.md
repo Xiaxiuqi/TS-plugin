@@ -192,11 +192,12 @@ function get(headers, row, colName) {
 
 #### 地图TAB内容（已进入实现与验收阶段）
 
-- 当前代码已不再是纯占位：`modules/db-status-bar/index.js` 中存在 `renderMapTab(S)`、`doMap(root, force)`、`buildMapPrompt(S)`、`fbMap(S)`、`defMap(S)`。
-- 工具条已包含任务、刷新地图、重绘地图三个入口；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本已移除 emoji，并保留项目规范允许的 Unicode 几何符号。
+- 当前代码已不再是纯占位：`modules/db-status-bar/index.js` 中存在 `renderMapTab(S)`、`doMap(root, force)`、`buildMapPrompt(S)`、`callMapAI()` 与失败通知链路，不再维护默认地图生成函数。
+- 工具条已包含任务、刷新地图、重绘地图三个入口；任务按钮在左，刷新/重绘地图按钮组在右；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本保留项目规范允许的 Unicode 几何符号。
 - 地图数据来源为 `GameState.location` 与 `GameState.mapElements`，其中 `mapElements` 由 `data.js` 的 `parseMapElements()` 从“地图元素表”解析。
-- 自动/非强制地图路径只允许使用缓存或本地 fallback：`doMap(root, false)` 不调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`，避免发送消息后的状态栏刷新触发额外生成事件。
-- 手动 AI 生成仅保留在显式重绘路径：用户点击重绘进入 `doMap(root, true)` 后才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`；失败时保留旧图或回退到清理后的 `fbMap(S)` / `defMap(S)`。
+- 自动地图路径已改为受控生成：`registerTableUpdateCallback()` 在 300ms 防抖、重新解析数据库表并 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`。
+- `doMap(root, false, options)` 会基于地点与地图元素签名复用缓存；只有签名变化或当前位置缺少有效签名缓存且 `allowGenerate` 为 true 时，才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`。
+- 普通刷新按钮仍触发 `doMap(root, false)`，只复用缓存，不无条件生成；显式重绘按钮触发 `doMap(root, true)`，会清当前地点缓存并强制 AI 生成，失败时通知用户并保留旧图，无旧图时显示空状态。
 
 ---
 
@@ -275,7 +276,12 @@ ui.registry?.register?.({
 
 [数据更新]
     → api.registerTableUpdateCallback(onUpdate)
-    → 防抖300ms → 重新解析 → 更新DOM
+    → 防抖300ms
+    → AutoCardUpdaterAPI.exportTableAsJson()
+    → parseTables(tables) → rerender(root)
+    → maybeAutoMap(root, { allowGenerate: true })
+        → 地点/地图元素签名变化或有效缓存缺失时，受控调用 AI 地图生成
+        → 签名未变且缓存命中时，仅清理复用缓存，不重复生成
 ```
 
 ---
@@ -311,7 +317,7 @@ ui.registry?.register?.({
 | 3.4 | 实现束缚TAB | 束缚卡片grid + 筛选 |
 | 3.5 | 实现背包TAB | 网格 + 分类筛选 + 物品详情 |
 | 3.6 | 实现任务TAB | 列表 + 展开详情 |
-| 3.7 | 实现地图TAB基础渲染 | SVG 容器、图例、详情面板、fallback 地图 |
+| 3.7 | 实现地图TAB基础渲染 | SVG 容器、图例、详情面板、空状态与状态文本 |
 | 3.8 | 实现状态栏地图刷新/重绘入口 | `data-map-action="refresh"` / `data-map-action="redraw"` + `doMap(root, force)` |
 
 ### Phase 4：数据绑定与更新
@@ -320,8 +326,9 @@ ui.registry?.register?.({
 | --- | --- | --- |
 | 4.1 | 初始数据加载 | mount时调用API获取数据 |
 | 4.2 | 注册更新回调 | `api.registerTableUpdateCallback()` |
-| 4.3 | 防抖与防重入 | 300ms防抖 + isLoading标志 |
-| 4.4 | 增量更新渲染 | 数据变化后重新填充DOM |
+| 4.3 | 防抖与防重入 | 300ms防抖 + `mapBusy` 防重入 + pending 自动地图请求只保留最后一次 |
+| 4.4 | 增量更新渲染 | 数据变化后重新解析、rerender，并通过 `maybeAutoMap(root, { allowGenerate: true })` 执行签名/缓存判断 |
+| 4.5 | 自动地图成本控制 | 地点/地图元素签名变化或有效缓存缺失时才允许 AI；普通刷新不无条件生成，重绘按钮强制生成；`enableMapGeneration=false` 时只复用缓存或显示通知/空状态 |
 
 ### Phase 5：集成与验证
 
@@ -333,7 +340,7 @@ ui.registry?.register?.({
 | 5.4 | preview.html 本地验证 | 确认渲染效果 |
 | 5.5 | 更新 PROJECT.md | 记录变更 |
 | 5.6 | 管理界面地图配置分页复核/补实现 | 已补 `data-jjks-map-config-form`、四字段输入、保存/重置和每次打开回填链路；待本轮验证 |
-| 5.7 | 地图 AI/SVG 安全验收 | 验证 AI 失败 fallback、旧地图保留、SVG 注入风险、按钮防重入和 API 预设桥接 |
+| 5.7 | 地图 AI/SVG 安全验收 | 验证 AI 失败通知、旧地图保留、空状态、SVG 注入风险、按钮防重入和 API 预设桥接 |
 | 5.8 | 每次修改后同步项目文档 | 更新 `PROJECT.md` 当前进度快照和本计划验收项 |
 
 ---
@@ -436,13 +443,13 @@ function onTableUpdate() {
 | 重要角色过多 | TAB溢出 | 横向滚动 + 最大显示数限制 |
 | 地图实现与文档不一致 | 误判进度、重复施工或遗漏验收 | 以 `modules/db-status-bar/index.js` 与 `modules/manager-ui/index.js` 的代码证据修正文档 |
 | AI SVG 未清理 | XSS、外链资源加载、地图 DOM 被污染 | 代码已接入 SVG 白名单清理与原子替换，本轮需验证 |
-| AI 失败路径破坏旧图 | 用户点击重绘后地图消失 | 代码已改为失败保留旧图；本轮需验证 fallback 与缓存路径 |
+| AI 失败路径破坏旧图 | 用户点击重绘后地图消失 | 代码已改为失败保留旧图；无旧图时显示空状态并通知，本轮需验证缓存与通知路径 |
 | 管理界面配置分页回归 | 用户无法配置地图 AI/API 参数 | 已补 UI、读写事件链与每次打开回填；本轮需用代码搜索、语法检查和审计防止回归 |
-| 自动地图 AI 干扰数据库推进/召回 | 发送消息后状态栏刷新触发额外 AI 生成事件，干扰数据库插件生成生命周期 | `doMap(root, false)` 已限制为缓存或本地 fallback，不调用 `TavernHelper.generate()` / `AutoCardUpdaterAPI.callAI()`；仅显式重绘路径允许 AI |
+| 自动地图 AI 干扰数据库推进/召回 | 发送消息后状态栏刷新可能重复触发 AI 生成，干扰数据库插件生成生命周期 | 表更新回调保留 300ms 防抖；自动路径只在地点/地图元素签名变化或有效缓存缺失时允许 AI，`mapBusy` 防重入，`enableMapGeneration=false` 时仅复用缓存或通知空状态；刷新按钮不无条件生成 |
 | 地图自定义 API 配置不生效 | 用户填写的 API URL/API Key/模型未用于手动地图生成 | 当前实现通过 `TavernHelper.generate({ custom_api })` 传入自定义 API，不切换酒馆全局预设 |
 | 束缚表缔结方格式不确定 | 筛选逻辑错误 | 用 includes() 模糊匹配 |
 | 状态栏默认挂到用户消息后 | 用户输入后状态栏位置错乱，和世界运行报告/BP战力雷达的 AI 消息内定位不一致 | `index.js` 改为定位最后 AI/角色消息；用户消息触发扫描时会刷新最后 AI 消息并移除其他默认状态栏实例 |
-| 头像弹窗挂在消息容器内不可见 | 点击角色头像无弹窗，或被消息容器层级、overflow、状态栏 rerender 影响 | 本轮为恢复 `preview-db-status.html` 原始外观，已撤销 body 级挂载与额外主题变量；若运行时仍需 body 级方案，必须先确认授权并单独设计不污染预览外观的实现 |
+| 头像弹窗挂在消息容器内不可见 | 点击角色头像无弹窗，或被消息容器层级、overflow、状态栏 rerender 影响 | 当前点击链路已复核为 `.db-sb-avatar-box` 事件委托到 `showAvatarModal()`，弹窗挂载到 `document.body`；仍需酒馆运行时复核 URL、本地上传、移除和裁剪 |
 
 ---
 
@@ -467,11 +474,12 @@ function onTableUpdate() {
 - [ ] 背包TAB显示物品+分类筛选
 - [ ] 任务TAB显示任务列表+详情
 - [ ] 地图TAB显示当前地点、SVG 视口、图例和详情面板
-- [ ] 刷新地图按钮触发 `doMap(root, false)`，缓存存在时清理后复用且不重复生成
+- [ ] 刷新地图按钮触发 `doMap(root, false)`，缓存存在时直接复用且不重复生成
 - [ ] 重绘地图按钮触发 `doMap(root, true)`，成功后才替换缓存与 DOM
-- [ ] 地图 AI 调用失败时保留旧图；无旧图时回退到清理后的 `fbMap(S)` 或 `defMap(S)`
+- [ ] 地图 AI 调用失败时保留旧图；无旧图时显示空状态并通过通知/状态文本提示失败，不生成默认地图
 - [ ] `.cm[data-idx]` 地图点击目标能显示对应元素详情
-- [ ] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、代理预设、保存/读取/重置/每次打开回填链路
+- [ ] 数据库表更新后，地点或地图元素签名变化会自动触发受控 AI 地图重绘；签名未变且缓存命中时不重复生成
+- [ ] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存
 - [ ] 数据更新后UI自动刷新
 - [ ] 日/夜主题切换正常
 
@@ -488,7 +496,7 @@ function onTableUpdate() {
 
 ## 十二、后续迭代
 
-1. **地图运行时验证**：在酒馆环境确认地图临时 API 预设保存、切换、调用与恢复是否正常，并记录 shujuku API 预设接口不兼容时的适配方案。
+1. **地图运行时验证**：在酒馆环境确认数据库填表结束后位置/地图元素变化会自动重绘、未变化不重复生成，并确认地图临时 API 预设保存、切换、调用与恢复是否正常。
 2. **地图 AI/SVG 安全复验**：持续验证 SVG 白名单清理、原子替换、失败保留旧图、按钮防重入和历史脏缓存清理。
 3. **战斗模式**：检测全局数据表模式字段，切换战斗UI布局。
 4. **动画增强**：资源条变化动画、TAB切换过渡。
