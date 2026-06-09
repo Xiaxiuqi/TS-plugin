@@ -30,17 +30,30 @@
     return row[idx];
   }
 
+  const SHEET_NAME_ALIASES = {
+    sheet_MapElements: '地图元素表',
+    map_elements: '地图元素表',
+    sheet_map: '地图元素表'
+  };
+
+  function normalizeSheetName(uid, name) {
+    const rawName = String(name || '').trim();
+    const rawUid = String(uid || '').trim();
+    return SHEET_NAME_ALIASES[rawName] || SHEET_NAME_ALIASES[rawUid] || rawName;
+  }
+
   function parseNum(v, fallback) { const n = Number(v); return isNaN(n) ? (fallback || 0) : n; }
 
   function parseTables(tables) {
     if (!tables) return;
     for (const uid in tables) {
       const sheet = tables[uid];
-      if (!sheet || !sheet.name || !sheet.content || sheet.content.length < 2) continue;
+      const sheetName = normalizeSheetName(uid, sheet?.name);
+      if (!sheet || !sheetName || !sheet.content || sheet.content.length < 2) continue;
       const headers = sheet.content[0];
       const rows = sheet.content.slice(1);
       const g = (row, col) => get(headers, row, col);
-      switch (sheet.name) {
+      switch (sheetName) {
         case '全局数据表': parseGlobal(rows, g); break;
         case '主角信息表': parseProtagonistInfo(rows, g); break;
         case '主角属性表': parseProtagonistStats(rows, g); break;

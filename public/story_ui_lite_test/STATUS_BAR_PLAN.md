@@ -193,16 +193,17 @@ function get(headers, row, colName) {
 #### 地图TAB内容（已进入实现与验收阶段）
 
 - 当前代码已不再是纯占位：`modules/db-status-bar/index.js` 中存在 `renderMapTab(S)`、`doMap(root, force)`、`buildMapPrompt(S)`、`callMapAI()` 与失败通知链路，不再维护默认地图生成函数。
-- 工具条已包含任务、刷新地图、重绘地图三个入口；任务按钮在左，刷新/重绘地图按钮组在右；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本保留项目规范允许的 Unicode 几何符号；但本轮反馈显示 `.db-sb-fn-toolbar` 存在异常增高，需按下方方案修复后才能验收。
-- 地图数据来源为 `GameState.location` 与 `GameState.mapElements`，其中 `mapElements` 由 `data.js` 的 `parseMapElements()` 从“地图元素表”解析。
+- 工具条已包含任务、刷新地图、重绘地图三个入口；任务按钮在左，刷新/重绘地图按钮组在右；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本保留项目规范允许的 Unicode 几何符号；工具条已改为单行稳定布局，右侧按钮组空间不足时横向滚动，不再靠换行撑高地图页。
+- 地图数据来源为 `GameState.location` 与 `GameState.mapElements`，其中 `mapElements` 由 `data.js` 的 `parseMapElements()` 从“地图元素表”解析；`data.js` 已支持 `sheet_MapElements`、`map_elements`、`sheet_map` 表名/uid 别名归一化。
 - 自动地图路径已改为受控生成：`registerTableUpdateCallback()` 在 300ms 防抖、重新解析数据库表并 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`。
 - `doMap(root, false, options)` 会基于地点与地图元素签名复用缓存；只有签名变化或当前位置缺少有效签名缓存且 `allowGenerate` 为 true 时，才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`。
-- 普通刷新按钮仍触发 `doMap(root, false)`，只复用缓存，不无条件生成；显式重绘按钮触发 `doMap(root, true)`，会清当前地点缓存并强制 AI 生成，失败时通知用户并保留旧图，无旧图时显示空状态；但本轮反馈显示点击重绘后缺少即时“正在重绘地图”状态，且 API 失败定位信息不足，需按下方方案修复。
+- 普通刷新按钮仍触发 `doMap(root, false)`，只复用缓存，不无条件生成；显式重绘按钮触发 `doMap(root, true)`，会清当前地点缓存并强制 AI 生成，失败时通知用户并保留旧图；无 AI 缓存、AI 关闭或 AI 失败且无旧图时，`renderBaseMap(S)` 会基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG，但不写入 `mapCache`。
 
 #### 本轮反馈修复方案（先文档确认，后代码实施）
 
 | 问题 | 已确认成因 | 修改方案 | 影响范围 | 验收方式 |
 | --- | --- | --- | --- | --- |
+| 头像弹窗 CSS 颜色变了 | `preview-db-status.html` 本体只加载 `modules/db-status-bar/style.css`；头像弹窗样式在 `style.css` 中使用 `var(--db-panel)`、`var(--db-text)`、`var(--db-muted)`、`var(--db-rose)`，弹窗又由 `showAvatarModal()` 挂到 `document.body`。这会让弹窗颜色跟随状态栏主题变量或 body 级变量，而不是固定复刻预览页浅色弹窗。之前把“点击链路已复核”当成“外观已复核”，判断维度错了。 | 按 `preview-db-status.html` 的浅色预览契约修正头像弹窗局部样式：只收敛 `.db-sb-avatar-modal-body`、`.db-sb-avatar-preview`、输入框、URL/上传/移除/关闭按钮的背景、文字、边框、hover 色；不改预览页本体，不新增污染全局的 body 变量，不改变 90x120 头像比例和 body 级挂载。 | `public/story_ui_lite_test/modules/db-status-bar/style.css`；必要时只检查 `showAvatarModal()` 挂载点，不改业务逻辑。 | 打开 `public/story_ui_lite_test/preview-db-status.html`，点击主角和重要角色头像；日/夜主题下弹窗颜色都应与预览浅色契约一致，URL 输入、本地上传、移除按钮可见且不被状态栏主题污染。 |
 | 地图和 API 配置缺 debug log | `callMapAI()` 目前只在失败时输出 `console.warn`，没有记录使用 TavernHelper 还是数据库 `callAI`、是否启用 custom_api、模型/API URL 脱敏摘要、prompt 长度、返回类型/长度、SVG 提取和 sanitizer 结果。参考 `数据库前端/咒回前端/regex-状态栏.json` 的地图系统在缓存、状态、刷新、角色 marker 绑定处有连续日志。 | 增加统一前缀 `[db-status-bar][map-debug]` 的 debug 日志：读取配置、保存配置、重置配置、进入 `doMap()`、缓存命中/清除、调用 `TavernHelper.generate` 或 `AutoCardUpdaterAPI.callAI`、返回值类型和长度、`extractSvgMarkup` 是否命中、`sanitizeSVG` 是否通过、失败 reason。API Key 只记录是否存在和脱敏尾号，禁止完整输出。 | `public/story_ui_lite_test/index.js` 的管理页配置读写；`public/story_ui_lite_test/modules/db-status-bar/index.js` 的 `getMapAiConfig()`、`callMapAI()`、`doMap()`。 | 保存地图 API 设置、清空设置、点击刷新、点击重绘各触发一组可读日志；失败时日志能定位“接口不可用/返回空/非 SVG/sanitizer 拒绝/custom_api 参数问题”，且不泄露完整 key。 |
 | `.db-sb-fn-toolbar` 高度异常到 131.56 | `.db-sb-fn-toolbar` 当前 `flex-wrap: wrap`，左右按钮组也 `flex-wrap: wrap`，只要容器宽度不足、字体缩放或按钮文本无法压缩，就会跨多行撑高；现有 CSS 没有约束工具条行高、最小高度、按钮不换行或溢出策略。131.56 需要浏览器 computed style 复核，但从代码看“允许多行换行”是直接风险。 | 工具条改为单行稳定布局：`.db-sb-fn-toolbar` 禁止换行并限制垂直 padding；按钮使用 `white-space: nowrap`；右侧按钮组不足时横向滚动或压缩 gap，不把面板撑高；保留左任务、右刷新/重绘的视觉结构。 | `public/story_ui_lite_test/modules/db-status-bar/style.css`；只在必要时调整 `renderFunctionPanel()` 按钮文案长度。 | 浏览器检查 `.db-sb-fn-toolbar` computed height，目标为一行按钮高度加固定 padding，不再出现 131.56；窄宽度下按钮仍可点击，不覆盖地图区域。 |
 | 点击重绘地图没有即时反应且失败 | `doMap(root, true)` 进入生成后只禁用按钮，没有立即设置 `[data-map-status]` 或 viewport 的“正在重绘地图”；若 `TavernHelper.generate` 返回空/非字符串，会走 `TavernHelper.generate returned no usable map text`，最后在无旧图时显示失败空状态。参考 `数据库前端/咒回前端/regex-状态栏.json` 有固定 `mapContainer`、`mapStatusText` 和缓存/显示更新日志，当前状态栏缺少等价的运行中状态和足够日志。 | 重绘入口进入生成前立即更新状态文本为“正在重绘地图...”，viewport 无旧图时显示生成中占位；成功后先通过 `sanitizeSVG()`，再原子替换 DOM 和缓存；失败时保留旧图，无旧图显示明确空状态。同步补 debug log，记录 force、loc、signature、cache、generator、result、svg/sanitizer。不得恢复默认地图 fallback。 | `public/story_ui_lite_test/modules/db-status-bar/index.js` 的 `doMap()`、`callMapAI()`、`notifyMap()`/`setMapViewportMarkup()`。 | 点击“重绘地图”后立即看到按钮禁用和“正在重绘地图”；AI 成功时显示 SVG 地图区域；AI 空返回、非 SVG 或失败时有可见状态和脱敏日志，不写入默认地图，不静默吞错。 |
@@ -488,7 +489,10 @@ function onTableUpdate() {
 | 地图自定义 API 配置不生效 | 用户填写的 API URL/API Key/模型未用于手动地图生成 | 当前实现通过 `TavernHelper.generate({ custom_api })` 传入自定义 API，不切换酒馆全局预设 |
 | 地图/API debug 信息不足 | 失败时只能看到“returned no usable map text”，无法判断是配置、接口契约、返回格式还是 sanitizer 问题 | 已补 `[db-status-bar][map-debug]` 日志，覆盖配置读取/保存/重置、缓存命中/清除、生成器选择、脱敏 custom_api、返回类型/长度、SVG 提取、安全清理和失败 reason；仍需酒馆运行时触发确认日志链 |
 | 地图重绘缺少运行中状态 | 用户点击后没有地图区域，也看不到正在重绘，误判为按钮无效 | 已在 `doMap(root, true)` 生成分支立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位，成功后替换 SVG，失败保留旧图或显示明确空状态 |
-| 工具条高度异常 | `.db-sb-fn-toolbar` 和左右按钮组允许 wrap，窄宽度会多行撑高 | 改为单行稳定布局，按钮 `white-space: nowrap`，右侧按钮组不足时横向滚动或收缩 gap |
+| 工具条高度异常 | `.db-sb-fn-toolbar` 和左右按钮组允许 wrap，窄宽度会多行撑高；地图 viewport 缺少最小高度时空状态会退化到极小高度 | 已改为单行稳定布局，按钮 `white-space: nowrap`，右侧按钮组不足时横向滚动或收缩 gap；`.db-sb-map-viewport` 与 `.db-sb-map-empty` 已设 `min-height: 200px` |
+| 无缓存地图区域空白 | 普通刷新不允许生成 AI，且之前无缓存/AI失败无旧图路径只显示纯空状态 | 已增加 `renderBaseMap(S)`，基于 `GameState.mapElements` 生成基础 SVG；基础 SVG 经 `sanitizeSVG()` 后进入 DOM，不写入 `mapCache`，不恢复静态默认地图 |
+| 地图缓存签名污染 | AI 失败保留旧图时若用当前 signature 写入 previousSvg，会把旧图伪装成新地图缓存 | 已删除失败保留旧图路径的 `setMapCacheEntry()`，只有 AI 成功生成和缓存规范化路径写缓存 |
+| 头像弹窗颜色偏离预览 | body 级弹窗继续消费状态栏 CSS 变量，颜色不再对齐 `preview-db-status.html` 浅色预览 | 收敛头像弹窗局部 CSS 颜色，不改预览页本体，不新增全局 body 变量 |
 | 束缚表缔结方格式不确定 | 筛选逻辑错误 | 用 includes() 模糊匹配 |
 | 状态栏默认挂到用户消息后 | 用户输入后状态栏位置错乱，和世界运行报告/BP战力雷达的 AI 消息内定位不一致 | `index.js` 改为定位最后 AI/角色消息；用户消息触发扫描时会刷新最后 AI 消息并移除其他默认状态栏实例 |
 | 头像弹窗挂在消息容器内不可见 | 点击角色头像无弹窗，或被消息容器层级、overflow、状态栏 rerender 影响 | 当前点击链路已复核为 `.db-sb-avatar-box` 事件委托到 `showAvatarModal()`，弹窗挂载到 `document.body`；仍需酒馆运行时复核 URL、本地上传、移除和裁剪 |
@@ -508,6 +512,7 @@ function onTableUpdate() {
 - [ ] 用户消息渲染后，数据库状态栏默认实例仍挂在最后 AI/角色消息内，不出现在用户输入消息后
 - [ ] 主角与重要角色头部信息栏强调样式一致
 
+- [ ] 头像弹窗颜色与 `preview-db-status.html` 浅色参考一致，且没有新增污染全局或预览页本体的 CSS 变量
 - [ ] 重要角色TAB显示信息+好感度/信任度
 - [ ] 功能面板6个TAB全部可切换
 - [ ] 术式TAB显示生得术式+扩展术式
@@ -518,10 +523,13 @@ function onTableUpdate() {
 - [ ] 地图TAB显示当前地点、SVG 视口、图例和详情面板
 - [ ] 刷新地图按钮触发 `doMap(root, false)`，缓存存在时直接复用且不重复生成
 - [ ] 重绘地图按钮触发 `doMap(root, true)`，成功后才替换缓存与 DOM
-- [ ] 地图 AI 调用失败时保留旧图；无旧图时显示空状态并通过通知/状态文本提示失败，不生成默认地图
+- [x] 地图 AI 调用失败时保留旧图；无旧图时显示基础地图或明确空状态并通过通知/状态文本提示失败，不生成默认地图
 - [x] 点击重绘地图后立即显示“正在重绘地图”状态和生成中占位，按钮禁用期间用户能看到反馈
 - [x] 地图/API debug log 覆盖配置读取/保存、生成器选择、脱敏 custom_api、返回类型/长度、SVG 提取和 sanitizer 结果
-- [ ] `.db-sb-fn-toolbar` 保持单行稳定高度，窄宽度不再因按钮换行撑到 131.56 一类异常高度
+- [x] `.db-sb-fn-toolbar` 保持单行稳定高度，窄宽度不再因按钮换行撑到 131.56 一类异常高度
+- [x] 无 AI 缓存、AI 关闭或 AI 失败无旧图时，地图页基于 `GameState.mapElements` 显示经清理的基础 SVG；`mapElements` 为空时显示“暂无地图元素”空状态
+- [x] 基础 SVG 不写入 `mapCache`，AI 失败保留旧图时不使用当前 signature 写旧图缓存
+- [x] 地图 viewport 与空状态保持可见最小高度，避免空内容把地图区域压缩到极小高度
 - [ ] `.cm[data-idx]` 地图点击目标能显示对应元素详情
 - [ ] 数据库表更新后，地点或地图元素签名变化会自动触发受控 AI 地图重绘；签名未变且缓存命中时不重复生成
 - [ ] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存

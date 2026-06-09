@@ -82,16 +82,17 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-07
+更新时间：2026-06-09
 
 | 项目项 | 状态 | 证据 | 下一步 |
 | --- | --- | --- | --- |
 | 数据库状态栏基础模块 | 已实现 | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css` | 继续按实际反馈修复 |
 | 状态栏默认挂载位置 | 已修复，待酒馆运行时复核 | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后 | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内 |
-| 角色头像弹窗 | 已复核，待酒馆运行时复核 | `modules/db-status-bar/index.js` 中 `.db-sb-avatar-box` 点击委托调用 `showAvatarModal()`，弹窗挂载到 `document.body`，保留 URL、本地上传、移除和裁剪链路 | 点击主角/重要角色头像，验证弹窗显示、关闭、保存和移除头像 |
+| 角色头像弹窗 | 反馈确认，待按方案修复颜色 | 点击链路存在，但 `style.css` 头像弹窗使用 `var(--db-panel)`、`var(--db-text)` 等状态栏变量；body 级挂载后颜色可能偏离 `preview-db-status.html` 浅色参考 | 按预览浅色契约收敛弹窗局部 CSS，不污染预览页本体和全局 body 变量 |
 | 状态栏地图刷新按钮 | 已补运行时反馈与日志，待酒馆运行时复核 | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志 | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位 |
 | 状态栏地图重绘按钮 | 已修复即时状态，待酒馆运行时复核 | `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位；失败保留旧图或显示明确空状态 | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态 |
 | 地图 AI 生成链路 | 已补 debug 定位，待酒馆运行时复核 | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志 | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整 |
+| 地图无缓存基础显示 | 已修复代码侧，待酒馆运行时复核 | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache` | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存 |
 | 管理界面地图配置分页 | 已补配置 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的脱敏 `[db-status-bar][map-debug]` 日志，API Key 只输出存在性与尾号 | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key |
 | 浮岛误改回滚 | 已完成 | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空 | 后续默认不碰 ci_island 路径 |
 
@@ -104,6 +105,17 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.8-map-base-svg-layout-cache (2026-06-09)
+
+**地图基础 SVG、布局高度与缓存语义修复**
+
+- `modules/db-status-bar/data.js` 增加表名别名归一化，支持 `sheet_MapElements`、`map_elements`、`sheet_map` 映射到“地图元素表”，避免地图元素表因 uid/name 差异无法进入 `GameState.mapElements`。
+- `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`：无 AI 缓存、AI 生成关闭、普通刷新不允许生成、AI 失败且无旧图时，基于 `GameState.mapElements` 生成基础 SVG；元素为空时显示明确空状态。
+- 基础 SVG 输出统一经过 `sanitizeSVG()` 后再进入 DOM；名称等文本仍使用 `esc()`，坐标缺失按索引环形排布，坐标越界夹紧到画布范围。
+- 基础 SVG 不写入 `mapCache`；AI 失败保留旧图时不再用当前 signature 写旧图缓存，避免地图元素变化后缓存签名被污染。
+- `modules/db-status-bar/style.css` 明确功能区 grid 行契约、地图区域 stretch、viewport 与空状态 `min-height: 200px`，修复工具栏或空状态导致地图区域退化到极小高度的问题。
+- 已通过 `node --check public/story_ui_lite_test/modules/db-status-bar/index.js` 与提交前 diff 检查；剩余运行时风险是浏览器可能缓存 `style.css?v=lite_test-0.1.0`，若硬刷新后仍旧样式，需要另行确认是否修改 loader 版本号。
 
 ### v1.1.7-map-debug-redraw-feedback (2026-06-07)
 
@@ -118,6 +130,7 @@ story_ui_lite_test/
 
 **本轮反馈成因分析与修复方案文档化**
 
+- 针对头像弹窗颜色变更，确认问题不是 `preview-db-status.html` 本体改色，而是 body 级头像弹窗继续消费 `modules/db-status-bar/style.css` 中的状态栏主题变量；下一步只收敛弹窗局部颜色，不新增全局变量，不污染预览页本体。
 - 针对地图/API 配置缺 debug log，确认 `callMapAI()` 当前只有失败 `console.warn`，不足以定位 custom_api、TavernHelper 返回值、SVG 提取和 sanitizer 问题；下一步补统一 `[db-status-bar][map-debug]` 脱敏日志。
 - 针对 `.db-sb-fn-toolbar` 高度异常，确认 CSS 允许 toolbar 和左右按钮组 `flex-wrap: wrap`，窄宽度或字体缩放会多行撑高；下一步改为单行稳定布局，按钮不换行，空间不足时采用横向滚动或收缩 gap。
 - 针对重绘地图无即时反应，确认 `doMap(root, true)` 进入生成分支后只禁用按钮，没有立即写入“正在重绘地图”状态；下一步按 `数据库前端/咒回前端/regex-状态栏.json` 的地图状态/容器/缓存日志思路补运行中状态和失败可诊断路径。
