@@ -313,8 +313,28 @@
           max_chat_history: 0,
           custom_api: customApi,
         });
-        mapDebugLog('ai:result', { generator: 'TavernHelper.generate', currentModel, result: summarizeMapAiResult(result), sanitizedLog: summarizeMapModelOnlyConfig(config) });
-        if (typeof result === 'string' && result.trim()) return { ok: true, text: result, reason: '' };
+        const resultType = typeof result;
+        const resultSummary = {
+          generator: 'TavernHelper.generate',
+          currentModel,
+          resultType,
+          result: summarizeMapAiResult(result),
+          sanitizedLog: summarizeMapModelOnlyConfig(config),
+        };
+        mapDebugLog('ai:result', resultSummary);
+        // generate 返回 string | object，需要兼容两种类型
+        if (resultType === 'string' && result.trim()) {
+          return { ok: true, text: result, reason: '' };
+        }
+        // object 类型：尝试提取文本内容
+        if (resultType === 'object' && result !== null) {
+          const extracted = result.text || result.content || result.message || (Array.isArray(result.choices) && result.choices[0]?.message?.content) || '';
+          if (typeof extracted === 'string' && extracted.trim()) {
+            mapDebugLog('ai:result:extracted-from-object', { extractedLength: extracted.length });
+            return { ok: true, text: extracted, reason: '' };
+          }
+        }
+        console.error('[db-status-bar] TavernHelper.generate 返回无效结果:', { resultType, result });
         return fail('TavernHelper.generate returned no usable map text');
       } catch (e) {
         return fail('TavernHelper.generate failed', e);
@@ -1863,7 +1883,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
               const t = await api.exportTableAsJson();
               ui.dbStatusData.parseTables(typeof t === 'string' ? JSON.parse(t) : t);
               activeDataRoot = rerender(targetRoot) || targetRoot;
-              maybeAutoMap(activeDataRoot, { allowGenerate: true });
+              // 自动地图生成已禁用：仅在用户点击"重绘地图"按钮时触发
             } catch (e) { console.error('[db-status-bar] Update failed:', e); }
           }, 300);
         });
@@ -1873,7 +1893,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     }
     root = rerender(root) || root;
     activeDataRoot = root;
-    maybeAutoMap(root);
+    // 自动地图生成已禁用：仅在用户点击"重绘地图"按钮时触发
   }
 
   function maybeAutoMap(root, options = {}) {
