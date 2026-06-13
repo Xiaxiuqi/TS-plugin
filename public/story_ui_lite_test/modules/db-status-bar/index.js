@@ -257,9 +257,10 @@
     try { candidates.push(window); } catch { /* ignore */ }
     try { candidates.push(parent); } catch { /* ignore */ }
     for (const candidate of candidates) {
-      if (typeof candidate?.generate === 'function') {
-        return { generate: candidate.generate.bind(candidate), generateRaw: typeof candidate?.generateRaw === 'function' ? candidate.generateRaw.bind(candidate) : null };
-      }
+      const generate = typeof candidate?.generate === 'function' ? candidate.generate.bind(candidate) : null;
+      const generateRaw = typeof candidate?.generateRaw === 'function' ? candidate.generateRaw.bind(candidate) : null;
+      if (!generate && !generateRaw) continue;
+      return { generate, generateRaw };
     }
     return null;
   }
@@ -308,10 +309,10 @@
     });
 
     if (tavern && shouldUseCustomApi && customApi) {
+      const generatorFn = tavern.generateRaw || tavern.generate;
+      const generatorName = tavern.generateRaw ? 'TavernHelper.generateRaw' : 'TavernHelper.generate';
       try {
         // 优先使用 generateRaw + ordered_prompts: ['user_input']，避免酒馆预设干扰地图生成
-        const generatorFn = tavern.generateRaw || tavern.generate;
-        const generatorName = tavern.generateRaw ? 'TavernHelper.generateRaw' : 'TavernHelper.generate';
         const generateConfig = tavern.generateRaw ? {
           user_input: prompt,
           should_silence: true,
@@ -346,10 +347,10 @@
             return { ok: true, text: extracted, reason: '' };
           }
         }
-        console.error('[db-status-bar] TavernHelper.generate 返回无效结果:', { resultType, result });
-        return fail('TavernHelper.generate returned no usable map text');
+        console.error(`[db-status-bar] ${generatorName} 返回无效结果:`, { resultType, result });
+        return fail(`${generatorName} returned no usable map text`);
       } catch (e) {
-        return fail('TavernHelper.generate failed', e);
+        return fail(`${generatorName} failed`, e);
       }
     }
 
