@@ -257,7 +257,9 @@
     try { candidates.push(window); } catch { /* ignore */ }
     try { candidates.push(parent); } catch { /* ignore */ }
     for (const candidate of candidates) {
-      if (typeof candidate?.generate === 'function') return candidate.generate.bind(candidate);
+      if (typeof candidate?.generate === 'function') {
+        return { generate: candidate.generate.bind(candidate), generateRaw: typeof candidate?.generateRaw === 'function' ? candidate.generateRaw.bind(candidate) : null };
+      }
     }
     return null;
   }
@@ -281,7 +283,7 @@
     const messages = [{ role: 'user', content: prompt }];
     const options = buildMapAiOptions();
     const config = getMapAiConfig();
-    const generate = getTavernHelperGenerate();
+    const tavern = getTavernHelperGenerate();
     const customApi = buildMapCustomApi(config);
     const shouldUseCustomApi = hasMapCustomApiConfig(config);
     const currentModel = summarizeMapCurrentModel(config, shouldUseCustomApi ? 'custom-config.model' : 'database-api-config.model');
@@ -298,24 +300,34 @@
       promptLength: String(prompt || '').length,
       shouldUseCustomApi,
       currentModel,
-      hasTavernHelperGenerate: Boolean(generate),
+      hasTavernHelperGenerate: Boolean(tavern),
+      hasGenerateRaw: Boolean(tavern?.generateRaw),
       hasDatabaseCallAI: typeof api?.callAI === 'function',
       config: summarizeMapConfig(config),
       customApi: summarizeMapCustomApi(customApi),
     });
 
-    if (generate && shouldUseCustomApi && customApi) {
+    if (tavern && shouldUseCustomApi && customApi) {
       try {
-        mapDebugLog('ai:generator:selected', { generator: 'TavernHelper.generate', currentModel, customApi: summarizeMapCustomApi(customApi), sanitizedLog: summarizeMapModelOnlyConfig(config) });
-        const result = await generate({
+        // 优先使用 generateRaw + ordered_prompts: ['user_input']，避免酒馆预设干扰地图生成
+        const generatorFn = tavern.generateRaw || tavern.generate;
+        const generatorName = tavern.generateRaw ? 'TavernHelper.generateRaw' : 'TavernHelper.generate';
+        const generateConfig = tavern.generateRaw ? {
+          user_input: prompt,
+          should_silence: true,
+          ordered_prompts: ['user_input'],
+          custom_api: customApi,
+        } : {
           user_input: prompt,
           should_silence: true,
           max_chat_history: 0,
           custom_api: customApi,
-        });
+        };
+        mapDebugLog('ai:generator:selected', { generator: generatorName, currentModel, customApi: summarizeMapCustomApi(customApi), sanitizedLog: summarizeMapModelOnlyConfig(config) });
+        const result = await generatorFn(generateConfig);
         const resultType = typeof result;
         const resultSummary = {
-          generator: 'TavernHelper.generate',
+          generator: generatorName,
           currentModel,
           resultType,
           result: summarizeMapAiResult(result),

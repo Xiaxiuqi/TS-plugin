@@ -196,7 +196,7 @@ function get(headers, row, colName) {
 - 工具条已包含任务、刷新地图、重绘地图三个入口；任务按钮在左，刷新/重绘地图按钮组在右；刷新触发 `doMap(root, false)`，重绘触发 `doMap(root, true)`，按钮文本保留项目规范允许的 Unicode 几何符号；工具条已改为单行稳定布局，右侧按钮组空间不足时横向滚动，不再靠换行撑高地图页。
 - 地图数据来源为 `GameState.location` 与 `GameState.mapElements`，其中 `mapElements` 由 `data.js` 的 `parseMapElements()` 从“地图元素表”解析；`data.js` 已支持 `sheet_MapElements`、`map_elements`、`sheet_map` 表名/uid 别名归一化。
 - 自动地图路径已改为受控生成：`registerTableUpdateCallback()` 在 300ms 防抖、重新解析数据库表并 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`。
-- `doMap(root, false, options)` 会基于地点与地图元素签名复用缓存；只有签名变化或当前位置缺少有效签名缓存且 `allowGenerate` 为 true 时，才允许 `callMapAI()` 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`。
+- `doMap(root, false, options)` 会基于地点与地图元素签名复用缓存；只有签名变化或当前位置缺少有效签名缓存且 `allowGenerate` 为 true 时，才允许 `callMapAI()` 调用地图 AI。主 API 分支继续使用 `AutoCardUpdaterAPI.callAI()`；自定义 API 分支优先使用 `TavernHelper.generateRaw()` + `ordered_prompts: ['user_input']` 避免酒馆预设干扰，旧环境缺少 `generateRaw` 时才回退 `TavernHelper.generate()`。
 - 普通刷新按钮仍触发 `doMap(root, false)`，只复用缓存，不无条件生成；显式重绘按钮触发 `doMap(root, true)`，会清当前地点缓存并强制 AI 生成，失败时通知用户并保留旧图；无 AI 缓存、AI 关闭或 AI 失败且无旧图时，`renderBaseMap(S)` 会基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG，但不写入 `mapCache`。
 
 #### 本轮反馈修复方案（先文档确认，后代码实施）
@@ -246,7 +246,7 @@ function get(headers, row, colName) {
 2. 立即更新地图状态文本为“正在重绘地图...”，让用户看见操作已经开始。
 3. 若当前没有旧地图，先在地图 viewport 显示生成中占位，不能让地图区域消失。
 4. 基于当前位置、地图元素和当前签名构造地图 prompt，并记录 prompt 长度与地点摘要。
-5. 调用 `TavernHelper.generate()` 或 `AutoCardUpdaterAPI.callAI()`，日志记录生成器类型和 custom_api 脱敏摘要。
+5. 调用地图 AI：主 API 分支使用 `AutoCardUpdaterAPI.callAI()`；自定义 API 分支优先使用 `TavernHelper.generateRaw()` + `ordered_prompts: ['user_input']`，旧环境缺少 `generateRaw` 时才回退 `TavernHelper.generate()`。日志记录生成器类型和 custom_api 脱敏摘要。
 6. 对返回值先做可用性检查，记录返回类型、字符串长度和空返回原因。
 7. 从返回文本提取 `<svg>...</svg>`，记录是否命中 SVG。
 8. 对 SVG 执行 `sanitizeSVG()`，记录通过或拒绝原因。
