@@ -92,8 +92,9 @@ story_ui_lite_test/
 | 状态栏地图刷新按钮 | 已补运行时反馈与日志，待酒馆运行时复核 | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志 | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位 |
 | 状态栏地图重绘按钮 | 已修复即时状态，待酒馆运行时复核 | `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位；失败保留旧图或显示明确空状态 | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态 |
 | 地图 AI 生成链路 | 已补 debug 定位，待酒馆运行时复核 | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志 | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整 |
+| 地图 AI 运行时诊断 | 已实施测试版日志策略，待酒馆运行时复核 | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型 | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露 |
 | 地图无缓存基础显示 | 已修复代码侧，待酒馆运行时复核 | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache` | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存 |
-| 管理界面地图配置分页 | 已补配置 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的脱敏 `[db-status-bar][map-debug]` 日志，API Key 只输出存在性与尾号 | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key |
+| 管理界面地图配置分页 | 已补测试版 URL/模型 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的 `[db-status-bar][map-debug]` 日志；测试版输出完整脱敏 URL 与当前模型，API Key 只输出存在性与尾号，后续脱敏日志结构仅保留模型 | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key，且 URL query 中密钥参数被替换为 `[redacted]` |
 | 浮岛误改回滚 | 已完成 | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空 | 后续默认不碰 ci_island 路径 |
 
 ## 当前工作边界
@@ -105,6 +106,26 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.10-map-ai-log-policy (2026-06-12)
+
+**地图 AI 测试版日志策略实施**
+
+- `index.js` 管理界面地图配置日志改为输出完整脱敏 URL 与当前模型；API Key 继续只输出存在性与尾号，不输出完整密钥。
+- `modules/db-status-bar/index.js` 运行时 AI 日志在 `ai:start`、`ai:generator:selected`、`ai:result`、`ai:failed` 中补充 `currentModel`：custom_api 路径输出实际传入 `custom_api.model`；主 API 当前模型不可由本模块读取时明确标记为 `database-api-current-model-unavailable`，不把历史配置模型伪装成主 API 当前模型。
+- URL 日志保留 query/hash 以便测试版定位真实请求地址，但会对常见 `key`、`api_key`、`apiKey`、`token`、`access_token`、`accessToken`、`clientSecret`、`authorization`、`auth`、`secret`、`password` 等参数值做 `[redacted]` 替换，避免 API Key 或 token 通过 URL 间接泄露。
+- 地图 AI/API 相关异常日志新增文本级脱敏摘要，不再把原始 `Error` 对象直接输出到控制台；异常 message 中的 `Authorization: Bearer ...`、`apiKey=...`、`accessToken=...`、`clientSecret: ...` 等片段会先替换为 `[redacted]`。
+- 新增 `sanitizedLog` 摘要结构，后续脱敏日志只保留当前模型字段；主 API 模型不可见时该字段为空，不携带 URL、Key 尾号或其他配置细节。
+
+### v1.1.9-map-ai-runtime-diagnosis-plan (2026-06-09)
+
+**地图 AI 运行时诊断方案文档化**
+
+- 本轮仅完成排查与方案同步，未修改 `modules/db-status-bar/index.js`、`style.css` 或 `data.js`；业务代码修改需等待助手确认。
+- 已确认 `TavernHelper.generate returned no usable map text` 的静态错误点在 `callMapAI()` 的返回值可用性检查：当前只接受非空字符串，缺少对象返回形态、截断预览和生成器绑定源的诊断信息。
+- 已通过 `@types/function/generate.d.ts` 确认 `CustomApiConfig` 字段名为 `apiurl`，因此不能继续把 `apiurl` 小写字段当作主要根因；后续重点转向 `source/proxy_preset`、参数结构、返回类型、SVG 提取和 sanitizer 拒绝原因。
+- 已搜索 `public/story_ui_lite_test/**` 的 `cocktail-plus`、`startup-optimizer`、`invalidate`、`/api/plugins`，无本模块调用证据；控制台 `POST /api/plugins/cocktail-plus/invalidate 404` 暂按并行浏览器噪声隔离。
+- 后续确认后只允许在 `modules/db-status-bar/index.js` 增强脱敏运行时日志和必要的返回文本提取兼容；不得恢复默认地图 fallback，不得伪造地图元素，不得改变 `doMap(root, false)` 只复用缓存的策略，不得把基础 SVG 写入 `mapCache`。
 
 ### v1.1.8-map-base-svg-layout-cache (2026-06-09)
 

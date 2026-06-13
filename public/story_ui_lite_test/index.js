@@ -1191,21 +1191,99 @@
     }
   }
 
+  function isMapSecretQueryKey(key) {
+    const normalized = normalizeMapConfigValue(key).replace(/[^a-z0-9]/gi, '').toLowerCase();
+    if (!normalized) return false;
+    return (
+      normalized === 'key' ||
+      normalized === 'pwd' ||
+      normalized === 'auth' ||
+      normalized.endsWith('key') ||
+      normalized.includes('apikey') ||
+      normalized.includes('token') ||
+      normalized.includes('authorization') ||
+      normalized.endsWith('auth') ||
+      normalized.includes('secret') ||
+      normalized.includes('password') ||
+      normalized.includes('passwd')
+    );
+  }
+
   function maskMapSecret(value) {
     const text = normalizeMapConfigValue(value);
     if (!text) return { present: false, tail: '' };
     return { present: true, tail: text.slice(-4) };
   }
 
+  function redactMapUrlSecretValue(value) {
+    return value ? '[redacted]' : '';
+  }
+
+  function redactMapUrlSecretsInText(value) {
+    return normalizeMapConfigValue(value).replace(
+      /([?&#;]|^)([^=&#;\s]*?(?:key|api[_-]?key|token|access[_-]?token|authorization|auth|secret|password|passwd|pwd)[^=&#;\s]*=)([^&#;\s]*)/gi,
+      (match, prefix, keyPart, secretValue) => `${prefix}${keyPart}${redactMapUrlSecretValue(secretValue)}`,
+    );
+  }
+
   function summarizeMapUrl(value) {
     const text = normalizeMapConfigValue(value);
-    if (!text) return { present: false, summary: '' };
+    if (!text) return { present: false, full: '', summary: '' };
     try {
       const url = new URL(text);
-      return { present: true, summary: `${url.origin}${url.pathname}` };
+      if (url.username) url.username = '[redacted]';
+      if (url.password) url.password = '[redacted]';
+      url.searchParams.forEach((paramValue, key) => {
+        if (isMapSecretQueryKey(key)) {
+          url.searchParams.set(key, redactMapUrlSecretValue(paramValue));
+        }
+      });
+      const full = url.href;
+      return { present: true, full, summary: full };
     } catch {
-      return { present: true, summary: text.replace(/[?#].*$/, '').slice(0, 80) };
+      const full = redactMapUrlSecretsInText(text);
+      return { present: true, full, summary: full };
     }
+  }
+
+  function redactMapSensitiveText(value) {
+    let text = redactMapUrlSecretsInText(value);
+    text = text.replace(/(authorization\s*[:=]\s*bearer\s+)[^\s,;)}\]]+/gi, '$1[redacted]');
+    text = text.replace(
+      /((?:api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|auth[_-]?token|client[_-]?secret|secret[_-]?key|token|authorization|auth|secret|password|passwd|pwd|key)\s*[:=]\s*['"]?)([^'"\s,;)}\]]+)/gi,
+      (match, prefix, secretValue) => `${prefix}${redactMapUrlSecretValue(secretValue)}`,
+    );
+    return text;
+  }
+
+  function summarizeMapError(error) {
+    const name = normalizeMapConfigValue(error?.name) || (error ? typeof error : '');
+    const rawMessage = error?.message || String(error ?? '');
+    const message = redactMapSensitiveText(rawMessage);
+    return {
+      name,
+      message,
+    };
+  }
+
+  function getMapErrorMessage(error) {
+    return summarizeMapError(error).message;
+  }
+
+  function summarizeMapCurrentModel(config, source = 'config') {
+    if (config?.followDatabaseApi !== false) {
+      return { present: false, model: '', source: 'database-api-current-model-unavailable' };
+    }
+    const model = normalizeMapConfigValue(config?.model);
+    return {
+      present: Boolean(model),
+      model,
+      source: model ? source : 'custom-config-model-empty',
+    };
+  }
+
+  function summarizeMapModelOnlyConfig(config) {
+    return { model: summarizeMapCurrentModel(config).model };
   }
 
   function summarizeMapConfig(config) {
@@ -1215,6 +1293,8 @@
       apiKey: maskMapSecret(config?.apiKey),
       modelPresent: Boolean(normalizeMapConfigValue(config?.model)),
       model: normalizeMapConfigValue(config?.model),
+      currentModel: summarizeMapCurrentModel(config),
+      sanitizedLog: summarizeMapModelOnlyConfig(config),
       enableMapGeneration: config?.enableMapGeneration !== false,
       modelCount: Array.isArray(config?.modelList) ? config.modelList.length : 0,
     };
@@ -1229,6 +1309,7 @@
         apiurl: summarizeMapUrl(config?.apiUrl),
         key: maskMapSecret(config?.apiKey),
       },
+      sanitizedLog: summarizeMapModelOnlyConfig(config),
       ...extra,
     };
   }
@@ -1270,8 +1351,9 @@
       mapDebugLog('manager:config:read:ok', summarizeMapConfig(config));
       return config;
     } catch (error) {
-      console.warn(`${logPrefix} 读取地图 AI 配置失败`, error);
-      mapDebugLog('manager:config:read:failed', { reason: error?.message || String(error), config: summarizeMapConfig(getEmptyMapAiConfig()) }, 'warn');
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 读取地图 AI 配置失败`, errorSummary);
+      mapDebugLog('manager:config:read:failed', { error: errorSummary, config: summarizeMapConfig(getEmptyMapAiConfig()) }, 'warn');
       return getEmptyMapAiConfig();
     }
   }
@@ -1289,8 +1371,9 @@
       mapDebugLog('manager:config:write:ok', summarizeMapConfig(normalized));
       return true;
     } catch (error) {
-      console.warn(`${logPrefix} 保存地图 AI 配置失败`, error);
-      mapDebugLog('manager:config:write:failed', { reason: error?.message || String(error), config: summarizeMapConfig(normalized) }, 'warn');
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 保存地图 AI 配置失败`, errorSummary);
+      mapDebugLog('manager:config:write:failed', { error: errorSummary, config: summarizeMapConfig(normalized) }, 'warn');
       return false;
     }
   }
@@ -1301,8 +1384,9 @@
       mapDebugLog('manager:config:reset:ok', summarizeMapConfig(getEmptyMapAiConfig()));
       return true;
     } catch (error) {
-      console.warn(`${logPrefix} 重置地图 AI 配置失败`, error);
-      mapDebugLog('manager:config:reset:failed', { reason: error?.message || String(error) }, 'warn');
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 重置地图 AI 配置失败`, errorSummary);
+      mapDebugLog('manager:config:reset:failed', { error: errorSummary }, 'warn');
       return false;
     }
   }
@@ -1426,9 +1510,10 @@
       mapDebugLog('manager:models:fetch:ok', summarizeModelFetch(nextConfig, { modelCount: models.length, selectedModel: nextModel }));
       notify(`已拉取 ${models.length} 个模型，请选择模型后保存`, 'success');
     } catch (error) {
-      console.warn(`${logPrefix} 拉取地图 API 模型列表失败`, error);
-      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { reason: error?.message || String(error) }), 'warn');
-      notify(`模型列表拉取失败：${error?.message || error}`, 'error');
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 拉取地图 API 模型列表失败`, errorSummary);
+      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { error: errorSummary }), 'warn');
+      notify(`模型列表拉取失败：${getMapErrorMessage(error)}`, 'error');
     } finally {
       setManagerButtonBusy(button, '', false);
       setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);

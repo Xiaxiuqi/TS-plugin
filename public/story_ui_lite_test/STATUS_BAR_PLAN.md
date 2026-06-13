@@ -215,13 +215,28 @@ function get(headers, row, colName) {
 | 对比项 | 阿斯特里亚成功链路 | 当前 `story_ui_lite_test` 链路 | 结论与后续修法 |
 | --- | --- | --- | --- |
 | 生成器入口 | `frontend/status-bar.html` 第668-681行直接使用 `api.callAI([{ role:'user', content: prompt }], { max_tokens:4000 })`，成功项目说明第547-557行也记录为 `api.callAI` 后正则提取 `<svg>...</svg>`。 | `public/story_ui_lite_test/modules/db-status-bar/index.js` 第130-139行在自定义 API 分支改走 `TavernHelper.generate({ user_input, custom_api })`；返回值必须是非空字符串，否则报 `TavernHelper.generate returned no usable map text`。 | 当前报错说明已经进入 `TavernHelper.generate` 分支，但返回值不满足字符串检查。后续代码实施必须记录生成器类型、返回类型、返回长度和 custom_api 脱敏摘要，并验证 `TavernHelper.generate` 是否支持该参数结构；不能只假设 API Key 或模型错了。 |
-| 自定义 API 参数 | 阿斯特里亚源码没有 `custom_api` 分支，跟随数据库插件当前 `api.callAI` 配置。 | 当前通过 `buildMapCustomApi()` 组装 `custom_api` 后交给 `TavernHelper.generate`，并把 `apiUrl` 写成 `apiurl`，该键名是否被 TavernHelper 接受没有类型声明证据。 | API 配置“看起来填了”不等于调用链正确。后续必须在 debug log 中输出 custom_api 的字段存在性、API URL 脱敏域名/路径摘要、模型名和 key 尾号；禁止输出完整 key。 |
+| 自定义 API 参数 | 阿斯特里亚源码没有 `custom_api` 分支，跟随数据库插件当前 `api.callAI` 配置。 | 当前通过 `buildMapCustomApi()` 组装 `custom_api` 后交给 `TavernHelper.generate`；`@types/function/generate.d.ts` 已确认 `CustomApiConfig` 字段名包含 `apiurl`、`key`、`model`、`source`、`proxy_preset`，所以 `apiurl` 小写不是已证实根因。 | API 配置“看起来填了”不等于运行时调用链正确。后续必须在 debug log 中输出 custom_api 的字段存在性、API URL 脱敏域名/路径摘要、模型名、source/proxy_preset 是否存在、key 尾号和返回形态；禁止输出完整 key。 |
 | 运行中反馈 | 阿斯特里亚 `doMap(force)` 第668行进入生成后立即 `mapBusy=true`、显示 `#mapLoading`、禁用 `#btnR/#btnD`。说明文档第366-395行也把 `mapBusy` 定义为并发锁。 | 当前 `doMap()` 第808-812行只禁用按钮，没有立即更新 `[data-map-status]`，也没有在无旧图时写入生成中占位。 | 用户点击重绘后“无反应”的直接原因是可见反馈缺失。后续必须在 AI 调用前立即写“正在重绘地图...”，并在无旧图时显示生成中占位。 |
 | SVG 提取与写入 | 阿斯特里亚说明第547-573行：`String(result).match(/<svg[\s\S]*<\/svg>/i)` 提取 SVG，成功后写入 `mapCache[D.loc]` 和 `#mapBox`，再 `bindMC()`。 | 当前第821-828行会 `extractSvgMarkup(result.text)` 后再 `sanitizeSVG(rawSvg)`；这是更安全的方向，但缺少“返回文本是否包含 SVG、sanitizer 为什么拒绝”的日志。 | 当前链路不应恢复阿斯特里亚的裸 `innerHTML` 注入，也不得恢复默认地图 fallback；正确修法是在保留 sanitizer 的同时补足提取/拒绝原因日志。 |
 | 失败处理 | 阿斯特里亚说明第559-563行有 `fbMap()`/`defMap()` 两级 fallback；第805-807行把 fallback 写入一句话复现标准。 | 当前第851-865行失败时保留旧图，无旧图时显示失败空状态，并明确“未写入默认地图”。这是本项目已定边界。 | 阿斯特里亚 fallback 只能作为“成功项目如何保证有图”的差异说明，不能照搬。本轮修法必须保持“不恢复默认地图 fallback”，否则会掩盖 API 链路错误。 |
 | 数据与点击协议 | 阿斯特里亚说明第236-279行使用 `sheet_MapElements` 中文表头，点击协议为 `.cm[data-idx]` 对应 `D.mapEls` 下标；第621-658行说明 `bindMC()` 绑定规则。 | 当前地图数据来自 `GameState.location` 与 `GameState.mapElements`，并经过 `sanitizeSVG()` 和 `normalizeMapClickTargets(root)`，字段命名与阿斯特里亚中文表头并不完全一致。 | 后续 prompt/debug 需要记录地图元素数量、签名和索引协议，避免 AI 输出的 `data-idx` 与当前数据顺序错位。 |
 
 因此，`TavernHelper.generate returned no usable map text` 不是“地图按钮坏了”这么幼稚的结论。它至少说明：生成器函数可达，但 `TavernHelper.generate` 的参数结构、custom_api 字段、返回类型、返回文本中的 SVG 提取或 sanitizer 任一环节可能不符合当前检查。文档确认后的代码实施必须按这些节点逐项打日志、逐项验收；否则只是把错误从屏幕上挪到控制台里，毫无价值。
+
+##### 地图 AI 运行时诊断方案（待助手确认后实施）
+
+本节只记录排查结论与拟修改方案，尚未修改业务代码。实施前需要助手确认；确认后修改范围仍限定为 `public/story_ui_lite_test/modules/db-status-bar/index.js`。
+
+| 诊断点 | 已确认事实 | 待补日志/处理 | 验收口径 |
+| --- | --- | --- | --- |
+| `TavernHelper.generate` 绑定源 | 当前 `getTavernHelperGenerate()` 会依次检查 `window.TavernHelper`、`parent.TavernHelper`、`globalThis.TavernHelper`、`window`、`parent`，但日志只说明是否选择生成器，不说明来源对象。 | 增加 `generator:resolved` 日志，记录命中来源与是否来自 TavernHelper；如果落到 `window.generate` 或 `parent.generate`，必须能在日志中识别。 | 点击重绘后能看到生成器来源，避免被其他脚本注入的同名 `generate` 误导。 |
+| custom_api 参数 | `CustomApiConfig` 类型声明确认 `apiurl` 字段名正确；当前 `buildMapCustomApi()` 未显式设置 `source` 或 `proxy_preset`。 | 记录 custom_api 脱敏摘要：apiurl 的 origin/path、key 是否存在与尾号、model、source/proxy_preset 是否存在、max_tokens；禁止完整 API Key、query、fragment。 | custom_api 模式下能判断请求参数是否完整，但日志不会泄露敏感配置。 |
+| `generate()` 返回形态 | 当前 `callMapAI()` 只接受非空字符串；用户报错说明返回值未通过该检查，但无法区分 undefined、空字符串、对象或异常包装。 | 在 `ai:result` 后补充 rawType、object keys、字符串化截断预览（最多 200 字符）；如果返回对象含 `text`、`message`、`content` 等文本字段，后续可按证据兼容提取。 | 失败时日志能直接说明“返回为空/对象无文本/对象有文本但无 SVG/文本被 sanitizer 拒绝”。 |
+| 主 API `api.callAI()` 路径 | 跟随数据库主 API 时走 `api.callAI(messages, options)`；当前需确认其返回是否为字符串或对象。 | 记录 `api.callAI` 返回摘要：rawType、keys、截断预览、是否包含 `<svg`；不输出完整响应体。 | followDatabaseApi 模式与 custom_api 模式能分别定位，不再混成同一个“无可用文本”。 |
+| SVG 提取与安全清理 | 当前设计必须保留 `extractSvgMarkup()` 与 `sanitizeSVG()`，不得恢复裸 `innerHTML` 或默认静态地图 fallback。 | 记录 extract 是否命中、提取 SVG 长度、sanitize 通过/拒绝原因；失败时继续保留旧图或显示基础地图/明确空状态，不写默认地图。 | 成功 SVG 才写 DOM 与 AI 缓存；失败不会伪造地图、不会污染 `mapCache`。 |
+| 无关浏览器 404 | 已搜索 `public/story_ui_lite_test/**`，没有 `cocktail-plus`、`startup-optimizer`、`invalidate`、`/api/plugins` 调用证据。 | 浏览器复现时把 `POST /api/plugins/cocktail-plus/invalidate 404` 标记为并行噪声；除非找到本模块调用栈，否则不纳入地图链路根因。 | 控制台同时出现 404 不会干扰地图 AI 链路判断。 |
+
+浏览器诊断步骤：打开 F12 控制台，过滤 `[db-status-bar][map-debug]`，点击“重绘地图”，按顺序检查 `config:read:ok`、`ai:start`、`ai:generator:selected`、`generator:resolved`、`ai:result`、`ai:extract`、`ai:sanitize`、`ai:failed` 或成功缓存写入日志。现有日志不足以区分返回对象时，先实施本节日志增强，再根据真实返回形态决定是否补对象文本提取兼容。
 
 ##### 状态栏重绘地图参考工作流核对点
 
@@ -487,7 +502,7 @@ function onTableUpdate() {
 | 管理界面配置分页回归 | 用户无法配置地图 AI/API 参数 | 已补 UI、读写事件链与每次打开回填；本轮需用代码搜索、语法检查和审计防止回归 |
 | 自动地图 AI 干扰数据库推进/召回 | 发送消息后状态栏刷新可能重复触发 AI 生成，干扰数据库插件生成生命周期 | 表更新回调保留 300ms 防抖；自动路径只在地点/地图元素签名变化或有效缓存缺失时允许 AI，`mapBusy` 防重入，`enableMapGeneration=false` 时仅复用缓存或通知空状态；刷新按钮不无条件生成 |
 | 地图自定义 API 配置不生效 | 用户填写的 API URL/API Key/模型未用于手动地图生成 | 当前实现通过 `TavernHelper.generate({ custom_api })` 传入自定义 API，不切换酒馆全局预设 |
-| 地图/API debug 信息不足 | 失败时只能看到“returned no usable map text”，无法判断是配置、接口契约、返回格式还是 sanitizer 问题 | 已补 `[db-status-bar][map-debug]` 日志，覆盖配置读取/保存/重置、缓存命中/清除、生成器选择、脱敏 custom_api、返回类型/长度、SVG 提取、安全清理和失败 reason；仍需酒馆运行时触发确认日志链 |
+| 地图/API debug 信息不足 | 失败时仍可能只能看到“returned no usable map text”，无法判断生成器绑定源、返回对象 keys、截断预览、主 API 返回摘要或 sanitizer 拒绝细节 | 已补上一轮通用 `[db-status-bar][map-debug]` 日志；本轮需在助手确认后继续增强运行时诊断，覆盖生成器来源、custom_api source/proxy_preset、对象返回 keys、最多 200 字符预览、主 API 返回摘要和 sanitizer 拒绝原因 |
 | 地图重绘缺少运行中状态 | 用户点击后没有地图区域，也看不到正在重绘，误判为按钮无效 | 已在 `doMap(root, true)` 生成分支立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位，成功后替换 SVG，失败保留旧图或显示明确空状态 |
 | 工具条高度异常 | `.db-sb-fn-toolbar` 和左右按钮组允许 wrap，窄宽度会多行撑高；地图 viewport 缺少最小高度时空状态会退化到极小高度 | 已改为单行稳定布局，按钮 `white-space: nowrap`，右侧按钮组不足时横向滚动或收缩 gap；`.db-sb-map-viewport` 与 `.db-sb-map-empty` 已设 `min-height: 200px` |
 | 无缓存地图区域空白 | 普通刷新不允许生成 AI，且之前无缓存/AI失败无旧图路径只显示纯空状态 | 已增加 `renderBaseMap(S)`，基于 `GameState.mapElements` 生成基础 SVG；基础 SVG 经 `sanitizeSVG()` 后进入 DOM，不写入 `mapCache`，不恢复静态默认地图 |
@@ -525,14 +540,14 @@ function onTableUpdate() {
 - [ ] 重绘地图按钮触发 `doMap(root, true)`，成功后才替换缓存与 DOM
 - [x] 地图 AI 调用失败时保留旧图；无旧图时显示基础地图或明确空状态并通过通知/状态文本提示失败，不生成默认地图
 - [x] 点击重绘地图后立即显示“正在重绘地图”状态和生成中占位，按钮禁用期间用户能看到反馈
-- [x] 地图/API debug log 覆盖配置读取/保存、生成器选择、脱敏 custom_api、返回类型/长度、SVG 提取和 sanitizer 结果
+- [x] 地图/API 测试版运行时诊断 log 覆盖配置读取/保存、生成器绑定源、custom_api 摘要、主 API 返回摘要、SVG 提取和 sanitizer 拒绝原因；日志输出完整脱敏 URL 与可观测模型，custom_api 显示实际传入模型，主 API 模型不可见时标记 unavailable；API Key 不完整输出，异常 message 先脱敏后记录，后续 `sanitizedLog` 仅保留模型
 - [x] `.db-sb-fn-toolbar` 保持单行稳定高度，窄宽度不再因按钮换行撑到 131.56 一类异常高度
 - [x] 无 AI 缓存、AI 关闭或 AI 失败无旧图时，地图页基于 `GameState.mapElements` 显示经清理的基础 SVG；`mapElements` 为空时显示“暂无地图元素”空状态
 - [x] 基础 SVG 不写入 `mapCache`，AI 失败保留旧图时不使用当前 signature 写旧图缓存
 - [x] 地图 viewport 与空状态保持可见最小高度，避免空内容把地图区域压缩到极小高度
 - [ ] `.cm[data-idx]` 地图点击目标能显示对应元素详情
 - [ ] 数据库表更新后，地点或地图元素签名变化会自动触发受控 AI 地图重绘；签名未变且缓存命中时不重复生成
-- [ ] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存
+- [x] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存；测试版日志输出完整脱敏 URL 与当前模型且不输出完整 API Key
 - [ ] 数据更新后UI自动刷新
 - [ ] 日/夜主题切换正常
 
@@ -549,7 +564,7 @@ function onTableUpdate() {
 
 ## 十二、后续迭代
 
-1. **地图运行时验证**：在酒馆环境确认数据库填表结束后位置/地图元素变化会自动重绘、未变化不重复生成，并确认地图临时 API 预设保存、切换、调用与恢复是否正常。
+1. **地图运行时验证**：在酒馆环境确认数据库填表结束后位置/地图元素变化会自动重绘、未变化不重复生成，并确认地图临时 API 预设保存、切换、调用与恢复是否正常；同时复核 custom_api/模型拉取/异常日志中 URL 可完整定位、custom_api 模型可见、主 API 模型不可见时明确 unavailable，且无完整 API Key 泄露。
 2. **地图 AI/SVG 安全复验**：持续验证 SVG 白名单清理、原子替换、失败保留旧图、按钮防重入和历史脏缓存清理。
 3. **战斗模式**：检测全局数据表模式字段，切换战斗UI布局。
 4. **动画增强**：资源条变化动画、TAB切换过渡。

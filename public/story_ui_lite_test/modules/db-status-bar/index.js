@@ -60,21 +60,99 @@
     }
   }
 
+  function isMapSecretQueryKey(key) {
+    const normalized = normalizeMapConfigValue(key).replace(/[^a-z0-9]/gi, '').toLowerCase();
+    if (!normalized) return false;
+    return (
+      normalized === 'key' ||
+      normalized === 'pwd' ||
+      normalized === 'auth' ||
+      normalized.endsWith('key') ||
+      normalized.includes('apikey') ||
+      normalized.includes('token') ||
+      normalized.includes('authorization') ||
+      normalized.endsWith('auth') ||
+      normalized.includes('secret') ||
+      normalized.includes('password') ||
+      normalized.includes('passwd')
+    );
+  }
+
   function maskMapSecret(value) {
     const text = normalizeMapConfigValue(value);
     if (!text) return { present: false, tail: '' };
     return { present: true, tail: text.slice(-4) };
   }
 
+  function redactMapUrlSecretValue(value) {
+    return value ? '[redacted]' : '';
+  }
+
+  function redactMapUrlSecretsInText(value) {
+    return normalizeMapConfigValue(value).replace(
+      /([?&#;]|^)([^=&#;\s]*?(?:key|api[_-]?key|token|access[_-]?token|authorization|auth|secret|password|passwd|pwd)[^=&#;\s]*=)([^&#;\s]*)/gi,
+      (match, prefix, keyPart, secretValue) => `${prefix}${keyPart}${redactMapUrlSecretValue(secretValue)}`,
+    );
+  }
+
   function summarizeMapUrl(value) {
     const text = normalizeMapConfigValue(value);
-    if (!text) return { present: false, summary: '' };
+    if (!text) return { present: false, full: '', summary: '' };
     try {
       const url = new URL(text);
-      return { present: true, summary: `${url.origin}${url.pathname}` };
+      if (url.username) url.username = '[redacted]';
+      if (url.password) url.password = '[redacted]';
+      url.searchParams.forEach((paramValue, key) => {
+        if (isMapSecretQueryKey(key)) {
+          url.searchParams.set(key, redactMapUrlSecretValue(paramValue));
+        }
+      });
+      const full = url.href;
+      return { present: true, full, summary: full };
     } catch {
-      return { present: true, summary: text.replace(/[?#].*$/, '').slice(0, 80) };
+      const full = redactMapUrlSecretsInText(text);
+      return { present: true, full, summary: full };
     }
+  }
+
+  function redactMapSensitiveText(value) {
+    let text = redactMapUrlSecretsInText(value);
+    text = text.replace(/(authorization\s*[:=]\s*bearer\s+)[^\s,;)}\]]+/gi, '$1[redacted]');
+    text = text.replace(
+      /((?:api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|auth[_-]?token|client[_-]?secret|secret[_-]?key|token|authorization|auth|secret|password|passwd|pwd|key)\s*[:=]\s*['"]?)([^'"\s,;)}\]]+)/gi,
+      (match, prefix, secretValue) => `${prefix}${redactMapUrlSecretValue(secretValue)}`,
+    );
+    return text;
+  }
+
+  function summarizeMapError(error) {
+    const name = normalizeMapConfigValue(error?.name) || (error ? typeof error : '');
+    const rawMessage = error?.message || String(error ?? '');
+    const message = redactMapSensitiveText(rawMessage);
+    return {
+      name,
+      message,
+    };
+  }
+
+  function getMapErrorMessage(error) {
+    return summarizeMapError(error).message;
+  }
+
+  function summarizeMapCurrentModel(config, source = 'config') {
+    if (config?.followDatabaseApi !== false) {
+      return { present: false, model: '', source: 'database-api-current-model-unavailable' };
+    }
+    const model = normalizeMapConfigValue(config?.model);
+    return {
+      present: Boolean(model),
+      model,
+      source: model ? source : 'custom-config-model-empty',
+    };
+  }
+
+  function summarizeMapModelOnlyConfig(config) {
+    return { model: summarizeMapCurrentModel(config).model };
   }
 
   function summarizeMapConfig(config) {
@@ -84,6 +162,8 @@
       apiKey: maskMapSecret(config?.apiKey),
       modelPresent: Boolean(normalizeMapConfigValue(config?.model)),
       model: normalizeMapConfigValue(config?.model),
+      currentModel: summarizeMapCurrentModel(config),
+      sanitizedLog: summarizeMapModelOnlyConfig(config),
       enableMapGeneration: config?.enableMapGeneration !== false,
       modelCount: Array.isArray(config?.modelList) ? config.modelList.length : 0,
     };
@@ -100,6 +180,7 @@
       url: summarizeMapUrl(customApi.apiurl),
       modelPresent: Boolean(customApi.model),
       model: normalizeMapConfigValue(customApi.model),
+      currentModel: summarizeMapCurrentModel({ followDatabaseApi: false, model: customApi.model }, 'custom_api.model'),
       maxTokens: customApi.max_tokens,
     };
   }
@@ -153,8 +234,9 @@
       mapDebugLog('config:read:ok', summarizeMapConfig(config));
       return config;
     } catch (e) {
-      console.warn('[db-status-bar] read map AI config failed:', e);
-      mapDebugLog('config:read:failed', { reason: e?.message || String(e), config: summarizeMapConfig(EMPTY_MAP_CONFIG) }, 'warn');
+      const errorSummary = summarizeMapError(e);
+      console.warn('[db-status-bar] read map AI config failed:', errorSummary);
+      mapDebugLog('config:read:failed', { error: errorSummary, config: summarizeMapConfig(EMPTY_MAP_CONFIG) }, 'warn');
       return { ...EMPTY_MAP_CONFIG };
     }
   }
@@ -202,17 +284,20 @@
     const generate = getTavernHelperGenerate();
     const customApi = buildMapCustomApi(config);
     const shouldUseCustomApi = hasMapCustomApiConfig(config);
+    const currentModel = summarizeMapCurrentModel(config, shouldUseCustomApi ? 'custom-config.model' : 'database-api-config.model');
 
     function fail(reason, error) {
-      if (error) console.warn(`[db-status-bar] ${reason}:`, error);
+      const errorSummary = error ? summarizeMapError(error) : null;
+      if (errorSummary) console.warn(`[db-status-bar] ${reason}:`, errorSummary);
       else console.warn(`[db-status-bar] ${reason}`);
-      mapDebugLog('ai:failed', { reason, error: error?.message || '', shouldUseCustomApi, customApi: summarizeMapCustomApi(customApi) }, 'warn');
-      return { ok: false, text: '', reason };
+      mapDebugLog('ai:failed', { reason, error: errorSummary, shouldUseCustomApi, currentModel, customApi: summarizeMapCustomApi(customApi), sanitizedLog: summarizeMapModelOnlyConfig(config) }, 'warn');
+      return { ok: false, text: '', reason: errorSummary?.message ? `${reason}: ${errorSummary.message}` : reason };
     }
 
     mapDebugLog('ai:start', {
       promptLength: String(prompt || '').length,
       shouldUseCustomApi,
+      currentModel,
       hasTavernHelperGenerate: Boolean(generate),
       hasDatabaseCallAI: typeof api?.callAI === 'function',
       config: summarizeMapConfig(config),
@@ -221,14 +306,14 @@
 
     if (generate && shouldUseCustomApi && customApi) {
       try {
-        mapDebugLog('ai:generator:selected', { generator: 'TavernHelper.generate', customApi: summarizeMapCustomApi(customApi) });
+        mapDebugLog('ai:generator:selected', { generator: 'TavernHelper.generate', currentModel, customApi: summarizeMapCustomApi(customApi), sanitizedLog: summarizeMapModelOnlyConfig(config) });
         const result = await generate({
           user_input: prompt,
           should_silence: true,
           max_chat_history: 0,
           custom_api: customApi,
         });
-        mapDebugLog('ai:result', { generator: 'TavernHelper.generate', result: summarizeMapAiResult(result) });
+        mapDebugLog('ai:result', { generator: 'TavernHelper.generate', currentModel, result: summarizeMapAiResult(result), sanitizedLog: summarizeMapModelOnlyConfig(config) });
         if (typeof result === 'string' && result.trim()) return { ok: true, text: result, reason: '' };
         return fail('TavernHelper.generate returned no usable map text');
       } catch (e) {
@@ -245,9 +330,9 @@
     }
 
     try {
-      mapDebugLog('ai:generator:selected', { generator: 'AutoCardUpdaterAPI.callAI', options });
+      mapDebugLog('ai:generator:selected', { generator: 'AutoCardUpdaterAPI.callAI', currentModel, options, sanitizedLog: summarizeMapModelOnlyConfig(config) });
       const result = await api.callAI(messages, options);
-      mapDebugLog('ai:result', { generator: 'AutoCardUpdaterAPI.callAI', result: summarizeMapAiResult(result) });
+      mapDebugLog('ai:result', { generator: 'AutoCardUpdaterAPI.callAI', currentModel, result: summarizeMapAiResult(result), sanitizedLog: summarizeMapModelOnlyConfig(config) });
       return typeof result === 'string' && result.trim() ? { ok: true, text: result, reason: '' } : fail('database plugin callAI returned no usable map text');
     } catch (e) {
       return fail('database plugin callAI failed', e);
@@ -335,8 +420,9 @@
       mapDebugLog('svg:sanitize:ok', { rawLength: raw.length, safeLength: safeSvg.length, viewBox });
       return safeSvg;
     } catch (e) {
-      console.warn('[db-status-bar] sanitize SVG failed:', e);
-      mapDebugLog('svg:sanitize:failed', { reason: e?.message || String(e), rawLength: raw.length }, 'warn');
+      const errorSummary = summarizeMapError(e);
+      console.warn('[db-status-bar] sanitize SVG failed:', errorSummary);
+      mapDebugLog('svg:sanitize:failed', { reason: errorSummary.message, rawLength: raw.length }, 'warn');
       return '';
     }
   }
@@ -1062,8 +1148,9 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
           notifyMap('没有可用的地图 AI 生成接口。', 'error', root);
         }
       } catch (e) {
-        console.warn('[db-status-bar] AI map generation failed:', e);
-        notifyMap(`地图 AI 生成失败：${e?.message || e}`, 'error', root);
+        const errorSummary = summarizeMapError(e);
+        console.warn('[db-status-bar] AI map generation failed:', errorSummary);
+        notifyMap(`地图 AI 生成失败：${errorSummary.message}`, 'error', root);
       }
 
       if (svg) {
@@ -1096,9 +1183,10 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       notifyMap('地图生成失败，未写入伪造地图缓存。请检查 API 设置后重试。', 'error', root);
       if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
     } catch (e) {
-      console.warn('[db-status-bar] map rendering failed:', e);
-      mapDebugLog('domap:render:failed', { loc, reason: e?.message || String(e) }, 'warn');
-      notifyMap(`地图渲染失败：${e?.message || e}`, 'error', root);
+      const errorSummary = summarizeMapError(e);
+      console.warn('[db-status-bar] map rendering failed:', errorSummary);
+      mapDebugLog('domap:render:failed', { loc, error: errorSummary }, 'warn');
+      notifyMap(`地图渲染失败：${errorSummary.message}`, 'error', root);
     } finally {
       mapBusy = false;
       if (refreshBtn) refreshBtn.disabled = false;
