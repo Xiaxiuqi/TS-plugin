@@ -1883,7 +1883,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
               const t = await api.exportTableAsJson();
               ui.dbStatusData.parseTables(typeof t === 'string' ? JSON.parse(t) : t);
               activeDataRoot = rerender(targetRoot) || targetRoot;
-              // 自动地图生成已禁用：仅在用户点击"重绘地图"按钮时触发
+              // 楼层/数据库更新后自动检测地图是否需要重新生成
+              maybeAutoMap(activeDataRoot, { allowGenerate: true });
             } catch (e) { console.error('[db-status-bar] Update failed:', e); }
           }, 300);
         });
@@ -1893,7 +1894,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     }
     root = rerender(root) || root;
     activeDataRoot = root;
-    // 自动地图生成已禁用：仅在用户点击"重绘地图"按钮时触发
+    // 初次加载不触发自动地图生成；后续数据库更新通过 registerTableUpdateCallback 触发 maybeAutoMap
   }
 
   function maybeAutoMap(root, options = {}) {
