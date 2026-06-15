@@ -13,24 +13,24 @@
 
 ## 模块清单
 
-| 模块 ID | 名称 | 默认状态 | 说明 |
-| --- | --- | --- | --- |
-| `bp-panel-newvars` | BP战力雷达（兼容） | 开启 | 战力面板展示 |
-| `mvu-status-newvars` | MVU状态栏（新变量） | 开启 | 新版 MVU 状态栏，使用新变量体系 |
-| `story-engine` | 故事引擎 | **关闭** | 故事驱动引擎渲染，默认关闭 |
-| `world-log` | 世界运行报告 | 开启 | 世界状态日志展示 |
-| `relation-status` | 角色羁绊档案 | 开启 | 角色关系状态展示 |
-| `manager-ui` | 管理面板 | 开启 | 前端管理 UI（开关模块、主题切换等） |
-| `db-status-bar` | 数据库状态栏 | 开启 | 从 `AutoCardUpdaterAPI.exportTableAsJson()` 读取数据库表，渲染咒回状态栏、任务与地图 |
+| 模块 ID              | 名称                | 默认状态 | 说明                                                                                 |
+| -------------------- | ------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `bp-panel-newvars`   | BP战力雷达（兼容）  | 开启     | 战力面板展示                                                                         |
+| `mvu-status-newvars` | MVU状态栏（新变量） | 开启     | 新版 MVU 状态栏，使用新变量体系                                                      |
+| `story-engine`       | 故事引擎            | **关闭** | 故事驱动引擎渲染，默认关闭                                                           |
+| `world-log`          | 世界运行报告        | 开启     | 世界状态日志展示                                                                     |
+| `relation-status`    | 角色羁绊档案        | 开启     | 角色关系状态展示                                                                     |
+| `manager-ui`         | 管理面板            | 开启     | 前端管理 UI（开关模块、主题切换等）                                                  |
+| `db-status-bar`      | 数据库状态栏        | 开启     | 从 `AutoCardUpdaterAPI.exportTableAsJson()` 读取数据库表，渲染咒回状态栏、任务与地图 |
 
 ## 与 releasetest 版本的差异
 
 ### 已移除模块
 
-| 模块 ID | 名称 | 移除原因 |
-| --- | --- | --- |
-| `variable-update` | 变量更新 | 精简版不需要独立变量更新面板 |
-| `mvu-status` | MVU状态栏（旧版） | 已被 `mvu-status-newvars` 替代 |
+| 模块 ID           | 名称              | 移除原因                       |
+| ----------------- | ----------------- | ------------------------------ |
+| `variable-update` | 变量更新          | 精简版不需要独立变量更新面板   |
+| `mvu-status`      | MVU状态栏（旧版） | 已被 `mvu-status-newvars` 替代 |
 
 ### 行为变更
 
@@ -82,21 +82,22 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-13
+更新时间：2026-06-15
 
-| 项目项 | 状态 | 证据 | 下一步 |
-| --- | --- | --- | --- |
-| 数据库状态栏基础模块 | 已实现 | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css` | 继续按实际反馈修复 |
-| 状态栏默认挂载位置 | 已修复，待酒馆运行时复核 | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后 | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内 |
-| 角色头像弹窗 | 反馈确认，待按方案修复颜色 | 点击链路存在，但 `style.css` 头像弹窗使用 `var(--db-panel)`、`var(--db-text)` 等状态栏变量；body 级挂载后颜色可能偏离 `preview-db-status.html` 浅色参考 | 按预览浅色契约收敛弹窗局部 CSS，不污染预览页本体和全局 body 变量 |
-| 状态栏地图刷新按钮 | 已补运行时反馈与日志，待酒馆运行时复核 | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志 | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位 |
-| 状态栏地图重绘按钮 | 已修复即时状态，待酒馆运行时复核 | `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位；失败保留旧图或显示明确空状态 | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态 |
-| 地图楼层自动重绘 | 已实现，待酒馆运行时复核 | `registerTableUpdateCallback` 回调中 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`；`initData` 初次加载不触发 | 在酒馆中确认：首次进入聊天不自动AI生成；楼层变更后地图元素变化时自动触发AI重绘 |
-| 地图 AI 生成链路 | 已补 debug 定位，待酒馆运行时复核 | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志 | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整 |
-| 地图 AI 运行时诊断 | 已实施测试版日志策略，待酒馆运行时复核 | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型 | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露 |
-| 地图无缓存基础显示 | 已修复代码侧，待酒馆运行时复核 | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache` | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存 |
-| 管理界面地图配置分页 | 已补测试版 URL/模型 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的 `[db-status-bar][map-debug]` 日志；测试版输出完整脱敏 URL 与当前模型，API Key 只输出存在性与尾号，后续脱敏日志结构仅保留模型 | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key，且 URL query 中密钥参数被替换为 `[redacted]` |
-| 浮岛误改回滚 | 已完成 | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空 | 后续默认不碰 ci_island 路径 |
+| 项目项               | 状态                                            | 证据                                                                                                                                                                                                                                              | 下一步                                                                                                    |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 数据库状态栏基础模块 | 已实现，默认挂载恢复                            | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css`；`index.js` 已恢复 `db-status-bar` 默认挂载到最后 AI/角色消息                                                                                | 酒馆运行时复核状态栏在无 `<DbStatusBar/>` 显式标签时仍能显示                                              |
+| 状态栏默认挂载位置   | 已修复，待酒馆运行时复核                        | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后                                                                                                                        | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内                                                        |
+| 角色头像弹窗         | 反馈确认，待按方案修复颜色                      | 点击链路存在，但 `style.css` 头像弹窗使用 `var(--db-panel)`、`var(--db-text)` 等状态栏变量；body 级挂载后颜色可能偏离 `preview-db-status.html` 浅色参考                                                                                           | 按预览浅色契约收敛弹窗局部 CSS，不污染预览页本体和全局 body 变量                                          |
+| 状态栏地图刷新按钮   | 已补运行时反馈与日志，待酒馆运行时复核          | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志                                                              | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位                                                  |
+| 状态栏地图重绘按钮   | 已修复即时状态，待酒馆运行时复核                | `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位；失败保留旧图或显示明确空状态                                                                                                                      | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态                                             |
+| 地图楼层自动重绘     | 已实现，待酒馆运行时复核                        | `registerTableUpdateCallback` 回调中 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`；`initData` 初次加载不触发                                                                                                                     | 在酒馆中确认：首次进入聊天不自动AI生成；楼层变更后地图元素变化时自动触发AI重绘                            |
+| 地图 AI 生成链路     | 已补 debug 定位，待酒馆运行时复核               | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志                                                                                                | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整                                        |
+| 地图 AI 运行时诊断   | 已实施测试版日志策略，待酒馆运行时复核          | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型 | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露 |
+| 地图无缓存基础显示   | 已修复代码侧，待酒馆运行时复核                  | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache`                                                                  | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存                         |
+| 管理界面地图配置分页 | 已补测试版 URL/模型 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的 `[db-status-bar][map-debug]` 日志；测试版输出完整脱敏 URL 与当前模型，API Key 只输出存在性与尾号，后续脱敏日志结构仅保留模型                                                                    | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key，且 URL query 中密钥参数被替换为 `[redacted]`  |
+| 样式加载安全性       | 已修复代码侧，待酒馆运行时复核                  | `loader.js` 改为优先 `fetch` CSS 并内联为 `<style data-story-ui-css>`；`index.js` 的管理面板样式加载同样改为内联，不再主动创建跨域 CSS link                                                                                                       | 点击“重载美化”后确认 `dynamic-styles.js` 不再因跨域 `cssRules` 抛出 SecurityError                         |
+| 浮岛误改回滚         | 已完成                                          | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空                                                                                            | 后续默认不碰 ci_island 路径                                                                               |
 
 ## 当前工作边界
 
@@ -107,6 +108,15 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.12-db-default-mount-and-css-inline (2026-06-15)
+
+**数据库状态栏默认挂载与 CSS 安全加载修复**
+
+- 恢复 `db-status-bar` 的默认 after-native 挂载：即使最新 AI/角色消息没有显式 `<DbStatusBar/>` 标签，也会在最后 AI/角色消息后渲染数据库状态栏。
+- `loader.js` 的 CSS 加载改为优先通过 `fetch(..., { mode: 'cors' })` 读取文本并注入 `<style data-story-ui-css>`，避免新增跨域 `<link>` 后被外部 `dynamic-styles.js` 遍历 `cssRules` 时触发 `SecurityError`。
+- 管理面板样式加载同步改为 `ensureHostCssResource()` 内联注入，避免“打开管理面板/重载资源”路径再次创建跨域样式表。
+- 已执行 `node --check public/story_ui_lite_test/index.js && node --check public/story_ui_lite_test/loader.js` 通过；浏览器直连 `http://127.0.0.1:8000/` 当前返回 401，酒馆运行时 UI 复核仍需在已登录/已授权页面完成。
 
 ### v1.1.11-map-auto-redraw-on-floor-update (2026-06-13)
 
@@ -240,7 +250,6 @@ story_ui_lite_test/
   - `mvu-status-newvars`: `0.1.1-releasetest-newvars-inline-update` → `0.1.1-lite_test-newvars-inline-update`
   - `story-engine`: `0.3.0-prod-template-aligned` → `0.3.0-lite_test`
 - 审计修复：清理 `getExclusiveModuleId` 注释中的旧模块 ID 残留
-
 
 ### v1.0.0 (2026-05-27)
 

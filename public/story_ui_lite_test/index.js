@@ -48,7 +48,7 @@
     ],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
-  const DEFAULT_AFTER_NATIVE_MODULE_IDS = [];
+  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'relation-status',
@@ -875,11 +875,15 @@
       const stored = localStorage.getItem(getDetailsStateKey(moduleId));
       if (stored === 'open') details.setAttribute('open', '');
       else if (stored === 'closed') details.removeAttribute('open');
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
     details.addEventListener('toggle', () => {
       try {
         localStorage.setItem(getDetailsStateKey(moduleId), details.open ? 'open' : 'closed');
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     });
   }
 
@@ -965,7 +969,9 @@
     clearMountedStoryUi(messageElement);
     const explicitMatches = getRenderableMatchesInOrder(modules, rawText);
     const explicitModuleIds = new Set(explicitMatches.map(match => match.module.id));
-    const defaultMatches = getDefaultAfterNativeMatches(modules, rawText).filter(match => !explicitModuleIds.has(match.module.id));
+    const defaultMatches = getDefaultAfterNativeMatches(modules, rawText).filter(
+      match => !explicitModuleIds.has(match.module.id),
+    );
     const matches = [...explicitMatches, ...defaultMatches];
     const mounted = mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement);
 
@@ -1192,7 +1198,9 @@
   }
 
   function isMapSecretQueryKey(key) {
-    const normalized = normalizeMapConfigValue(key).replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const normalized = normalizeMapConfigValue(key)
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase();
     if (!normalized) return false;
     return (
       normalized === 'key' ||
@@ -1317,8 +1325,8 @@
   function hasUsableMapCustomConfig(parsed) {
     return Boolean(
       normalizeMapConfigValue(parsed?.apiUrl) ||
-        normalizeMapConfigValue(parsed?.apiKey) ||
-        normalizeMapConfigValue(parsed?.model),
+      normalizeMapConfigValue(parsed?.apiKey) ||
+      normalizeMapConfigValue(parsed?.model),
     );
   }
 
@@ -1333,7 +1341,11 @@
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') {
         const emptyConfig = getEmptyMapAiConfig();
-        mapDebugLog('manager:config:read:invalid', { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) }, 'warn');
+        mapDebugLog(
+          'manager:config:read:invalid',
+          { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) },
+          'warn',
+        );
         return emptyConfig;
       }
       const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
@@ -1353,7 +1365,11 @@
     } catch (error) {
       const errorSummary = summarizeMapError(error);
       console.warn(`${logPrefix} 读取地图 AI 配置失败`, errorSummary);
-      mapDebugLog('manager:config:read:failed', { error: errorSummary, config: summarizeMapConfig(getEmptyMapAiConfig()) }, 'warn');
+      mapDebugLog(
+        'manager:config:read:failed',
+        { error: errorSummary, config: summarizeMapConfig(getEmptyMapAiConfig()) },
+        'warn',
+      );
       return getEmptyMapAiConfig();
     }
   }
@@ -1373,7 +1389,11 @@
     } catch (error) {
       const errorSummary = summarizeMapError(error);
       console.warn(`${logPrefix} 保存地图 AI 配置失败`, errorSummary);
-      mapDebugLog('manager:config:write:failed', { error: errorSummary, config: summarizeMapConfig(normalized) }, 'warn');
+      mapDebugLog(
+        'manager:config:write:failed',
+        { error: errorSummary, config: summarizeMapConfig(normalized) },
+        'warn',
+      );
       return false;
     }
   }
@@ -1489,7 +1509,11 @@
     }
     const getModelList = getTavernHelperApi()?.getModelList || hostWindow.getModelList || window.getModelList;
     if (typeof getModelList !== 'function') {
-      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { reason: 'getModelList-unavailable' }), 'warn');
+      mapDebugLog(
+        'manager:models:fetch:failed',
+        summarizeModelFetch(config, { reason: 'getModelList-unavailable' }),
+        'warn',
+      );
       notify('酒馆助手 getModelList 不可用，无法拉取模型列表', 'error');
       return;
     }
@@ -1507,7 +1531,10 @@
       const nextModel = config.model && models.includes(config.model) ? config.model : models[0];
       const nextConfig = { ...config, model: nextModel, modelList: models };
       fillManagerMapConfigForm(root, nextConfig);
-      mapDebugLog('manager:models:fetch:ok', summarizeModelFetch(nextConfig, { modelCount: models.length, selectedModel: nextModel }));
+      mapDebugLog(
+        'manager:models:fetch:ok',
+        summarizeModelFetch(nextConfig, { modelCount: models.length, selectedModel: nextModel }),
+      );
       notify(`已拉取 ${models.length} 个模型，请选择模型后保存`, 'success');
     } catch (error) {
       const errorSummary = summarizeMapError(error);
@@ -1516,7 +1543,10 @@
       notify(`模型列表拉取失败：${getMapErrorMessage(error)}`, 'error');
     } finally {
       setManagerButtonBusy(button, '', false);
-      setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
+      setManagerMapCustomFieldsEnabled(
+        root,
+        getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false,
+      );
     }
   }
 
@@ -1533,7 +1563,10 @@
       return;
     }
     fillManagerMapConfigForm(root, savedConfig);
-    notify(config.followDatabaseApi ? '地图生成已设置为跟随当前数据库 API' : '地图生成自定义 API 设置已保存', 'success');
+    notify(
+      config.followDatabaseApi ? '地图生成已设置为跟随当前数据库 API' : '地图生成自定义 API 设置已保存',
+      'success',
+    );
   }
 
   function resetManagerMapConfig(root) {
@@ -1545,24 +1578,52 @@
     notify('地图生成已清空本地设置并跟随当前数据库 API', 'success');
   }
 
-
-
   function getManagerView() {
     return (
       hostWindow.JJKSStoryUiManagerView || window.JJKSStoryUiManagerView || globalThis.JJKSStoryUiManagerView || null
     );
   }
 
+  function queryHostCssResource(href) {
+    const cssApi = hostWindow.CSS || window.CSS || globalThis.CSS;
+    const escapedHref =
+      typeof cssApi?.escape === 'function' ? cssApi.escape(href) : String(href || '').replace(/"/g, '\\"');
+    return (
+      hostDocument.querySelector(`style[data-story-ui-css="${escapedHref}"]`) ||
+      hostDocument.querySelector(`link[data-story-ui-css="${escapedHref}"]`) ||
+      hostDocument.querySelector(`link[href="${escapedHref}"]`)
+    );
+  }
+
+  async function ensureHostCssResource(href) {
+    const existed = queryHostCssResource(href);
+    if (existed) return existed;
+
+    try {
+      const response = await fetch(href, { cache: 'no-store', mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const cssText = await response.text();
+      const style = createElementInHost('style');
+      style.dataset.storyUiCss = href;
+      style.dataset.storyUiCssInline = 'true';
+      style.textContent = `\n/* ${href} */\n${cssText}`;
+      (hostDocument.head || hostDocument.body).appendChild(style);
+      return style;
+    } catch (error) {
+      console.warn(`${logPrefix} CSS inline 加载失败，避免创建跨域 link 以免触发 cssRules SecurityError。`, {
+        href,
+        error: error?.message || String(error),
+      });
+      return null;
+    }
+  }
+
   async function ensureManagerUiReady(timeout = 5000) {
     if (getManagerView()) return true;
 
     const styleHref = toUrl('modules/manager-ui/style.css');
-    if (!hostDocument.querySelector(`link[href="${styleHref}"]`)) {
-      const link = createElementInHost('link');
-      link.rel = 'stylesheet';
-      link.href = styleHref;
-      (hostDocument.head || hostDocument.body).appendChild(link);
-    }
+    await ensureHostCssResource(styleHref);
 
     const scriptSrc = toUrl('modules/manager-ui/index.js');
     if (!hostDocument.querySelector(`script[src="${scriptSrc}"]`)) {
@@ -1584,29 +1645,7 @@
   async function ensureManagerAssetsReady() {
     await ensureLoader();
     const styleHref = toUrl('modules/manager-ui/style.css');
-    let link = hostDocument.querySelector(`link[href="${styleHref}"]`);
-    if (!link) {
-      link = createElementInHost('link');
-      link.rel = 'stylesheet';
-      link.href = styleHref;
-      (hostDocument.head || hostDocument.body).appendChild(link);
-    }
-
-    if (!link.dataset.jjksReady) {
-      await new Promise(resolve => {
-        let settled = false;
-        const done = () => {
-          if (settled) return;
-          settled = true;
-          link.dataset.jjksReady = 'true';
-          resolve();
-        };
-        link.addEventListener('load', done, { once: true });
-        link.addEventListener('error', done, { once: true });
-        window.setTimeout(done, 300);
-      });
-    }
-
+    await ensureHostCssResource(styleHref);
     await ensureManagerUiReady();
   }
 
@@ -1741,7 +1780,10 @@
 
       const mapModeInput = target.closest?.('[data-jjks-map-mode]');
       if (mapModeInput) {
-        setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
+        setManagerMapCustomFieldsEnabled(
+          root,
+          getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false,
+        );
         refreshManagerState();
         return;
       }
@@ -1817,17 +1859,15 @@
     }));
 
     listRoot.innerHTML = entries
-      .map(
-        item => {
-          const status = item.registered ? (item.enabled ? '关闭' : '开启') : '未加载';
-          return `
+      .map(item => {
+        const status = item.registered ? (item.enabled ? '关闭' : '开启') : '未加载';
+        return `
           <div class="jjks-manager-module-item">
             <span class="jjks-manager-module-name">${escapeHtml(item.label)}<small>${escapeHtml(item.registered ? '已注册' : '未注册')}</small></span>
             <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}" ${item.registered ? '' : 'disabled'}>${status}</button>
           </div>
         `;
-        },
-      )
+      })
       .join('');
   }
 

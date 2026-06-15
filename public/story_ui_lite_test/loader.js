@@ -69,14 +69,55 @@
     return url.href;
   }
 
-  function loadCss(path) {
+  function findLoadedCss(href) {
+    const escapedHref =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(href) : href.replace(/"/g, '\\"');
+    return (
+      document.querySelector(`style[data-story-ui-css="${escapedHref}"]`) ||
+      document.querySelector(`link[data-story-ui-css="${escapedHref}"]`)
+    );
+  }
+
+  async function loadCss(path) {
     const href = toUrl(path);
-    if (state.loadedCss.has(href) || document.querySelector(`link[data-story-ui-css="${href}"]`)) {
+    if (state.loadedCss.has(href) || findLoadedCss(href)) {
       state.loadedCss.add(href);
-      return Promise.resolve();
+      return;
     }
 
-    return new Promise((resolve, reject) => {
+    try {
+      const response = await fetch(href, { cache: 'no-store', mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const cssText = await response.text();
+      const style = document.createElement('style');
+      style.dataset.storyUiCss = href;
+      style.dataset.storyUiCssInline = 'true';
+      style.textContent = `\n/* ${href} */\n${cssText}`;
+      document.head.appendChild(style);
+      state.loadedCss.add(href);
+      return;
+    } catch (fetchError) {
+      console.warn('[StoryRegexUI] CSS inline 加载失败，回退为 link 加载。', {
+        href,
+        error: fetchError?.message || String(fetchError),
+      });
+    }
+
+    let sameOrigin = false;
+    try {
+      sameOrigin = new URL(href, window.location.href).origin === window.location.origin;
+    } catch {
+      sameOrigin = false;
+    }
+
+    if (!sameOrigin) {
+      throw new Error(`StoryRegexUI CSS inline 加载失败且不创建跨域 link，避免 cssRules SecurityError: ${href}`);
+    }
+
+    await new Promise((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = href;
