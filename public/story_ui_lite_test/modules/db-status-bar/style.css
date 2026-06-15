@@ -1147,8 +1147,10 @@
 }
 
 .db-sb-map-area {
+  position: relative;
   align-self: stretch;
   min-height: 0;
+  isolation: isolate;
 }
 
 .db-sb-quest-overlay {
@@ -1307,6 +1309,38 @@
   overflow: hidden;
   display: flex;
   align-items: stretch;
+  background: var(--db-card-2);
+}
+
+.db-sb-map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 18, 15, 0.34);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.db-sb-map-loading-overlay[data-active="true"] {
+  display: flex;
+}
+
+.db-sb-map-loading-text {
+  max-width: min(80%, 280px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(0, 0, 0, 0.48);
+  color: #fff8e8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
 .db-sb-map-empty {

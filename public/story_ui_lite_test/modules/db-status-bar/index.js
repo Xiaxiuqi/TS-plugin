@@ -257,10 +257,7 @@
     try { candidates.push(window); } catch { /* ignore */ }
     try { candidates.push(parent); } catch { /* ignore */ }
     for (const candidate of candidates) {
-      const generate = typeof candidate?.generate === 'function' ? candidate.generate.bind(candidate) : null;
-      const generateRaw = typeof candidate?.generateRaw === 'function' ? candidate.generateRaw.bind(candidate) : null;
-      if (!generate && !generateRaw) continue;
-      return { generate, generateRaw };
+      if (typeof candidate?.generate === 'function') return candidate.generate.bind(candidate);
     }
     return null;
   }
@@ -284,7 +281,7 @@
     const messages = [{ role: 'user', content: prompt }];
     const options = buildMapAiOptions();
     const config = getMapAiConfig();
-    const tavern = getTavernHelperGenerate();
+    const generate = getTavernHelperGenerate();
     const customApi = buildMapCustomApi(config);
     const shouldUseCustomApi = hasMapCustomApiConfig(config);
     const currentModel = summarizeMapCurrentModel(config, shouldUseCustomApi ? 'custom-config.model' : 'database-api-config.model');
@@ -301,34 +298,24 @@
       promptLength: String(prompt || '').length,
       shouldUseCustomApi,
       currentModel,
-      hasTavernHelperGenerate: Boolean(tavern),
-      hasGenerateRaw: Boolean(tavern?.generateRaw),
+      hasTavernHelperGenerate: Boolean(generate),
       hasDatabaseCallAI: typeof api?.callAI === 'function',
       config: summarizeMapConfig(config),
       customApi: summarizeMapCustomApi(customApi),
     });
 
-    if (tavern && shouldUseCustomApi && customApi) {
-      const generatorFn = tavern.generateRaw || tavern.generate;
-      const generatorName = tavern.generateRaw ? 'TavernHelper.generateRaw' : 'TavernHelper.generate';
+    if (generate && shouldUseCustomApi && customApi) {
       try {
-        // 优先使用 generateRaw + ordered_prompts: ['user_input']，避免酒馆预设干扰地图生成
-        const generateConfig = tavern.generateRaw ? {
-          user_input: prompt,
-          should_silence: true,
-          ordered_prompts: ['user_input'],
-          custom_api: customApi,
-        } : {
+        mapDebugLog('ai:generator:selected', { generator: 'TavernHelper.generate', currentModel, customApi: summarizeMapCustomApi(customApi), sanitizedLog: summarizeMapModelOnlyConfig(config) });
+        const result = await generate({
           user_input: prompt,
           should_silence: true,
           max_chat_history: 0,
           custom_api: customApi,
-        };
-        mapDebugLog('ai:generator:selected', { generator: generatorName, currentModel, customApi: summarizeMapCustomApi(customApi), sanitizedLog: summarizeMapModelOnlyConfig(config) });
-        const result = await generatorFn(generateConfig);
+        });
         const resultType = typeof result;
         const resultSummary = {
-          generator: generatorName,
+          generator: 'TavernHelper.generate',
           currentModel,
           resultType,
           result: summarizeMapAiResult(result),
@@ -347,10 +334,10 @@
             return { ok: true, text: extracted, reason: '' };
           }
         }
-        console.error(`[db-status-bar] ${generatorName} 返回无效结果:`, { resultType, result });
-        return fail(`${generatorName} returned no usable map text`);
+        console.error('[db-status-bar] TavernHelper.generate 返回无效结果:', { resultType, result });
+        return fail('TavernHelper.generate returned no usable map text');
       } catch (e) {
-        return fail(`${generatorName} failed`, e);
+        return fail('TavernHelper.generate failed', e);
       }
     }
 
@@ -724,6 +711,9 @@
           </div>
           <div class="db-sb-map-area">
             ${renderMapTab(S)}
+            <div class="db-sb-map-loading-overlay" data-map-loading-overlay data-active="false" aria-hidden="true">
+              <div class="db-sb-map-loading-text" data-map-loading-text></div>
+            </div>
           </div>
         </div>
       </div>
@@ -982,6 +972,18 @@
     }
   }
 
+  function setMapLoadingOverlay(root, visible, message) {
+    const overlay = root?.querySelector?.('[data-map-loading-overlay]');
+    if (!overlay) return;
+    const active = visible === true;
+    overlay.dataset.active = active ? 'true' : 'false';
+    overlay.setAttribute('aria-hidden', active ? 'false' : 'true');
+    const textNode = overlay.querySelector?.('[data-map-loading-text]');
+    if (textNode) {
+      textNode.textContent = active ? String(message || '正在生成地图…') : '';
+    }
+  }
+
   function renderMapEmptyState(message) {
     return `<div class="db-sb-map-empty">${esc(message)}</div>`;
   }
@@ -1150,10 +1152,9 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     const redrawBtn = root.querySelector('[data-map-action="redraw"]');
     if (refreshBtn) refreshBtn.disabled = true;
     if (redrawBtn) redrawBtn.disabled = true;
-    notifyMap(force ? '正在重绘地图…' : '正在生成地图…', 'info', root);
+    setMapLoadingOverlay(root, true, force ? '正在重绘地图…' : '正在生成地图…');
     if (!safePreviousMarkup) {
       mapDebugLog('domap:placeholder:render', { loc, reason: 'no-safe-previous-markup' });
-      setMapViewportMarkup(root, renderMapEmptyState('正在生成地图…'));
     }
     mapDebugLog('domap:generate:start', { loc, force: Boolean(force), hasPreviousSvg: Boolean(safePreviousMarkup), hasCachedSvg: Boolean(cached?.svg) });
 
@@ -1222,6 +1223,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       notifyMap(`地图渲染失败：${errorSummary.message}`, 'error', root);
     } finally {
       mapBusy = false;
+      setMapLoadingOverlay(root, false);
       if (refreshBtn) refreshBtn.disabled = false;
       if (redrawBtn) redrawBtn.disabled = false;
       const pending = pendingAutoMapRequest;
@@ -1871,8 +1873,21 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
   }
 
   let debounceTimer = null;
+  let autoMapTimer = null;
   let activeDataRoot = null;
   let registeredTableUpdateApi = null;
+
+  function scheduleAutoMapAfterDataSettled(root, options = {}) {
+    if (autoMapTimer) clearTimeout(autoMapTimer);
+    autoMapTimer = setTimeout(() => {
+      autoMapTimer = null;
+      const run = () => {
+        if (root?.isConnected) maybeAutoMap(root, options);
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+      else run();
+    }, 0);
+  }
 
   async function initData(root) {
     activeDataRoot = root;
@@ -1896,8 +1911,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
               const t = await api.exportTableAsJson();
               ui.dbStatusData.parseTables(typeof t === 'string' ? JSON.parse(t) : t);
               activeDataRoot = rerender(targetRoot) || targetRoot;
-              // 楼层/数据库更新后自动检测地图是否需要重新生成
-              maybeAutoMap(activeDataRoot, { allowGenerate: true });
+              // 数据库导出、解析和 DOM 重渲染完成后，再排队检测地图是否需要重新生成。
+              scheduleAutoMapAfterDataSettled(activeDataRoot, { allowGenerate: true });
             } catch (e) { console.error('[db-status-bar] Update failed:', e); }
           }, 300);
         });

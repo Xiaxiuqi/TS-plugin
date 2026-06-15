@@ -48,7 +48,7 @@
     ],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
-  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
+  const DEFAULT_AFTER_NATIVE_MODULE_IDS = [];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'relation-status',
