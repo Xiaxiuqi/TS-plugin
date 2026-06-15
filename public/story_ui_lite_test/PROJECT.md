@@ -91,7 +91,7 @@ story_ui_lite_test/
 | 角色头像弹窗         | 反馈确认，待按方案修复颜色                      | 点击链路存在，但 `style.css` 头像弹窗使用 `var(--db-panel)`、`var(--db-text)` 等状态栏变量；body 级挂载后颜色可能偏离 `preview-db-status.html` 浅色参考                                                                                           | 按预览浅色契约收敛弹窗局部 CSS，不污染预览页本体和全局 body 变量                                          |
 | 状态栏地图刷新按钮   | 已补运行时反馈与日志，待酒馆运行时复核          | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志                                                              | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位                                                  |
 | 状态栏地图重绘按钮   | 已修复即时状态，待酒馆运行时复核                | `doMap(root, true)` 进入生成分支后立即写入“正在重绘地图…”状态；无旧图时显示“正在生成地图…”占位；失败保留旧图或显示明确空状态                                                                                                                      | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态                                             |
-| 地图楼层自动重绘     | 已实现，待酒馆运行时复核                        | `registerTableUpdateCallback` 回调中 rerender 后调用 `maybeAutoMap(root, { allowGenerate: true })`；`initData` 初次加载不触发                                                                                                                     | 在酒馆中确认：首次进入聊天不自动AI生成；楼层变更后地图元素变化时自动触发AI重绘                            |
+| 地图楼层自动重绘     | 已修复初次生成与遮罩链路，待酒馆运行时复核      | `initData` 初次加载完成后写入 `lastAutoMapSignature` 基线，避免进入聊天时因无缓存触发自动 AI 生成；自动重绘和 pending 恢复均优先使用当前 `activeDataRoot`，生成期间 rerender 后会恢复地图遮罩                                                     | 在酒馆中确认：首次进入聊天不自动 AI 生成；楼层变更后数据库更新完成才自动重绘，且生成期间遮罩持续显示      |
 | 地图 AI 生成链路     | 已补 debug 定位，待酒馆运行时复核               | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志                                                                                                | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整                                        |
 | 地图 AI 运行时诊断   | 已实施测试版日志策略，待酒馆运行时复核          | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型 | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露 |
 | 地图无缓存基础显示   | 已修复代码侧，待酒馆运行时复核                  | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache`                                                                  | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存                         |
@@ -108,6 +108,15 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.13-map-initial-autogen-and-overlay-fix (2026-06-15)
+
+**地图初次自动生成与自动重绘遮罩修复**
+
+- 初次进入聊天时，数据库状态栏完成初始导出、解析和 rerender 后会把当前地图签名写入 `lastAutoMapSignature` 作为基线，避免后续初始化期表更新回调仅因“当前位置无 AI 缓存”就自动触发地图生成。
+- 自动地图判定改为必须同时满足 `allowGenerate=true`、地图签名变化、且没有匹配签名的有效缓存，避免初次加载或同签名无缓存场景静默生成地图；此类场景仍保留手动“重绘地图”入口。
+- 地图生成期间保存遮罩状态；若数据库更新导致状态栏 rerender，新的 root 会恢复正在生成/重绘遮罩，自动重绘和 pending 恢复也会优先绑定当前 `activeDataRoot`，避免遮罩显示在旧 DOM 上后消失。
+- 已执行 `node --check public\story_ui_lite_test\modules\db-status-bar\index.js` 与 `git diff --check -- public/story_ui_lite_test/modules/db-status-bar/index.js` 通过；酒馆运行时仍需复核首次进入聊天不自动生成、楼层更新后自动重绘期间遮罩持续显示。
 
 ### v1.1.12-db-default-mount-and-css-inline (2026-06-15)
 

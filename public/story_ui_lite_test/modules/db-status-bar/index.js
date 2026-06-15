@@ -868,6 +868,7 @@
   let pendingAutoMapRequest = null;
   let lastAutoMapSignature = '';
   let lastCity = '';
+  let mapLoadingOverlayState = { active: false, message: '' };
 
   function buildMapSignature(S) {
     const elements = Array.isArray(S?.mapElements) ? S.mapElements : [];
@@ -985,14 +986,16 @@
   }
 
   function setMapLoadingOverlay(root, visible, message) {
+    const active = visible === true;
+    const text = active ? String(message || '正在生成地图…') : '';
+    mapLoadingOverlayState = { active, message: text };
     const overlay = root?.querySelector?.('[data-map-loading-overlay]');
     if (!overlay) return;
-    const active = visible === true;
     overlay.dataset.active = active ? 'true' : 'false';
     overlay.setAttribute('aria-hidden', active ? 'false' : 'true');
     const textNode = overlay.querySelector?.('[data-map-loading-text]');
     if (textNode) {
-      textNode.textContent = active ? String(message || '正在生成地图…') : '';
+      textNode.textContent = text;
     }
   }
 
@@ -1100,7 +1103,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     const allowGenerate = Boolean(force || options.allowGenerate);
     const shouldTryGenerate = mapGenerationEnabled && allowGenerate;
     const shouldUpdateAutoSignature = options.updateAutoSignature === true;
-    const viewport = root.querySelector('.db-sb-map-viewport');
+    let viewport = root.querySelector('.db-sb-map-viewport');
     const previousMarkup = viewport ? viewport.innerHTML.trim() : '';
     const safePreviousMarkup = previousMarkup ? sanitizeSVG(previousMarkup) : '';
     const cached = getSafeCachedMap(loc);
@@ -1160,6 +1163,10 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     }
 
     mapBusy = true;
+    if (activeDataRoot?.isConnected && activeDataRoot !== root) {
+      root = activeDataRoot;
+      viewport = root.querySelector('.db-sb-map-viewport');
+    }
     const refreshBtn = root.querySelector('[data-map-action="refresh"]');
     const redrawBtn = root.querySelector('[data-map-action="redraw"]');
     if (refreshBtn) refreshBtn.disabled = true;
@@ -1203,6 +1210,11 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         setMapCacheEntry(loc, svg, signature);
         mapDebugLog('domap:generate:success', { loc, svgLength: svg.length, updateAutoSignature: shouldUpdateAutoSignature });
         if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
+        if (activeDataRoot?.isConnected && activeDataRoot !== root) {
+          root = activeDataRoot;
+          viewport = root.querySelector('.db-sb-map-viewport');
+          if (mapLoadingOverlayState.active) setMapLoadingOverlay(root, true, mapLoadingOverlayState.message);
+        }
         if (viewport) {
           viewport.innerHTML = svg;
           normalizeMapClickTargets(root);
@@ -1215,6 +1227,11 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         mapDebugLog('domap:generate:failed-keep-previous', { loc, aiReturnedSvg, previousSvgLength: previousSvg.length }, 'warn');
         const previousIsBaseMap = isBaseMapMarkup(previousSvg);
         notifyMap(previousIsBaseMap ? '地图生成失败，已显示数据库基础地图。' : (aiReturnedSvg ? '地图生成失败，已保留旧图。' : 'AI 未返回可用 SVG，已保留旧图。'), 'error', root);
+        if (activeDataRoot?.isConnected && activeDataRoot !== root) {
+          root = activeDataRoot;
+          viewport = root.querySelector('.db-sb-map-viewport');
+          if (mapLoadingOverlayState.active) setMapLoadingOverlay(root, true, mapLoadingOverlayState.message);
+        }
         if (viewport) {
           viewport.innerHTML = previousSvg;
           normalizeMapClickTargets(root);
@@ -1235,15 +1252,19 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       notifyMap(`地图渲染失败：${errorSummary.message}`, 'error', root);
     } finally {
       mapBusy = false;
+      if (activeDataRoot?.isConnected && activeDataRoot !== root) {
+        setMapLoadingOverlay(activeDataRoot, false);
+      }
       setMapLoadingOverlay(root, false);
       if (refreshBtn) refreshBtn.disabled = false;
       if (redrawBtn) redrawBtn.disabled = false;
       const pending = pendingAutoMapRequest;
       pendingAutoMapRequest = null;
-      if (pending?.root?.isConnected) {
+      const pendingRoot = activeDataRoot?.isConnected ? activeDataRoot : pending?.root;
+      if (pending && pendingRoot?.isConnected) {
         mapDebugLog('domap:pending-auto:resume', { loc, pendingOptions: pending.options });
         setTimeout(() => {
-          maybeAutoMap(pending.root, pending.options);
+          maybeAutoMap(pendingRoot, pending.options);
         }, 0);
       }
     }
@@ -1894,7 +1915,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     autoMapTimer = setTimeout(() => {
       autoMapTimer = null;
       const run = () => {
-        if (root?.isConnected) maybeAutoMap(root, options);
+        const targetRoot = activeDataRoot?.isConnected ? activeDataRoot : root;
+        if (targetRoot?.isConnected) maybeAutoMap(targetRoot, options);
       };
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
       else run();
@@ -1934,6 +1956,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     }
     root = rerender(root) || root;
     activeDataRoot = root;
+    lastAutoMapSignature = buildMapSignature(getState());
+    mapDebugLog('auto-map:baseline:init', { signaturePresent: Boolean(lastAutoMapSignature) });
     // 初次加载不触发自动地图生成；后续数据库更新通过 registerTableUpdateCallback 触发 maybeAutoMap
   }
 
@@ -1957,7 +1981,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     const loc = S.location || '未知';
     const cached = getSafeCachedMap(loc);
     const cacheSignatureMatches = cached && (cached.signature === signature || (options.allowGenerate !== true && !cached.signature));
-    const allowGenerate = options.allowGenerate === true && (signature !== lastAutoMapSignature || !cacheSignatureMatches);
+    const allowGenerate = options.allowGenerate === true && signature !== lastAutoMapSignature && !cacheSignatureMatches;
     mapDebugLog('auto-map:evaluate', {
       loc,
       requestedGenerate: options.allowGenerate === true,
@@ -1981,6 +2005,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       root.replaceWith(newRoot);
       bindEvents(newRoot);
       normalizeMapClickTargets(newRoot);
+      if (mapLoadingOverlayState.active) setMapLoadingOverlay(newRoot, true, mapLoadingOverlayState.message);
       return newRoot;
     }
     return root;
