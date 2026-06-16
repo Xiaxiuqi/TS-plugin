@@ -723,6 +723,7 @@
           </div>
           <div class="db-sb-map-area">
             ${renderMapTab(S)}
+            <div class="db-sb-map-popover" id="db-map-detail" data-map-popover hidden></div>
             <div class="db-sb-map-loading-overlay" data-map-loading-overlay data-active="false" aria-hidden="true">
               <div class="db-sb-map-loading-text" data-map-loading-text></div>
             </div>
@@ -978,11 +979,6 @@
         // ignore toast failures
       }
     }
-    const status = root?.querySelector?.('[data-map-status]');
-    if (status) {
-      status.textContent = text;
-      status.dataset.mapStatusType = type;
-    }
   }
 
   function setMapLoadingOverlay(root, visible, message) {
@@ -997,6 +993,36 @@
     if (textNode) {
       textNode.textContent = text;
     }
+  }
+
+  function hideMapDetailPopover(root) {
+    const popover = root?.querySelector?.('[data-map-popover]');
+    if (!popover) return;
+    popover.hidden = true;
+    popover.innerHTML = '';
+  }
+
+  function showMapDetailPopover(root, event, el) {
+    const area = root?.querySelector?.('.db-sb-map-area');
+    const popover = root?.querySelector?.('[data-map-popover]');
+    if (!area || !popover || !event || !el) return;
+    popover.innerHTML = `
+      <div class="db-sb-map-popover-title">${esc(el.name || '--')}</div>
+      <div class="db-sb-stat-row"><span class="db-sb-stat-name">类型</span><span class="db-sb-stat-value">${esc(el.type || '--')}</span></div>
+      <div class="db-sb-stat-row"><span class="db-sb-stat-name">状态</span><span class="db-sb-stat-value">${esc(el.status || '--')}</span></div>
+      <div class="db-sb-stat-row"><span class="db-sb-stat-name">描述</span><span class="db-sb-stat-value">${esc(el.desc || '--')}</span></div>
+      <div class="db-sb-stat-row"><span class="db-sb-stat-name">传说背景</span><span class="db-sb-stat-value">${esc(el.lore || '--')}</span></div>`;
+    popover.hidden = false;
+    popover.style.left = '8px';
+    popover.style.top = '8px';
+    const areaRect = area.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const desiredLeft = event.clientX - areaRect.left + 12;
+    const desiredTop = event.clientY - areaRect.top + 12;
+    const maxLeft = Math.max(8, areaRect.width - popoverRect.width - 8);
+    const maxTop = Math.max(8, areaRect.height - popoverRect.height - 8);
+    popover.style.left = `${Math.min(Math.max(8, desiredLeft), maxLeft)}px`;
+    popover.style.top = `${Math.min(Math.max(8, desiredTop), maxTop)}px`;
   }
 
   function renderMapEmptyState(message) {
@@ -1299,9 +1325,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       <div class="db-sb-map-viewport">
         ${renderBaseMap(S) || renderMapEmptyState('暂无地图元素。点击重绘地图生成。')}
       </div>
-      <div class="db-sb-map-status" data-map-status></div>
       <div class="db-sb-map-legend">${legend}</div>
-      <div class="db-sb-map-detail" id="db-map-detail"></div>
     </div>`;
   }
 
@@ -1380,6 +1404,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       // Map action (refresh / redraw)
       const mapActionBtn = e.target.closest('[data-map-action]');
       if (mapActionBtn && root.contains(mapActionBtn)) {
+        hideMapDetailPopover(root);
         const action = mapActionBtn.dataset.mapAction;
         if (action === 'refresh') { doMap(root, false); }
         else if (action === 'redraw') { doMap(root, true); }
@@ -1389,25 +1414,20 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
 
       // Map element click
+      const mapPopover = e.target.closest('[data-map-popover]');
+      if (mapPopover && root.contains(mapPopover)) return;
       const mapEl = e.target.closest('.db-sb-map-viewport .cm[data-idx], .db-sb-map-viewport [data-idx]');
       if (mapEl && root.contains(mapEl)) {
         const idx = parseInt(mapEl.dataset.idx, 10);
         const S = getState();
         const elements = S.mapElements || [];
         const el = elements[idx];
-        if (el) {
-          const detail = root.querySelector('#db-map-detail');
-          if (detail) {
-            detail.innerHTML = `
-              <div class="db-sb-card">
-                <div class="db-sb-stat-row"><span class="db-sb-stat-name">名称</span><span class="db-sb-stat-value">${esc(el.name)}</span></div>
-                <div class="db-sb-stat-row"><span class="db-sb-stat-name">类型</span><span class="db-sb-stat-value">${esc(el.type)}</span></div>
-                <div class="db-sb-stat-row"><span class="db-sb-stat-name">状态</span><span class="db-sb-stat-value">${esc(el.status || '--')}</span></div>
-                <div class="db-sb-stat-row"><span class="db-sb-stat-name">描述</span><span class="db-sb-stat-value">${esc(el.desc || '--')}</span></div>
-                <div class="db-sb-stat-row"><span class="db-sb-stat-name">传说背景</span><span class="db-sb-stat-value">${esc(el.lore || '--')}</span></div>
-              </div>`;
-          }
-        }
+        if (el) showMapDetailPopover(root, e, el);
+        return;
+      }
+      const mapViewport = e.target.closest('.db-sb-map-viewport');
+      if (mapViewport && root.contains(mapViewport)) {
+        hideMapDetailPopover(root);
         return;
       }
 
