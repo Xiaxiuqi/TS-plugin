@@ -211,13 +211,21 @@
     return hostWindow[CONFIG.globalKey] ? 'hostWindow' : window[CONFIG.globalKey] ? 'localWindow' : 'missing';
   }
 
+  function normalizeTheme(theme) {
+    return theme === 'night' ? 'night' : 'day';
+  }
+
   function getTheme() {
-    const apiTheme = getUi()?.theme?.getTheme?.();
-    if (apiTheme === 'day' || apiTheme === 'night') return apiTheme;
+    try {
+      const apiTheme = getUi()?.theme?.getTheme?.();
+      if (apiTheme === 'day' || apiTheme === 'night') return normalizeTheme(apiTheme);
+    } catch (error) {
+      console.warn(`${logPrefix} 读取主题 API 状态失败，降级读取本地主题。`, error);
+    }
 
     try {
       const stored = localStorage.getItem(CONFIG.themeKey);
-      return stored === 'night' ? 'night' : 'day';
+      return normalizeTheme(stored);
     } catch {
       return 'day';
     }
@@ -266,23 +274,38 @@
   }
 
   function setTheme(theme) {
-    const nextTheme = theme === 'night' ? 'night' : 'day';
+    const nextTheme = normalizeTheme(theme);
+    const themeApi = getUi()?.theme;
+    let appliedTheme = nextTheme;
+    let themeApiApplied = false;
+
+    if (themeApi?.setTheme) {
+      try {
+        const apiTheme = themeApi.setTheme(nextTheme);
+        themeApiApplied = true;
+        if (apiTheme === 'day' || apiTheme === 'night') {
+          appliedTheme = normalizeTheme(apiTheme);
+        }
+      } catch (error) {
+        lastError = error?.message || String(error);
+        refreshManagerState(getTheme());
+        console.error(`${logPrefix} 主题 API 切换失败，已保持当前主题状态。`, error);
+        throw error;
+      }
+    }
+
     try {
-      localStorage.setItem(CONFIG.themeKey, nextTheme);
+      localStorage.setItem(CONFIG.themeKey, appliedTheme);
     } catch (error) {
       console.warn(`${logPrefix} 保存主题失败`, error);
     }
 
-    const themeApi = getUi()?.theme;
-    if (themeApi?.setTheme) {
-      themeApi.setTheme(nextTheme);
-    }
+    applyThemeToStoryDocument(appliedTheme);
+    dispatchThemeChangedToStoryDocument(appliedTheme, { force: !themeApiApplied });
 
-    applyThemeToStoryDocument(nextTheme);
-    dispatchThemeChangedToStoryDocument(nextTheme, { force: !themeApi?.setTheme });
-
-    applyManagerTheme(nextTheme);
-    refreshManagerState();
+    applyManagerTheme(appliedTheme);
+    refreshManagerState(appliedTheme);
+    return appliedTheme;
   }
 
   function ensureLoader() {
@@ -1723,7 +1746,15 @@
 
       const themeButton = target.closest?.('[data-jjks-theme]');
       if (themeButton) {
-        setTheme(themeButton.dataset.jjksTheme);
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          setTheme(themeButton.dataset.jjksTheme);
+        } catch (error) {
+          lastError = error?.message || String(error);
+          console.error(`${logPrefix} 主题切换失败`, error);
+          notify(`主题切换失败：${lastError}`, 'error');
+        }
         return;
       }
 
@@ -1880,11 +1911,14 @@
     setManagerButtonBusy(button, '', false);
   }
 
-  function refreshManagerState() {
+  function refreshManagerState(themeOverride) {
     const root = hostDocument.getElementById(CONFIG.managerRootId);
     if (!root) return;
 
     const data = diagnose();
+    const displayTheme =
+      themeOverride === 'day' || themeOverride === 'night' ? normalizeTheme(themeOverride) : data.当前主题;
+
     const modules = data.已注册模块 || [];
     const setText = (name, value) => {
       const node = root.querySelector(`[data-jjks-status="${name}"]`);
@@ -1898,7 +1932,7 @@
     setText('scan-window', data.最近扫描窗口 || 0);
 
     root.querySelectorAll('[data-jjks-theme]').forEach(button => {
-      button.dataset.active = button.dataset.jjksTheme === data.当前主题 ? 'true' : 'false';
+      button.dataset.active = button.dataset.jjksTheme === displayTheme ? 'true' : 'false';
     });
 
     renderManagerModuleList(root);
@@ -1914,7 +1948,7 @@
 
     const diagnosis = root.querySelector('[data-jjks-diagnosis]');
     if (diagnosis) diagnosis.innerHTML = formatDiagnosis(data);
-    applyManagerTheme(data.当前主题);
+    applyManagerTheme(displayTheme);
   }
 
   async function runQuickReload() {
