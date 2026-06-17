@@ -221,7 +221,7 @@
 
 .db-status-bar.story-ui-night .db-sb-world-strip {
   color: var(--db-text);
-  background: var(--db-card-2);
+  background: rgb(40 40 42 / 90%);
   border-color: var(--db-line);
 }
 
@@ -1213,11 +1213,11 @@
 }
 
 .db-status-bar.story-ui-day .db-sb-quest-overlay {
-  background: rgba(251, 247, 238, 0.95);
+  background: rgba(251, 247, 238, 0.9);
 }
 
 .db-status-bar.story-ui-night .db-sb-quest-overlay {
-  background: rgba(29, 35, 44, 0.95);
+  background: rgb(40 40 42 / 90%);
 }
 
 .db-sb-quest-header {
