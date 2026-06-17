@@ -290,7 +290,7 @@
     const data = parseAllBlocks(rawText);
     const theme = ui.theme?.getTheme?.() || 'day';
     const isNight = theme === 'night';
-    const wrapperClass = isNight ? 'bp-night-ui' : 'bp-day-ui';
+    const wrapperClass = isNight ? 'story-ui-night' : 'story-ui-day';
     const subtitle = isNight ? 'BATTLE POINT RADAR · DUAL SCAN' : '实时战力评估 · 双面板';
     const footer = isNight ? '✧ BATTLE POINT RADAR TERMINAL ✧' : '✧ BP 战力雷达 ✧';
 

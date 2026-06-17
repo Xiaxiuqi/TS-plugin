@@ -534,7 +534,7 @@
     const theme = ui.theme?.getTheme?.() || 'day';
     const S = getState();
     return `
-<section class="story-ui-root db-status-bar theme-${theme}" data-story-ui-module="${MODULE_ID}">
+<section class="story-ui-root db-status-bar story-ui-${theme}" data-story-ui-module="${MODULE_ID}">
   <main class="db-sb-root">
     ${renderWorldStrip(S)}
     ${renderCharacterPanel(S, theme)}

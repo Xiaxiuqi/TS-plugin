@@ -16,7 +16,7 @@
   display: none;
 }
 
-.db-status-bar.theme-day {
+.db-status-bar.story-ui-day {
   --db-bg: #f7f1e6;
   --db-panel: rgba(251, 247, 238, 0.97);
   --db-card: rgba(255, 253, 247, 0.86);
@@ -48,7 +48,7 @@
   line-height: 1.52;
 }
 
-.db-status-bar.theme-night {
+.db-status-bar.story-ui-night {
   --db-bg: #1a1a1c;
   --db-panel: rgba(26, 26, 28, 0.97);
   --db-card: rgba(40, 40, 43, 0.95);
@@ -97,20 +97,20 @@
   position: relative;
 }
 
-.db-status-bar.theme-day .db-sb-panel {
+.db-status-bar.story-ui-day .db-sb-panel {
   border-radius: 10px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.58), transparent 32%), var(--db-panel);
   box-shadow: var(--db-shadow);
 }
 
-.db-status-bar.theme-night .db-sb-panel {
+.db-status-bar.story-ui-night .db-sb-panel {
   border-radius: 8px;
   background: var(--db-panel);
   box-shadow: var(--db-shadow);
   position: relative;
 }
 
-.db-status-bar.theme-night .db-sb-panel::before {
+.db-status-bar.story-ui-night .db-sb-panel::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -123,7 +123,7 @@
   z-index: 0;
 }
 
-.db-status-bar.theme-night .db-sb-panel > * {
+.db-status-bar.story-ui-night .db-sb-panel > * {
   position: relative;
   z-index: 1;
 }
@@ -141,11 +141,11 @@
   user-select: none;
 }
 
-.db-status-bar.theme-day .db-sb-header {
+.db-status-bar.story-ui-day .db-sb-header {
   background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
 }
 
-.db-status-bar.theme-night .db-sb-header {
+.db-status-bar.story-ui-night .db-sb-header {
   background: linear-gradient(90deg, rgba(160, 126, 116, 0.08), transparent);
 }
 
@@ -229,11 +229,11 @@
   justify-content: center;
 }
 
-.db-status-bar.theme-day .db-sb-world-strip {
+.db-status-bar.story-ui-day .db-sb-world-strip {
   background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
 }
 
-.db-status-bar.theme-night .db-sb-world-strip {
+.db-status-bar.story-ui-night .db-sb-world-strip {
   background: linear-gradient(90deg, rgba(160, 126, 116, 0.08), transparent);
 }
 
@@ -321,13 +321,13 @@
   border: none;
 }
 
-.db-status-bar.theme-day .db-sb-card {
+.db-status-bar.story-ui-day .db-sb-card {
   border-radius: 7px;
   background: rgba(255, 253, 247, 0.82);
   box-shadow: var(--db-shadow-soft);
 }
 
-.db-status-bar.theme-night .db-sb-card {
+.db-status-bar.story-ui-night .db-sb-card {
   border-radius: 5px;
   background: var(--db-card);
   box-shadow: var(--db-shadow-soft);
@@ -344,11 +344,11 @@
   border-radius: 6px;
 }
 
-.db-status-bar.theme-day .db-sb-mini-card {
+.db-status-bar.story-ui-day .db-sb-mini-card {
   background: var(--db-card);
 }
 
-.db-status-bar.theme-night .db-sb-mini-card {
+.db-status-bar.story-ui-night .db-sb-mini-card {
   background: var(--db-card-2);
 }
 
@@ -397,11 +397,11 @@
   background: rgba(128, 128, 128, 0.12);
 }
 
-.db-status-bar.theme-day .db-sb-meter-track {
+.db-status-bar.story-ui-day .db-sb-meter-track {
   background: rgba(0, 0, 0, 0.08);
 }
 
-.db-status-bar.theme-night .db-sb-meter-track {
+.db-status-bar.story-ui-night .db-sb-meter-track {
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -433,11 +433,11 @@
   margin: 4px 0;
 }
 
-.db-status-bar.theme-day .db-sb-relation-bar {
+.db-status-bar.story-ui-day .db-sb-relation-bar {
   background: rgba(0, 0, 0, 0.06);
 }
 
-.db-status-bar.theme-night .db-sb-relation-bar {
+.db-status-bar.story-ui-night .db-sb-relation-bar {
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -1185,11 +1185,11 @@
   border-right: 1px solid var(--db-line);
 }
 
-.db-status-bar.theme-day .db-sb-quest-overlay {
+.db-status-bar.story-ui-day .db-sb-quest-overlay {
   background: rgba(251, 247, 238, 0.95);
 }
 
-.db-status-bar.theme-night .db-sb-quest-overlay {
+.db-status-bar.story-ui-night .db-sb-quest-overlay {
   background: rgba(29, 35, 44, 0.95);
 }
 
@@ -1298,11 +1298,11 @@
   font-weight: 700;
 }
 
-.db-status-bar.theme-day .db-sb-map-header {
+.db-status-bar.story-ui-day .db-sb-map-header {
   background: var(--db-card-2);
 }
 
-.db-status-bar.theme-night .db-sb-map-header {
+.db-status-bar.story-ui-night .db-sb-map-header {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
 }
 
@@ -1333,7 +1333,7 @@
   background: var(--db-card-2);
 }
 
-.db-status-bar.theme-night .db-sb-map-viewport {
+.db-status-bar.story-ui-night .db-sb-map-viewport {
   background: rgba(255, 255, 255, 0.055);
 }
 
@@ -1386,36 +1386,36 @@
   display: block;
 }
 
-.db-status-bar.theme-night .db-sb-map-svg:not(.db-sb-base-map) {
+.db-status-bar.story-ui-night .db-sb-map-svg:not(.db-sb-base-map) {
   background: var(--db-map-bg);
   filter: saturate(0.88) brightness(0.86) contrast(1.08);
 }
 
-.db-status-bar.theme-night .db-sb-base-map > rect:first-of-type {
-  fill: var(--db-map-bg);
+.db-status-bar.story-ui-night .db-sb-base-map > rect:first-of-type {
+  fill: var(--db-map-bg) !important;
 }
 
-.db-status-bar.theme-night .db-sb-base-map > rect:nth-of-type(2) {
-  fill: var(--db-map-panel);
-  stroke: var(--db-map-border);
+.db-status-bar.story-ui-night .db-sb-base-map > rect:nth-of-type(2) {
+  fill: var(--db-map-panel) !important;
+  stroke: var(--db-map-border) !important;
 }
 
-.db-status-bar.theme-night .db-sb-base-map > text:first-of-type {
-  fill: var(--db-map-title);
+.db-status-bar.story-ui-night .db-sb-base-map > text:first-of-type {
+  fill: var(--db-map-title) !important;
 }
 
-.db-status-bar.theme-night .db-sb-base-map > polyline {
-  stroke: var(--db-map-road);
+.db-status-bar.story-ui-night .db-sb-base-map > polyline {
+  stroke: var(--db-map-road) !important;
   opacity: 0.62;
 }
 
-.db-status-bar.theme-night .db-sb-base-map .cm > circle:first-child,
-.db-status-bar.theme-night .db-sb-base-map .cm > rect:first-child {
-  stroke: var(--db-map-marker-stroke);
+.db-status-bar.story-ui-night .db-sb-base-map .cm > circle:first-child,
+.db-status-bar.story-ui-night .db-sb-base-map .cm > rect:first-child {
+  stroke: var(--db-map-marker-stroke) !important;
 }
 
-.db-status-bar.theme-night .db-sb-base-map .cm > text {
-  fill: var(--db-map-label);
+.db-status-bar.story-ui-night .db-sb-base-map .cm > text {
+  fill: var(--db-map-label) !important;
 }
 
 .db-sb-map-svg .cm {

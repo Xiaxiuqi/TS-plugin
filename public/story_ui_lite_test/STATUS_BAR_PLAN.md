@@ -22,7 +22,7 @@
 
 - 字体：`'Noto Serif SC', 'Source Han Serif SC', 'Microsoft YaHei', serif`
 - 面板结构：`panel → header（可折叠）→ body → grid/card`
-- 主题变量：复用 `--mvu-*` 系列或定义兼容的 `--db-*` 别名
+- 主题入口：统一使用 `story-ui-day` / `story-ui-night` 日夜语义类，模块内部再定义 `--db-*`、`--mvu-*` 等变量别名
 - 交互：折叠/展开 toggle（`▼` 符号旋转）+ TAB切换面板
 - 装饰：极简，不滥用 `inset box-shadow` 左侧色条，能省则省
 - 图标：SVG 内联图标 或 Unicode 几何符号（`✦` `✧` `▸` `▾`）
@@ -289,7 +289,7 @@ ui.registry?.register?.({
 ### 4.3 CSS变量体系
 
 ```css
-.db-status-bar.theme-day {
+.db-status-bar.story-ui-day {
     --db-bg: #f7f1e6;
     --db-panel: rgba(251, 247, 238, 0.97);
     --db-card: rgba(255, 253, 247, 0.86);
@@ -304,7 +304,7 @@ ui.registry?.register?.({
     --db-shadow-soft: 0 5px 14px rgba(71, 58, 42, 0.08);
 }
 
-.db-status-bar.theme-night {
+.db-status-bar.story-ui-night {
     --db-panel: rgba(29, 35, 44, 0.97);
     --db-card: rgba(255, 255, 255, 0.055);
     --db-text: #ede7dc;
@@ -319,7 +319,7 @@ ui.registry?.register?.({
 }
 ```
 
-值与 `--mvu-*` 完全对齐，前缀不同以避免冲突。
+值与 `--mvu-*` 完全对齐；日夜模式统一由 `story-ui-day` / `story-ui-night` 驱动，避免数据库状态栏、BP、世界报告各自维护不同主题类名。
 
 ### 4.4 数据流
 
@@ -464,6 +464,7 @@ function onTableUpdate() {
 - 使用 `ui.theme?.getTheme?.()` 获取当前主题
 - 主题切换时重建面板（与MVU状态栏的 `remountAll` 策略一致）
 - CSS变量值与BP面板、世界报告完全对齐
+- 所有模块统一消费 `story-ui-day` / `story-ui-night`；不得再为同一个日夜模式新增并行的 `theme-*` 或模块私有日夜类
 
 ---
 

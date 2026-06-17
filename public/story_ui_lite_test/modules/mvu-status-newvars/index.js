@@ -548,7 +548,7 @@
     const relationSubtitle = theme === 'night' ? 'RELATION LOG' : 'RELATION ARCHIVE';
 
     return `
-      <section class="story-ui-root story-ui-mvu-newvars ${theme === 'night' ? 'theme-night' : 'theme-day'}" data-story-ui-module="${MODULE_ID}">
+      <section class="story-ui-root story-ui-mvu-newvars story-ui-${theme}" data-story-ui-module="${MODULE_ID}">
         <main class="story-ui-mvu-newvars-root">
           <section class="story-ui-mvu-newvars-panel">
             <div class="story-ui-mvu-newvars-header">

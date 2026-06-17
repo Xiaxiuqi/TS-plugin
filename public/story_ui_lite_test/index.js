@@ -252,6 +252,40 @@
     root.dataset.theme = theme;
   }
 
+  function applyThemeClassesToStoryRoot(root, theme) {
+    if (!root?.classList) return;
+    const isNight = theme === 'night';
+    root.classList.toggle('story-ui-night', isNight);
+    root.classList.toggle('story-ui-day', !isNight);
+    root.dataset.storyUiTheme = theme;
+  }
+
+  function applyThemeToStoryDocument(theme, scope = getStoryDocument()) {
+    scope?.querySelectorAll?.('.story-ui-root').forEach(root => {
+      applyThemeClassesToStoryRoot(root, theme);
+    });
+
+    if (scope?.matches?.('.story-ui-root')) {
+      applyThemeClassesToStoryRoot(scope, theme);
+    }
+  }
+
+  function dispatchThemeChangedToStoryDocument(theme, { force = false } = {}) {
+    const storyDocument = getStoryDocument();
+    if (!storyDocument || (!force && storyDocument === document)) return;
+
+    try {
+      const EventCtor = storyDocument.defaultView?.CustomEvent || hostWindow.CustomEvent || window.CustomEvent;
+      storyDocument.dispatchEvent(
+        new EventCtor('story-ui-theme-changed', {
+          detail: { theme },
+        }),
+      );
+    } catch (error) {
+      console.warn(`${logPrefix} 分发宿主主题事件失败`, error);
+    }
+  }
+
   function setTheme(theme) {
     const nextTheme = theme === 'night' ? 'night' : 'day';
     try {
@@ -263,22 +297,10 @@
     const themeApi = getUi()?.theme;
     if (themeApi?.setTheme) {
       themeApi.setTheme(nextTheme);
-    } else {
-      getStoryDocument()
-        .querySelectorAll('.story-ui-root')
-        .forEach(root => {
-          const isNight = nextTheme === 'night';
-          root.classList.toggle('story-ui-night', isNight);
-          root.classList.toggle('story-ui-day', !isNight);
-          root.classList.toggle('theme-night', isNight);
-          root.classList.toggle('theme-day', !isNight);
-          if (root.classList.contains('bp-radar-widget') || root.classList.contains('story-ui-bp')) {
-            root.classList.toggle('bp-night-ui', isNight);
-            root.classList.toggle('bp-day-ui', !isNight);
-          }
-          root.dataset.storyUiTheme = nextTheme;
-        });
     }
+
+    applyThemeToStoryDocument(nextTheme);
+    dispatchThemeChangedToStoryDocument(nextTheme, { force: !themeApi?.setTheme });
 
     applyManagerTheme(nextTheme);
     refreshManagerState();
