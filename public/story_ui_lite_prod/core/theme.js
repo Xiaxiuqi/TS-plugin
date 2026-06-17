@@ -31,8 +31,9 @@
 
   function applyThemeToRoot(root) {
     if (!root?.classList) return;
-    root.classList.toggle('story-ui-night', currentTheme === 'night');
-    root.classList.toggle('story-ui-day', currentTheme !== 'night');
+    const isNight = currentTheme === 'night';
+    root.classList.toggle('story-ui-night', isNight);
+    root.classList.toggle('story-ui-day', !isNight);
     root.dataset.storyUiTheme = currentTheme;
   }
 

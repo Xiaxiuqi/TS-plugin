@@ -3,7 +3,7 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'world-log';
-  const MODULE_VERSION = '0.2.0-lite_test-flexible-sections';
+  const MODULE_VERSION = '0.2.0-lite_prod-flexible-sections';
   const BLOCK = {
     open: '<wlog',
     close: '</wlog>',

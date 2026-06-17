@@ -3,7 +3,7 @@
   const dom = ui.dom;
 
   const MODULE_ID = 'bp-panel-newvars';
-  const MODULE_VERSION = '1.0.0-lite_test-dual-panel';
+  const MODULE_VERSION = '1.0.0-lite_prod-dual-panel';
   const BLOCK = {
     open: '<bp_panel>',
     close: '</bp_panel>',
@@ -290,8 +290,9 @@
     const data = parseAllBlocks(rawText);
     const theme = ui.theme?.getTheme?.() || 'day';
     const isNight = theme === 'night';
-    const wrapperClass = isNight ? 'bp-night-ui' : 'bp-day-ui';
+    const wrapperClass = isNight ? 'story-ui-night' : 'story-ui-day';
     const subtitle = isNight ? 'BATTLE POINT RADAR · DUAL SCAN' : '实时战力评估 · 双面板';
+    const markIcon = isNight ? '✧' : '✦';
     const footer = isNight ? '✧ BATTLE POINT RADAR TERMINAL ✧' : '✧ BP 战力雷达 ✧';
 
     const hasData = data.players.length > 0 || data.enemies.length > 0;
@@ -303,7 +304,7 @@
       <div class="story-ui-root story-ui-bp story-ui-bp-newvars bp-radar-widget ${wrapperClass}" data-story-ui-module="${MODULE_ID}">
         <details>
           <summary class="bp-summary" aria-label="展开或收起BP战力雷达">
-            <span class="bp-toggle-icon" data-story-ui-theme-toggle title="切换日夜主题">✦</span>
+            <span class="bp-toggle-icon" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
             <span class="bp-summary-text">
               <span class="bp-toggle-title">BP战力雷达</span>
               <span class="bp-toggle-subtitle">${escapeHtml(subtitle)}</span>

@@ -1,6 +1,6 @@
 /* ═══ BP战力雷达 · Lite Dual Panel · Day Theme ═══ */
 
-.bp-radar-widget.bp-day-ui {
+.bp-radar-widget.story-ui-day {
   --bp-bg: #f7f1e6;
   --bp-panel: rgba(251, 247, 238, 0.97);
   --bp-card: rgba(255, 253, 247, 0.92);
@@ -22,7 +22,7 @@
 
 /* ═══ Night Theme ═══ */
 
-.bp-radar-widget.bp-night-ui {
+.bp-radar-widget.story-ui-night {
   --bp-bg: #1a1a1c;
   --bp-panel: rgba(26, 26, 28, 0.97);
   --bp-card: rgba(40, 40, 43, 0.95);
@@ -69,7 +69,7 @@
   position: relative;
 }
 
-.bp-radar-widget.bp-night-ui details::before {
+.bp-radar-widget.story-ui-night details::before {
   content: '';
   position: absolute;
   inset: 0;

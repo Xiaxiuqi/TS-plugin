@@ -267,7 +267,7 @@
 }
 
 .jjks-manager-overview-inline {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .jjks-manager-metric {
@@ -377,11 +377,11 @@
   padding: 8px 10px 10px;
   display: flex;
   gap: 8px;
-  .jjks-manager-tool-note.secondary {
-    margin-top: 6px;
-  }
-
   flex-wrap: wrap;
+}
+
+.jjks-manager-tool-note.secondary {
+  margin-top: 6px;
 }
 
 .jjks-manager-button {
@@ -420,13 +420,6 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
 
-.jjks-manager-day .jjks-manager-button[data-jjks-action='toggle-old-collapse'][data-jjks-toggle-state='off'] {
-  color: #7f5d56;
-  border-color: rgba(160, 126, 116, 0.3);
-  background: rgba(160, 126, 116, 0.15);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-}
-
 .jjks-manager-day .jjks-manager-button:active {
   background: rgba(236, 226, 207, 0.96);
 }
@@ -445,13 +438,6 @@
   border-color: rgba(159, 191, 155, 0.34);
   background: rgba(159, 191, 155, 0.14);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.045);
-}
-
-.jjks-manager-night .jjks-manager-button[data-jjks-action='toggle-old-collapse'][data-jjks-toggle-state='off'] {
-  color: #d9beb7;
-  border-color: rgba(185, 135, 126, 0.28);
-  background: rgba(185, 135, 126, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .jjks-manager-night .jjks-manager-button:active {
@@ -474,12 +460,204 @@
   min-width: 0;
 }
 
-.jjks-manager-actions-theme .jjks-manager-button {
-  flex: 1 1 calc(50% - 4px);
+.jjks-manager-actions-tools .jjks-manager-button {
+  flex: 1 1 100%;
 }
 
-.jjks-manager-actions-tools .jjks-manager-button[data-jjks-action='toggle-old-collapse'] {
-  flex-basis: 100%;
+.jjks-manager-map-config-form {
+  padding: 8px 10px 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.jjks-manager-map-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.jjks-manager-map-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jjks-manager-map-mode label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.jjks-manager-map-field-wide {
+  grid-column: 1 / -1;
+}
+
+.jjks-manager-map-field span {
+  color: var(--jm-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.jjks-manager-map-field input:not([type='checkbox']),
+.jjks-manager-map-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 7px;
+  color: var(--jm-text);
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  color-scheme: light;
+  background-color: rgba(255, 253, 247, 0.86);
+}
+
+.jjks-manager-day .jjks-manager-map-mode label {
+  color: var(--jm-text);
+  background: rgba(255, 253, 247, 0.7);
+  border: 1px solid rgba(183, 154, 98, 0.18);
+}
+
+.jjks-manager-night .jjks-manager-map-mode label {
+  color: var(--jm-text);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(136, 174, 184, 0.16);
+}
+
+.jjks-manager-day .jjks-manager-map-field input:not([type='checkbox']),
+.jjks-manager-day .jjks-manager-map-field select {
+  border: 1px solid rgba(183, 154, 98, 0.2);
+  background: rgba(255, 253, 247, 0.86);
+}
+
+.jjks-manager-night .jjks-manager-map-field input:not([type='checkbox']),
+.jjks-manager-night .jjks-manager-map-field select {
+  border: 1px solid rgba(136, 174, 184, 0.18);
+  background: #28282b;
+}
+
+.jjks-manager-night .jjks-manager-map-field input:not([type='checkbox']),
+.jjks-manager-night .jjks-manager-map-field select,
+.jjks-manager-night .jjks-manager-map-field option {
+  color: var(--jm-text);
+  color-scheme: dark;
+  background: #28282b;
+}
+
+.jjks-manager-night .jjks-manager-map-field input::placeholder {
+  color: var(--jm-faint);
+  opacity: 1;
+}
+
+.jjks-manager-night .jjks-manager-map-field input:-webkit-autofill,
+.jjks-manager-night .jjks-manager-map-field input:-webkit-autofill:hover,
+.jjks-manager-night .jjks-manager-map-field input:-webkit-autofill:focus,
+.jjks-manager-night .jjks-manager-map-field input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--jm-text);
+  caret-color: var(--jm-text);
+  box-shadow: 0 0 0 1000px #28282b inset;
+}
+
+.jjks-manager-map-field input:not([type='checkbox']):focus,
+.jjks-manager-map-field select:focus {
+  border-color: rgba(200, 168, 108, 0.58);
+}
+
+.jjks-manager-map-field input:not([type='checkbox']):disabled,
+.jjks-manager-map-field select:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
+.jjks-manager-map-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.jjks-manager-map-checkbox input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  display: inline-grid;
+  place-content: center;
+  appearance: none;
+  -webkit-appearance: none;
+  accent-color: #c8a86c;
+  color-scheme: light;
+  border: 1px solid rgba(183, 154, 98, 0.28);
+  border-radius: 4px;
+  background: rgba(255, 253, 247, 0.86);
+}
+
+.jjks-manager-day .jjks-manager-map-checkbox {
+  color: var(--jm-text);
+  background: rgba(255, 253, 247, 0.7);
+  border: 1px solid rgba(183, 154, 98, 0.18);
+}
+
+.jjks-manager-night .jjks-manager-map-checkbox {
+  color: var(--jm-text);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(136, 174, 184, 0.16);
+}
+
+.jjks-manager-night .jjks-manager-map-checkbox input {
+  color-scheme: dark;
+  accent-color: #c8a86c;
+  background: #28282b;
+  border-color: rgba(136, 174, 184, 0.42);
+}
+
+.jjks-manager-map-checkbox input::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  transform: scale(0);
+  transition: transform 0.12s ease;
+  background: #c8a86c;
+}
+
+.jjks-manager-map-checkbox input:checked::before {
+  transform: scale(1);
+}
+
+.jjks-manager-map-checkbox input:focus-visible {
+  outline: 2px solid rgba(200, 168, 108, 0.48);
+  outline-offset: 2px;
+}
+
+.jjks-manager-map-model-status {
+  margin: 0;
+  color: var(--jm-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.jjks-manager-actions-map-config {
+  grid-column: 1 / -1;
+  padding: 2px 0 0;
+}
+
+.jjks-manager-actions-map-config .jjks-manager-button {
+  flex: 1 1 calc(33.333% - 6px);
 }
 
 .jjks-manager-module-list {
@@ -512,6 +690,29 @@
   color: var(--jm-text);
   font-size: 12px;
   font-weight: 800;
+}
+
+.jjks-manager-module-name small {
+  margin-left: 0.55em;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.jjks-manager-module-name small.is-registered {
+  color: #58755f;
+}
+
+.jjks-manager-module-name small.is-unregistered {
+  color: var(--jm-faint);
+}
+
+.jjks-manager-night .jjks-manager-module-name small.is-registered {
+  color: #b8dfb0;
+}
+
+.jjks-manager-night .jjks-manager-module-name small.is-unregistered {
+  color: var(--jm-faint);
 }
 
 .jjks-manager-switch {
@@ -642,8 +843,13 @@
     flex-wrap: wrap;
   }
 
+  .jjks-manager-map-config-form {
+    grid-template-columns: 1fr;
+  }
+
   .jjks-manager-actions-tools .jjks-manager-button,
-  .jjks-manager-actions-theme .jjks-manager-button {
+  .jjks-manager-actions-theme .jjks-manager-button,
+  .jjks-manager-actions-map-config .jjks-manager-button {
     flex: 1 1 100%;
   }
 }

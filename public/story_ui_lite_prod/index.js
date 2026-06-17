@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'lite_prod',
     displayEnv: 'lite',
-    version: 'lite_prod-1.0.0',
+    version: 'v2.0',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_prod/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_ui_lite_prod/',
     globalKey: 'StoryRegexUI',
@@ -12,23 +12,36 @@
     reloadButtonName: '重载美化',
     managerRootId: 'jjks-story-ui-manager-lite_prod',
   };
+  const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
+  const EMPTY_MAP_CONFIG = {
+    followDatabaseApi: true,
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    enableMapGeneration: true,
+    modelList: [],
+  };
 
   const INDEX_FLAG = `__jjksStoryUiIndex_${CONFIG.env}`;
   const STYLE_MARK = `jjks-manager-style-${CONFIG.env}`;
   const LOADER_MARK = `jjks-story-ui-loader-${CONFIG.env}`;
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
   const MODULE_LABELS = {
-    'bp-panel-newvars': 'BP战力雷达（新）',
+    'bp-panel-newvars': 'BP战力雷达（兼容）',
+    'db-status-bar': '数据库状态栏',
     'world-log': '世界运行报告',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
+    'db-status-bar': ['<DbStatusBar/>', 'DbStatusBar', '数据库状态栏', '地图元素表', '任务与事件表'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
+  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'world-log',
+    'db-status-bar',
   ];
 
   function getModuleAnchorNeedles(moduleId) {
@@ -135,8 +148,6 @@
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
-  let collapseOldMessagesEnabled = true;
-  let collapseOldMessagesBusy = false;
   let managerActionBusy = false;
   const moduleToggleBusy = new Set();
 
@@ -160,12 +171,6 @@
   bootstrapUi.runtime = bootstrapUi.runtime || {};
   bootstrapUi.runtime.renderDepth = INITIAL_SCAN_LIMIT;
   bootstrapUi.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
-
-  try {
-    collapseOldMessagesEnabled = localStorage.getItem('jjks_story_ui_collapse_old_messages') !== 'false';
-  } catch {
-    collapseOldMessagesEnabled = true;
-  }
 
   function notify(message, type = 'info') {
     try {
@@ -206,13 +211,21 @@
     return hostWindow[CONFIG.globalKey] ? 'hostWindow' : window[CONFIG.globalKey] ? 'localWindow' : 'missing';
   }
 
+  function normalizeTheme(theme) {
+    return theme === 'night' ? 'night' : 'day';
+  }
+
   function getTheme() {
-    const apiTheme = getUi()?.theme?.getTheme?.();
-    if (apiTheme === 'day' || apiTheme === 'night') return apiTheme;
+    try {
+      const apiTheme = getUi()?.theme?.getTheme?.();
+      if (apiTheme === 'day' || apiTheme === 'night') return normalizeTheme(apiTheme);
+    } catch (error) {
+      console.warn(`${logPrefix} 读取主题 API 状态失败，降级读取本地主题。`, error);
+    }
 
     try {
       const stored = localStorage.getItem(CONFIG.themeKey);
-      return stored === 'night' ? 'night' : 'day';
+      return normalizeTheme(stored);
     } catch {
       return 'day';
     }
@@ -226,29 +239,73 @@
     root.dataset.theme = theme;
   }
 
-  function setTheme(theme) {
-    const nextTheme = theme === 'night' ? 'night' : 'day';
+  function applyThemeClassesToStoryRoot(root, theme) {
+    if (!root?.classList) return;
+    const isNight = theme === 'night';
+    root.classList.toggle('story-ui-night', isNight);
+    root.classList.toggle('story-ui-day', !isNight);
+    root.dataset.storyUiTheme = theme;
+  }
+
+  function applyThemeToStoryDocument(theme, scope = getStoryDocument()) {
+    scope?.querySelectorAll?.('.story-ui-root').forEach(root => {
+      applyThemeClassesToStoryRoot(root, theme);
+    });
+
+    if (scope?.matches?.('.story-ui-root')) {
+      applyThemeClassesToStoryRoot(scope, theme);
+    }
+  }
+
+  function dispatchThemeChangedToStoryDocument(theme, { force = false } = {}) {
+    const storyDocument = getStoryDocument();
+    if (!storyDocument || (!force && storyDocument === document)) return;
+
     try {
-      localStorage.setItem(CONFIG.themeKey, nextTheme);
+      const EventCtor = storyDocument.defaultView?.CustomEvent || hostWindow.CustomEvent || window.CustomEvent;
+      storyDocument.dispatchEvent(
+        new EventCtor('story-ui-theme-changed', {
+          detail: { theme },
+        }),
+      );
+    } catch (error) {
+      console.warn(`${logPrefix} 分发宿主主题事件失败`, error);
+    }
+  }
+
+  function setTheme(theme) {
+    const nextTheme = normalizeTheme(theme);
+    const themeApi = getUi()?.theme;
+    let appliedTheme = nextTheme;
+    let themeApiApplied = false;
+
+    if (themeApi?.setTheme) {
+      try {
+        const apiTheme = themeApi.setTheme(nextTheme);
+        themeApiApplied = true;
+        if (apiTheme === 'day' || apiTheme === 'night') {
+          appliedTheme = normalizeTheme(apiTheme);
+        }
+      } catch (error) {
+        lastError = error?.message || String(error);
+        refreshManagerState(getTheme());
+        console.error(`${logPrefix} 主题 API 切换失败，已保持当前主题状态。`, error);
+        throw error;
+      }
+    }
+
+    try {
+      localStorage.setItem(CONFIG.themeKey, appliedTheme);
     } catch (error) {
       console.warn(`${logPrefix} 保存主题失败`, error);
     }
 
-    const themeApi = getUi()?.theme;
-    if (themeApi?.setTheme) {
-      themeApi.setTheme(nextTheme);
-    } else {
-      getStoryDocument()
-        .querySelectorAll('.story-ui-root')
-        .forEach(root => {
-          root.classList.toggle('story-ui-night', nextTheme === 'night');
-          root.classList.toggle('story-ui-day', nextTheme !== 'night');
-          root.dataset.storyUiTheme = nextTheme;
-        });
-    }
+    applyThemeToStoryDocument(appliedTheme);
+    dispatchThemeChangedToStoryDocument(appliedTheme, { force: !themeApiApplied });
 
-    applyManagerTheme(nextTheme);
-    refreshManagerState();
+    applyManagerTheme(appliedTheme);
+    refreshManagerState(appliedTheme);
+    return appliedTheme;
   }
 
   function ensureLoader() {
@@ -356,6 +413,46 @@
     }
   }
 
+  function isAssistantChatMessage(chatMessage) {
+    if (!chatMessage || typeof chatMessage !== 'object') return null;
+    if (chatMessage.is_user === true) return false;
+    if (chatMessage.is_user === false) return true;
+    if (chatMessage.is_system === true) return false;
+    if (chatMessage.extra?.type === 'system') return false;
+    return null;
+  }
+
+  function isAssistantMessageElement(messageElement) {
+    if (!messageElement) return null;
+    const attrNames = ['is_user', 'data-is-user', 'is-user'];
+    for (const attrName of attrNames) {
+      const attrValue = messageElement.getAttribute?.(attrName);
+      if (attrValue === 'true' || attrValue === '1') return false;
+      if (attrValue === 'false' || attrValue === '0') return true;
+    }
+    if (messageElement.classList?.contains('user_mes')) return false;
+    if (messageElement.classList?.contains('system_mes')) return false;
+    if (messageElement.classList?.contains('ai_mes')) return true;
+    if (messageElement.classList?.contains('char_mes')) return true;
+    return null;
+  }
+
+  function isAssistantMessage(messageId) {
+    const fromData = isAssistantChatMessage(readRawMessage(messageId));
+    if (fromData !== null) return fromData;
+    const fromDom = isAssistantMessageElement(getDisplayedMessageElement(messageId));
+    if (fromDom !== null) return fromDom;
+    return false;
+  }
+
+  function getLatestAssistantMessageId(renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER)) {
+    for (let index = renderedIds.length - 1; index >= 0; index -= 1) {
+      const messageId = renderedIds[index];
+      if (isAssistantMessage(messageId)) return messageId;
+    }
+    return null;
+  }
+
   function computeSignature(rawText) {
     const text = String(rawText || '');
     if (!text) return 'empty:0';
@@ -431,7 +528,7 @@
     if (!block) return null;
 
     const source = String(rawText || '').replace(/\r\n?/g, '\n');
-    let match = source.match(new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i'));
+    const match = source.match(new RegExp(`${escapeRegex(block.open)}([\\s\\S]*?)${escapeRegex(block.close)}`, 'i'));
 
     if (!match) return null;
 
@@ -447,11 +544,43 @@
   }
 
   function moduleMatchesSingleTag(module, rawText) {
-    return Boolean(module?.singleTag) && String(rawText || '').includes(module.singleTag);
+    return Boolean(findSingleTagIndex(module, rawText, 0));
+  }
+
+  function buildSingleTagPattern(module) {
+    const tag = String(module?.singleTag || '').trim();
+    const match = tag.match(/^<\s*([a-zA-Z][\w:-]*)\s*\/>$/);
+    if (!match) return null;
+    return new RegExp(`<\\s*${escapeRegex(match[1])}\\s*\\/>`, 'i');
+  }
+
+  function findSingleTagIndex(module, rawText, startIndex) {
+    const text = String(rawText || '');
+    const target = String(module?.singleTag || '');
+    if (!target) return null;
+
+    const exactIndex = text.indexOf(target, startIndex);
+    if (exactIndex >= 0) {
+      return { index: exactIndex, fullMatch: target };
+    }
+
+    const pattern = buildSingleTagPattern(module);
+    if (!pattern) return null;
+    const slice = text.slice(startIndex);
+    const match = slice.match(pattern);
+    if (!match || match.index === undefined) return null;
+    return { index: startIndex + match.index, fullMatch: match[0] };
   }
 
   function buildNodeForModule(module, rawText, context) {
-    if (typeof module?.renderContent === 'function' && module?.singleTag === '<StatusPlaceHolderImpl/>') {
+    if (context?.match?.defaultRender && typeof module?.renderContent === 'function') {
+      return getUi()?.registry?.safelyCall(module, 'renderContent', '', {
+        ...context,
+        rawText,
+      });
+    }
+
+    if (typeof module?.renderContent === 'function' && moduleMatchesSingleTag(module, rawText)) {
       return getUi()?.registry?.safelyCall(module, 'renderContent', '', {
         ...context,
         rawText,
@@ -513,21 +642,21 @@
     return best;
   }
 
-  function findStatusPlaceholderMatch(modules, rawText, startIndex) {
-    const target = '<StatusPlaceHolderImpl/>';
+  function findSingleTagMatch(modules, rawText, startIndex) {
+    const text = String(rawText || '');
     let best = null;
     modules.forEach(module => {
-      if (module?.singleTag !== target) return;
-      const index = String(rawText || '').indexOf(target, startIndex);
-      if (index < 0) return;
+      const found = findSingleTagIndex(module, text, startIndex);
+      if (!found) return;
+      const index = found.index;
       if (!best || index < best.start || (index === best.start && module.priority > best.module.priority)) {
         best = {
           module,
           start: index,
-          end: index + target.length,
-          fullMatch: target,
+          end: index + found.fullMatch.length,
+          fullMatch: found.fullMatch,
           content: '',
-          singleTag: target,
+          singleTag: found.fullMatch,
         };
       }
     });
@@ -535,7 +664,7 @@
   }
 
   function findNextRenderableMatch(modules, rawText, startIndex) {
-    const placeholderMatch = findStatusPlaceholderMatch(modules, rawText, startIndex);
+    const placeholderMatch = findSingleTagMatch(modules, rawText, startIndex);
     const blockMatch = findNextModuleMatch(modules, rawText, startIndex);
 
     if (!placeholderMatch) return blockMatch;
@@ -560,6 +689,22 @@
     }
 
     return matches;
+  }
+
+  function getDefaultAfterNativeMatches(modules, rawText) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n');
+    return DEFAULT_AFTER_NATIVE_MODULE_IDS.map(moduleId => modules.find(module => module.id === moduleId))
+      .filter(Boolean)
+      .filter(module => !moduleMatchesRawText(module, text) && !moduleMatchesSingleTag(module, text))
+      .map(module => ({
+        module,
+        start: text.length,
+        end: text.length,
+        fullMatch: '',
+        content: '',
+        singleTag: '',
+        defaultRender: true,
+      }));
   }
 
   function renderMessageHtmlByModules(messageId, rawText, modules) {
@@ -595,12 +740,13 @@
     return { html, mounted };
   }
 
-  function createAfterNativeMountHost(module, moduleHtml, messageId) {
+  function createAfterNativeMountHost(module, moduleHtml, messageId, match) {
     const mountHost = createElementInHost('section');
     mountHost.className = 'story-ui-after-native-mount';
     mountHost.dataset.storyUiAfterNativeMount = 'true';
     mountHost.dataset.storyUiModule = module.id;
     mountHost.dataset.storyUiMessageId = String(messageId);
+    if (match?.defaultRender) mountHost.dataset.storyUiDefaultRender = 'true';
     mountHost.innerHTML = moduleHtml;
     return mountHost;
   }
@@ -735,7 +881,7 @@
   }
 
   function appendMountHostToStack(stackHost, match, moduleHtml, messageId, rawText, registry) {
-    const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId);
+    const mountHost = createAfterNativeMountHost(match.module, moduleHtml, messageId, match);
     stackHost.appendChild(mountHost);
     getUi()?.theme?.applyThemeToRoot?.(mountHost.querySelector?.('.story-ui-root') || mountHost);
     registry.safelyCall(match.module, 'mount', mountHost, {
@@ -760,11 +906,15 @@
       const stored = localStorage.getItem(getDetailsStateKey(moduleId));
       if (stored === 'open') details.setAttribute('open', '');
       else if (stored === 'closed') details.removeAttribute('open');
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
     details.addEventListener('toggle', () => {
       try {
         localStorage.setItem(getDetailsStateKey(moduleId), details.open ? 'open' : 'closed');
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     });
   }
 
@@ -822,13 +972,23 @@
     const messageElement = getDisplayedMessageElement(messageId);
     if (!messageElement) return false;
 
+    const renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
+    const latestAssistantMessageId = getLatestAssistantMessageId(renderedIds);
+    const allowDefaultAfterNative = messageId === latestAssistantMessageId;
+    if (allowDefaultAfterNative) clearDefaultAfterNativeMountedDom('db-status-bar', messageId);
+
     const ui = getUi();
     const registry = ui?.registry;
     if (!registry) return false;
 
     const modules = registry
       .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
+      .filter(
+        module =>
+          moduleMatchesRawText(module, rawText) ||
+          moduleMatchesSingleTag(module, rawText) ||
+          (allowDefaultAfterNative && DEFAULT_AFTER_NATIVE_MODULE_IDS.includes(module.id)),
+      );
     if (modules.length === 0) {
       mountedModulesByMessage.delete(messageId);
       return false;
@@ -838,7 +998,12 @@
     if (!textElement) return false;
 
     clearMountedStoryUi(messageElement);
-    const matches = getRenderableMatchesInOrder(modules, rawText);
+    const explicitMatches = getRenderableMatchesInOrder(modules, rawText);
+    const explicitModuleIds = new Set(explicitMatches.map(match => match.module.id));
+    const defaultMatches = getDefaultAfterNativeMatches(modules, rawText).filter(
+      match => !explicitModuleIds.has(match.module.id),
+    );
+    const matches = [...explicitMatches, ...defaultMatches];
     const mounted = mountAfterNativeMatchesForMessage(messageId, rawText, matches, registry, textElement);
 
     if (mounted.length > 0) {
@@ -859,71 +1024,32 @@
       .replace(/'/g, '&#39;');
   }
 
-  function renderCollapsedBlock(blockText, title) {
-    return `<details class="story-ui-code-placeholder"><summary>${escapeHtml(title)}</summary><pre>${escapeHtml(blockText)}</pre></details>`;
-  }
-
-  function mountCollapsedPlaceholderForMessage(messageId, rawText) {
-    const messageElement = getDisplayedMessageElement(messageId);
-    if (!messageElement) return false;
-    if (!collapseOldMessagesEnabled) return false;
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-
-    const registry = getUi()?.registry;
-    if (!registry) return false;
-    const modules = registry
-      .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) return false;
-
-    let html = String(rawText || '').replace(/\r\n?/g, '\n');
-    modules.forEach(module => {
-      const extracted = extractModuleContent(module, rawText);
-      if (!extracted?.fullMatch) return;
-      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
-      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
-    });
-
-    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
-    } else {
-      textElement.innerHTML = html;
-    }
-    return true;
-  }
-
   function scanMessageIds(messageIds, mode = 'incremental') {
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
     const uniqueIds = Array.from(new Set(messageIds.filter(Number.isFinite)));
     const renderWindowIds = getRecentMessageIds(INITIAL_SCAN_LIMIT);
-    const activeSet = new Set([...uniqueIds, ...renderWindowIds]);
+    const latestAssistantMessageId = getLatestAssistantMessageId(getRenderedMessageIds(Number.MAX_SAFE_INTEGER));
+    const scanIds = Array.from(
+      new Set([...uniqueIds, ...(Number.isFinite(latestAssistantMessageId) ? [latestAssistantMessageId] : [])]),
+    );
+    const activeSet = new Set([...scanIds, ...renderWindowIds]);
 
-    uniqueIds.forEach(messageId => {
+    scanIds.forEach(messageId => {
       const chatMessage = readRawMessage(messageId);
       const rawText = chatMessage?.message || '';
       const signature = computeSignature(rawText);
       const hasDisplayHost = Boolean(getDisplayedMessageElement(messageId));
       const hasMountedUi = hasMountedStoryUi(getDisplayedMessageElement(messageId));
       const previousSignature = messageSignatures.get(messageId);
-      if (previousSignature === signature && hasDisplayHost && hasMountedUi) return;
+      const forceDefaultTargetRefresh = messageId === latestAssistantMessageId;
+      if (!forceDefaultTargetRefresh && previousSignature === signature && hasDisplayHost && hasMountedUi) return;
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
     });
 
-    getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
-      if (activeSet.has(messageId)) return;
-      if (hasMountedStoryUi(getDisplayedMessageElement(messageId))) return;
-      const chatMessage = readRawMessage(messageId);
-      const rawText = chatMessage?.message || '';
-      if (!rawText) return;
-      mountCollapsedPlaceholderForMessage(messageId, rawText);
-    });
-
-    rememberRecentScannedMessageIds(uniqueIds);
+    rememberRecentScannedMessageIds(scanIds);
   }
 
   function normalizeScanTargets(input) {
@@ -977,7 +1103,6 @@
         .filter(env => env !== CONFIG.env)
         .map(env => state[env])
         .find(Boolean) || null;
-    const storyRoots = hostDocument.querySelectorAll('.story-ui-root').length;
     const managerExists = Boolean(hostDocument.getElementById(CONFIG.managerRootId));
     const loaderUrl = toUrl('loader.js');
 
@@ -996,7 +1121,6 @@
       已注册模块: modules.map(
         module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
       ),
-      故事UI节点数: storyRoots,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
       UI实例来源: getUiSource(),
@@ -1027,12 +1151,409 @@
       .join('\n');
   }
 
-  function persistCollapseOldMessages(enabled) {
+  function normalizeMapConfigValue(value) {
+    return String(value ?? '').trim();
+  }
+
+  function getEmptyMapAiConfig() {
+    return { ...EMPTY_MAP_CONFIG, modelList: [] };
+  }
+
+  function normalizeMapModelList(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
+  }
+
+  const MAP_DEBUG_PREFIX = '[db-status-bar][map-debug]';
+
+  function mapDebugLog(event, details = {}, level = 'info') {
     try {
-      localStorage.setItem('jjks_story_ui_collapse_old_messages', enabled ? 'true' : 'false');
+      const fn = level === 'warn' ? console.warn : console.info;
+      fn(MAP_DEBUG_PREFIX, event, details);
     } catch {
-      // ignore persistence failures
+      // debug logging must not affect manager UI
     }
+  }
+
+  function isMapSecretQueryKey(key) {
+    const normalized = normalizeMapConfigValue(key)
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase();
+    if (!normalized) return false;
+    return (
+      normalized === 'key' ||
+      normalized === 'pwd' ||
+      normalized === 'auth' ||
+      normalized.endsWith('key') ||
+      normalized.includes('apikey') ||
+      normalized.includes('token') ||
+      normalized.includes('authorization') ||
+      normalized.endsWith('auth') ||
+      normalized.includes('secret') ||
+      normalized.includes('password') ||
+      normalized.includes('passwd')
+    );
+  }
+
+  function maskMapSecret(value) {
+    const text = normalizeMapConfigValue(value);
+    if (!text) return { present: false, tail: '' };
+    return { present: true, tail: text.slice(-4) };
+  }
+
+  function redactMapUrlSecretValue(value) {
+    return value ? '[redacted]' : '';
+  }
+
+  function redactMapUrlSecretsInText(value) {
+    return normalizeMapConfigValue(value).replace(
+      /([?&#;]|^)([^=&#;\s]*?(?:key|api[_-]?key|token|access[_-]?token|authorization|auth|secret|password|passwd|pwd)[^=&#;\s]*=)([^&#;\s]*)/gi,
+      (match, prefix, keyPart, secretValue) => `${prefix}${keyPart}${redactMapUrlSecretValue(secretValue)}`,
+    );
+  }
+
+  function summarizeMapUrl(value) {
+    const text = normalizeMapConfigValue(value);
+    if (!text) return { present: false, full: '', summary: '' };
+    try {
+      const url = new URL(text);
+      if (url.username) url.username = '[redacted]';
+      if (url.password) url.password = '[redacted]';
+      url.searchParams.forEach((paramValue, key) => {
+        if (isMapSecretQueryKey(key)) {
+          url.searchParams.set(key, redactMapUrlSecretValue(paramValue));
+        }
+      });
+      const full = url.href;
+      return { present: true, full, summary: full };
+    } catch {
+      const full = redactMapUrlSecretsInText(text);
+      return { present: true, full, summary: full };
+    }
+  }
+
+  function redactMapSensitiveText(value) {
+    let text = redactMapUrlSecretsInText(value);
+    text = text.replace(/(authorization\s*[:=]\s*bearer\s+)[^\s,;)}\]]+/gi, '$1[redacted]');
+    text = text.replace(
+      /((?:api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|auth[_-]?token|client[_-]?secret|secret[_-]?key|token|authorization|auth|secret|password|passwd|pwd|key)\s*[:=]\s*['"]?)([^'"\s,;)}\]]+)/gi,
+      (match, prefix, secretValue) => `${prefix}${redactMapUrlSecretValue(secretValue)}`,
+    );
+    return text;
+  }
+
+  function summarizeMapError(error) {
+    const name = normalizeMapConfigValue(error?.name) || (error ? typeof error : '');
+    const rawMessage = error?.message || String(error ?? '');
+    const message = redactMapSensitiveText(rawMessage);
+    return {
+      name,
+      message,
+    };
+  }
+
+  function getMapErrorMessage(error) {
+    return summarizeMapError(error).message;
+  }
+
+  function summarizeMapCurrentModel(config, source = 'config') {
+    if (config?.followDatabaseApi !== false) {
+      return { present: false, model: '', source: 'database-api-current-model-unavailable' };
+    }
+    const model = normalizeMapConfigValue(config?.model);
+    return {
+      present: Boolean(model),
+      model,
+      source: model ? source : 'custom-config-model-empty',
+    };
+  }
+
+  function summarizeMapModelOnlyConfig(config) {
+    return { model: summarizeMapCurrentModel(config).model };
+  }
+
+  function summarizeMapConfig(config) {
+    return {
+      followDatabaseApi: config?.followDatabaseApi !== false,
+      apiUrl: summarizeMapUrl(config?.apiUrl),
+      apiKey: maskMapSecret(config?.apiKey),
+      modelPresent: Boolean(normalizeMapConfigValue(config?.model)),
+      model: normalizeMapConfigValue(config?.model),
+      currentModel: summarizeMapCurrentModel(config),
+      sanitizedLog: summarizeMapModelOnlyConfig(config),
+      enableMapGeneration: config?.enableMapGeneration !== false,
+      modelCount: Array.isArray(config?.modelList) ? config.modelList.length : 0,
+    };
+  }
+
+  function summarizeModelFetch(config, extra = {}) {
+    return {
+      config: summarizeMapConfig(config),
+      request: {
+        hasApiurl: Boolean(normalizeMapConfigValue(config?.apiUrl)),
+        hasKey: Boolean(normalizeMapConfigValue(config?.apiKey)),
+        apiurl: summarizeMapUrl(config?.apiUrl),
+        key: maskMapSecret(config?.apiKey),
+      },
+      sanitizedLog: summarizeMapModelOnlyConfig(config),
+      ...extra,
+    };
+  }
+
+  function hasUsableMapCustomConfig(parsed) {
+    return Boolean(
+      normalizeMapConfigValue(parsed?.apiUrl) ||
+      normalizeMapConfigValue(parsed?.apiKey) ||
+      normalizeMapConfigValue(parsed?.model),
+    );
+  }
+
+  function readMapAiConfig() {
+    try {
+      const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
+      if (!raw) {
+        const emptyConfig = getEmptyMapAiConfig();
+        mapDebugLog('manager:config:read:empty', summarizeMapConfig(emptyConfig));
+        return emptyConfig;
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        const emptyConfig = getEmptyMapAiConfig();
+        mapDebugLog(
+          'manager:config:read:invalid',
+          { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) },
+          'warn',
+        );
+        return emptyConfig;
+      }
+      const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
+      const modelList = normalizeMapModelList(parsed.modelList);
+      const model = normalizeMapConfigValue(parsed.model);
+      if (model && !modelList.includes(model)) modelList.unshift(model);
+      const config = {
+        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasUsableMapCustomConfig(parsed),
+        apiUrl: normalizeMapConfigValue(parsed.apiUrl),
+        apiKey: normalizeMapConfigValue(parsed.apiKey),
+        model,
+        enableMapGeneration: parsed.enableMapGeneration !== false,
+        modelList,
+      };
+      mapDebugLog('manager:config:read:ok', summarizeMapConfig(config));
+      return config;
+    } catch (error) {
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 读取地图 AI 配置失败`, errorSummary);
+      mapDebugLog(
+        'manager:config:read:failed',
+        { error: errorSummary, config: summarizeMapConfig(getEmptyMapAiConfig()) },
+        'warn',
+      );
+      return getEmptyMapAiConfig();
+    }
+  }
+
+  function writeMapAiConfig(config) {
+    const normalized = {
+      followDatabaseApi: config?.followDatabaseApi !== false,
+      apiUrl: normalizeMapConfigValue(config?.apiUrl),
+      apiKey: normalizeMapConfigValue(config?.apiKey),
+      model: normalizeMapConfigValue(config?.model),
+      enableMapGeneration: config?.enableMapGeneration !== false,
+    };
+    try {
+      localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
+      mapDebugLog('manager:config:write:ok', summarizeMapConfig(normalized));
+      return true;
+    } catch (error) {
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 保存地图 AI 配置失败`, errorSummary);
+      mapDebugLog(
+        'manager:config:write:failed',
+        { error: errorSummary, config: summarizeMapConfig(normalized) },
+        'warn',
+      );
+      return false;
+    }
+  }
+
+  function resetMapAiConfig() {
+    try {
+      localStorage.removeItem(MAP_CONFIG_STORAGE_KEY);
+      mapDebugLog('manager:config:reset:ok', summarizeMapConfig(getEmptyMapAiConfig()));
+      return true;
+    } catch (error) {
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 重置地图 AI 配置失败`, errorSummary);
+      mapDebugLog('manager:config:reset:failed', { error: errorSummary }, 'warn');
+      return false;
+    }
+  }
+
+  function getManagerMapConfigForm(root) {
+    return root?.querySelector?.('[data-jjks-map-config-form]') || null;
+  }
+
+  function setManagerMapConfigValue(form, name, value) {
+    const input = form.querySelector(`[name="${name}"]`);
+    if (input) input.value = normalizeMapConfigValue(value);
+  }
+
+  function getManagerMapMode(form) {
+    return form.querySelector('[name="apiMode"]:checked')?.value === 'custom' ? 'custom' : 'database';
+  }
+
+  function setManagerMapMode(form, followDatabaseApi) {
+    const mode = followDatabaseApi === false ? 'custom' : 'database';
+    form.querySelectorAll('[name="apiMode"]').forEach(input => {
+      input.checked = input.value === mode;
+    });
+  }
+
+  function refreshManagerModelOptions(root, config = readMapAiConfig()) {
+    const select = root?.querySelector?.('[data-jjks-map-model-select]');
+    if (!select) return;
+    const modelList = normalizeMapModelList(config.modelList);
+    const selectedModel = normalizeMapConfigValue(config.model);
+    const options = modelList;
+    select.innerHTML = options.length
+      ? options.map(model => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('')
+      : '<option value="">先拉取模型列表</option>';
+    select.value = selectedModel && options.includes(selectedModel) ? selectedModel : options[0] || '';
+
+    const status = root.querySelector('[data-jjks-map-model-status]');
+    if (status) {
+      status.textContent = options.length ? `已载入 ${options.length} 个模型。` : '模型列表尚未拉取。';
+    }
+  }
+
+  function setManagerMapCustomFieldsEnabled(root, enabled) {
+    root?.querySelectorAll?.('[data-jjks-map-custom-field]').forEach(field => {
+      field.disabled = !enabled;
+    });
+    const fetchButton = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
+    if (fetchButton) fetchButton.disabled = !enabled;
+  }
+
+  function fillManagerMapConfigForm(root, config = readMapAiConfig()) {
+    const form = getManagerMapConfigForm(root);
+    if (!form) return;
+    setManagerMapMode(form, config.followDatabaseApi);
+    setManagerMapConfigValue(form, 'apiUrl', config.apiUrl);
+    setManagerMapConfigValue(form, 'apiKey', config.apiKey);
+    const enableMapGenerationInput = form.querySelector('[name="enableMapGeneration"]');
+    if (enableMapGenerationInput) enableMapGenerationInput.checked = config.enableMapGeneration !== false;
+    refreshManagerModelOptions(root, config);
+    setManagerMapCustomFieldsEnabled(root, config.followDatabaseApi === false);
+  }
+
+  function getTavernHelperApi() {
+    return hostWindow.TavernHelper || window.TavernHelper || globalThis.TavernHelper || null;
+  }
+
+  function collectManagerMapConfig(root) {
+    const form = getManagerMapConfigForm(root);
+    if (!form) return null;
+    const modelList = normalizeMapModelList(
+      Array.from(form.querySelectorAll('[data-jjks-map-model-select] option')).map(option => option.value),
+    );
+    const selectedModel = normalizeMapConfigValue(form.querySelector('[name="model"]')?.value);
+    const savedModel = normalizeMapConfigValue(readMapAiConfig().model);
+    return {
+      followDatabaseApi: getManagerMapMode(form) !== 'custom',
+      apiUrl: normalizeMapConfigValue(form.querySelector('[name="apiUrl"]')?.value),
+      apiKey: normalizeMapConfigValue(form.querySelector('[name="apiKey"]')?.value),
+      model: selectedModel || savedModel,
+      enableMapGeneration: form.querySelector('[name="enableMapGeneration"]')?.checked !== false,
+      modelList,
+    };
+  }
+
+  async function fetchManagerMapModels(root) {
+    const config = collectManagerMapConfig(root);
+    if (!config) {
+      mapDebugLog('manager:models:fetch:failed', { reason: 'form-not-ready' }, 'warn');
+      notify('地图配置表单未就绪', 'error');
+      return;
+    }
+    if (config.followDatabaseApi) {
+      mapDebugLog('manager:models:fetch:skipped', summarizeModelFetch(config, { reason: 'follow-database-api' }));
+      notify('跟随数据库 API 模式不需要拉取模型列表', 'info');
+      return;
+    }
+    if (!config.apiUrl) {
+      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { reason: 'missing-api-url' }), 'warn');
+      notify('请先填写 API 地址，再拉取模型列表', 'error');
+      return;
+    }
+    const getModelList = getTavernHelperApi()?.getModelList || hostWindow.getModelList || window.getModelList;
+    if (typeof getModelList !== 'function') {
+      mapDebugLog(
+        'manager:models:fetch:failed',
+        summarizeModelFetch(config, { reason: 'getModelList-unavailable' }),
+        'warn',
+      );
+      notify('酒馆助手 getModelList 不可用，无法拉取模型列表', 'error');
+      return;
+    }
+
+    const button = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
+    setManagerButtonBusy(button, '拉取中', true);
+    try {
+      mapDebugLog('manager:models:fetch:start', summarizeModelFetch(config, { generatorAvailable: true }));
+      const models = normalizeMapModelList(await getModelList({ apiurl: config.apiUrl, key: config.apiKey }));
+      if (models.length === 0) {
+        mapDebugLog('manager:models:fetch:empty', summarizeModelFetch(config, { modelCount: 0 }), 'warn');
+        notify('模型列表为空，请检查 API 地址和密钥', 'error');
+        return;
+      }
+      const nextModel = config.model && models.includes(config.model) ? config.model : models[0];
+      const nextConfig = { ...config, model: nextModel, modelList: models };
+      fillManagerMapConfigForm(root, nextConfig);
+      mapDebugLog(
+        'manager:models:fetch:ok',
+        summarizeModelFetch(nextConfig, { modelCount: models.length, selectedModel: nextModel }),
+      );
+      notify(`已拉取 ${models.length} 个模型，请选择模型后保存`, 'success');
+    } catch (error) {
+      const errorSummary = summarizeMapError(error);
+      console.warn(`${logPrefix} 拉取地图 API 模型列表失败`, errorSummary);
+      mapDebugLog('manager:models:fetch:failed', summarizeModelFetch(config, { error: errorSummary }), 'warn');
+      notify(`模型列表拉取失败：${getMapErrorMessage(error)}`, 'error');
+    } finally {
+      setManagerButtonBusy(button, '', false);
+      setManagerMapCustomFieldsEnabled(
+        root,
+        getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false,
+      );
+    }
+  }
+
+  function saveManagerMapConfig(root) {
+    const config = collectManagerMapConfig(root);
+    if (!config) {
+      notify('地图配置表单未就绪', 'error');
+      return;
+    }
+    const currentModel = normalizeMapConfigValue(config.model);
+    const savedConfig = { ...config, model: currentModel, modelList: currentModel ? [currentModel] : [] };
+    if (!writeMapAiConfig(savedConfig)) {
+      notify('地图 AI 配置保存失败', 'error');
+      return;
+    }
+    fillManagerMapConfigForm(root, savedConfig);
+    notify(
+      config.followDatabaseApi ? '地图生成已设置为跟随当前数据库 API' : '地图生成自定义 API 设置已保存',
+      'success',
+    );
+  }
+
+  function resetManagerMapConfig(root) {
+    if (!resetMapAiConfig()) {
+      notify('地图 AI 配置重置失败', 'error');
+      return;
+    }
+    fillManagerMapConfigForm(root, getEmptyMapAiConfig());
+    notify('地图生成已清空本地设置并跟随当前数据库 API', 'success');
   }
 
   function getManagerView() {
@@ -1041,16 +1562,46 @@
     );
   }
 
+  function queryHostCssResource(href) {
+    const cssApi = hostWindow.CSS || window.CSS || globalThis.CSS;
+    const escapedHref =
+      typeof cssApi?.escape === 'function' ? cssApi.escape(href) : String(href || '').replace(/"/g, '\\"');
+    return (
+      hostDocument.querySelector(`style[data-story-ui-css="${escapedHref}"]`) ||
+      hostDocument.querySelector(`link[data-story-ui-css="${escapedHref}"]`) ||
+      hostDocument.querySelector(`link[href="${escapedHref}"]`)
+    );
+  }
+
+  async function ensureHostCssResource(href) {
+    const existed = queryHostCssResource(href);
+    if (existed) return existed;
+
+    try {
+      const response = await fetch(href, { cache: 'no-store', mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const cssText = await response.text();
+      const style = createElementInHost('style');
+      style.dataset.storyUiCss = href;
+      style.dataset.storyUiCssInline = 'true';
+      style.textContent = `\n/* ${href} */\n${cssText}`;
+      (hostDocument.head || hostDocument.body).appendChild(style);
+      return style;
+    } catch (error) {
+      console.warn(`${logPrefix} CSS inline 加载失败，避免创建跨域 link 以免触发 cssRules SecurityError。`, {
+        href,
+        error: error?.message || String(error),
+      });
+      return null;
+    }
+  }
+
   async function ensureManagerUiReady(timeout = 5000) {
     if (getManagerView()) return true;
 
     const styleHref = toUrl('modules/manager-ui/style.css');
-    if (!hostDocument.querySelector(`link[href="${styleHref}"]`)) {
-      const link = createElementInHost('link');
-      link.rel = 'stylesheet';
-      link.href = styleHref;
-      (hostDocument.head || hostDocument.body).appendChild(link);
-    }
+    await ensureHostCssResource(styleHref);
 
     const scriptSrc = toUrl('modules/manager-ui/index.js');
     if (!hostDocument.querySelector(`script[src="${scriptSrc}"]`)) {
@@ -1072,29 +1623,7 @@
   async function ensureManagerAssetsReady() {
     await ensureLoader();
     const styleHref = toUrl('modules/manager-ui/style.css');
-    let link = hostDocument.querySelector(`link[href="${styleHref}"]`);
-    if (!link) {
-      link = createElementInHost('link');
-      link.rel = 'stylesheet';
-      link.href = styleHref;
-      (hostDocument.head || hostDocument.body).appendChild(link);
-    }
-
-    if (!link.dataset.jjksReady) {
-      await new Promise(resolve => {
-        let settled = false;
-        const done = () => {
-          if (settled) return;
-          settled = true;
-          link.dataset.jjksReady = 'true';
-          resolve();
-        };
-        link.addEventListener('load', done, { once: true });
-        link.addEventListener('error', done, { once: true });
-        window.setTimeout(done, 300);
-      });
-    }
-
+    await ensureHostCssResource(styleHref);
     await ensureManagerUiReady();
   }
 
@@ -1119,13 +1648,9 @@
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
       maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
-      maintenanceActions.appendChild(
-        createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {
-          'data-jjks-action': 'toggle-old-collapse',
-          'data-jjks-toggle-state': collapseOldMessagesEnabled ? 'on' : 'off',
-        }),
-      );
     }
+
+    fillManagerMapConfigForm(panel);
   }
 
   function injectManagerStyle() {
@@ -1161,6 +1686,19 @@
         node.closest?.('[data-story-ui-after-native-mount="true"], [data-story-ui-raw-mount="true"]') || node;
       mountHost.remove();
     });
+  }
+
+  function clearDefaultAfterNativeMountedDom(moduleId, keepMessageId) {
+    hostDocument
+      .querySelectorAll(
+        `[data-story-ui-after-native-mount="true"][data-story-ui-module="${moduleId}"][data-story-ui-default-render="true"]`,
+      )
+      .forEach(node => {
+        if (String(node.dataset.storyUiMessageId || '') === String(keepMessageId)) return;
+        const stack = node.closest?.('[data-story-ui-after-native-stack="true"]');
+        node.remove();
+        if (stack && stack.childElementCount === 0) stack.remove();
+      });
   }
 
   function clearModuleCaches(moduleId) {
@@ -1208,7 +1746,32 @@
 
       const themeButton = target.closest?.('[data-jjks-theme]');
       if (themeButton) {
-        setTheme(themeButton.dataset.jjksTheme);
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          setTheme(themeButton.dataset.jjksTheme);
+        } catch (error) {
+          lastError = error?.message || String(error);
+          console.error(`${logPrefix} 主题切换失败`, error);
+          notify(`主题切换失败：${lastError}`, 'error');
+        }
+        return;
+      }
+
+      const mapModeInput = target.closest?.('[data-jjks-map-mode]');
+      if (mapModeInput) {
+        setManagerMapCustomFieldsEnabled(
+          root,
+          getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false,
+        );
+        refreshManagerState();
+        return;
+      }
+
+      const mapActionButton = target.closest?.('[data-jjks-map-action]');
+      if (mapActionButton) {
+        event.preventDefault();
+        handleManagerMapAction(mapActionButton.dataset.jjksMapAction, root);
         return;
       }
 
@@ -1222,6 +1785,20 @@
       if (moduleButton) {
         toggleManagerModule(moduleButton.getAttribute('data-jjks-module-toggle'), moduleButton);
       }
+    });
+
+    root.addEventListener('change', event => {
+      const target = event.target;
+      if (!target?.closest?.('[data-jjks-map-mode]')) return;
+      const form = getManagerMapConfigForm(root);
+      setManagerMapCustomFieldsEnabled(root, form ? getManagerMapMode(form) === 'custom' : false);
+      refreshManagerState();
+    });
+
+    root.addEventListener('submit', event => {
+      if (!event.target?.closest?.('[data-jjks-map-config-form]')) return;
+      event.preventDefault();
+      saveManagerMapConfig(root);
     });
 
     if (!hostDocument.documentElement.dataset.jjksStoryUiEscBound) {
@@ -1239,6 +1816,7 @@
   async function openManager() {
     await ensureManagerAssetsReady();
     const root = ensureManagerDom();
+    fillManagerMapConfigForm(root);
     refreshManagerState();
     root.dataset.open = 'true';
     root.querySelector('[data-jjks-manager-close]')?.focus?.();
@@ -1256,18 +1834,20 @@
     const entries = Object.entries(MODULE_LABELS).map(([id, label]) => ({
       id,
       label,
-      enabled: registry?.isEnabled?.(id) !== false,
+      registered: Boolean(registry?.find?.(id)),
+      enabled: Boolean(registry?.find?.(id)) && registry?.isEnabled?.(id) !== false,
     }));
 
     listRoot.innerHTML = entries
-      .map(
-        item => `
+      .map(item => {
+        const status = item.registered ? (item.enabled ? '关闭' : '开启') : '未加载';
+        return `
           <div class="jjks-manager-module-item">
-            <span class="jjks-manager-module-name">${escapeHtml(item.label)}</span>
-            <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}">${item.enabled ? '开启' : '关闭'}</button>
+            <span class="jjks-manager-module-name">${escapeHtml(item.label)}<small class="${item.registered ? 'is-registered' : 'is-unregistered'}">${escapeHtml(item.registered ? '已注册' : '未注册')}</small></span>
+            <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}" ${item.registered ? '' : 'disabled'}>${status}</button>
           </div>
-        `,
-      )
+        `;
+      })
       .join('');
   }
 
@@ -1331,11 +1911,14 @@
     setManagerButtonBusy(button, '', false);
   }
 
-  function refreshManagerState() {
+  function refreshManagerState(themeOverride) {
     const root = hostDocument.getElementById(CONFIG.managerRootId);
     if (!root) return;
 
     const data = diagnose();
+    const displayTheme =
+      themeOverride === 'day' || themeOverride === 'night' ? normalizeTheme(themeOverride) : data.当前主题;
+
     const modules = data.已注册模块 || [];
     const setText = (name, value) => {
       const node = root.querySelector(`[data-jjks-status="${name}"]`);
@@ -1344,25 +1927,12 @@
 
     setText('loader', data.加载器状态);
     setText('modules', modules.length);
-    setText('roots', data.故事UI节点数);
     setText('scanner', data.扫描器就绪 ? '已就绪' : '未就绪');
     setText('theme-ready', data.主题模块就绪 ? '已就绪' : '未就绪');
     setText('scan-window', data.最近扫描窗口 || 0);
 
     root.querySelectorAll('[data-jjks-theme]').forEach(button => {
-      button.dataset.active = button.dataset.jjksTheme === data.当前主题 ? 'true' : 'false';
-    });
-
-    root.querySelectorAll('[data-jjks-toggle-state]').forEach(button => {
-      button.dataset.jjksToggleState = collapseOldMessagesEnabled ? 'on' : 'off';
-      button.textContent = collapseOldMessagesBusy
-        ? collapseOldMessagesEnabled
-          ? '折叠切换中'
-          : '展开切换中'
-        : collapseOldMessagesEnabled
-          ? '旧消息折叠'
-          : '旧消息未折叠';
-      button.disabled = collapseOldMessagesBusy;
+      button.dataset.active = button.dataset.jjksTheme === displayTheme ? 'true' : 'false';
     });
 
     renderManagerModuleList(root);
@@ -1378,7 +1948,7 @@
 
     const diagnosis = root.querySelector('[data-jjks-diagnosis]');
     if (diagnosis) diagnosis.innerHTML = formatDiagnosis(data);
-    applyManagerTheme(data.当前主题);
+    applyManagerTheme(displayTheme);
   }
 
   async function runQuickReload() {
@@ -1405,15 +1975,24 @@
       console.warn(`${logPrefix} scanner destroy 失败`, error);
     }
 
-    document
+    hostDocument
       .querySelectorAll(
-        `script[data-jjks-story-ui-loader="${LOADER_MARK}"], script[data-story-ui-script*="/story_regex_ui_${CONFIG.env}/"], link[data-story-ui-css*="/story_regex_ui_${CONFIG.env}/"]`,
+        'script[data-jjks-story-ui-loader], script[data-story-ui-script], style[data-story-ui-css], link[data-story-ui-css]',
       )
-      .forEach(node => node.remove());
+      .forEach(node => {
+        const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
+        const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
+        const isCurrentLiteResource = String(resourceUrl).includes('/story_ui_lite_prod/');
+        if (isCurrentLoader || isCurrentLiteResource) node.remove();
+      });
 
     try {
       window[CONFIG.loaderFlag] = false;
       window[CONFIG.globalKey] = undefined;
+      if (hostWindow && hostWindow !== window) {
+        hostWindow[CONFIG.loaderFlag] = false;
+        hostWindow[CONFIG.globalKey] = undefined;
+      }
     } catch {
       // ignore reset failures
     }
@@ -1436,6 +2015,20 @@
     }
   }
 
+  function handleManagerMapAction(action, root) {
+    if (action === 'fetch-models') {
+      fetchManagerMapModels(root);
+      return;
+    }
+    if (action === 'save') {
+      saveManagerMapConfig(root);
+      return;
+    }
+    if (action === 'reset') {
+      resetManagerMapConfig(root);
+    }
+  }
+
   function handleManagerAction(action) {
     if (action === 'scan') {
       queueScan(getRecentMessageIds(INITIAL_SCAN_LIMIT));
@@ -1449,19 +2042,6 @@
     }
     if (action === 'reload') {
       reloadResources();
-      return;
-    }
-    if (action === 'toggle-old-collapse') {
-      if (collapseOldMessagesBusy) return;
-      collapseOldMessagesBusy = true;
-      collapseOldMessagesEnabled = !collapseOldMessagesEnabled;
-      persistCollapseOldMessages(collapseOldMessagesEnabled);
-      refreshManagerState();
-      window.setTimeout(() => {
-        rerenderAllVisibleMessages();
-        collapseOldMessagesBusy = false;
-        refreshManagerState();
-      }, 80);
       return;
     }
   }
