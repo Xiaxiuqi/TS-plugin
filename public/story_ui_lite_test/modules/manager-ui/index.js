@@ -20,7 +20,6 @@
             <div class="jjks-manager-overview jjks-manager-overview-inline">
               <article class="jjks-manager-metric"><span>资源状态</span><strong data-jjks-status="loader">${loaderStatus}</strong></article>
               <article class="jjks-manager-metric"><span>模块数量</span><strong data-jjks-status="modules">0</strong></article>
-              <article class="jjks-manager-metric"><span>故事 UI 节点</span><strong data-jjks-status="roots">0</strong></article>
             </div>
           </section>
 
@@ -42,7 +41,7 @@
 
           <section class="jjks-manager-card jjks-manager-panel-tools">
             <h3>${title('维护工具')}</h3>
-            <p class="jjks-manager-tool-note">初次加载需要点击一次手动重扫和重载资源，如果美化消失，可以点击重载资源进行重新挂载</p>
+            <p class="jjks-manager-tool-note">系统会自动扫描新消息；手动重扫仅用于消息渲染异常后的补救，重载资源用于美化消失时重新挂载。</p>
             <div class="jjks-manager-actions jjks-manager-actions-tools" data-jjks-maintenance-actions></div>
           </section>
 

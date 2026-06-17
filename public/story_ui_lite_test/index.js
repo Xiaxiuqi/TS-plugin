@@ -1080,7 +1080,6 @@
         .filter(env => env !== CONFIG.env)
         .map(env => state[env])
         .find(Boolean) || null;
-    const storyRoots = hostDocument.querySelectorAll('.story-ui-root').length;
     const managerExists = Boolean(hostDocument.getElementById(CONFIG.managerRootId));
     const loaderUrl = toUrl('loader.js');
 
@@ -1099,7 +1098,6 @@
       已注册模块: modules.map(
         module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
       ),
-      故事UI节点数: storyRoots,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
       UI实例来源: getUiSource(),
@@ -1895,7 +1893,6 @@
 
     setText('loader', data.加载器状态);
     setText('modules', modules.length);
-    setText('roots', data.故事UI节点数);
     setText('scanner', data.扫描器就绪 ? '已就绪' : '未就绪');
     setText('theme-ready', data.主题模块就绪 ? '已就绪' : '未就绪');
     setText('scan-window', data.最近扫描窗口 || 0);
