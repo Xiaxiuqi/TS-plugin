@@ -319,7 +319,7 @@ ui.registry?.register?.({
 }
 ```
 
-值与 `--mvu-*` 完全对齐；日夜模式统一由 `story-ui-day` / `story-ui-night` 驱动，避免数据库状态栏、BP、世界报告各自维护不同主题类名。
+值与 `--mvu-*` 完全对齐；日夜模式统一由 `story-ui-day` / `story-ui-night` 驱动，避免数据库状态栏、BP、世界报告各自维护不同主题类名。测试版 CSS 已改为内联加载，因此重载资源必须同步清理旧的 `style[data-story-ui-css]`，否则旧 BP 样式可能继续留存并造成 BP 自身不随统一主题类换色。
 
 ### 4.4 数据流
 
@@ -465,6 +465,7 @@ function onTableUpdate() {
 - 主题切换时重建面板（与MVU状态栏的 `remountAll` 策略一致）
 - CSS变量值与BP面板、世界报告完全对齐
 - 所有模块统一消费 `story-ui-day` / `story-ui-night`；不得再为同一个日夜模式新增并行的 `theme-*` 或模块私有日夜类
+- 测试版 `loader.js` 内联 CSS 后，入口版本号与 `loader.js` 版本号必须随主题样式变更同步提升；管理面板“重载资源”必须清理 `style[data-story-ui-css]` 与 `link[data-story-ui-css]`，避免旧样式残留造成模块间主题状态不一致
 
 ---
 
@@ -554,7 +555,7 @@ function onTableUpdate() {
 - [ ] 数据库表更新后，地点或地图元素签名变化会自动触发受控 AI 地图重绘；签名未变且缓存命中时不重复生成
 - [x] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存；测试版日志输出完整脱敏 URL 与当前模型且不输出完整 API Key
 - [ ] 数据更新后UI自动刷新
-- [ ] 日/夜主题切换正常
+- [x] 日/夜主题切换链路已统一到 `story-ui-day/night`，并补齐内联 CSS 旧样式清理与版本失效；酒馆运行时仍需复核管理面板、BP 图标、世界报告图标三种入口均能同步换色
 
 ### 质量
 

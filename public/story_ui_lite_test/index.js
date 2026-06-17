@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'lite_test',
     displayEnv: '精简测试版',
-    version: 'lite_test-0.1.0',
+    version: 'lite_test-0.1.2',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
     localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_ui_lite_test/',
     globalKey: 'StoryRegexUI',
@@ -2035,7 +2035,9 @@
     }
 
     hostDocument
-      .querySelectorAll('script[data-jjks-story-ui-loader], script[data-story-ui-script], link[data-story-ui-css]')
+      .querySelectorAll(
+        'script[data-jjks-story-ui-loader], script[data-story-ui-script], style[data-story-ui-css], link[data-story-ui-css]',
+      )
       .forEach(node => {
         const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
         const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
