@@ -165,6 +165,11 @@
   background: rgba(160, 126, 116, 0.12);
 }
 
+.db-status-bar.story-ui-night .db-sb-mark {
+  color: var(--db-gold);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .db-sb-title {
   font-size: 13px;
   font-weight: 900;
@@ -214,6 +219,28 @@
   font-size: 12px;
 }
 
+.db-status-bar.story-ui-night .db-sb-world-strip {
+  color: var(--db-text);
+  background: var(--db-card-2);
+  border-color: var(--db-line);
+}
+
+.db-status-bar.story-ui-night .db-sb-world-title {
+  color: var(--db-gold);
+}
+
+.db-status-bar.story-ui-night .db-sb-world-strip .db-sb-label {
+  color: var(--db-muted);
+}
+
+.db-status-bar.story-ui-night .db-sb-world-strip .db-sb-value {
+  color: var(--db-text);
+}
+
+.db-status-bar.story-ui-night .db-sb-world-sep {
+  background: var(--db-line);
+}
+
 .db-sb-world-title {
   font-size: 10px;
   font-weight: 900;
@@ -231,10 +258,6 @@
 
 .db-status-bar.story-ui-day .db-sb-world-strip {
   background: linear-gradient(90deg, rgba(236, 226, 207, 0.72), rgba(255, 253, 247, 0.42));
-}
-
-.db-status-bar.story-ui-night .db-sb-world-strip {
-  background: linear-gradient(90deg, rgba(160, 126, 116, 0.08), transparent);
 }
 
 .db-sb-world-item {
@@ -373,6 +396,10 @@
   font-weight: 800;
   color: var(--db-sage);
   font-size: 10.5px;
+}
+
+.db-sb-char-key-stat .db-sb-stat-value {
+  font-size: 12px;
 }
 
 /* ═══ Progress Bars ═══ */
@@ -596,7 +623,7 @@
 }
 
 .db-sb-char-key-stat .db-sb-stat-value {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 900;
 }
 

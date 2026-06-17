@@ -560,6 +560,7 @@
   function renderCharacterPanel(S, theme) {
     const chars = (S.characters || []).filter(c => !c.isAbsent);
     const pName = (S.protagonist && S.protagonist.name) || '主角';
+    const markIcon = theme === 'night' ? '✧' : '✦';
     let tabs = `<span class="db-sb-tab active" data-tab="char-protagonist">${esc(pName)}</span>`;
     chars.forEach((c, i) => { tabs += `<span class="db-sb-tab" data-tab="char-${i}">${esc(c.name)}</span>`; });
 
@@ -569,7 +570,7 @@
     return `
     <section class="db-sb-panel">
       <div class="db-sb-header" data-db-toggle="char-body">
-        <span class="db-sb-mark">✧</span>
+        <span class="db-sb-mark" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
         <div><div class="db-sb-title">角色档案</div><div class="db-sb-subtitle">CHARACTER ARCHIVE</div></div>
         <span class="db-sb-toggle-icon">▼</span>
       </div>
@@ -699,10 +700,11 @@
 
   // --- Function Panel (Map persistent + Quest overlay) ---
   function renderFunctionPanel(S, theme) {
+    const markIcon = theme === 'night' ? '✧' : '✦';
     return `
     <section class="db-sb-panel">
       <div class="db-sb-header" data-db-toggle="fn-body">
-        <span class="db-sb-mark">✦</span>
+        <span class="db-sb-mark" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
         <div><div class="db-sb-title">地图与任务</div><div class="db-sb-subtitle">MAP & QUEST</div></div>
         <span class="db-sb-toggle-icon">▼</span>
       </div>
@@ -2029,6 +2031,19 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       return newRoot;
     }
     return root;
+  }
+
+  function rerenderAll() {
+    const selector = `.db-status-bar[data-story-ui-module="${MODULE_ID}"]`;
+    const roots = Array.from(document.querySelectorAll(selector));
+    roots.forEach(root => rerender(root));
+  }
+
+  if (document.documentElement.dataset.storyUiDbStatusBarThemeBound !== 'true') {
+    document.documentElement.dataset.storyUiDbStatusBarThemeBound = 'true';
+    document.addEventListener('story-ui-theme-changed', () => {
+      rerenderAll();
+    });
   }
 
   // --- Register ---

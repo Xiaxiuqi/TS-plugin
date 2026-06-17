@@ -2,7 +2,7 @@
 
 > 项目位置：`public/story_ui_lite_test/`
 > 数据源：`AutoCardUpdaterAPI.exportTableAsJson()` 导出的数据库表
-> UI风格：与当前BP面板、世界报告、MVU状态栏统一（Noto Serif SC + `--mvu-*` CSS变量体系）
+> UI风格：与当前BP面板、世界报告统一（Noto Serif SC + 统一 `story-ui-day/night` 主题入口）
 > 设计参考：原神/星穹铁道/鸣潮等游戏UI
 > 禁止使用任何emoji，图标使用SVG或Unicode几何符号
 
@@ -16,7 +16,7 @@
 
 ### 1.2 UI风格统一要求
 
-必须与以下现有模块保持视觉一致：`bp-panel-newvars`、`world-log`、`mvu-status-newvars`
+必须与以下现有模块保持视觉一致：`bp-panel-newvars`、`world-log`
 
 统一要素：
 
@@ -27,9 +27,9 @@
 - 装饰：极简，不滥用 `inset box-shadow` 左侧色条，能省则省
 - 图标：SVG 内联图标 或 Unicode 几何符号（`✦` `✧` `▸` `▾`）
 
-### 1.3 与MVU状态栏的核心差异
+### 1.3 与旧 MVU 状态栏链路的核心差异
 
-| 维度     | MVU状态栏                    | 数据库状态栏（本次）                     |
+| 维度     | 旧 MVU 状态栏链路            | 数据库状态栏                             |
 | -------- | ---------------------------- | ---------------------------------------- |
 | 数据来源 | `window.Mvu.getMvuData()`    | `AutoCardUpdaterAPI.exportTableAsJson()` |
 | 数据格式 | 嵌套对象 `stat_data.user.*`  | 二维表格 `{ uid: { name, content } }`    |
@@ -100,7 +100,7 @@ function get(headers, row, colName) {
 
 ### 3.2 顶部信息栏
 
-- 与MVU状态栏的"世界状态"面板风格一致
+- 与 BP 面板和世界报告的面板风格一致
 - 两列grid：左=当前时间，右=当前地点
 - 样式：`grid-template-columns: 1fr 1fr`，两个 world-card
 
@@ -117,7 +117,7 @@ function get(headers, row, colName) {
 
 #### 主角TAB内容
 
-参考MVU状态栏的 `renderUser` 布局：
+参考旧状态栏的 `renderUser` 布局思路，但当前实现不依赖 MVU 模块：
 
 **上半区 - 核心属性卡片（双栏grid）：**
 
@@ -462,7 +462,7 @@ function onTableUpdate() {
 
 - 监听 `story-ui-theme-changed` 事件切换日/夜主题
 - 使用 `ui.theme?.getTheme?.()` 获取当前主题
-- 主题切换时重建面板（与MVU状态栏的 `remountAll` 策略一致）
+- 主题切换时按模块自身 rerender 策略重建面板
 - CSS变量值与BP面板、世界报告完全对齐
 - 所有模块统一消费 `story-ui-day` / `story-ui-night`；不得再为同一个日夜模式新增并行的 `theme-*` 或模块私有日夜类
 - 测试版 `loader.js` 内联 CSS 后，入口版本号与 `loader.js` 版本号必须随主题样式变更同步提升；管理面板“重载资源”必须清理 `style[data-story-ui-css]` 与 `link[data-story-ui-css]`，避免旧样式残留造成模块间主题状态不一致
@@ -473,8 +473,8 @@ function onTableUpdate() {
 
 ### 9.1 模块关系
 
-- `db-status-bar` 与 `mvu-status-newvars` 互斥
-- 通过管理面板切换，或在 loader.js 中配置默认启用哪个
+- 当前精简测试版只保留 `bp-panel-newvars`、`world-log`、`manager-ui` 与 `db-status-bar`
+- `mvu-status-newvars` 与 `relation-status` 已从 loader、入口注册、管理面板模块列表和诊断注册来源中移除
 - 共享 `core/` 基础设施（dom.js、registry.js、theme.js、scanner.js）
 
 ### 9.2 锚点标签
@@ -556,6 +556,10 @@ function onTableUpdate() {
 - [x] 管理界面地图配置分页存在代码证据，包含 API URL、API Key、模型、启用开关、保存/读取/重置/每次打开回填链路；保存时保留当前模型并清除其他模型列表缓存；测试版日志输出完整脱敏 URL 与当前模型且不输出完整 API Key
 - [ ] 数据更新后UI自动刷新
 - [x] 日/夜主题切换链路已统一到 `story-ui-day/night`，并补齐内联 CSS 旧样式清理与版本失效；酒馆运行时仍需复核管理面板、BP 图标、世界报告图标三种入口均能同步换色
+- [x] 数据库状态栏 `.db-sb-mark` 已接入 `data-story-ui-theme-toggle`，点击后复用统一日夜切换链路，并监听 `story-ui-theme-changed` 重渲染以同步 `✦/✧` 图标
+- [x] BP 面板与数据库状态栏日间 mark 为 `✦`、夜间 mark 为 `✧`；数据库状态栏角色关键数值字号最终层叠值为 12px
+- [x] `mvu-status-newvars`、`relation-status` 与旧消息折叠功能已从代码侧清理；诊断注册来源不再包含已删除模块
+- [x] 管理面板暗色模式已补齐地图 API 输入控件与启用 AI 地图生成 checkbox 的颜色覆盖，模块状态“已注册”增加间距并改为绿色
 
 ### 质量
 

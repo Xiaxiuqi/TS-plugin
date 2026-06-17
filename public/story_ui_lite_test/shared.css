@@ -68,33 +68,3 @@
 .story-ui-root.story-ui-night .story-ui-muted {
   color: var(--story-ui-night-faint);
 }
-
-.story-ui-code-placeholder-mount {
-  width: 100%;
-}
-
-.story-ui-code-placeholder {
-  width: 100%;
-  margin: 0.2em 0;
-}
-
-.story-ui-code-placeholder summary {
-  padding: 0;
-  cursor: pointer;
-  color: inherit;
-  background: transparent;
-  font-size: inherit;
-  font-weight: 700;
-}
-
-.story-ui-code-placeholder pre {
-  margin: 0;
-  padding: 0.35em 0 0.2em 1.1em;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: inherit;
-  background: transparent;
-  font-family: 'Consolas', 'SFMono-Regular', 'Microsoft YaHei', monospace;
-  font-size: 0.95em;
-  line-height: 1.62;
-}

@@ -13,15 +13,12 @@
 
 ## 模块清单
 
-| 模块 ID              | 名称                | 默认状态 | 说明                                                                                 |
-| -------------------- | ------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `bp-panel-newvars`   | BP战力雷达（兼容）  | 开启     | 战力面板展示                                                                         |
-| `mvu-status-newvars` | MVU状态栏（新变量） | 开启     | 新版 MVU 状态栏，使用新变量体系                                                      |
-| `story-engine`       | 故事引擎            | **关闭** | 故事驱动引擎渲染，默认关闭                                                           |
-| `world-log`          | 世界运行报告        | 开启     | 世界状态日志展示                                                                     |
-| `relation-status`    | 角色羁绊档案        | 开启     | 角色关系状态展示                                                                     |
-| `manager-ui`         | 管理面板            | 开启     | 前端管理 UI（开关模块、主题切换等）                                                  |
-| `db-status-bar`      | 数据库状态栏        | 开启     | 从 `AutoCardUpdaterAPI.exportTableAsJson()` 读取数据库表，渲染咒回状态栏、任务与地图 |
+| 模块 ID            | 名称               | 默认状态 | 说明                                                                                 |
+| ------------------ | ------------------ | -------- | ------------------------------------------------------------------------------------ |
+| `bp-panel-newvars` | BP战力雷达（兼容） | 开启     | 战力面板展示                                                                         |
+| `world-log`        | 世界运行报告       | 开启     | 世界状态日志展示                                                                     |
+| `manager-ui`       | 管理面板           | 开启     | 前端管理 UI（开关模块、主题切换等）                                                  |
+| `db-status-bar`    | 数据库状态栏       | 开启     | 从 `AutoCardUpdaterAPI.exportTableAsJson()` 读取数据库表，渲染咒回状态栏、任务与地图 |
 
 ## 与 releasetest 版本的差异
 
@@ -30,12 +27,15 @@
 | 模块 ID           | 名称              | 移除原因                       |
 | ----------------- | ----------------- | ------------------------------ |
 | `variable-update` | 变量更新          | 精简版不需要独立变量更新面板   |
-| `mvu-status`      | MVU状态栏（旧版） | 已被 `mvu-status-newvars` 替代 |
+| `mvu-status`      | MVU状态栏（旧版） | 精简版不再保留 MVU 状态栏链路 |
+| `mvu-status-newvars` | MVU状态栏（新变量） | 当前精简测试版改由数据库状态栏承担状态展示 |
+| `relation-status` | 角色羁绊档案 | 当前精简测试版不再保留独立羁绊档案模块 |
 
 ### 行为变更
 
 - `story-engine` 模块默认关闭（用户可通过管理面板手动开启）
-- 互斥模块逻辑已移除（旧版 mvu-status 与 mvu-status-newvars 的互斥不再需要）
+- `mvu-status-newvars` 与 `relation-status` 已从 loader、入口注册、管理面板模块列表和诊断注册来源中移除
+- 旧消息折叠功能已移除；历史楼层不再被替换为 `story-ui-code-placeholder` 占位块
 
 ### 配置变更
 
@@ -59,9 +59,6 @@ story_ui_lite_test/
 │   ├── bp-panel-newvars/   # BP战力雷达
 │   ├── db-status-bar/      # 数据库状态栏（含地图与任务面板）
 │   ├── manager-ui/         # 管理面板
-│   ├── mvu-status-newvars/ # MVU状态栏（新变量）
-│   ├── relation-status/    # 角色羁绊档案
-│   ├── story-engine/       # 故事引擎（默认关闭）
 │   └── world-log/          # 世界运行报告
 ├── index.js            # 主入口（正则脚本调用）
 ├── loader.js           # 模块加载器
@@ -96,7 +93,8 @@ story_ui_lite_test/
 | 地图 AI 运行时诊断   | 已实施测试版日志策略，待酒馆运行时复核          | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型                                      | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露        |
 | 地图无缓存基础显示   | 已修复代码侧，待酒馆运行时复核                  | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache`；“暂无 AI 地图缓存”等提示不再占用地图下方区域                                                         | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存；确认地图下方无重复提示文字    |
 | 管理界面地图配置分页 | 已补测试版 URL/模型 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的 `[db-status-bar][map-debug]` 日志；测试版输出完整脱敏 URL 与当前模型，API Key 只输出存在性与尾号，后续脱敏日志结构仅保留模型                                                                                                         | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key，且 URL query 中密钥参数被替换为 `[redacted]`         |
-| 主题切换联动         | 已修复缓存型回归，待酒馆运行时复核              | `core/theme.js` 与 `index.js` 的主题应用链路只维护统一 `story-ui-day/night` 语义类；BP、世界报告、MVU 与数据库状态栏均改为消费同一主题类；已将入口和 loader 版本提升到 `lite_test-0.1.2`，并让“重载资源”同时清理内联 `<style data-story-ui-css>`，避免旧 BP CSS 留存导致 BP 自身不换色 | 点击“重载美化”后重新打开管理面板，确认管理面板、BP、世界报告、数据库状态栏都消费同一套新 CSS 并同步切换日/夜主题 |
+| 主题切换联动         | 已修复缓存型回归，本轮补齐图标切换入口与 DB 重渲染          | `core/theme.js` 与 `index.js` 的主题应用链路只维护统一 `story-ui-day/night` 语义类；BP、世界报告与数据库状态栏消费同一主题类；本轮 DB 状态栏 `.db-sb-mark` 接入 `data-story-ui-theme-toggle`，并监听 `story-ui-theme-changed` 后重渲染；BP 与 DB 日间 mark 为 `✦`、夜间为 `✧` | 酒馆运行时复核 BP、世界报告、数据库状态栏三种入口点击后同步换色 |
+| 模块清理             | 已完成代码侧清理，待酒馆运行时复核              | `loader.js` 不再加载 `mvu-status-newvars` 与 `relation-status`；`index.js` 的模块标签、锚点、扫描顺序、管理面板模块列表和诊断来源均不再包含两者；旧消息折叠按钮、持久化和占位样式已删除 | 打开管理面板确认模块状态和诊断信息不再出现已删除模块，旧楼层不再生成折叠占位 |
 | 样式加载安全性       | 已修复代码侧，待酒馆运行时复核                  | `loader.js` 改为优先 `fetch` CSS 并内联为 `<style data-story-ui-css>`；`index.js` 的管理面板样式加载同样改为内联，不再主动创建跨域 CSS link                                                                                                                                            | 点击“重载美化”后确认 `dynamic-styles.js` 不再因跨域 `cssRules` 抛出 SecurityError                                |
 | 浮岛误改回滚         | 已完成                                          | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空                                                                                                                                 | 后续默认不碰 ci_island 路径                                                                                      |
 
@@ -109,6 +107,16 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.18-db-status-bar-ui-and-module-cleanup (2026-06-17)
+
+**数据库状态栏细节修正与废弃模块清理**
+
+- `.db-sb-char-key-stat .db-sb-stat-value` 最终层叠值固定为 12px，降低角色档案右侧姓名、职业/身份、等级、独特能力等关键值的视觉拥挤。
+- 数据库状态栏暗色模式补齐并合并 `.db-sb-world-strip` 颜色主体；只调整文字、背景、分隔线和边框颜色，不改布局结构。
+- 数据库状态栏 `.db-sb-mark` 接入统一 `data-story-ui-theme-toggle`，并监听 `story-ui-theme-changed` 触发重渲染；BP 与数据库状态栏日间 mark 统一为 `✦`，夜间统一为 `✧`。
+- 管理面板暗色模式补齐地图 API 地址、API Key、模型选择和启用 AI 地图生成 checkbox 的颜色覆盖；模块状态中的“已注册”增加与模块名的间距并改为绿色。
+- 删除 `relation-status`、`mvu-status-newvars` 和旧消息折叠功能，清理 loader、入口扫描/挂载、管理面板模块状态、诊断注册来源和共享占位样式。
 
 ### v1.1.17-theme-cache-invalidation (2026-06-17)
 

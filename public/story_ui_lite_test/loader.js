@@ -34,19 +34,9 @@
         script: 'modules/bp-panel-newvars/index.js',
       },
       {
-        id: 'mvu-status-newvars',
-        css: 'modules/mvu-status-newvars/style.css',
-        script: 'modules/mvu-status-newvars/index.js',
-      },
-      {
         id: 'world-log',
         css: 'modules/world-log/style.css',
         script: 'modules/world-log/index.js',
-      },
-      {
-        id: 'relation-status',
-        css: 'modules/relation-status/style.css',
-        script: 'modules/relation-status/index.js',
       },
       {
         id: 'manager-ui',

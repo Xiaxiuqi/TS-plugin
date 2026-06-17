@@ -30,31 +30,18 @@
     'bp-panel-newvars': 'BP战力雷达（兼容）',
     'db-status-bar': '数据库状态栏',
     'world-log': '世界运行报告',
-    'relation-status': '角色羁绊档案',
-    'mvu-status-newvars': 'MVU状态栏（新变量）',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
     'db-status-bar': ['<DbStatusBar/>', 'DbStatusBar', '数据库状态栏', '地图元素表', '任务与事件表'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
-    'relation-status': ['角色羁绊档案', '本回合情感波动', '已记录角色', '好感度'],
-    'mvu-status-newvars': [
-      '<StatusPlaceHolderImpl/>',
-      'StatusPlaceHolderImpl',
-      'MVU状态栏',
-      '世界状态',
-      '亲密状态',
-      '变量更新',
-    ],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
   const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
-    'relation-status',
     'world-log',
     'db-status-bar',
-    'mvu-status-newvars',
   ];
 
   function getModuleAnchorNeedles(moduleId) {
@@ -161,8 +148,6 @@
   let lastError = '';
   let scanQueued = false;
   let lastDiagnosis = null;
-  let collapseOldMessagesEnabled = true;
-  let collapseOldMessagesBusy = false;
   let managerActionBusy = false;
   const moduleToggleBusy = new Set();
 
@@ -186,12 +171,6 @@
   bootstrapUi.runtime = bootstrapUi.runtime || {};
   bootstrapUi.runtime.renderDepth = INITIAL_SCAN_LIMIT;
   bootstrapUi.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
-
-  try {
-    collapseOldMessagesEnabled = localStorage.getItem('jjks_story_ui_collapse_old_messages') !== 'false';
-  } catch {
-    collapseOldMessagesEnabled = true;
-  }
 
   function notify(message, type = 'info') {
     try {
@@ -1022,41 +1001,6 @@
       .replace(/'/g, '&#39;');
   }
 
-  function renderCollapsedBlock(blockText, title) {
-    return `<details class="story-ui-code-placeholder"><summary>${escapeHtml(title)}</summary><pre>${escapeHtml(blockText)}</pre></details>`;
-  }
-
-  function mountCollapsedPlaceholderForMessage(messageId, rawText) {
-    const messageElement = getDisplayedMessageElement(messageId);
-    if (!messageElement) return false;
-    if (!collapseOldMessagesEnabled) return false;
-    const textElement = getDisplayedMessageTextElement(messageElement);
-    if (!textElement) return false;
-
-    const registry = getUi()?.registry;
-    if (!registry) return false;
-    const modules = registry
-      .list()
-      .filter(module => moduleMatchesRawText(module, rawText) || moduleMatchesSingleTag(module, rawText));
-    if (modules.length === 0) return false;
-
-    let html = String(rawText || '').replace(/\r\n?/g, '\n');
-    modules.forEach(module => {
-      const extracted = extractModuleContent(module, rawText);
-      if (!extracted?.fullMatch) return;
-      const title = MODULE_LABELS[module.id] ? `显示代码块 · ${MODULE_LABELS[module.id]}` : '显示代码块';
-      html = html.replace(extracted.fullMatch, renderCollapsedBlock(extracted.fullMatch.trim(), title));
-    });
-
-    if (html === String(rawText || '').replace(/\r\n?/g, '\n')) return false;
-    if (typeof window.formatAsDisplayedMessage === 'function') {
-      textElement.innerHTML = window.formatAsDisplayedMessage(html, { message_id: messageId });
-    } else {
-      textElement.innerHTML = html;
-    }
-    return true;
-  }
-
   function scanMessageIds(messageIds, mode = 'incremental') {
     if (!Array.isArray(messageIds) || messageIds.length === 0) return;
     lastScanMode = mode;
@@ -1080,15 +1024,6 @@
 
       messageSignatures.set(messageId, signature);
       mountModulesForMessage(messageId, rawText);
-    });
-
-    getRenderedMessageIds(Number.MAX_SAFE_INTEGER).forEach(messageId => {
-      if (activeSet.has(messageId)) return;
-      if (hasMountedStoryUi(getDisplayedMessageElement(messageId))) return;
-      const chatMessage = readRawMessage(messageId);
-      const rawText = chatMessage?.message || '';
-      if (!rawText) return;
-      mountCollapsedPlaceholderForMessage(messageId, rawText);
     });
 
     rememberRecentScannedMessageIds(scanIds);
@@ -1195,13 +1130,6 @@
       .join('\n');
   }
 
-  function persistCollapseOldMessages(enabled) {
-    try {
-      localStorage.setItem('jjks_story_ui_collapse_old_messages', enabled ? 'true' : 'false');
-    } catch {
-      // ignore persistence failures
-    }
-  }
   function normalizeMapConfigValue(value) {
     return String(value ?? '').trim();
   }
@@ -1699,12 +1627,6 @@
       maintenanceActions.appendChild(createButton('手动重扫', { 'data-jjks-action': 'scan' }));
       maintenanceActions.appendChild(createButton('重载资源', { 'data-jjks-action': 'reload' }));
       maintenanceActions.appendChild(createButton('刷新诊断', { 'data-jjks-action': 'diagnose' }));
-      maintenanceActions.appendChild(
-        createButton(collapseOldMessagesEnabled ? '旧消息折叠' : '旧消息未折叠', {
-          'data-jjks-action': 'toggle-old-collapse',
-          'data-jjks-toggle-state': collapseOldMessagesEnabled ? 'on' : 'off',
-        }),
-      );
     }
 
     fillManagerMapConfigForm(panel);
@@ -1892,7 +1814,7 @@
         const status = item.registered ? (item.enabled ? '关闭' : '开启') : '未加载';
         return `
           <div class="jjks-manager-module-item">
-            <span class="jjks-manager-module-name">${escapeHtml(item.label)}<small>${escapeHtml(item.registered ? '已注册' : '未注册')}</small></span>
+            <span class="jjks-manager-module-name">${escapeHtml(item.label)}<small class="${item.registered ? 'is-registered' : 'is-unregistered'}">${escapeHtml(item.registered ? '已注册' : '未注册')}</small></span>
             <button class="jjks-manager-switch" type="button" data-jjks-module-toggle="${escapeHtml(item.id)}" data-enabled="${item.enabled ? 'true' : 'false'}" ${item.registered ? '' : 'disabled'}>${status}</button>
           </div>
         `;
@@ -1980,18 +1902,6 @@
 
     root.querySelectorAll('[data-jjks-theme]').forEach(button => {
       button.dataset.active = button.dataset.jjksTheme === data.当前主题 ? 'true' : 'false';
-    });
-
-    root.querySelectorAll('[data-jjks-toggle-state]').forEach(button => {
-      button.dataset.jjksToggleState = collapseOldMessagesEnabled ? 'on' : 'off';
-      button.textContent = collapseOldMessagesBusy
-        ? collapseOldMessagesEnabled
-          ? '折叠切换中'
-          : '展开切换中'
-        : collapseOldMessagesEnabled
-          ? '旧消息折叠'
-          : '旧消息未折叠';
-      button.disabled = collapseOldMessagesBusy;
     });
 
     renderManagerModuleList(root);
@@ -2101,19 +2011,6 @@
     }
     if (action === 'reload') {
       reloadResources();
-      return;
-    }
-    if (action === 'toggle-old-collapse') {
-      if (collapseOldMessagesBusy) return;
-      collapseOldMessagesBusy = true;
-      collapseOldMessagesEnabled = !collapseOldMessagesEnabled;
-      persistCollapseOldMessages(collapseOldMessagesEnabled);
-      refreshManagerState();
-      window.setTimeout(() => {
-        rerenderAllVisibleMessages();
-        collapseOldMessagesBusy = false;
-        refreshManagerState();
-      }, 80);
       return;
     }
   }
