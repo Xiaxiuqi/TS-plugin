@@ -822,17 +822,28 @@
     categories.forEach((c, i) => { html += `<span class="db-sb-tab${i === 0 ? ' active' : ''}" data-filter="${esc(c)}">${esc(c)}</span>`; });
     html += '</div>';
 
-    // Item list (5 rows visible, scroll beyond)
+    // Item list: render all cards and let the expanded inventory section grow with content.
     html += '<div class="db-sb-inv-list" id="db-inventory-grid">';
     const getCatColor = ui.dbStatusData?.getCategoryColor || (() => '');
     list.forEach(item => {
       const catColor = getCatColor(item.category);
       const catStyle = catColor ? `color:${catColor}` : '';
+      const descHtml = item.desc
+        ? `<div class="db-sb-inv-card-desc"><span class="db-sb-inv-card-field-label">描述</span><span class="db-sb-inv-card-field-text">${esc(item.desc)}</span></div>`
+        : '';
+      const effectHtml = item.effect
+        ? `<div class="db-sb-inv-card-effect"><span class="db-sb-inv-card-field-label">效果</span><span class="db-sb-inv-card-field-text">${esc(item.effect)}</span></div>`
+        : '';
+      const remarksHtml = item.remarks
+        ? `<div class="db-sb-inv-card-remarks"><span class="db-sb-inv-card-field-label">重要备注</span><span class="db-sb-inv-card-field-text">${esc(item.remarks)}</span></div>`
+        : '';
       html += `<div class="db-sb-inv-card" data-category="${esc(item.category)}" data-owner="${esc(item.owner || '')}">
         <div class="db-sb-inv-card-name">${esc(item.name)}</div>
         <div class="db-sb-inv-card-qty">x${esc(item.quantity)}</div>
         <div class="db-sb-inv-card-cat" style="${catStyle}">${esc(item.category || '')}</div>
-        ${item.desc ? '<div class="db-sb-inv-card-desc">' + esc(item.desc) + '</div>' : ''}
+        ${descHtml}
+        ${effectHtml}
+        ${remarksHtml}
       </div>`;
     });
     html += '</div>';
