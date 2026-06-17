@@ -267,8 +267,15 @@
       getStoryDocument()
         .querySelectorAll('.story-ui-root')
         .forEach(root => {
-          root.classList.toggle('story-ui-night', nextTheme === 'night');
-          root.classList.toggle('story-ui-day', nextTheme !== 'night');
+          const isNight = nextTheme === 'night';
+          root.classList.toggle('story-ui-night', isNight);
+          root.classList.toggle('story-ui-day', !isNight);
+          root.classList.toggle('theme-night', isNight);
+          root.classList.toggle('theme-day', !isNight);
+          if (root.classList.contains('bp-radar-widget') || root.classList.contains('story-ui-bp')) {
+            root.classList.toggle('bp-night-ui', isNight);
+            root.classList.toggle('bp-day-ui', !isNight);
+          }
           root.dataset.storyUiTheme = nextTheme;
         });
     }

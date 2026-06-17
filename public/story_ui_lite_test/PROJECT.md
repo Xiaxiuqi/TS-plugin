@@ -82,7 +82,7 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-15
+更新时间：2026-06-17
 
 | 项目项               | 状态                                            | 证据                                                                                                                                                                                                                                              | 下一步                                                                                                        |
 | -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -96,6 +96,7 @@ story_ui_lite_test/
 | 地图 AI 运行时诊断   | 已实施测试版日志策略，待酒馆运行时复核          | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型 | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露     |
 | 地图无缓存基础显示   | 已修复代码侧，待酒馆运行时复核                  | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache`；“暂无 AI 地图缓存”等提示不再占用地图下方区域                    | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存；确认地图下方无重复提示文字 |
 | 管理界面地图配置分页 | 已补测试版 URL/模型 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的 `[db-status-bar][map-debug]` 日志；测试版输出完整脱敏 URL 与当前模型，API Key 只输出存在性与尾号，后续脱敏日志结构仅保留模型                                                                    | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key，且 URL query 中密钥参数被替换为 `[redacted]`      |
+| 主题切换联动         | 已补代码侧兼容，待酒馆运行时复核                | `core/theme.js` 与 `index.js` 的主题应用链路同步维护 `story-ui-*`、`theme-*` 与 BP 的 `bp-*-ui` 类名，避免管理面板切换暗色后外部 BP、世界报告和数据库状态栏仍停留在旧主题类                                                                       | 在管理面板切换米白/暗色，确认 BP、世界报告、数据库状态栏和地图基础 SVG 同步换色且不改变既有布局交互           |
 | 样式加载安全性       | 已修复代码侧，待酒馆运行时复核                  | `loader.js` 改为优先 `fetch` CSS 并内联为 `<style data-story-ui-css>`；`index.js` 的管理面板样式加载同样改为内联，不再主动创建跨域 CSS link                                                                                                       | 点击“重载美化”后确认 `dynamic-styles.js` 不再因跨域 `cssRules` 抛出 SecurityError                             |
 | 浮岛误改回滚         | 已完成                                          | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空                                                                                            | 后续默认不碰 ci_island 路径                                                                                   |
 
@@ -108,6 +109,16 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.15-theme-night-compat-and-db-map-dark (2026-06-17)
+
+**主题切换联动与数据库状态栏地图暗色模式**
+
+- `core/theme.js` 在应用主题时同步维护通用 `story-ui-day/night`、旧式 `theme-day/night`，并对 BP 根节点同步 `bp-day-ui/bp-night-ui`，避免管理面板切换暗色后外部模块只收到部分主题类导致样式不切换。
+- `index.js` 的无主题 API 兜底路径同步补齐同一套主题类维护逻辑，保证 loader 未完全就绪或主题模块不可用时仍能切换已挂载的故事 UI 根节点。
+- 数据库状态栏继续沿用 BP 与世界报告的暗色调变量，不改角色选择、背包筛选等既有 CSS 结构；只补充地图专用 CSS 变量，使基础 SVG 可通过 `var(--db-map-*)` 跟随日/夜主题换色。
+- 暗色模式下地图视口与 AI SVG 增加低强度亮度/对比度修正，基础地图背景、边框、道路、文字和 marker 描边改用暗色主题变量，降低浅色地图在暗色状态栏内的割裂感。
+- 已完成代码侧修改，后续需执行 `node --check`、`git diff --check` 并在酒馆运行时验证主题切换联动。
 
 ### v1.1.14-map-status-and-popover-detail (2026-06-16)
 

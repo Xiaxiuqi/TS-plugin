@@ -31,8 +31,15 @@
 
   function applyThemeToRoot(root) {
     if (!root?.classList) return;
-    root.classList.toggle('story-ui-night', currentTheme === 'night');
-    root.classList.toggle('story-ui-day', currentTheme !== 'night');
+    const isNight = currentTheme === 'night';
+    root.classList.toggle('story-ui-night', isNight);
+    root.classList.toggle('story-ui-day', !isNight);
+    root.classList.toggle('theme-night', isNight);
+    root.classList.toggle('theme-day', !isNight);
+    if (root.classList.contains('bp-radar-widget') || root.classList.contains('story-ui-bp')) {
+      root.classList.toggle('bp-night-ui', isNight);
+      root.classList.toggle('bp-day-ui', !isNight);
+    }
     root.dataset.storyUiTheme = currentTheme;
   }
 
