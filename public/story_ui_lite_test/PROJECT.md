@@ -43,7 +43,7 @@
 - `displayEnv`: `发布测试版` → `精简测试版`
 - `version`: `releasetest-0.1.1` → `lite_test-0.1.2`
 - `publicBaseUrl`: 指向 `story_ui_lite_test/`
-- `localBasePath`: 指向 `story_ui_lite_test/`
+- 入口资源来源：无法从 `document.currentScript` 或 `document.scripts` 确认测试版 `index.js` 来源时，统一回退 `CONFIG.publicBaseUrl`，不再维护本地扩展目录 fallback
 - `managerRootId`: `jjks-story-ui-manager-releasetest` → `jjks-story-ui-manager-lite_test`
 
 ## 目录结构
@@ -107,6 +107,14 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.20-import-loader-public-base-fallback (2026-06-18)
+
+**测试版 import 入口资源加载策略修复**
+
+- 仅修改 `public/story_ui_lite_test/**`，不触碰 `public/story_ui_lite_prod/**`。
+- 测试版入口在 `document.currentScript` 与 `document.scripts` 都无法识别自身 `index.js` 来源时，不再回退到本地扩展目录，而是直接使用 `CONFIG.publicBaseUrl` 加载 `loader.js` 等资源。
+- `loader.js` 加载失败时会移除失败的 `<script>` 标签；检测到已有 loader 标签但 `StoryRegexUI` 长时间未就绪时，也会清理残留标签，避免下一次重载继续被旧失败标签误导。
 
 ### v1.1.19-db-status-bar-inventory-card-fields (2026-06-17)
 

@@ -4,7 +4,6 @@
     displayEnv: '精简测试版',
     version: 'lite_test-0.1.2',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
-    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_ui_lite_test/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
@@ -118,21 +117,23 @@
     }
   }
 
+  function isOwnIndexScript(src) {
+    return typeof src === 'string' && src.includes('/story_ui_lite_test/index.js');
+  }
+
   function detectBaseUrl() {
-    const current = normalizeBaseUrl(currentScript?.src || '');
-    if (current) return current;
+    if (isOwnIndexScript(currentScript?.src)) {
+      const current = normalizeBaseUrl(currentScript.src);
+      if (current) return current;
+    }
 
     const scriptSrc = Array.from(document.scripts)
       .map(script => script.src)
-      .find(src => src.includes('/story_ui_lite_test/index.js'));
+      .find(isOwnIndexScript);
     const fromScriptList = normalizeBaseUrl(scriptSrc || '');
     if (fromScriptList) return fromScriptList;
 
-    try {
-      return new URL(CONFIG.localBasePath, window.location.origin).href;
-    } catch {
-      return CONFIG.publicBaseUrl;
-    }
+    return CONFIG.publicBaseUrl;
   }
 
   const baseUrl = detectBaseUrl();
@@ -330,6 +331,7 @@
             resolve();
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
+            existed.remove();
             loaderStatus = 'failed';
             lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪。请尝试刷新网页或开关美化脚本';
             reject(new Error(lastError));
@@ -358,6 +360,7 @@
         }, 120);
       };
       script.onerror = () => {
+        script.remove();
         loaderStatus = 'failed';
         lastError = `loader 加载失败: ${src}`;
         loaderPromise = null;

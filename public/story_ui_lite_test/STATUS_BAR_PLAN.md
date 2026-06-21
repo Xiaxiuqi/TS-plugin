@@ -466,6 +466,7 @@ function onTableUpdate() {
 - CSS变量值与BP面板、世界报告完全对齐
 - 所有模块统一消费 `story-ui-day` / `story-ui-night`；不得再为同一个日夜模式新增并行的 `theme-*` 或模块私有日夜类
 - 测试版 `loader.js` 内联 CSS 后，入口版本号与 `loader.js` 版本号必须随主题样式变更同步提升；管理面板“重载资源”必须清理 `style[data-story-ui-css]` 与 `link[data-story-ui-css]`，避免旧样式残留造成模块间主题状态不一致
+- 测试版 import 入口无法通过 `document.currentScript` 或 `document.scripts` 识别自身 `index.js` 来源时，必须回退到 `CONFIG.publicBaseUrl`，禁止拼接本地扩展目录；`loader.js` 加载失败或已有 loader 标签长时间未就绪时必须移除残留 `<script>`，避免重载被旧失败标签污染
 
 ---
 
