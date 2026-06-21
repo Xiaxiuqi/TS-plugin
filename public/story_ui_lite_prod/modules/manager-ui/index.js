@@ -4,11 +4,11 @@
   }
 
   const view = {
-    buildPanelHtml({ displayEnv, loaderStatus }) {
+    buildPanelHtml({ displayEnv, version, loaderStatus }) {
       return `
         <header class="jjks-manager-head">
           <div>
-            <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${displayEnv}</span>
+            <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${displayEnv} · ${version}</span>
             <h2>咒回前端管理·lite</h2>
             <p>统一查看 Story UI 模块装载、扫描结果与前端主题状态。</p>
           </div>

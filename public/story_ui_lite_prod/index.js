@@ -2,9 +2,8 @@
   const CONFIG = {
     env: 'lite_prod',
     displayEnv: 'lite',
-    version: 'v2.0',
+    version: 'v2.1',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_prod/',
-    localBasePath: '/scripts/extensions/third-party/tavern_helper_template/story_ui_lite_prod/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
     themeKey: 'jjks_story_ui_theme',
@@ -118,21 +117,23 @@
     }
   }
 
+  function isOwnIndexScript(src) {
+    return typeof src === 'string' && src.includes('/story_ui_lite_prod/index.js');
+  }
+
   function detectBaseUrl() {
-    const current = normalizeBaseUrl(currentScript?.src || '');
-    if (current) return current;
+    if (isOwnIndexScript(currentScript?.src)) {
+      const current = normalizeBaseUrl(currentScript.src);
+      if (current) return current;
+    }
 
     const scriptSrc = Array.from(document.scripts)
       .map(script => script.src)
-      .find(src => src.includes('/story_ui_lite_prod/index.js'));
+      .find(isOwnIndexScript);
     const fromScriptList = normalizeBaseUrl(scriptSrc || '');
     if (fromScriptList) return fromScriptList;
 
-    try {
-      return new URL(CONFIG.localBasePath, window.location.origin).href;
-    } catch {
-      return CONFIG.publicBaseUrl;
-    }
+    return CONFIG.publicBaseUrl;
   }
 
   const baseUrl = detectBaseUrl();
@@ -330,6 +331,7 @@
             resolve();
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
+            existed.remove();
             loaderStatus = 'failed';
             lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪。请尝试刷新网页或开关美化脚本';
             reject(new Error(lastError));
@@ -358,6 +360,7 @@
         }, 120);
       };
       script.onerror = () => {
+        script.remove();
         loaderStatus = 'failed';
         lastError = `loader 加载失败: ${src}`;
         loaderPromise = null;
@@ -1632,6 +1635,7 @@
     panel.innerHTML =
       managerView?.buildPanelHtml?.({
         displayEnv: CONFIG.displayEnv,
+        version: CONFIG.version,
         loaderStatus,
       }) ||
       '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
