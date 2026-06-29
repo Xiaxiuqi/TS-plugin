@@ -334,7 +334,28 @@ export async function handleCellAction(
         const textToSend = cellContent || '';
         const input = parent.document.getElementById('send_textarea');
         if (input) {
-          input.value = textToSend;
+          const currentValue = input.value || '';
+          const finalValue = currentValue ? `${currentValue}\n${textToSend}` : textToSend;
+          input.value = finalValue;
+
+          const host$ = parent.jQuery || window.jQuery;
+          if (host$) {
+            host$(input).trigger('input').trigger('change');
+          } else {
+            const HostEvent = parent.Event || Event;
+            input.dispatchEvent(new HostEvent('input', { bubbles: true }));
+            input.dispatchEvent(new HostEvent('change', { bubbles: true }));
+          }
+
+          try {
+            const context = parent.SillyTavern?.getContext?.();
+            if (context) {
+              context.input = finalValue;
+            }
+          } catch {
+            // SillyTavern context sync is best-effort; DOM input update already succeeded.
+          }
+
           deps.showNotification?.('已发送至输入框', 'success');
         } else {
           deps.showNotification?.('未找到输入框元素', 'warning');
