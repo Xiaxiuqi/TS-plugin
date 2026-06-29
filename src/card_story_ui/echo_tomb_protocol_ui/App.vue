@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, watchEffect } from 'vue';
+import { computed, defineAsyncComponent, onMounted, watch } from 'vue';
 import { useSettingsStore } from './stores/useSettingsStore';
 import { useTablesStore } from './stores/useTablesStore';
 import { useUiStore } from './stores/useUiStore';
@@ -65,10 +65,12 @@ onMounted(async () => {
   }
 });
 
-// 表格填充结束后增量刷新
-watchEffect(() => {
-  if (tables.tableFillEndCounter > 0) {
-    tables.refreshAll();
-  }
-});
+// 表格填充结束后增量刷新（显式依赖 tableFillEndCounter，避免 watchEffect 把无关响应源也收集进来）
+// dirty 合并见 useTablesStore.refreshAll，刷新中再次触发会自动累积成尾部一次
+watch(
+  () => tables.tableFillEndCounter,
+  count => {
+    if (count > 0) tables.refreshAll();
+  },
+);
 </script>

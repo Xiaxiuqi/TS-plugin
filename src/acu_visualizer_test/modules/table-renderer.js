@@ -10,6 +10,7 @@ import {
   getConfig,
   getCurrentPageForTable,
   loadSnapshot,
+  normalizeConfig,
 } from '../core/storage.js';
 import {
   getInnerScrollPositionState,
@@ -26,7 +27,7 @@ import {
 } from './diff-highlighting.js';
 import { generatePaginationHTML } from './pagination.js';
 import { getOriginalRowIndex, initializeRowMapping } from './row-sort.js';
-import { filterRowDisplayIndices, generateSearchToolbarHTML, highlightSearchMatches } from './search.js';
+import { escapeCellHtml, filterRowDisplayIndices, generateSearchToolbarHTML, highlightSearchMatches } from './search.js';
 import { cleanupRuntimeState } from './state-cleanup.js';
 import { getSafeTableId, getTableData, processJsonData } from './table-data.js';
 import { getOrderedTableNames } from './table-sort.js';
@@ -57,7 +58,7 @@ export function renderDataTable(tableData, tableName, deps = {}) {
 
   let html = '<div class="data-table-wrapper"><table class="data-table"><thead><tr>';
   tableData.headers.forEach((header, index) => {
-    if (index > 0 && header) html += `<th>${header}</th>`;
+    if (index > 0 && header) html += `<th>${escapeCellHtml(header)}</th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -83,7 +84,10 @@ export function renderDataTable(tableData, tableName, deps = {}) {
           highlightClass = 'acu-highlight-changed';
         const columnName = tableData.headers[index] || '';
         const cellClass = isPendingDelete ? 'acu-editable-cell' : `acu-editable-cell ${highlightClass}`;
-        html += `<td class="${cellClass}" data-table-key="${tableData.key}" data-table-name="${tableName}" data-row="${originalIndex}" data-col="${index}" data-col-name="${columnName}">${formattedContent}</td>`;
+        const escapedTableKey = escapeCellHtml(tableData.key);
+        const escapedTableName = escapeCellHtml(tableName);
+        const escapedColumnName = escapeCellHtml(columnName);
+        html += `<td class="${cellClass}" data-table-key="${escapedTableKey}" data-table-name="${escapedTableName}" data-row="${originalIndex}" data-col="${index}" data-col-name="${escapedColumnName}">${formattedContent}</td>`;
       }
     });
     html += '</tr>';
@@ -99,7 +103,8 @@ export function generateTableHTML(deps = {}) {
   const isExpanded = deps.getTableExpandedState ? deps.getTableExpandedState() : getTableExpandedState();
   const isNightMode = deps.getNightModeState ? deps.getNightModeState() : getNightModeState();
   const activeTab = deps.getActiveTabState ? deps.getActiveTabState() : getActiveTabState();
-  const config = deps.getConfig ? deps.getConfig() : getConfig();
+  const config = normalizeConfig(deps.getConfig ? deps.getConfig() : getConfig());
+  const escapedDataIsolationCode = escapeCellHtml(getDataIsolationCode() || '无');
 
   if (rawData) state.currentDiffMap = generateDiffMap(rawData);
   const orderedTableNames = tables ? getOrderedTableNames(tables) : [];
@@ -110,7 +115,7 @@ export function generateTableHTML(deps = {}) {
         <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
-                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.8 [标识：${getDataIsolationCode() || '无'}]</span></span>
+                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.8 [标识：${escapedDataIsolationCode}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
                         <button class="acu-mode-toggle acu-moon-box" title="切换昼夜模式" type="button">
@@ -144,7 +149,9 @@ export function generateTableHTML(deps = {}) {
       const rowCount = tableData.rows ? tableData.rows.length : 0;
       const isActive = validActiveTab === tableName ? 'active' : '';
       const hasUpdateClass = shouldShowBadge(tableName) ? 'has-updates' : '';
-      html += `<button class="acu-tab-btn ${isActive} ${hasUpdateClass}" data-table-id="${safeId}" data-table-name="${tableName}">${tableName}<span style="font-size: 10px; margin-left: 5px; opacity: 0.7;">(${rowCount})</span>${shouldShowBadge(tableName) ? '<span class="acu-update-badge"></span>' : ''}</button>`;
+      const escapedSafeId = escapeCellHtml(safeId);
+      const escapedTableName = escapeCellHtml(tableName);
+      html += `<button class="acu-tab-btn ${isActive} ${hasUpdateClass}" data-table-id="${escapedSafeId}" data-table-name="${escapedTableName}">${escapedTableName}<span style="font-size: 10px; margin-left: 5px; opacity: 0.7;">(${rowCount})</span>${shouldShowBadge(tableName) ? '<span class="acu-update-badge"></span>' : ''}</button>`;
     });
     html += `</div><div class="table-content-area acu-scroll-container">`;
     orderedTableNames.forEach(tableName => {
@@ -153,7 +160,9 @@ export function generateTableHTML(deps = {}) {
       const isActive = validActiveTab === tableName ? 'active' : '';
       const currentPage = getCurrentPageForTable(tableName);
       const paginationHtml = generatePaginationHTML(tableName, tableData.rows ? tableData.rows.length : 0, currentPage);
-      html += `<section class="acu-table-section ${isActive}" id="acu-table-${safeId}"><div class="section-title" style="display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; width:100% !important; box-sizing:border-box !important; position:relative !important;"><div class="acu-title-left-text" style="display:flex; align-items:center; flex-shrink:0;">${tableName}<span style="font-size: 11px; margin-left: 8px; color: var(--acu-primary); opacity: 0.6;">(${tableData.rows ? tableData.rows.length : 0}行)</span></div>${generateSearchToolbarHTML()}</div>${paginationHtml}${renderDataTable(tableData, tableName, deps)}</section>`;
+      const escapedSafeId = escapeCellHtml(safeId);
+      const escapedTableName = escapeCellHtml(tableName);
+      html += `<section class="acu-table-section ${isActive}" id="acu-table-${escapedSafeId}"><div class="section-title" style="display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; width:100% !important; box-sizing:border-box !important; position:relative !important;"><div class="acu-title-left-text" style="display:flex; align-items:center; flex-shrink:0;">${escapedTableName}<span style="font-size: 11px; margin-left: 8px; color: var(--acu-primary); opacity: 0.6;">(${tableData.rows ? tableData.rows.length : 0}行)</span></div>${generateSearchToolbarHTML()}</div>${paginationHtml}${renderDataTable(tableData, tableName, deps)}</section>`;
     });
     html += `</div>`;
   } else {

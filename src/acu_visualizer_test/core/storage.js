@@ -7,7 +7,16 @@ import {
   DEFAULT_CONFIG,
   STORAGE_KEYS,
   STORAGE_SIZE_LIMIT_MB,
+  THEMES,
 } from './constants.js';
+
+const VALID_THEME_IDS = new Set(THEMES.map(theme => theme.id));
+
+export function normalizeConfig(config = DEFAULT_CONFIG) {
+  const merged = { ...DEFAULT_CONFIG, ...(config && typeof config === 'object' ? config : {}) };
+  const theme = typeof merged.theme === 'string' && VALID_THEME_IDS.has(merged.theme) ? merged.theme : DEFAULT_CONFIG.theme;
+  return { ...merged, theme };
+}
 
 export const CRITICAL_SETTINGS = Object.freeze([
   STORAGE_KEYS.NIGHT_MODE,
@@ -21,16 +30,16 @@ export const CRITICAL_SETTINGS = Object.freeze([
 export function getConfig() {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.UI_CONFIG);
-    return saved ? { ...DEFAULT_CONFIG, ...JSON.parse(saved) } : DEFAULT_CONFIG;
+    return normalizeConfig(saved ? JSON.parse(saved) : DEFAULT_CONFIG);
   } catch (e) {
-    return DEFAULT_CONFIG;
+    return normalizeConfig(DEFAULT_CONFIG);
   }
 }
 
 export function saveConfig(newConfig, { applyThemeStyles } = {}) {
   try {
     const current = getConfig();
-    const merged = { ...current, ...newConfig };
+    const merged = normalizeConfig({ ...current, ...newConfig });
     localStorage.setItem(STORAGE_KEYS.UI_CONFIG, JSON.stringify(merged));
     if (typeof applyThemeStyles === 'function') {
       applyThemeStyles(merged.theme);

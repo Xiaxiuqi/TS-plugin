@@ -6,6 +6,7 @@ import { getCore } from '../core/bridge.js';
 import { acuMenuItemContent } from '../core/constants.js';
 import { removeWithEvents } from '../core/dom-cleanup.js';
 import { recordCellPreviousValue } from './cell-history.js';
+import { formatCellHtml } from './search.js';
 
 export function createEmptyRow(colCount) {
   const newRow = [];
@@ -19,6 +20,15 @@ export function createEmptyRow(colCount) {
   return newRow;
 }
 
+function escapeTextareaValue(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export function generateCellMenuHTML({ config, isNightMode, isPendingDelete, showSendToInput }) {
   return isPendingDelete
     ? `
@@ -30,6 +40,7 @@ export function generateCellMenuHTML({ config, isNightMode, isPendingDelete, sho
     : `
       <div class="acu-cell-menu acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
           <div class="acu-cell-menu-item edit" data-action="edit">${acuMenuItemContent('edit', '编辑')}</div>
+          <div class="acu-cell-menu-item edit" data-action="edit-row">${acuMenuItemContent('edit', '编辑整行')}</div>
           <div class="acu-cell-menu-item history" data-action="history">${acuMenuItemContent('history', '历史记录')}</div>
           <div class="acu-cell-menu-item insert" data-action="insert-above">${acuMenuItemContent('plus', '在上方插入新行')}</div>
           <div class="acu-cell-menu-item insert" data-action="insert">${acuMenuItemContent('plus', '在下方插入新行')}</div>
@@ -41,6 +52,7 @@ export function generateCellMenuHTML({ config, isNightMode, isPendingDelete, sho
 }
 
 export function generateEditDialogHTML({ tableName, cellContent, isNightMode }) {
+  const escapedTableName = escapeTextareaValue(tableName);
   const dialogStyle = `
             <style>
                 .acu-edit-dialog { background: var(--acu-background, #fff); color: var(--acu-text, #333); }
@@ -50,6 +62,10 @@ export function generateEditDialogHTML({ tableName, cellContent, isNightMode }) 
                 .acu-edit-textarea { width: 100%; min-height: 120px; padding: 10px; box-sizing: border-box; border: 1px solid var(--acu-border, #ddd); border-radius: 4px; margin: 10px 0; resize: vertical; font-family: inherit; background: #ffffff; color: #333333; }
                 .acu-edit-overlay.night-mode .acu-edit-textarea { background: #3a3a3a; color: #dbdbd6; border-color: #555; }
                 .acu-edit-textarea:focus { outline: none; border-color: var(--acu-primary, #5c9dff); box-shadow: 0 0 0 2px rgba(92,157,255,0.2); }
+                .acu-row-edit-fields { max-height: min(65vh, 620px); overflow-y: auto; padding-right: 4px; }
+                .acu-row-edit-field { margin: 10px 0; }
+                .acu-row-edit-label { display: block; font-size: 12px; font-weight: 600; opacity: 0.82; margin-bottom: 4px; }
+                .acu-row-edit-field .acu-edit-textarea { min-height: 72px; margin: 0; }
                 .acu-edit-buttons { display: flex; justify-content: flex-end; gap: 8px; }
                 .acu-edit-buttons button { padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; border: 1px solid transparent; transition: all 0.2s; }
                 .acu-save-btn { background: var(--acu-primary, #5c9dff); color: #fff; }
@@ -65,9 +81,9 @@ export function generateEditDialogHTML({ tableName, cellContent, isNightMode }) 
                     <div class="acu-edit-overlay ${isNightMode ? 'night-mode' : ''}">
                         ${dialogStyle}
                         <div class="acu-edit-dialog">
-                            <div class="acu-edit-header">编辑单元格内容 - ${tableName}</div>
+                            <div class="acu-edit-header">编辑单元格内容 - ${escapedTableName}</div>
                             <div class="acu-edit-content">
-                                <textarea class="acu-edit-textarea" placeholder="请输入内容...">${cellContent}</textarea>
+                                <textarea class="acu-edit-textarea" placeholder="请输入内容...">${escapeTextareaValue(cellContent)}</textarea>
                                 <div class="acu-edit-buttons">
                                     <button class="acu-cancel-btn">取消</button>
                                     <button class="acu-save-btn">保存</button>
@@ -76,6 +92,43 @@ export function generateEditDialogHTML({ tableName, cellContent, isNightMode }) 
                         </div>
                     </div>
                 `;
+}
+
+export function generateRowEditDialogHTML({ tableName, rowFields, isNightMode }) {
+  const escapedTableName = escapeTextareaValue(tableName);
+  const baseDialog = generateEditDialogHTML({ tableName, cellContent: '', isNightMode });
+  const fieldHtml = rowFields
+    .map(
+      field => `
+        <div class="acu-row-edit-field">
+          <label class="acu-row-edit-label" for="acu-row-edit-${field.colIndex}">${escapeTextareaValue(field.label)}</label>
+          <textarea id="acu-row-edit-${field.colIndex}" class="acu-edit-textarea acu-row-edit-textarea" data-col-index="${field.colIndex}" placeholder="请输入内容...">${escapeTextareaValue(field.value)}</textarea>
+        </div>
+      `,
+    )
+    .join('');
+
+  return baseDialog
+    .replace(`编辑单元格内容 - ${escapedTableName}`, `编辑整行内容 - ${escapedTableName}`)
+    .replace(
+      /<textarea class="acu-edit-textarea" placeholder="请输入内容\.\.\."><\/textarea>/,
+      `<div class="acu-row-edit-fields">${fieldHtml}</div>`,
+    );
+}
+
+function bindEditOverlayCloseHandlers($editOverlay, $, saveEdit, cancelEdit) {
+  $editOverlay.find('.acu-save-btn').on('click.acu', saveEdit);
+  $editOverlay.find('.acu-cancel-btn').on('click.acu', cancelEdit);
+
+  let editMouseDownOnBg = false;
+  $editOverlay
+    .on('mousedown.acu', e => {
+      editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
+    })
+    .on('mouseup.acu', e => {
+      if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
+      editMouseDownOnBg = false;
+    });
 }
 
 export function showCellMenu(event, cell, deps = {}) {
@@ -221,33 +274,50 @@ export async function handleCellAction(
       $textarea.focus().select();
       deps.setCellEditing?.(true);
 
+      let isSubmitting = false;
       const saveEdit = async () => {
+        if (isSubmitting) return;
+        isSubmitting = true;
+        const $saveBtn = $editOverlay.find('.acu-save-btn');
+        $saveBtn.prop('disabled', true);
         const newContent = $textarea.val();
-        removeWithEvents($editOverlay);
-        deps.setCellEditing?.(false);
-        const formattedContent = newContent.replace(/\n/g, '<br>');
-        $(cell).html(formattedContent);
-        deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${colIndex}`);
+        const actualRowIndex = rowIndex + 1;
+        const row = rawData?.[tableKey]?.content?.[actualRowIndex];
+        const canWriteRawData = Array.isArray(row) && row[colIndex] !== undefined;
+        const originalValue = canWriteRawData ? row[colIndex] : undefined;
+
         if (rawData?.[tableKey]?.content) {
-          const actualRowIndex = rowIndex + 1;
-          if (rawData[tableKey].content[actualRowIndex]?.[colIndex] !== undefined) {
-            rawData[tableKey].content[actualRowIndex][colIndex] = newContent;
-          }
+          if (canWriteRawData) row[colIndex] = newContent;
         }
-        if (String(cellContent ?? '') !== String(newContent ?? '')) {
-          recordCellPreviousValue(tableName, rowIndex, colIndex, cellContent);
+
+        let saveSuccess = false;
+        try {
+          saveSuccess = await deps.saveDataToDatabase?.(rawData, {
+            type: 'cell_edit',
+            tableName,
+            rowIndex,
+            colIndex,
+            newValue: newContent,
+          });
+        } catch (saveErr) {
+          console.warn('[ACU] 单元格编辑保存异常:', saveErr);
+          saveSuccess = false;
         }
-        const saveSuccess = await deps.saveDataToDatabase?.(rawData, {
-          type: 'cell_edit',
-          tableName,
-          rowIndex,
-          colIndex,
-          newValue: newContent,
-        });
+
         if (saveSuccess) {
+          removeWithEvents($editOverlay);
+          deps.setCellEditing?.(false);
+          $(cell).html(formatCellHtml(newContent));
+          deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${colIndex}`);
+          if (String(cellContent ?? '') !== String(newContent ?? '')) {
+            recordCellPreviousValue(tableName, rowIndex, colIndex, cellContent);
+          }
           $(cell).addClass('acu-highlight-user-edit');
         } else {
-          console.warn('保存失败，但编辑已应用到本地');
+          if (canWriteRawData) row[colIndex] = originalValue;
+          isSubmitting = false;
+          $saveBtn.prop('disabled', false);
+          deps.showNotification?.('保存失败，单元格内容未应用到本地', 'error');
         }
       };
 
@@ -256,8 +326,7 @@ export async function handleCellAction(
         deps.setCellEditing?.(false);
       };
 
-      $editOverlay.find('.acu-save-btn').on('click.acu', saveEdit);
-      $editOverlay.find('.acu-cancel-btn').on('click.acu', cancelEdit);
+      bindEditOverlayCloseHandlers($editOverlay, $, saveEdit, cancelEdit);
       $textarea.on('keydown.acu', function (e) {
         if (e.key === 'Enter' && e.ctrlKey) {
           e.preventDefault();
@@ -267,16 +336,128 @@ export async function handleCellAction(
           cancelEdit();
         }
       });
+      break;
+    }
 
-      let editMouseDownOnBg = false;
-      $editOverlay
-        .on('mousedown.acu', function (e) {
-          editMouseDownOnBg = $(e.target).hasClass('acu-edit-overlay');
-        })
-        .on('mouseup.acu', function (e) {
-          if (editMouseDownOnBg && $(e.target).hasClass('acu-edit-overlay')) cancelEdit();
-          editMouseDownOnBg = false;
+    case 'edit-row': {
+      const rawData = deps.getTableData?.();
+      if (!rawData?.[tableKey]?.content) {
+        alert('无法获取数据库数据，编辑整行失败');
+        return;
+      }
+
+      const headers = rawData[tableKey].content[0] || [];
+      const actualRowIndex = rowIndex + 1;
+      const rowData = rawData[tableKey].content[actualRowIndex];
+      if (!Array.isArray(rowData)) {
+        alert('无法获取行数据，编辑整行失败');
+        return;
+      }
+
+      const rowFields = rowData
+        .map((value, index) => ({
+          header: headers[index] || '',
+          label: headers[index] || `第${index}列（无表头）`,
+          colIndex: index,
+          value: value ?? '',
+        }))
+        .filter(field => field.colIndex > 0);
+
+      if (rowFields.length === 0) {
+        alert('当前行没有可编辑的可见列');
+        return;
+      }
+
+      const isNightMode = $('.acu-table-container').hasClass('night-mode');
+      const $editOverlay = $(generateRowEditDialogHTML({ tableName, rowFields, isNightMode }));
+      $('body').append($editOverlay);
+      const $textareas = $editOverlay.find('.acu-row-edit-textarea');
+      $textareas.first().focus().select();
+      deps.setCellEditing?.(true);
+
+      let isSubmitting = false;
+      const saveEdit = async () => {
+        if (isSubmitting) return;
+        isSubmitting = true;
+        const $saveBtn = $editOverlay.find('.acu-save-btn');
+        $saveBtn.prop('disabled', true);
+
+        const rowUpdate = {};
+        const newRowValues = new Map();
+        const headerCounts = {};
+        headers.forEach(header => {
+          if (!header) return;
+          headerCounts[header] = (headerCounts[header] || 0) + 1;
         });
+        let forceBulkFallback = false;
+
+        $textareas.each(function () {
+          const fieldColIndex = parseInt($(this).data('col-index'), 10);
+          const header = headers[fieldColIndex] || '';
+          const newValue = $(this).val();
+          newRowValues.set(fieldColIndex, newValue);
+          if (!header || headerCounts[header] > 1) {
+            forceBulkFallback = true;
+            return;
+          }
+          rowUpdate[header] = newValue;
+        });
+
+        const originalRowData = rowData.slice();
+        newRowValues.forEach((newValue, fieldColIndex) => {
+          rowData[fieldColIndex] = newValue;
+        });
+
+        const $row = $(cell).closest('tr');
+        let saveSuccess = false;
+        try {
+          saveSuccess = await deps.saveDataToDatabase?.(rawData, {
+            type: 'row_edit',
+            tableName,
+            rowIndex,
+            rowData: rowUpdate,
+            forceBulkFallback,
+          });
+        } catch (saveErr) {
+          console.warn('[ACU] 整行编辑保存异常:', saveErr);
+          saveSuccess = false;
+        }
+
+        if (saveSuccess) {
+          removeWithEvents($editOverlay);
+          deps.setCellEditing?.(false);
+          $row.find('.acu-editable-cell').each(function () {
+            const fieldColIndex = parseInt($(this).data('col'), 10);
+            if (!newRowValues.has(fieldColIndex)) return;
+            $(this).html(formatCellHtml(newRowValues.get(fieldColIndex)));
+          });
+          newRowValues.forEach((newValue, fieldColIndex) => {
+            deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${fieldColIndex}`);
+          });
+          $row.find('.acu-editable-cell').addClass('acu-highlight-user-edit');
+        } else {
+          rowData.splice(0, rowData.length, ...originalRowData);
+          isSubmitting = false;
+          $saveBtn.prop('disabled', false);
+          deps.showNotification?.('保存失败，整行内容未应用到本地', 'error');
+        }
+      };
+
+      const cancelEdit = () => {
+        removeWithEvents($editOverlay);
+        deps.setCellEditing?.(false);
+      };
+
+      bindEditOverlayCloseHandlers($editOverlay, $, saveEdit, cancelEdit);
+      $textareas.on('keydown.acu', function (e) {
+        if (e.key === 'Enter' && e.ctrlKey) {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelEdit();
+        }
+      });
       break;
     }
 

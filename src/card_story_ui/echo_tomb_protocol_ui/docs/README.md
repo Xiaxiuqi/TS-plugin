@@ -32,4 +32,4 @@ src/card_story_ui/echo_tomb_protocol_ui/docs/
 
 - 主项目文档 `./echo-tomb-card-story-ui-plan.md` 始终是唯一权威架构与 TODO 源
 - 阶段文档只记录**此阶段实际发生了什么**，不重复全局架构说明
-- 阶段结束后，必须同步更新主文档 t1…t12 的状态表与「修订记录」部分
+- 阶段结束后，必须同步更新主文档 t1…t13 的状态表与「修订记录」部分

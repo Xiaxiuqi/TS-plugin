@@ -131,13 +131,15 @@
 | t3 表格模板结构性修改 | ✅ 完成 | 见 §5 修改记录 |
 | t4 表格模板权威副本（src/.../tables/） | ✅ 完成 | commit `e0922e5` |
 | t5 .gitignore 撤回项目文档忽略 | ✅ 完成 | 文档进入 git |
-| t6 状态栏主体 UI（Vue 重构） | 🟡 进行中 | shell/subjectPanel/inventoryPanel/radarChart |
-| t7 地图面板 | ⏳ 待开始 | core 层已就绪，UI 层走 Vue 重写 |
-| t8 升级面板 | ⏳ 待开始 | 经验检测、Roll、手动分配、写回 |
-| t9 组队向导 | ⏳ 待开始 | 输入 → 匹配/AI 草案 → 校验 → 写六张主体表 |
-| t10 构建产物路径 / import 集成验证 | ⏳ 待开始 | webpack 输出 → public 同步 |
-| t11 验证回归 | ⏳ 待开始 | 构建、模拟 API、低内存验证 |
-| t12 阶段性 git 提交 | 🔁 持续 | 每阶段单独 commit |
+| t6 状态栏主体 UI（Vue 重构） | 🟢 骨架完成 | shell/subjectPanel/inventoryPanel/radarChart 已落地，构建产物 85.3 KiB |
+| t6.1 骨架加固（阶段后审计） | ✅ 完成 | 7 项全部落地，构建产物 86.2 KiB（+0.9 KiB）；详见 stage-01 §8 与 R8 修订记录 |
+| t7 设置界面与 API 配置 | ⏳ 待开始 | ShellFooter 第五入口，第一版含 mapApiSource / customApiEndpoint / customApiModel |
+| t8 地图面板 | ⏳ 待开始 | core 层已就绪，UI 层走 Vue 重写；依赖 t7 的 API 设置入口 |
+| t9 升级面板 | ⏳ 待开始 | 经验检测、Roll、手动分配、写回 |
+| t10 组队向导 | ⏳ 待开始 | 输入 → 匹配/AI 草案 → 校验 → 写六张主体表 |
+| t11 构建产物路径 / import 集成验证 | ⏳ 待开始 | webpack 输出 → public 同步 |
+| t12 验证回归 | ⏳ 待开始 | 构建、模拟 API、低内存验证 |
+| t13 阶段性 git 提交 | 🔁 持续 | 每阶段单独 commit |
 
 ---
 
@@ -209,7 +211,27 @@ src/card_story_ui/echo_tomb_protocol_ui/
 - 切换主题只改 CSS 变量，不重建 DOM
 - 不使用 emoji，全部 SVG symbol
 
-### t7 地图面板（中优先级）
+### t7 设置界面与 API 配置（高优先级）
+
+- 作为 ShellFooter 第五入口，与「主体 / 地图 / 升级 / 组队」并列；不使用 modal，复用现有 panel 路由机制
+- `useUiStore.ActivePanel` 增加 `'settings'`；`IconSprite.vue` 增 `et-i-settings` 齿轮 symbol
+- 新增组件 `components/SettingsPanel.vue`：
+  - 字段对齐 `settings.ts` schema：`mapApiSource` 单选（database / custom）、`customApiEndpoint` 文本输入、`customApiModel` 文本输入
+  - 表单未保存时有视觉提示（hint 行 + 主按钮高亮）；保存按钮调用 `useSettingsStore.setMapApiSource` 与 `setCustomApi`，写脚本变量持久化
+  - 「测试连接」按钮明确标注「t8 地图面板接 aiQueue + callAI 后启用」，禁用态不做假调用
+  - 视觉风格遵守 §3.5：scoped CSS ≤ 80 行；颜色仅取 `et-*` CSS 变量；图标全 SVG symbol
+- `theme.scss` 按需补 `.et-form-row` / `.et-radio-group` / `.et-hint` 等小原子，优先复用既有
+- `aiConcurrency` 与 `theme` 不在本面板暴露：前者属于运行时调优，后者已由 ShellHeader 的 ThemeToggle 控制；避免重复入口
+
+**验收**：
+- ShellFooter 出现「设置」按钮，点击切换到 SettingsPanel
+- 表单初值与脚本变量一致；修改后未保存可见提示，保存后 reload 仍保持
+- mapApiSource = database 时 custom 字段禁用；= custom 时启用；不允许提交空 endpoint
+- 「测试连接」按钮 disabled 且 title 标注 t8 接入计划
+- 构建产物大小相对 t6 骨架增量 < 5 KiB
+- 切换设置面板不重建 ShellHeader / TabBar；卸载时随主应用统一清理
+
+### t8 地图面板（中优先级）
 
 - 复用 `core/mapPrompt.ts` 内置提示词与 fallback 元素生成
 - 数据库填表结束 (`onTableFillEnd`) 触发地图重建，摘要相同则命中缓存
@@ -220,7 +242,7 @@ src/card_story_ui/echo_tomb_protocol_ui/
 
 **验收**：模板中无「地图元素表」时走 fallback，不报错；并发控制经过 `aiQueue`；卸载时清空缓存与监听
 
-### t8 升级面板（中优先级）
+### t9 升级面板（中优先级）
 
 - 监听主体表 `经验值/经验上限`，达上限提示升级
 - Roll：3 次随机分配（六维加点数固定预算），可重投 1 次
@@ -229,7 +251,7 @@ src/card_story_ui/echo_tomb_protocol_ui/
 
 **验收**：经验上限即时刷新；Roll 算法可复现；写回失败回滚 UI 状态；属性 6 项严格按枚举写
 
-### t9 组队向导（中优先级）
+### t10 组队向导（中优先级）
 
 - 输入队友姓名 → 匹配重要角色表 / 主体档案表
 - 未匹配时构造 AI 提示词请求草案（六维属性 + 装备 + 技能 + 传承）
@@ -244,21 +266,21 @@ src/card_story_ui/echo_tomb_protocol_ui/
 
 **验收**：未输入完整字段不发起 AI 请求；AI 失败可重试且不污染数据库；写回成功后状态栏自动出现新 Tab
 
-### t10 构建与发布（中优先级）
+### t11 构建与发布（中优先级）
 
 - webpack 自动以 `index.ts` 为入口，输出到 `dist/card_story_ui/echo_tomb_protocol_ui/`
 - 同步到 `public/card_story_ui/echo_tomb_protocol_ui/index.js` 用于酒馆 import
 - 不输出 latest.import.json（明确不需要）
 
-### t11 验证（低优先级）
+### t12 验证（低优先级）
 
 - `pnpm build` 通过
 - 模拟 `AutoCardUpdaterAPI` 进行渲染快照
 - 内存基线：mount 前 / mount 后 / 切换 chat 后三次 heap snapshot 趋势
 
-### t12 git 提交策略（持续）
+### t13 git 提交策略（持续）
 
-- 每个阶段独立 commit，message 形如 `feat(echo-tomb): t6 实现状态栏主体 UI`
+- 每个阶段独立 commit，message 形如 `feat(echo-tomb): t7 设置界面与 API 配置`
 - 表格模板修改单独 commit；前端代码与文档同 commit 合理时合并
 
 ---
@@ -311,11 +333,13 @@ src/card_story_ui/echo_tomb_protocol_ui/
 
 1. **`shell.ts:138` 旧战斗状态判断错误**（`g['战斗状态'] === '是'`），与四值枚举不符 → t6 重写时按 `非战斗 | 遭遇 | 战斗中 | 收尾` 处理
 2. **旧 ui/ 用了 emoji**（📍⏰▶✧⚔️◐）→ t6 重写改 SVG symbol
-3. **mapPanel.ts 仍尝试读「地图元素表」**（模板无此表）→ t7 重写时直接走 `generateTempMapElements`
+3. **mapPanel.ts 仍尝试读「地图元素表」**（模板无此表）→ t8 重写时直接走 `generateTempMapElements`
 4. **batchWriteback 不具备真正回滚**（写完一张就 import 一张），组队流程需自行做 dry-run 全表校验后再分阶段写
 5. **TS 6 baseUrl 弃用警告**：暂不改 tsconfig，构建若失败再最小处理
 6. **Vue 响应式开销**：大表（背包等）必须 `shallowRef`，避免每行对象都建 Proxy
 7. **chat 切换泄漏风险**：必须严格执行 `app.unmount()` + `destroyAll()` + `pinia.state.value = {}` 的顺序
+8. **chat 切换走硬 reload**：`util/script.ts::reloadOnChatChange` 实现为 `window.location.reload()`，会刷新整个酒馆主页面，影响并存的其他脚本。这是仓库通用约定，不是软清理；任何与本状态栏共存的脚本都必须接受这一前提。本项目的软清理路径（`destroyAll` + Vue unmount + Pinia reset）仅在 `pagehide` 与酒馆主动 disable 脚本时生效
+9. **`onTableFillEnd` 不可解绑**：`AutoCardUpdaterAPI` 未提供反向 unsubscribe，store cleanup 只能释放数据 ref，订阅闭包仍会指向旧 ref。reload 路径下不会暴雷，但若未来去掉 reload 走纯软清理，闭包会指向 disposed store；t6.1 加固时通过 alive 标记做软解绑兜底
 
 ---
 
@@ -325,8 +349,10 @@ src/card_story_ui/echo_tomb_protocol_ui/
 - `nailongwang/` 目录整体 ignore（仓库范围约定，不动）
 - 表格模板权威副本在 `src/...../tables/table-template.json`，修改后**手动复制**回 `nailongwang/...../tables/table-template.json`
 - 提交粒度：每阶段一个 commit；表格模板变更与代码变更不混提交
-- 构建产物 `dist/card_story_ui/echo_tomb_protocol_ui/` **不进 git**（仅本项目）；其他模块 dist 行为不受影响
-- `public/card_story_ui/echo_tomb_protocol_ui/` 仅在最终发布时从 dist 复制过来，平时不持续同步
+- 构建产物 `dist/card_story_ui/echo_tomb_protocol_ui/` **进 git 一同维护**（R6 决策，2026-05 反转 R5 立场）：
+  - 让发布版本可追溯、可对比、可回滚，与 `tables/table-template.json` 权威副本策略一致
+  - 仅在阶段交付时同步提交，避免日常 build 噪声；提交前需 `pnpm run build` 一次确保最新
+- `public/card_story_ui/echo_tomb_protocol_ui/` 仅在最终发布时从 dist 复制过来，平时不持续同步；该目录是否进 git 沿用仓库现有策略，不在本项目调整
 
 ---
 
@@ -349,6 +375,9 @@ src/card_story_ui/echo_tomb_protocol_ui/
 | R3 | 选型回归 | 综合评估内存/美观/轻量/需求承载/可维护性后回归 Vue 3 SFC + Pinia；地图元素表改为前端内置不入库；战斗状态由 `是/否` 改为四值枚举 `非战斗/遭遇/战斗中/收尾`；is_absent 字段名统一为 `absence` | 仓库工具链已 all-in Vue；状态驱动 UI 用 Vue 维护成本更低；模板枚举更精细 |
 | R4 | 本次（当前文档） | 文档重写为单一权威版；t1~t5 标记完成；core/ 复查通过保留，ui/ 全部 Vue 重写；项目文档撤回 .gitignore 进入 git | 用户决议：技术栈选 Vue 3 + Pinia；项目文档进 git |
 | R5 | t6 骨架完成 | 新增 §3.5 美术风格与界面规范、§9.5 进度文档管理；只忽略本项目 dist；建立 `docs/` 目录并归档 stage-01 进度文档；记录 watch 调试约定 | 用户要求：dist 仅本项目不进 git、阶段进度文档管理、UI 风格细化、watch 实时调试 |
+| R6 | t6 骨架审计后 | dist 策略反转：`dist/card_story_ui/echo_tomb_protocol_ui/` 改为进 git 同步管理（§9 修订），同步修正 stage-01 §2/§3 中"加入忽略"的虚假声明；§8 风险清单补两条（reload 硬刷、`onTableFillEnd` 不可解绑）；新增 stage-01 §8 阶段后审计与 t6.1 加固计划，覆盖双重 unmount、watchEffect 风暴、detached mount、settings 脏数据兜底、订阅软解绑、ATTR_NAMES 共享、radarMax 公式说明等 7 项 | 阶段后审计发现声明与代码不一致；用户决议：dist 进 git 一同维护，剩余 t6 缺陷在 t6.1 加固阶段处理 |
+| R7 | 引入设置界面阶段 | 新增 t7「设置界面与 API 配置」作为与地图/升级/组队并列的功能阶段；原 t7~t12 顺延为 t8~t13；§4 进度表与 §6 待办事项同步重排；commit message 示例同步；§8 第 3 条「mapPanel 走 generateTempMapElements」标注更新为 t8 | 用户决议：设置界面是一级功能面板而非 t6 子项；按方案 A 排在地图前，避免地图面板带"设置入口缺失"的债上线 |
+| R8 | t6.1 骨架加固完成 | 7 项缺陷全部落地：P2-C `initSettings` 改 safeParse + 兜底回写覆盖脏值；P1-A 拆 `unmountStatusBar` 与 `main.ts` unmount 责任，Vue 实例由 main.ts 单点持有与卸载；P2-A `useTablesStore.refreshAll` 加 `_dirty` 合并、`watchEffect` 改 `watch` 显式依赖；P2-B mount detached 状态加 `console.info` 提示并在首次成功 attach 时回放；P3-A `onTableFillEnd` 闭包加 `_alive` 软解绑；P3-B 抽 `core/constants.ts`，`ATTR_NAMES` / `computeRadarMax` 两处共享，`onTableUpdate` 标 `@deprecated` 候选；P4 雷达图公式封装入 `computeRadarMax` 并补设计假设注释。构建产物 85.3 KiB → 86.2 KiB（+0.9 KiB），源码模块 12 → 13 | t6 骨架审计列出的 7 项加固任务交付 |
 
 ---
 

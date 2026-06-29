@@ -5,6 +5,7 @@
 import { getCore } from '../core/bridge.js';
 import { STORAGE_KEYS } from '../core/constants.js';
 import { markTabAsSeen, shouldShowBadge } from './diff-highlighting.js';
+import { escapeCellHtml } from './search.js';
 
 export function getActiveTabState() {
   try {
@@ -27,10 +28,12 @@ export function generateTabButtonHTML(tableName, { safeId, rowCount = 0, activeT
   const isActive = activeTab === tableName ? 'active' : '';
   const shouldShowUpdateBadge = shouldShowBadge(tableName);
   const hasUpdateClass = shouldShowUpdateBadge ? 'has-updates' : '';
+  const escapedSafeId = escapeCellHtml(safeId);
+  const escapedTableName = escapeCellHtml(tableName);
 
   let html = `
-                    <button class="acu-tab-btn ${isActive} ${hasUpdateClass}" data-table-id="${safeId}" data-table-name="${tableName}">
-                        ${tableName}
+                    <button class="acu-tab-btn ${isActive} ${hasUpdateClass}" data-table-id="${escapedSafeId}" data-table-name="${escapedTableName}">
+                        ${escapedTableName}
                         <span style="font-size: 10px; margin-left: 5px; opacity: 0.7;">(${rowCount})</span>`;
 
   if (shouldShowUpdateBadge) {
@@ -71,7 +74,7 @@ export function activateSavedOrFirstTab(core = getCore()) {
   const savedActiveTab = getActiveTabState();
 
   if (savedActiveTab) {
-    const $savedTab = $(`.acu-tab-btn[data-table-name="${savedActiveTab}"]`);
+    const $savedTab = $('.acu-tab-btn').filter((_, tab) => $(tab).data('table-name') === savedActiveTab);
     if ($savedTab.length) {
       $savedTab.trigger('click.acu');
       return;

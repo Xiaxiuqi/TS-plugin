@@ -43,6 +43,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ATTR_NAMES } from '../core/constants';
 
 const props = withDefaults(
   defineProps<{
@@ -56,7 +57,7 @@ const props = withDefaults(
     max?: number;
   }>(),
   {
-    labels: () => ['力量', '敏捷', '体质', '智力', '感知', '魅力'],
+    labels: () => [...ATTR_NAMES],
     size: 200,
     max: 30,
   },

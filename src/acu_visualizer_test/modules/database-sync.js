@@ -8,7 +8,10 @@ import { generateDataHash, generateDiffMap } from './diff-highlighting.js';
 import { cleanupRuntimeState } from './state-cleanup.js';
 
 export function collectRowUpdates(currentUserEditMap = state.currentUserEditMap, updateContext = null) {
-  const hasCellEdit = updateContext && updateContext.type === 'cell_edit';
+  const shouldExcludeContextRow =
+    updateContext &&
+    (updateContext.type === 'cell_edit' || updateContext.type === 'row_edit') &&
+    updateContext.tableName;
   const rowUpdates = {};
 
   currentUserEditMap.forEach(key => {
@@ -16,7 +19,9 @@ export function collectRowUpdates(currentUserEditMap = state.currentUserEditMap,
     if (match) {
       const [, tableName, rowIdxStr] = match;
       const rowIdx = parseInt(rowIdxStr, 10);
-      if (hasCellEdit && updateContext.tableName === tableName && updateContext.rowIndex === rowIdx) return;
+      if (shouldExcludeContextRow && updateContext.tableName === tableName && updateContext.rowIndex === rowIdx) {
+        return;
+      }
       if (!rowUpdates[tableName]) rowUpdates[tableName] = new Set();
       rowUpdates[tableName].add(rowIdx);
     }
@@ -55,12 +60,15 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
     try {
       if (api) {
         const hasCellEdit = updateContext && updateContext.type === 'cell_edit';
+        const hasRowEdit = updateContext && updateContext.type === 'row_edit';
+        const forceBulkFallback = updateContext?.forceBulkFallback === true;
         const deletions = getPendingDeletions(state.pendingDeletes);
         const hasDeletes = Object.keys(deletions).length > 0;
         const rowUpdates = collectRowUpdates(state.currentUserEditMap, updateContext);
         const hasRowUpdates = Object.keys(rowUpdates).length > 0;
+        if (forceBulkFallback) needsBulkFallback = true;
 
-        if (hasCellEdit) {
+        if (hasCellEdit && !forceBulkFallback) {
           try {
             const { tableName, rowIndex, colIndex, newValue } = updateContext;
             const success = await api.updateCell(tableName, rowIndex + 1, colIndex, newValue);
@@ -70,6 +78,22 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
             } else needsBulkFallback = true;
           } catch (e) {
             console.warn('[ACU-API] updateCell 异常:', e);
+            needsBulkFallback = true;
+          }
+        }
+
+        if (hasRowEdit && !forceBulkFallback && !needsBulkFallback) {
+          try {
+            const { tableName, rowIndex, rowData } = updateContext;
+            const success = await api.updateRow(tableName, rowIndex + 1, rowData);
+            if (success) {
+              saveSuccessful = true;
+              usedMethod = usedMethod === 'none' ? 'api_updateRow' : `${usedMethod}+updateRow`;
+            } else {
+              needsBulkFallback = true;
+            }
+          } catch (e) {
+            console.warn('[ACU-API] row_edit updateRow 异常:', e);
             needsBulkFallback = true;
           }
         }
@@ -138,15 +162,16 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
           }
         }
 
-        if (!hasCellEdit && !hasDeletes && !hasRowUpdates && !saveSuccessful) needsBulkFallback = true;
+        if (!hasCellEdit && !hasRowEdit && !hasDeletes && !hasRowUpdates && !saveSuccessful) needsBulkFallback = true;
       } else {
         needsBulkFallback = true;
       }
 
       if ((!saveSuccessful || needsBulkFallback) && api && typeof api.importTableAsJson === 'function') {
         try {
-          applyPendingDeletesToTableData(tableData, getPendingDeletions(state.pendingDeletes));
-          const apiSuccess = await api.importTableAsJson(JSON.stringify(tableData));
+          const bulkTableData = JSON.parse(JSON.stringify(tableData));
+          applyPendingDeletesToTableData(bulkTableData, getPendingDeletions(state.pendingDeletes));
+          const apiSuccess = await api.importTableAsJson(JSON.stringify(bulkTableData));
           if (apiSuccess) {
             saveSuccessful = true;
             usedMethod = 'api_bulk_importTableAsJson';

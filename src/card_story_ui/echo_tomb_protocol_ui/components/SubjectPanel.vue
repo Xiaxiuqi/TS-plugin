@@ -167,13 +167,12 @@ import { computed } from 'vue';
 import { useTablesStore } from '../stores/useTablesStore';
 import { useUiStore } from '../stores/useUiStore';
 import { findRowByCharId, filterRowsByCharId } from '../core/tables';
+import { ATTR_NAMES, computeRadarMax } from '../core/constants';
 import RadarChart from './RadarChart.vue';
 import InventoryPanel from './InventoryPanel.vue';
 
 const tables = useTablesStore();
 const ui = useUiStore();
-
-const ATTR_NAMES = ['力量', '敏捷', '体质', '智力', '感知', '魅力'] as const;
 
 const charId = computed(() => ui.activeCharId);
 
@@ -224,8 +223,8 @@ const attrBonus = computed(() =>
   }),
 );
 
-/** 雷达图上限：随等级提升，最低 30，避免低等级边缘过于进退缩限 */
-const radarMax = computed(() => Math.max(30, ...radarValues.value, level.value * 5 + 20));
+/** 雷达图上限：调用 core/constants.ts::computeRadarMax 统一公式 */
+const radarMax = computed(() => computeRadarMax(level.value, radarValues.value));
 
 /** 装备表 */
 const equipmentRows = computed(() => {

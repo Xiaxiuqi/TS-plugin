@@ -48,7 +48,7 @@ pnpm build
 
 ### 单入口构建
 
-如只需要构建 ACU Visualizer 测试版，不希望同时重新生成浮岛等其他入口产物，可以使用：
+如只需要构建 ACU Visualizer 测试版，不希望同时重新生成浮岛等其他入口产物，可以使用，并且优先使用：
 
 ```bash
 pnpm build:entry --env entry=src/acu_visualizer_test/index.js
@@ -108,3 +108,44 @@ CSS 已从原脚本等价迁移：
 - 不改变原 DOM class / selector。
 - 不改变 localStorage key。
 - 不改变数据库 API 语义。
+
+## 神·数据库 API 调用摘要
+
+ACU Visualizer 测试版通过全局对象 `window.AutoCardUpdaterAPI` 调用神·数据库能力。源码中实际访问入口由 `core/bridge.js` 封装为 `getDB()`，业务模块不直接拼接全局对象。
+
+### 索引约定
+
+- ACU Visualizer 前端表格行索引 `rowIndex` 是数据行的 0 基下标。
+- 神·数据库 API 的 `rowIndex` 使用 1 表示第一行数据。
+- 因此调用 `updateCell`、`updateRow`、`deleteRow` 时统一传入 `rowIndex + 1`。
+- `rawData[tableKey].content[0]` 是表头；实际数据行写入位置是 `rawData[tableKey].content[rowIndex + 1]`。
+
+### 当前使用的 API
+
+#### `updateCell(tableName, rowIndex, colIdentifier, value)`
+
+用于单元格编辑保存。测试版在 `cell_edit` 保存上下文中优先调用该接口，只更新当前单元格。
+
+#### `updateRow(tableName, rowIndex, data)`
+
+用于整行编辑保存，也用于合并用户编辑行的精准保存。`data` 是列名到单元格值的映射对象；测试版整行编辑弹窗按表格渲染规则暴露 `index > 0` 的可见列，隐藏的第 0 列不在弹窗中编辑。由于 `updateRow` 只能按列名映射保存，无表头可见列或重复表头列不能安全走精准保存，此时会强制回退到 `importTableAsJson` 全量保存。
+
+#### `deleteRow(tableName, rowIndex)`
+
+用于保存待删除行。测试版会将待删除行按行号倒序提交，避免删除前面的行后影响后续行号。
+
+#### `importTableAsJson(jsonString)`
+
+作为精准 API 保存失败或无法安全表达当前修改时的全量后备保存方案。调用前会先复制 `tableData`，再把待删除行应用到副本并序列化为 JSON 字符串提交，避免全量保存失败时污染运行态数据。
+
+#### `refreshDataAndWorldbook()`
+
+保存成功后如该接口存在，测试版会调用它刷新数据与世界书。该刷新失败会记录警告，但不回滚已经成功的表格保存。
+
+### 保存策略
+
+1. 单元格编辑优先走 `updateCell`。
+2. 整行编辑优先走 `updateRow`；遇到无表头可见列或重复表头列时强制走 `importTableAsJson`。
+3. 删除行优先走 `deleteRow`。
+4. 精准 API 返回失败或抛出异常时，回退到 `importTableAsJson` 全量保存。
+5. 保存成功后清理待删除状态、刷新 diff 状态，并重新渲染表格内容。

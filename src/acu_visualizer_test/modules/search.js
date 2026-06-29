@@ -58,11 +58,24 @@ export function countFilteredRows(tableData, searchTerm = getSearchTerm()) {
   ).length;
 }
 
+export function escapeCellHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function formatCellHtml(value) {
+  return escapeCellHtml(value).replace(/\n/g, '<br>');
+}
+
 export function highlightSearchMatches(content, searchTerm = getSearchTerm()) {
-  let formattedContent = String(content || '').replace(/\n/g, '<br>');
+  let formattedContent = formatCellHtml(content);
   if (searchTerm && searchTerm.trim() !== '') {
     try {
-      const term = searchTerm.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const term = escapeCellHtml(searchTerm.trim()).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`(${term})`, 'gi');
       formattedContent = formattedContent
         .split(/(<br>)/gi)
@@ -82,10 +95,11 @@ export function generateSearchToolbarHTML({
   isSearchVisible = state.flags.isSearchVisible,
   currentSearchTerm = getSearchTerm(),
 } = {}) {
+  const escapedSearchTerm = escapeCellHtml(currentSearchTerm);
   return `
                             <div class="acu-search-toolbar" style="display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; gap:5px !important; margin-left:auto !important;">
                                 <div class="acu-search-input-box" style="display:${isSearchVisible ? 'flex' : 'none'}; align-items:center; background:none !important; border:none !important; border-bottom:1px solid var(--acu-primary, #5c9dff) !important; padding:0 4px; height:20px;">
-                                    <input type="text" class="acu-search-field-input" placeholder="搜索..." value="${currentSearchTerm}" style="background:transparent !important; border:none !important; outline:none !important; color:var(--acu-text) !important; font-size:11px !important; width:100px !important; padding:0 !important; margin:0 !important;">
+                                    <input type="text" class="acu-search-field-input" placeholder="搜索..." value="${escapedSearchTerm}" style="background:transparent !important; border:none !important; outline:none !important; color:var(--acu-text) !important; font-size:11px !important; width:100px !important; padding:0 !important; margin:0 !important;">
                                     <i class="fas fa-times acu-search-clear-btn" style="font-size:10px; cursor:pointer; opacity:0.4; margin-left:8px; margin-right:12px; ${currentSearchTerm ? '' : 'display:none;'}"></i>
                                     <i class="fas fa-search acu-search-execute-btn" title="点击搜索" style="color:var(--acu-primary); font-size:12px; cursor:pointer; opacity:0.6;"></i>
                                 </div>

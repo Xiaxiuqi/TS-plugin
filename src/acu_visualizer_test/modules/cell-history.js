@@ -6,6 +6,7 @@ import { getCore, getIsolationKey } from '../core/bridge.js';
 import { STORAGE_KEYS } from '../core/constants.js';
 import { removeWithEvents } from '../core/dom-cleanup.js';
 import { safeLocalStorageSet } from '../core/storage.js';
+import { formatCellHtml } from './search.js';
 
 export function getCellHistoryAll() {
   try {
@@ -97,12 +98,22 @@ export function escapeHistoryValue(value) {
     .replace(/\n/g, '<br>');
 }
 
+function escapeHistoryAttribute(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export function generateHistoryDialogHTML(history, tableName, { isNightMode = false, theme = 'retro' } = {}) {
+  const escapedTableName = escapeHistoryValue(tableName).replace(/<br>/g, ' ');
   let dialogHtml = `
       <div class="acu-history-overlay ${isNightMode ? 'night-mode' : ''} acu-theme-${theme}">
         <div class="acu-history-dialog">
           <div class="acu-history-header">
-            <h3><i class="fas fa-history" style="margin-right: 8px;"></i>历史记录 - ${tableName}</h3>
+            <h3><i class="fas fa-history" style="margin-right: 8px;"></i>历史记录 - ${escapedTableName}</h3>
             <button class="acu-history-close" title="关闭"><i class="fas fa-times"></i></button>
           </div>
                 <div class="acu-history-content">
@@ -123,8 +134,9 @@ export function generateHistoryDialogHTML(history, tableName, { isNightMode = fa
       second: '2-digit',
     });
     const escapedValue = escapeHistoryValue(item.value);
+    const escapedAttributeValue = escapeHistoryAttribute(item.value);
     dialogHtml += `
-            <div class="acu-history-item" data-value="${String(item.value).replace(/"/g, '&quot;')}" data-index="${idx}">
+            <div class="acu-history-item" data-value="${escapedAttributeValue}" data-index="${idx}">
                 <div class="acu-history-item-header">
                     <span class="acu-history-item-number">#${idx + 1}</span>
                     <span class="acu-history-item-date">${date}</span>
@@ -163,33 +175,53 @@ export function showHistoryMenu(event, cell, tableName, rowIndex, colIndex, deps
 
   const closeDialog = () => removeWithEvents($dialog);
 
+  let isSubmitting = false;
   $dialog.find('.acu-history-item').on('click.acu', async function () {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    $dialog.find('.acu-history-item').css('pointer-events', 'none').attr('aria-disabled', 'true');
+
     const value = history[parseInt($(this).attr('data-index'), 10)]?.value ?? $(this).attr('data-value');
     const strValue = String(value || '');
     const currentValue = $(cell).text().replace(/<br>/g, '\n');
-    $(cell).html(strValue.replace(/\n/g, '<br>'));
+
+    const rawData = deps.getTableData?.();
+    const tableKey = $(cell).data('table-key');
+    const actualRowIndex = rowIndex + 1;
+    const row = rawData?.[tableKey]?.content?.[actualRowIndex];
+    const canWriteRawData = Array.isArray(row) && row[colIndex] !== undefined;
+    const originalValue = canWriteRawData ? row[colIndex] : undefined;
+    if (rawData?.[tableKey]?.content) {
+      if (canWriteRawData) row[colIndex] = strValue;
+    }
+
+    let saveSuccess = false;
+    try {
+      saveSuccess = await deps.saveDataToDatabase?.(rawData, {
+        type: 'cell_edit',
+        tableName,
+        rowIndex,
+        colIndex,
+        newValue: strValue,
+      });
+    } catch (saveErr) {
+      console.warn('[ACU] 历史值恢复保存异常:', saveErr);
+      saveSuccess = false;
+    }
+
+    if (!saveSuccess) {
+      if (canWriteRawData) row[colIndex] = originalValue;
+      isSubmitting = false;
+      $dialog.find('.acu-history-item').css('pointer-events', '').removeAttr('aria-disabled');
+      deps.showNotification?.('保存失败，历史值未恢复到本地', 'error');
+      return;
+    }
+
+    $(cell).html(formatCellHtml(strValue));
     deps.currentUserEditMap?.add(`${tableName}-${rowIndex}-${colIndex}`);
     if (String(currentValue ?? '') !== String(strValue ?? '')) {
       addCellHistory(tableName, rowIndex, colIndex, currentValue);
     }
-
-    const rawData = deps.getTableData?.();
-    const tableKey = $(cell).data('table-key');
-    if (rawData?.[tableKey]?.content) {
-      const actualRowIndex = rowIndex + 1;
-      if (rawData[tableKey].content[actualRowIndex]?.[colIndex] !== undefined) {
-        rawData[tableKey].content[actualRowIndex][colIndex] = strValue;
-      }
-    }
-
-    await deps.saveDataToDatabase?.(rawData, {
-      type: 'cell_edit',
-      tableName,
-      rowIndex,
-      colIndex,
-      newValue: strValue,
-    });
-
     closeDialog();
     deps.showNotification?.('已恢复历史值,标记为用户编辑', 'success');
   });

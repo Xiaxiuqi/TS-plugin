@@ -249,7 +249,7 @@ export function activateSavedTab(deps = {}) {
   const { $ } = deps.core || getCore();
   const savedActiveTab = getActiveTabState();
   if (savedActiveTab) {
-    const $savedTab = $(`.acu-tab-btn[data-table-name="${savedActiveTab}"]`);
+    const $savedTab = $('.acu-tab-btn').filter((_, tab) => $(tab).data('table-name') === savedActiveTab);
     if ($savedTab.length) {
       $savedTab.trigger('click.acu');
       return;

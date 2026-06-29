@@ -4,6 +4,7 @@
 
 import { getCore } from '../core/bridge.js';
 import { getCurrentPageForTable, savePaginationState } from '../core/storage.js';
+import { escapeCellHtml } from './search.js';
 
 export const PAGE_SIZE = 20;
 export const MAX_DISPLAY_PAGES = 9;
@@ -32,7 +33,8 @@ export function generatePaginationHTML(tableName, totalRows, currentPage) {
     endPage = currentPage + Math.floor(maxDisplay / 2);
   }
 
-  let html = `<div class="acu-pagination-container" data-table="${tableName}">`;
+  const escapedTableName = escapeCellHtml(tableName);
+  let html = `<div class="acu-pagination-container" data-table="${escapedTableName}">`;
 
   html += `<button class="acu-page-btn prev ${currentPage === 0 ? 'disabled' : ''}" data-page="${currentPage - 1}" title="上一页"><i class="fas fa-chevron-left"></i></button>`;
 

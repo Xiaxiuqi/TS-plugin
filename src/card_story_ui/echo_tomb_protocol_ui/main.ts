@@ -47,13 +47,18 @@ export function bootstrapApp(): void {
   mountStatusBar(_vueApp);
 
   // 6. 注册卸载链路
+  // 顺序：先卸 Vue 实例（触发 onUnmounted 钩子）→ 重置 Pinia → 再清 DOM/样式/事件
+  // 见 stage-01 §8.1：Vue 实例只在 main.ts 这一处持有与卸载，mount.ts 不再 unmount
   registerCleanup(() => {
     if (_vueApp) {
-      _vueApp.unmount();
+      try {
+        _vueApp.unmount();
+      } catch (e) {
+        console.warn('[EchoTomb] Vue 实例 unmount 失败：', e);
+      }
       _vueApp = null;
     }
     if (_pinia) {
-      // 重置所有 store 状态
       _pinia.state.value = {};
       _pinia = null;
     }

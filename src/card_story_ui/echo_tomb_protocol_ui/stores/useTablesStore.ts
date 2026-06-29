@@ -39,7 +39,14 @@ export const useTablesStore = defineStore('echoTomb_tables', () => {
   const isLoading = ref(false);
   const lastError = ref<string | null>(null);
   /** 填表结束计数，watch 后可触发增量刷新 */
- const tableFillEndCounter = ref(0);
+  const tableFillEndCounter = ref(0);
+  /**
+   * dirty 合并标志（见 stage-01 §8.3 P2-A）：
+   * `refreshAll` 进行中时再次触发刷新只置 _dirty=true 立即返回；
+   * 当前刷新的 finally 里若 _dirty=true 则清标志并自递归一次，
+   * 保证 nailongwang 一次填多表场景下"最后一次 fillEnd"的快照不会被丢弃。
+   */
+  let _dirty = false;
 
   /** 主体 Tab：过滤离场，player_main 优先 */
   const subjectTabs = computed<SubjectTab[]>(() => {
@@ -66,9 +73,15 @@ export const useTablesStore = defineStore('echoTomb_tables', () => {
     return '非战斗';
   });
 
-  /** 全量刷新表格 */
+  /**
+   * 全量刷新表格。dirty 合并语义见上方 _dirty 注释。
+   * 调用方不需要关心是否会被丢弃，最后一次请求最终一定会落地。
+   */
   async function refreshAll(): Promise<void> {
-    if (isLoading.value) return;
+    if (isLoading.value) {
+      _dirty = true;
+      return;
+    }
     isLoading.value = true;
     lastError.value = null;
 
@@ -123,17 +136,30 @@ export const useTablesStore = defineStore('echoTomb_tables', () => {
       console.error('[EchoTomb] refreshAll failed:', e);
     } finally {
       isLoading.value = false;
+      if (_dirty) {
+        _dirty = false;
+        // 期间累计的 fillEnd 事件至少需要再跑一次，确保最终快照与数据库一致
+        void refreshAll();
+      }
     }
   }
 
-  /** 订阅数据库填表结束事件，骨架挂载后调用一次 */
+  /**
+   * 订阅数据库填表结束事件。骨架挂载后调用一次。
+   *
+   * AutoCardUpdaterAPI 不暴露反向 unsubscribe（见主文档 §8 第 9 条），
+   * 所以这里通过 alive 标记做软解绑：cleanup 时把 _alive 置 false，
+   * 闭包仍会被宿主调用，但内部立即 return，等价于解除订阅。
+   */
   let _subscribed = false;
+  let _alive = true;
   function subscribeFillEnd(): void {
     if (_subscribed) return;
     _subscribed = true;
     try {
       const db = getDatabase();
       db.onTableFillEnd(() => {
+        if (!_alive) return;
         tableFillEndCounter.value++;
       });
     } catch (e) {
@@ -143,6 +169,8 @@ export const useTablesStore = defineStore('echoTomb_tables', () => {
 
   // 卸载时释放引用
   registerCleanup(() => {
+    // 先关掉 fillEnd 闭包，避免后续宿主回调误触已 disposed 的 ref
+    _alive = false;
     globalRow.value = {};
     subjectTable.value = null;
     characterTable.value = null;

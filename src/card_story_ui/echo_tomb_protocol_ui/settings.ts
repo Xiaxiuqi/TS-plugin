@@ -23,9 +23,41 @@ export type Settings = z.infer<typeof SettingsSchema>;
 
 let _settings: Settings | null = null;
 
+/**
+ * 初始化设置。读取脚本变量并按 schema 校验：
+ * - 读取或校验失败时不抛错，回退到 schema 默认值，并立即写回覆盖脏值，
+ *   保证 bootstrap 不因为旧版本/手改残留的非法字段整体失败（见 stage-01 §8.5）。
+ */
 export function initSettings(): Settings {
-  const raw = getVariables({ type: 'script', script_id: getScriptId() });
-  _settings = SettingsSchema.parse(raw ?? {});
+  let raw: unknown = null;
+  try {
+    raw = getVariables({ type: 'script', script_id: getScriptId() });
+  } catch (e) {
+    console.warn('[EchoTomb] 读取脚本变量失败，使用默认设置：', e);
+  }
+
+  const parsed = SettingsSchema.safeParse(raw ?? {});
+  if (parsed.success) {
+    _settings = parsed.data;
+    return _settings;
+  }
+
+  const issueSummary = parsed.error.issues
+    .map(i => `${i.path.join('.') || '<root>'}: ${i.message}`)
+    .join('; ');
+  console.warn(
+    `[EchoTomb] 脚本变量中的设置项校验失败，已重置为默认值。issues: ${issueSummary}`,
+  );
+
+  _settings = SettingsSchema.parse({});
+  try {
+    insertOrAssignVariables(
+      { ..._settings },
+      { type: 'script', script_id: getScriptId() },
+    );
+  } catch (e) {
+    console.warn('[EchoTomb] 兜底设置写回脚本变量失败：', e);
+  }
   return _settings;
 }
 
@@ -34,8 +66,19 @@ export function getSettings(): Settings {
   return _settings;
 }
 
+/**
+ * 更新设置并持久化到脚本变量。
+ * 校验失败会抛错（调用方应避免传入非法值）；持久化失败仅 warn，不抛。
+ */
 export function updateSettings(partial: Partial<Settings>): Settings {
   _settings = SettingsSchema.parse({ ..._settings, ...partial });
-  insertOrAssignVariables({ ..._settings }, { type: 'script', script_id: getScriptId() });
+  try {
+    insertOrAssignVariables(
+      { ..._settings },
+      { type: 'script', script_id: getScriptId() },
+    );
+  } catch (e) {
+    console.warn('[EchoTomb] 设置写回脚本变量失败：', e);
+  }
   return _settings;
 }

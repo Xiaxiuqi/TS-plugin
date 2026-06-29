@@ -10,9 +10,12 @@ export interface DatabaseAPI {
   importTable(tableName: string, data: any[][]): Promise<boolean>;
   /** 调用 AI */
   callAI(prompt: string, options?: { model?: string }): Promise<string | null>;
-  /** 注册填表结束回调 */
+  /** 注册填表结束回调（宿主未暴露反向 unsubscribe，store 侧通过 alive 标记软解绑） */
   onTableFillEnd(callback: () => void): void;
-  /** 注册表更新回调 */
+  /**
+   * 注册表更新回调
+   * @deprecated t6.1 阶段未发现实际调用方；t8 地图面板若不需要，t12 验证回归阶段一并删除
+   */
   onTableUpdate(callback: () => void): void;
   /** 刷新数据和世界书 */
   refresh(): Promise<void>;

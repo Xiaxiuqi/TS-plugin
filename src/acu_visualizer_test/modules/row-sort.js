@@ -220,7 +220,7 @@ export function startRowOrderEditing(deps = {}) {
   $('#acu-order-controls').removeClass('visible');
   const activeTab = getActiveTabState();
   if (activeTab) {
-    const $activeTabBtn = $(`.acu-tab-btn[data-table-name="${activeTab}"]`);
+    const $activeTabBtn = $('.acu-tab-btn').filter((_, tab) => $(tab).data('table-name') === activeTab);
     if ($activeTabBtn.length) $activeTabBtn.trigger('click.acu');
   }
   deps.showNotification?.('已开启行排序模式（实时生效，文字选择已禁用）', 'info');
@@ -233,7 +233,7 @@ export function stopRowOrderEditing(deps = {}) {
   $('#acu-order-controls').removeClass('visible');
   const activeTab = getActiveTabState();
   if (activeTab) {
-    const $activeTabBtn = $(`.acu-tab-btn[data-table-name="${activeTab}"]`);
+    const $activeTabBtn = $('.acu-tab-btn').filter((_, tab) => $(tab).data('table-name') === activeTab);
     if ($activeTabBtn.length) $activeTabBtn.trigger('click.acu');
   }
   deps.showNotification?.('行排序模式已关闭', 'success');
