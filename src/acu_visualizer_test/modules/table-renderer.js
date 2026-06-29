@@ -115,7 +115,7 @@ export function generateTableHTML(deps = {}) {
         <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
-                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.8 [标识：${escapedDataIsolationCode}]</span></span>
+                    <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.9 [标识：${escapedDataIsolationCode}]</span></span>
                     <div style="display: flex; align-items: center; gap: 12px; height: 24px; position: relative;">
                         <span class="acu-expand-hint" style="font-size: 11px; opacity: 0.6; pointer-events: none;">${isExpanded ? '点击收起' : '点击展开'}</span>
                         <button class="acu-mode-toggle acu-moon-box" title="切换昼夜模式" type="button">
