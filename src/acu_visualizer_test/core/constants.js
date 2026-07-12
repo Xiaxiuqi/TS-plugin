@@ -28,6 +28,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   maxHistoryItems: 30,
   keepSnapshots: false,
   horizontalTables: [],
+  columnHeaderFontSize: 14,
+  tabFontSize: 13,
+  tableDataFontSize: 13,
 });
 
 export const DEFAULT_CLEANUP_SETTINGS = Object.freeze({

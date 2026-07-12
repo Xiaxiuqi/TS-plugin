@@ -164,7 +164,7 @@ export function generateTableHTML(deps = {}) {
   const validActiveTab = activeTab && orderedTableNames.includes(activeTab) ? activeTab : null;
 
   let html = `
-        <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}">
+        <div class="acu-table-container acu-theme-${config.theme} ${isNightMode ? 'night-mode' : ''}" style="--acu-column-header-font-size: ${config.columnHeaderFontSize}px; --acu-tab-font-size: ${config.tabFontSize}px; --acu-table-data-font-size: ${config.tableDataFontSize}px;">
             <details ${isExpanded ? 'open' : ''}>
                 <summary>
                     <span><i class="fas fa-table" style="margin-right: 8px; opacity: 0.8;"></i>数据表格 ${tables ? '(' + orderedTableNames.length + '个表格)' : ''} <span style="font-size: 0.8em;">v9.9 [标识：${escapedDataIsolationCode}]</span></span>

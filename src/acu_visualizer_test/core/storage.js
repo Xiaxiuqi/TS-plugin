@@ -2,29 +2,41 @@
 // 来源：public/acu_visualizer/acu_visualizer-test.js 中配置、分页、快照、存储清理、历史读写相关逻辑。
 // 迁移原则：只迁移原有 localStorage 读写行为，不改变 key，不改变数据格式，不夹带内存优化。
 
-import {
-  DEFAULT_CLEANUP_SETTINGS,
-  DEFAULT_CONFIG,
-  STORAGE_KEYS,
-  STORAGE_SIZE_LIMIT_MB,
-  THEMES,
-} from './constants.js';
+import { DEFAULT_CLEANUP_SETTINGS, DEFAULT_CONFIG, STORAGE_KEYS, STORAGE_SIZE_LIMIT_MB, THEMES } from './constants.js';
 
 const VALID_THEME_IDS = new Set(THEMES.map(theme => theme.id));
+const MIN_TABLE_FONT_SIZE = 10;
+const MAX_TABLE_FONT_SIZE = 24;
+
+function normalizeTableFontSize(value, fallback) {
+  if ((typeof value !== 'number' && typeof value !== 'string') || String(value).trim() === '') {
+    return fallback;
+  }
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue)
+    ? Math.min(MAX_TABLE_FONT_SIZE, Math.max(MIN_TABLE_FONT_SIZE, numericValue))
+    : fallback;
+}
 
 export function normalizeConfig(config = DEFAULT_CONFIG) {
   const merged = { ...DEFAULT_CONFIG, ...(config && typeof config === 'object' ? config : {}) };
-  const theme = typeof merged.theme === 'string' && VALID_THEME_IDS.has(merged.theme) ? merged.theme : DEFAULT_CONFIG.theme;
+  const theme =
+    typeof merged.theme === 'string' && VALID_THEME_IDS.has(merged.theme) ? merged.theme : DEFAULT_CONFIG.theme;
   const horizontalTables = Array.isArray(merged.horizontalTables)
     ? Array.from(
         new Set(
-          merged.horizontalTables.filter(
-            tableName => typeof tableName === 'string' && tableName.trim().length > 0,
-          ),
+          merged.horizontalTables.filter(tableName => typeof tableName === 'string' && tableName.trim().length > 0),
         ),
       )
     : [];
-  return { ...merged, theme, horizontalTables };
+  return {
+    ...merged,
+    theme,
+    horizontalTables,
+    columnHeaderFontSize: normalizeTableFontSize(merged.columnHeaderFontSize, DEFAULT_CONFIG.columnHeaderFontSize),
+    tabFontSize: normalizeTableFontSize(merged.tabFontSize, DEFAULT_CONFIG.tabFontSize),
+    tableDataFontSize: normalizeTableFontSize(merged.tableDataFontSize, DEFAULT_CONFIG.tableDataFontSize),
+  };
 }
 
 export const CRITICAL_SETTINGS = Object.freeze([

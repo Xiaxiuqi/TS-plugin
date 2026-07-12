@@ -71,6 +71,7 @@ export function generateSettingsDialogHTML({ config, cleanupSettings, storageAna
                     </div>
                     <div class="acu-settings-tabs">
                         <button class="acu-settings-tab active" data-tab="storage">📦 存储管理</button>
+                        <button class="acu-settings-tab" data-tab="table">📊 表格设置</button>
                         <button class="acu-settings-tab" data-tab="advanced">⚡ 高级选项</button>
                     </div>
                     <div class="acu-settings-content">
@@ -115,6 +116,23 @@ export function generateSettingsDialogHTML({ config, cleanupSettings, storageAna
                                 </div>
                             </div>
                         </div>
+                        <div class="acu-settings-tab-content" id="table-tab">
+                            <div class="acu-table-options">
+                                <h4>表格显示设置</h4>
+                                <div class="acu-font-size-settings">
+                                    <label class="acu-font-size-control" for="columnHeaderFontSize"><span>列名字体大小</span><output id="columnHeaderFontSizeValue">${config.columnHeaderFontSize}px</output><input type="range" id="columnHeaderFontSize" min="10" max="24" step="1" value="${config.columnHeaderFontSize}"><small>同时调整纵向表头与横向模式左侧列名。</small></label>
+                                    <label class="acu-font-size-control" for="tabFontSize"><span>标签字体大小</span><output id="tabFontSizeValue">${config.tabFontSize}px</output><input type="range" id="tabFontSize" min="10" max="24" step="1" value="${config.tabFontSize}"><small>调整表格切换标签的名称字体。</small></label>
+                                    <label class="acu-font-size-control" for="tableDataFontSize"><span>表格内数据字体大小</span><output id="tableDataFontSizeValue">${config.tableDataFontSize}px</output><input type="range" id="tableDataFontSize" min="10" max="24" step="1" value="${config.tableDataFontSize}"><small>调整数据单元格内容，不影响工具栏与分页。</small></label>
+                                </div>
+                                <div class="acu-table-direction-settings">
+                                    <h5>表格方向设置</h5>
+                                    <p class="acu-table-direction-description">可为单个表格启用横向显示。未勾选的表格保持默认显示方式。</p>
+                                    <div class="acu-option-group acu-table-direction-list">
+                                        ${generateTableDirectionSettingsHTML(tableNames, config.horizontalTables)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="acu-settings-tab-content" id="advanced-tab">
                             <div class="acu-advanced-options">
                                 <h4>高级设置</h4>
@@ -123,9 +141,6 @@ export function generateSettingsDialogHTML({ config, cleanupSettings, storageAna
                                     <label class="acu-checkbox"><input type="checkbox" id="keepSnapshots" ${config.keepSnapshots ? 'checked' : ''}><span>保留数据快照</span><small>不自动清理数据快照</small></label>
                                     <label class="acu-checkbox"><input type="checkbox" id="debugMode"><span>调试模式</span><small>在控制台显示详细日志</small></label>
                                 </div>
-                                <div class="acu-table-direction-settings"><h5>表格方向设置</h5><p class="acu-table-direction-description">可为单个表格启用横向显示。未勾选的表格保持默认显示方式。</p><div class="acu-option-group acu-table-direction-list">
-                                    ${generateTableDirectionSettingsHTML(tableNames, config.horizontalTables)}
-                                </div></div>
                                 <div class="acu-storage-details"><h5>存储详细信息</h5><div class="acu-storage-items">
                                     <div class="acu-storage-section"><h6>关键设置（始终保留）</h6>${storageAnalysis.criticalItems.map(item => `<div class="acu-storage-item critical"><span class="acu-storage-item-name">${item.description}</span><span class="acu-storage-item-size">${item.size}</span></div>`).join('')}</div>
                                     <div class="acu-storage-section"><h6>可清理项目</h6>${storageAnalysis.nonCriticalItems.map(item => `<div class="acu-storage-item cleanable"><span class="acu-storage-item-name">${item.description}</span><span class="acu-storage-item-size">${item.size}</span></div>`).join('')}</div>
@@ -159,8 +174,19 @@ export function showSettingsDialog(deps = {}) {
 
 export function bindSettingsDialogEvents(deps = {}) {
   const { $ } = deps.core || getCore();
-  const closeSettingsDialog = () => removeWithEvents($('.acu-settings-overlay'));
-  $('.acu-settings-close, #acu-settings-cancel').on('click.acu', closeSettingsDialog);
+  const initialConfig = getConfig();
+  const applyFontSizePreview = config => {
+    $('.acu-table-container').css({
+      '--acu-column-header-font-size': `${config.columnHeaderFontSize}px`,
+      '--acu-tab-font-size': `${config.tabFontSize}px`,
+      '--acu-table-data-font-size': `${config.tableDataFontSize}px`,
+    });
+  };
+  const closeSettingsDialog = ({ restorePreview = true } = {}) => {
+    if (restorePreview) applyFontSizePreview(initialConfig);
+    removeWithEvents($('.acu-settings-overlay'));
+  };
+  $('.acu-settings-close, #acu-settings-cancel').on('click.acu', () => closeSettingsDialog());
   $('.acu-settings-tab').on('click.acu', function () {
     const tabId = $(this).data('tab');
     $('.acu-settings-tab').removeClass('active');
@@ -170,6 +196,15 @@ export function bindSettingsDialogEvents(deps = {}) {
   });
   $('#maxHistoryItems').on('input.acu', function () {
     $('#historyCountValue').text($(this).val());
+  });
+  $('.acu-font-size-control input[type="range"]').on('input.acu', function () {
+    const value = Number($(this).val());
+    $(`#${this.id}Value`).text(`${value}px`);
+    applyFontSizePreview({
+      columnHeaderFontSize: Number($('#columnHeaderFontSize').val()),
+      tabFontSize: Number($('#tabFontSize').val()),
+      tableDataFontSize: Number($('#tableDataFontSize').val()),
+    });
   });
   $('.acu-theme-option input').on('change.acu', function () {
     const theme = $(this).val();
@@ -234,7 +269,8 @@ export function bindSettingsDialogEvents(deps = {}) {
     if (confirm('确定要重置所有设置为默认值吗？')) {
       saveConfig(DEFAULT_CONFIG);
       saveCleanupSettings(DEFAULT_CLEANUP_SETTINGS);
-      closeSettingsDialog();
+      applyFontSizePreview(DEFAULT_CONFIG);
+      closeSettingsDialog({ restorePreview: false });
       setTimeout(() => showSettingsDialog(deps), 100);
       showStatusMessage('设置已重置为默认值', 'success', deps.core);
     }
@@ -251,6 +287,9 @@ export function bindSettingsDialogEvents(deps = {}) {
       autoCleanup: $('#autoCleanup').is(':checked'),
       keepSnapshots: $('#keepSnapshots').is(':checked'),
       horizontalTables: collectHorizontalTables($),
+      columnHeaderFontSize: Number($('#columnHeaderFontSize').val()),
+      tabFontSize: Number($('#tabFontSize').val()),
+      tableDataFontSize: Number($('#tableDataFontSize').val()),
     };
     saveConfig(newConfig);
     const nextNightMode = $('#autoNightMode').length
@@ -267,7 +306,7 @@ export function bindSettingsDialogEvents(deps = {}) {
       deps.insertTableAfterLatestAIMessage();
     }
     showStatusMessage('设置已保存', 'success', deps.core);
-    setTimeout(closeSettingsDialog, 1000);
+    setTimeout(() => closeSettingsDialog({ restorePreview: false }), 1000);
   });
 }
 

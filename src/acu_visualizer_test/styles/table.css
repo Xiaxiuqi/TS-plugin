@@ -15,6 +15,7 @@
   --acu-row-sort-hover: rgba(180, 138, 92, 0.12);
   --acu-row-drop-bg: rgba(140, 110, 84, 0.18);
   --acu-row-drop-border: #8c6e54;
+  --acu-horizontal-row-header-bg: rgba(140, 110, 84, 0.5);
 }
 .acu-theme-dark {
   --acu-primary: #8479b8;
@@ -33,6 +34,7 @@
   --acu-row-sort-hover: rgba(132, 121, 184, 0.14);
   --acu-row-drop-bg: rgba(132, 121, 184, 0.2);
   --acu-row-drop-border: #8479b8;
+  --acu-horizontal-row-header-bg: rgba(132, 121, 184, 0.5);
 }
 .acu-theme-modern {
   --acu-primary: #5c9dff;
@@ -51,6 +53,7 @@
   --acu-row-sort-hover: rgba(92, 157, 255, 0.12);
   --acu-row-drop-bg: rgba(92, 157, 255, 0.2);
   --acu-row-drop-border: #5c9dff;
+  --acu-horizontal-row-header-bg: rgba(92, 157, 255, 0.5);
 }
 .acu-theme-forest {
   --acu-primary: #4a8c5c;
@@ -69,6 +72,7 @@
   --acu-row-sort-hover: rgba(74, 140, 92, 0.12);
   --acu-row-drop-bg: rgba(74, 140, 92, 0.2);
   --acu-row-drop-border: #4a8c5c;
+  --acu-horizontal-row-header-bg: rgba(74, 140, 92, 0.5);
 }
 .acu-theme-ocean {
   --acu-primary: #4a7ca8;
@@ -87,6 +91,7 @@
   --acu-row-sort-hover: rgba(74, 124, 168, 0.12);
   --acu-row-drop-bg: rgba(74, 124, 168, 0.2);
   --acu-row-drop-border: #4a7ca8;
+  --acu-horizontal-row-header-bg: rgba(74, 124, 168, 0.5);
 }
 
 .acu-table-container.night-mode.acu-theme-dark {
@@ -903,7 +908,7 @@
   color: var(--acu-text) !important;
   padding: 6px 5px !important;
   border-radius: 6px !important;
-  font-size: 13px !important;
+  font-size: var(--acu-tab-font-size, 13px) !important;
   cursor: pointer !important;
   transition: all 0.2s ease-in-out !important;
   font-family: 'Noto Serif SC', serif !important;
@@ -1031,7 +1036,7 @@
   font-weight: bold !important;
   border: 1px solid rgba(90, 62, 43, 0.3) !important;
   font-family: 'Noto Serif SC', serif !important;
-  font-size: 14px !important;
+  font-size: var(--acu-column-header-font-size, 14px) !important;
   transition: all 0.3s ease !important;
 }
 .acu-table-container.night-mode .data-table th {
@@ -1046,7 +1051,7 @@
   cursor: pointer !important;
   transition: background-color 0.2s !important;
   word-wrap: break-word !important;
-  font-size: 13px !important;
+  font-size: var(--acu-table-data-font-size, 13px) !important;
   color: var(--acu-text) !important;
   font-weight: 500 !important;
 }
@@ -1093,16 +1098,18 @@
 .acu-table-container.night-mode .acu-horizontal-data-table tr:nth-child(even) td {
   background-color: rgba(58, 58, 58, 0.9) !important;
 }
-.acu-table-container .acu-horizontal-row-header {
+.acu-table-container .acu-horizontal-data-table th.acu-horizontal-row-header {
   position: sticky !important;
   left: 0 !important;
-  z-index: 2 !important;
+  z-index: 20 !important;
   min-width: 120px !important;
   max-width: 220px !important;
   white-space: normal !important;
   word-break: break-word !important;
   text-align: left !important;
   vertical-align: middle !important;
+  background-color: var(--acu-horizontal-row-header-bg, rgba(140, 110, 84, 0.5)) !important;
+  background-color: color-mix(in srgb, var(--acu-primary) 50%, transparent) !important;
 }
 .acu-table-container .acu-horizontal-data-table td {
   min-width: 160px !important;
@@ -2085,12 +2092,63 @@
   flex-direction: column !important;
   gap: 12px !important;
 }
+.acu-table-options {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+.acu-table-options h4 {
+  margin: 0 !important;
+  font-size: 14px !important;
+  color: var(--acu-text) !important;
+}
+.acu-font-size-settings {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  gap: 12px !important;
+}
+.acu-font-size-control {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: 8px 12px !important;
+  padding: 12px !important;
+  border: 1px solid var(--acu-border) !important;
+  border-radius: 8px !important;
+  background: var(--acu-secondary) !important;
+  color: var(--acu-text) !important;
+}
+.acu-font-size-control span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.acu-font-size-control output {
+  color: var(--acu-primary) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+.acu-font-size-control input[type='range'] {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  accent-color: var(--acu-primary) !important;
+}
+.acu-font-size-control small {
+  grid-column: 1 / -1 !important;
+  color: var(--acu-text) !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  opacity: 0.72 !important;
+}
 .acu-table-direction-settings {
-  margin-top: 20px !important;
+  margin-top: 0 !important;
   padding: 15px !important;
   border: 1px solid var(--acu-border) !important;
   border-radius: 8px !important;
   background: var(--acu-secondary) !important;
+}
+.acu-settings-overlay.night-mode .acu-font-size-control,
+.acu-settings-overlay.night-mode .acu-table-direction-settings {
+  border-color: #4b4b4b !important;
+  background: #363636 !important;
 }
 .acu-table-direction-settings h5 {
   margin-top: 0 !important;
@@ -2117,8 +2175,15 @@
   background: rgba(255, 255, 255, 0.45) !important;
 }
 .acu-settings-overlay.night-mode .acu-table-direction-option {
-  border-color: #444 !important;
+  border-color: #505050 !important;
   background: rgba(255, 255, 255, 0.05) !important;
+}
+.acu-settings-overlay.night-mode .acu-table-direction-settings h5,
+.acu-settings-overlay.night-mode .acu-table-direction-description,
+.acu-settings-overlay.night-mode .acu-table-direction-option span,
+.acu-settings-overlay.night-mode .acu-table-direction-option small,
+.acu-settings-overlay.night-mode .acu-table-direction-empty {
+  color: #dbdbd6 !important;
 }
 .acu-table-direction-empty {
   padding: 10px 12px !important;
@@ -2127,6 +2192,11 @@
   font-size: 12px !important;
   color: var(--acu-text) !important;
   opacity: 0.75 !important;
+}
+.acu-settings-overlay.night-mode .acu-table-direction-empty {
+  border-color: #5a5a5a !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  opacity: 0.85 !important;
 }
 .acu-checkbox {
   display: flex !important;
