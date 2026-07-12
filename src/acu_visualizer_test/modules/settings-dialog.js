@@ -13,6 +13,8 @@ import {
   saveCleanupSettings,
   saveConfig,
 } from '../core/storage.js';
+import { processJsonData } from './table-data.js';
+import { escapeCellHtml } from './search.js';
 import { applyThemeStyles, saveNightModeState } from './theme.js';
 
 export function getStorageItemSize(key) {
@@ -32,7 +34,28 @@ export function showStatusMessage(message, type = 'info', core = getCore()) {
   $status.text(message).removeClass('success error info').addClass(type);
 }
 
-export function generateSettingsDialogHTML({ config, cleanupSettings, storageAnalysis, isNightMode }) {
+export function getTablesForDirectionSettings(deps = {}) {
+  const rawData = typeof deps.getTableData === 'function' ? deps.getTableData() : null;
+  const tables = typeof deps.processJsonData === 'function' ? deps.processJsonData(rawData) : processJsonData(rawData);
+  return tables && typeof tables === 'object' ? Object.keys(tables) : [];
+}
+
+export function generateTableDirectionSettingsHTML(tableNames = [], horizontalTables = []) {
+  const selectedTables = new Set(Array.isArray(horizontalTables) ? horizontalTables : []);
+  if (!tableNames.length) {
+    return '<div class="acu-table-direction-empty">当前未检测到可设置方向的表格。</div>';
+  }
+
+  return tableNames
+    .map(tableName => {
+      const escapedTableName = escapeCellHtml(tableName);
+      const checked = selectedTables.has(tableName) ? 'checked' : '';
+      return `<label class="acu-checkbox acu-table-direction-option"><input type="checkbox" class="acu-horizontal-table-checkbox" value="${escapedTableName}" data-table-name="${escapedTableName}" ${checked}><span>${escapedTableName}</span><small>勾选后该表格表头在左侧纵向排列，数据行横向展开</small></label>`;
+    })
+    .join('');
+}
+
+export function generateSettingsDialogHTML({ config, cleanupSettings, storageAnalysis, isNightMode, tableNames = [] }) {
   const cleanableSize =
     storageAnalysis.nonCriticalItems.reduce((sum, item) => {
       const size = parseFloat(item.size);
@@ -100,6 +123,9 @@ export function generateSettingsDialogHTML({ config, cleanupSettings, storageAna
                                     <label class="acu-checkbox"><input type="checkbox" id="keepSnapshots" ${config.keepSnapshots ? 'checked' : ''}><span>保留数据快照</span><small>不自动清理数据快照</small></label>
                                     <label class="acu-checkbox"><input type="checkbox" id="debugMode"><span>调试模式</span><small>在控制台显示详细日志</small></label>
                                 </div>
+                                <div class="acu-table-direction-settings"><h5>表格方向设置</h5><p class="acu-table-direction-description">可为单个表格启用横向显示。未勾选的表格保持默认显示方式。</p><div class="acu-option-group acu-table-direction-list">
+                                    ${generateTableDirectionSettingsHTML(tableNames, config.horizontalTables)}
+                                </div></div>
                                 <div class="acu-storage-details"><h5>存储详细信息</h5><div class="acu-storage-items">
                                     <div class="acu-storage-section"><h6>关键设置（始终保留）</h6>${storageAnalysis.criticalItems.map(item => `<div class="acu-storage-item critical"><span class="acu-storage-item-name">${item.description}</span><span class="acu-storage-item-size">${item.size}</span></div>`).join('')}</div>
                                     <div class="acu-storage-section"><h6>可清理项目</h6>${storageAnalysis.nonCriticalItems.map(item => `<div class="acu-storage-item cleanable"><span class="acu-storage-item-name">${item.description}</span><span class="acu-storage-item-size">${item.size}</span></div>`).join('')}</div>
@@ -126,7 +152,8 @@ export function showSettingsDialog(deps = {}) {
   const cleanupSettings = getCleanupSettings();
   const storageAnalysis = getStorageAnalysis();
   const isNightMode = $('.acu-table-container').hasClass('night-mode');
-  $('body').append(generateSettingsDialogHTML({ config, cleanupSettings, storageAnalysis, isNightMode }));
+  const tableNames = getTablesForDirectionSettings(deps);
+  $('body').append(generateSettingsDialogHTML({ config, cleanupSettings, storageAnalysis, isNightMode, tableNames }));
   bindSettingsDialogEvents(deps);
 }
 
@@ -223,6 +250,7 @@ export function bindSettingsDialogEvents(deps = {}) {
         : config.maxHistoryItems,
       autoCleanup: $('#autoCleanup').is(':checked'),
       keepSnapshots: $('#keepSnapshots').is(':checked'),
+      horizontalTables: collectHorizontalTables($),
     };
     saveConfig(newConfig);
     const nextNightMode = $('#autoNightMode').length
@@ -233,9 +261,23 @@ export function bindSettingsDialogEvents(deps = {}) {
     applyThemeStyles(newConfig.theme);
     if (nextNightMode) $('.acu-table-container').addClass('night-mode');
     else $('.acu-table-container').removeClass('night-mode');
+    if (typeof deps.updateTableContentOnly === 'function') {
+      deps.updateTableContentOnly();
+    } else if (typeof deps.insertTableAfterLatestAIMessage === 'function') {
+      deps.insertTableAfterLatestAIMessage();
+    }
     showStatusMessage('设置已保存', 'success', deps.core);
     setTimeout(closeSettingsDialog, 1000);
   });
+}
+
+export function collectHorizontalTables($) {
+  const tableNames = [];
+  $('.acu-horizontal-table-checkbox:checked').each(function () {
+    const tableName = $(this).data('table-name');
+    if (typeof tableName === 'string' && tableName.length > 0) tableNames.push(tableName);
+  });
+  return tableNames;
 }
 
 export function collectCleanupSettings($) {

@@ -15,7 +15,16 @@ const VALID_THEME_IDS = new Set(THEMES.map(theme => theme.id));
 export function normalizeConfig(config = DEFAULT_CONFIG) {
   const merged = { ...DEFAULT_CONFIG, ...(config && typeof config === 'object' ? config : {}) };
   const theme = typeof merged.theme === 'string' && VALID_THEME_IDS.has(merged.theme) ? merged.theme : DEFAULT_CONFIG.theme;
-  return { ...merged, theme };
+  const horizontalTables = Array.isArray(merged.horizontalTables)
+    ? Array.from(
+        new Set(
+          merged.horizontalTables.filter(
+            tableName => typeof tableName === 'string' && tableName.trim().length > 0,
+          ),
+        ),
+      )
+    : [];
+  return { ...merged, theme, horizontalTables };
 }
 
 export const CRITICAL_SETTINGS = Object.freeze([

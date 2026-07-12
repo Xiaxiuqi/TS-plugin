@@ -27,6 +27,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   autoCleanup: true,
   maxHistoryItems: 30,
   keepSnapshots: false,
+  horizontalTables: [],
 });
 
 export const DEFAULT_CLEANUP_SETTINGS = Object.freeze({

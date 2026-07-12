@@ -25,7 +25,7 @@ import {
   isCellUserEdited,
   shouldShowBadge,
 } from './diff-highlighting.js';
-import { generatePaginationHTML } from './pagination.js';
+import { generatePaginationHTML, PAGE_SIZE } from './pagination.js';
 import { getOriginalRowIndex, initializeRowMapping } from './row-sort.js';
 import { escapeCellHtml, filterRowDisplayIndices, generateSearchToolbarHTML, highlightSearchMatches } from './search.js';
 import { cleanupRuntimeState } from './state-cleanup.js';
@@ -33,28 +33,91 @@ import { getSafeTableId, getTableData, processJsonData } from './table-data.js';
 import { getOrderedTableNames } from './table-sort.js';
 import { getActiveTabState } from './tabs.js';
 
-export function renderDataTable(tableData, tableName, deps = {}) {
-  if (!tableData.rows || tableData.rows.length === 0) return '<div class="empty-message">暂无数据</div>';
-  initializeRowMapping(tableName, tableData, state.rowPositionMapping);
+function generateEditableCellHTML(tableData, tableName, originalIndex, colIndex, cell, extraClass = '', extraAttrs = '') {
+  const formattedContent = highlightSearchMatches(cell || '', state.search.currentSearchTerm);
+  let highlightClass = '';
+  if (isCellUserEdited(tableName, originalIndex, colIndex, state.currentUserEditMap))
+    highlightClass = 'acu-highlight-user-edit';
+  else if (isCellDBUpdated(tableName, originalIndex, colIndex, state.currentDiffMap))
+    highlightClass = 'acu-highlight-changed';
 
-  const filteredIndices = filterRowDisplayIndices(tableData, tableName, {
-    getOriginalRowIndex: (name, index) => getOriginalRowIndex(name, index, state.rowPositionMapping),
-    searchTerm: state.search.currentSearchTerm,
-  });
+  const deleteKey = `${tableName}-row-${originalIndex}`;
+  const isPendingDelete = state.pendingDeletes.has(deleteKey);
+  const columnName = tableData.headers[colIndex] || '';
+  const cellClass = isPendingDelete
+    ? `acu-editable-cell ${extraClass}`.trim()
+    : `acu-editable-cell ${highlightClass} ${extraClass}`.trim();
+  const escapedTableKey = escapeCellHtml(tableData.key);
+  const escapedTableName = escapeCellHtml(tableName);
+  const escapedColumnName = escapeCellHtml(columnName);
+  return `<td class="${cellClass}" data-table-key="${escapedTableKey}" data-table-name="${escapedTableName}" data-row="${originalIndex}" data-col="${colIndex}" data-col-name="${escapedColumnName}"${extraAttrs}>${formattedContent}</td>`;
+}
+
+function renderHorizontalDataTable(tableData, tableName, paginatedDisplayIndices) {
+  const visibleHeaderEntries = tableData.headers.map((header, index) => ({ header, index })).filter(item => item.index > 0 && item.header);
+  if (!visibleHeaderEntries.length) return '<div class="empty-message">暂无可显示列</div>';
+
+  let html = '<div class="data-table-wrapper acu-horizontal-table-wrapper"><table class="data-table acu-horizontal-data-table"><tbody>';
+  if (paginatedDisplayIndices.length === 0) {
+    html += `<tr><td colspan="2" style="text-align:center; padding: 20px; opacity: 0.6;">没有匹配的结果</td></tr>`;
+  } else {
+    visibleHeaderEntries.forEach(({ header, index }) => {
+      html += `<tr><th scope="row" class="acu-horizontal-row-header">${escapeCellHtml(header)}</th>`;
+      paginatedDisplayIndices.forEach(displayIndex => {
+        const originalIndex = getOriginalRowIndex(tableName, displayIndex, state.rowPositionMapping);
+        const row = tableData.rows[originalIndex] || [];
+        const deleteKey = `${tableName}-row-${originalIndex}`;
+        const pendingClass = state.pendingDeletes.has(deleteKey) ? 'pending-deletion-cell' : '';
+        const cellClass = `acu-horizontal-data-cell ${pendingClass}`.trim();
+        const dragAttrs = ` data-display-index="${displayIndex}" data-original-index="${originalIndex}"`;
+        html += generateEditableCellHTML(tableData, tableName, originalIndex, index, row[index], cellClass, dragAttrs);
+      });
+      html += '</tr>';
+    });
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+export function getTableViewState(tableData, tableName, deps = {}) {
+  const rows = tableData?.rows || [];
+  if (rows.length > 0) initializeRowMapping(tableName, tableData, state.rowPositionMapping);
+
+  const filteredIndices = rows.length > 0
+    ? filterRowDisplayIndices(tableData, tableName, {
+      getOriginalRowIndex: (name, index) => getOriginalRowIndex(name, index, state.rowPositionMapping),
+      searchTerm: state.search.currentSearchTerm,
+    })
+    : [];
   const filteredTotalCount = filteredIndices.length;
   let currentPage = deps.getCurrentPageForTable
     ? deps.getCurrentPageForTable(tableName)
     : getCurrentPageForTable(tableName);
-  const pageSize = 20;
-  const maxPage = Math.ceil(filteredTotalCount / pageSize) - 1;
-  if (currentPage > maxPage && filteredTotalCount > 0) {
-    currentPage = Math.max(0, maxPage);
+  const maxPage = Math.max(0, Math.ceil(filteredTotalCount / PAGE_SIZE) - 1);
+  if (currentPage > maxPage || currentPage < 0) {
+    currentPage = maxPage;
     deps.savePaginationState?.(tableName, currentPage);
   }
 
-  const startIndex = currentPage * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, filteredTotalCount);
+  const startIndex = currentPage * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, filteredTotalCount);
   const paginatedDisplayIndices = filteredIndices.slice(startIndex, endIndex);
+
+  return { filteredTotalCount, currentPage, paginatedDisplayIndices };
+}
+
+export function renderDataTable(tableData, tableName, deps = {}) {
+  if (!tableData.rows || tableData.rows.length === 0) {
+    return '<div class="acu-table-body-container"><div class="empty-message">暂无数据</div></div>';
+  }
+
+  const viewState = deps.tableViewState || getTableViewState(tableData, tableName, deps);
+  const { paginatedDisplayIndices } = viewState;
+
+  const config = normalizeConfig(deps.getConfig ? deps.getConfig() : getConfig());
+  if (config.horizontalTables.includes(tableName)) {
+    return `<div class="acu-table-body-container">${renderHorizontalDataTable(tableData, tableName, paginatedDisplayIndices)}</div>`;
+  }
 
   let html = '<div class="data-table-wrapper"><table class="data-table"><thead><tr>';
   tableData.headers.forEach((header, index) => {
@@ -76,25 +139,14 @@ export function renderDataTable(tableData, tableName, deps = {}) {
 
     row.forEach((cell, index) => {
       if (index > 0) {
-        const formattedContent = highlightSearchMatches(cell || '', state.search.currentSearchTerm);
-        let highlightClass = '';
-        if (isCellUserEdited(tableName, originalIndex, index, state.currentUserEditMap))
-          highlightClass = 'acu-highlight-user-edit';
-        else if (isCellDBUpdated(tableName, originalIndex, index, state.currentDiffMap))
-          highlightClass = 'acu-highlight-changed';
-        const columnName = tableData.headers[index] || '';
-        const cellClass = isPendingDelete ? 'acu-editable-cell' : `acu-editable-cell ${highlightClass}`;
-        const escapedTableKey = escapeCellHtml(tableData.key);
-        const escapedTableName = escapeCellHtml(tableName);
-        const escapedColumnName = escapeCellHtml(columnName);
-        html += `<td class="${cellClass}" data-table-key="${escapedTableKey}" data-table-name="${escapedTableName}" data-row="${originalIndex}" data-col="${index}" data-col-name="${escapedColumnName}">${formattedContent}</td>`;
+        html += generateEditableCellHTML(tableData, tableName, originalIndex, index, cell);
       }
     });
     html += '</tr>';
   });
 
   html += '</tbody></table></div>';
-  return html;
+  return `<div class="acu-table-body-container">${html}</div>`;
 }
 
 export function generateTableHTML(deps = {}) {
@@ -158,11 +210,12 @@ export function generateTableHTML(deps = {}) {
       const tableData = tables[tableName];
       const safeId = deps.getSafeTableId ? deps.getSafeTableId(tableName) : getSafeTableId(tableName);
       const isActive = validActiveTab === tableName ? 'active' : '';
-      const currentPage = getCurrentPageForTable(tableName);
-      const paginationHtml = generatePaginationHTML(tableName, tableData.rows ? tableData.rows.length : 0, currentPage);
+      const tableViewState = getTableViewState(tableData, tableName, deps);
+      const paginationHtml = generatePaginationHTML(tableName, tableViewState.filteredTotalCount, tableViewState.currentPage);
       const escapedSafeId = escapeCellHtml(safeId);
       const escapedTableName = escapeCellHtml(tableName);
-      html += `<section class="acu-table-section ${isActive}" id="acu-table-${escapedSafeId}"><div class="section-title" style="display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; width:100% !important; box-sizing:border-box !important; position:relative !important;"><div class="acu-title-left-text" style="display:flex; align-items:center; flex-shrink:0;">${escapedTableName}<span style="font-size: 11px; margin-left: 8px; color: var(--acu-primary); opacity: 0.6;">(${tableData.rows ? tableData.rows.length : 0}行)</span></div>${generateSearchToolbarHTML()}</div>${paginationHtml}${renderDataTable(tableData, tableName, deps)}</section>`;
+      const tableHtml = renderDataTable(tableData, tableName, { ...deps, tableViewState });
+      html += `<section class="acu-table-section ${isActive}" id="acu-table-${escapedSafeId}"><div class="section-title" style="display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; width:100% !important; box-sizing:border-box !important; position:relative !important;"><div class="acu-title-left-text" style="display:flex; align-items:center; flex-shrink:0;">${escapedTableName}<span style="font-size: 11px; margin-left: 8px; color: var(--acu-primary); opacity: 0.6;">(${tableData.rows ? tableData.rows.length : 0}行)</span></div>${generateSearchToolbarHTML()}</div>${paginationHtml}${tableHtml}</section>`;
     });
     html += `</div>`;
   } else {

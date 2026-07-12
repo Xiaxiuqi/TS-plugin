@@ -9,6 +9,18 @@ import { escapeCellHtml } from './search.js';
 export const PAGE_SIZE = 20;
 export const MAX_DISPLAY_PAGES = 9;
 
+export function replaceTableBodyHTML($section, newTableHtml) {
+  const $bodyContainer = $section.find('.acu-table-body-container').first();
+  if ($bodyContainer.length) {
+    $bodyContainer.replaceWith(newTableHtml);
+    return;
+  }
+
+  const $legacyBody = $section.find('.data-table-wrapper, .empty-message').first();
+  if ($legacyBody.length) $legacyBody.replaceWith(newTableHtml);
+  else $section.append(newTableHtml);
+}
+
 export function generatePaginationHTML(tableName, totalRows, currentPage) {
   const pageSize = PAGE_SIZE;
   const totalPages = Math.ceil(totalRows / pageSize);
@@ -65,7 +77,14 @@ export function bindPaginationEvents(
   $section,
   tableName,
   tableData,
-  { getSafeTableId, renderDataTable, bindCellEventsForSection, bindRowDragEvents, core = getCore() } = {},
+  {
+    getSafeTableId,
+    getTableViewState,
+    renderDataTable,
+    bindCellEventsForSection,
+    bindRowDragEvents,
+    core = getCore(),
+  } = {},
 ) {
   const { $ } = core;
   const $pagination = $section.find('.acu-pagination-container');
@@ -83,23 +102,22 @@ export function bindPaginationEvents(
 
       const $tableSection = $(`#acu-table-${getSafeTableId(tableName)}`);
       if ($tableSection.length) {
-        const currentPage = getCurrentPageForTable(tableName);
-        const paginationHtml = generatePaginationHTML(
-          tableName,
-          tableData.rows ? tableData.rows.length : 0,
-          currentPage,
-        );
-        const newTableHtml = renderDataTable(tableData, tableName);
+        const tableViewState = typeof getTableViewState === 'function'
+          ? getTableViewState(tableData, tableName)
+          : { filteredTotalCount: tableData.rows ? tableData.rows.length : 0, currentPage: getCurrentPageForTable(tableName) };
+        const paginationHtml = generatePaginationHTML(tableName, tableViewState.filteredTotalCount, tableViewState.currentPage);
+        const newTableHtml = renderDataTable(tableData, tableName, { tableViewState });
 
         $tableSection.find('.acu-pagination-container').remove();
         $tableSection.find('.section-title').after(paginationHtml);
-        $tableSection.find('.data-table-wrapper').replaceWith(newTableHtml);
+        replaceTableBodyHTML($tableSection, newTableHtml);
 
         if (typeof bindCellEventsForSection === 'function') {
           bindCellEventsForSection($tableSection);
         }
         bindPaginationEvents($section, tableName, tableData, {
           getSafeTableId,
+          getTableViewState,
           renderDataTable,
           bindCellEventsForSection,
           bindRowDragEvents,

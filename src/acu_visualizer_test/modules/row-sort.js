@@ -4,7 +4,7 @@
 
 import { getCore } from '../core/bridge.js';
 import { state } from '../core/state.js';
-import { generatePaginationHTML } from './pagination.js';
+import { generatePaginationHTML, replaceTableBodyHTML } from './pagination.js';
 import { getActiveTabState } from './tabs.js';
 
 export const ROW_MAPPING_KEY_PREFIX = 'acu_row_position_mapping_';
@@ -90,11 +90,176 @@ export function loadRowMapping(tableName, rowPositionMapping = state.rowPosition
   }
 }
 
+function refreshTableSectionAfterRowMove($section, tableName, deps = {}) {
+  const { $ } = deps.core || getCore();
+  const rawData = deps.getTableData?.();
+  const tables = deps.processJsonData?.(rawData);
+  if (!tables || !tables[tableName] || typeof deps.renderDataTable !== 'function') return;
+
+  const $tableSection = $(`#acu-table-${deps.getSafeTableId?.(tableName)}`);
+  const $targetSection = $tableSection.length ? $tableSection : $section;
+  if (!$targetSection.length) return;
+
+  const tableViewState = deps.getTableViewState?.(tables[tableName], tableName)
+    || { filteredTotalCount: tables[tableName].rows.length, currentPage: deps.getCurrentPageForTable?.(tableName) || 0 };
+  const paginationHtml = generatePaginationHTML(tableName, tableViewState.filteredTotalCount, tableViewState.currentPage);
+  const newTableHtml = deps.renderDataTable(tables[tableName], tableName, { tableViewState });
+  $targetSection.find('.acu-pagination-container').remove();
+  $targetSection.find('.section-title').after(paginationHtml);
+  replaceTableBodyHTML($targetSection, newTableHtml);
+  deps.bindCellEventsForSection?.($targetSection);
+  deps.bindPaginationEvents?.($targetSection, tableName, tables[tableName]);
+  bindRowDragEvents($targetSection, tableName, deps);
+}
+
+function clearHorizontalColumnDragState($section) {
+  $section
+    .find('.acu-horizontal-data-cell')
+    .removeClass('dragging drag-over-before drag-over-after')
+    .removeAttr('draggable')
+    .off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
+  $section.find('.acu-horizontal-data-table').removeClass('is-sorting-rows');
+}
+
+function setHorizontalColumnDragClass($section, displayIndex, className) {
+  $section
+    .find(`.acu-horizontal-data-cell[data-display-index="${displayIndex}"]`)
+    .addClass(className);
+}
+
+function clearHorizontalColumnDropClasses($section) {
+  $section
+    .find('.acu-horizontal-data-cell.drag-over-before, .acu-horizontal-data-cell.drag-over-after')
+    .removeClass('drag-over-before drag-over-after');
+}
+
+function bindHorizontalColumnDragEvents($section, tableName, deps = {}) {
+  const { $ } = deps.core || getCore();
+  const flags = deps.flags || state.flags;
+  const drag = deps.drag || state.drag;
+  const $cells = $section.find('.acu-horizontal-data-cell');
+
+  if (!flags.isEditingRowOrder || !$cells.length) {
+    clearHorizontalColumnDragState($section);
+    return;
+  }
+
+  $section.find('.acu-horizontal-data-table').addClass('is-sorting-rows');
+  $cells
+    .attr('draggable', 'true')
+    .removeClass('dragging drag-over-before drag-over-after')
+    .off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
+
+  $cells.on('dragstart.acu', function (e) {
+    if (!flags.isEditingRowOrder) return;
+    const displayIndex = parseInt($(this).attr('data-display-index'), 10);
+    if (Number.isNaN(displayIndex)) return;
+    drag.isDragging = true;
+    drag.dragStartIndex = displayIndex;
+    setHorizontalColumnDragClass($section, displayIndex, 'dragging');
+    if (e.originalEvent?.dataTransfer) {
+      e.originalEvent.dataTransfer.effectAllowed = 'move';
+      e.originalEvent.dataTransfer.setData('text/plain', displayIndex.toString());
+    }
+  });
+
+  $cells.on('dragend.acu', function () {
+    drag.isDragging = false;
+    drag.dragStartIndex = -1;
+    drag.dragEndIndex = -1;
+    drag.dragInsertIndex = -1;
+    $section.find('.acu-horizontal-data-cell.dragging').removeClass('dragging');
+    clearHorizontalColumnDropClasses($section);
+  });
+
+  $cells.on('dragover.acu', function (e) {
+    if (!drag.isDragging || !flags.isEditingRowOrder) return;
+    e.preventDefault();
+    if (e.originalEvent?.dataTransfer) e.originalEvent.dataTransfer.dropEffect = 'move';
+
+    const $this = $(this);
+    const currentIndex = parseInt($this.attr('data-display-index'), 10);
+    if (Number.isNaN(currentIndex)) return;
+
+    const rect = this.getBoundingClientRect();
+    const pointerX = e.originalEvent?.clientX ?? rect.left;
+    const insertAfterCurrentColumn = pointerX > rect.left + rect.width / 2;
+    const nextInsertIndex = currentIndex + (insertAfterCurrentColumn ? 1 : 0);
+
+    if (currentIndex !== drag.dragEndIndex || nextInsertIndex !== drag.dragInsertIndex) {
+      clearHorizontalColumnDropClasses($section);
+      setHorizontalColumnDragClass($section, currentIndex, insertAfterCurrentColumn ? 'drag-over-after' : 'drag-over-before');
+      drag.dragEndIndex = currentIndex;
+      drag.dragInsertIndex = nextInsertIndex;
+    }
+  });
+
+  $cells.on('dragenter.acu', e => e.preventDefault());
+  $cells.on('dragleave.acu', function (e) {
+    const displayIndex = parseInt($(this).attr('data-display-index'), 10);
+    if (Number.isNaN(displayIndex)) return;
+    const relatedCell = $(e.relatedTarget).closest('.acu-horizontal-data-cell')[0];
+    if (!relatedCell || parseInt($(relatedCell).attr('data-display-index'), 10) !== displayIndex) {
+      $section
+        .find(`.acu-horizontal-data-cell[data-display-index="${displayIndex}"]`)
+        .removeClass('drag-over-before drag-over-after');
+    }
+  });
+
+  $cells.on('drop.acu', function (e) {
+    if (!flags.isEditingRowOrder) return;
+    e.preventDefault();
+
+    let dropIndex = drag.dragInsertIndex;
+    const $highlightedCell = $section.find('.acu-horizontal-data-cell.drag-over-before, .acu-horizontal-data-cell.drag-over-after').first();
+    if ($highlightedCell.length) {
+      const highlightedIndex = parseInt($highlightedCell.attr('data-display-index'), 10);
+      if (!Number.isNaN(highlightedIndex)) {
+        dropIndex = highlightedIndex + ($highlightedCell.hasClass('drag-over-after') ? 1 : 0);
+      }
+    }
+
+    if (dropIndex < 0 || Number.isNaN(dropIndex)) {
+      const currentIndex = parseInt($(this).attr('data-display-index'), 10);
+      if (Number.isNaN(currentIndex)) return;
+      const rect = this.getBoundingClientRect();
+      const pointerX = e.originalEvent?.clientX ?? rect.left;
+      dropIndex = currentIndex + (pointerX > rect.left + rect.width / 2 ? 1 : 0);
+    }
+
+    if (drag.dragStartIndex !== -1) {
+      const moved = moveRow(
+        tableName,
+        drag.dragStartIndex,
+        dropIndex,
+        deps.rowPositionMapping || state.rowPositionMapping,
+      );
+      if (!moved) {
+        clearHorizontalColumnDropClasses($section);
+        return;
+      }
+
+      refreshTableSectionAfterRowMove($section, tableName, deps);
+      deps.showNotification?.('行顺序已调整', 'success');
+    }
+    clearHorizontalColumnDropClasses($section);
+  });
+}
+
 export function bindRowDragEvents($section, tableName, deps = {}) {
   const { $ } = deps.core || getCore();
   const flags = deps.flags || state.flags;
   const drag = deps.drag || state.drag;
   const $rows = $section.find('.data-table tbody tr');
+
+  if ($section.find('.acu-horizontal-data-table').length) {
+    $rows
+      .removeAttr('draggable')
+      .removeClass('dragging drag-over-before drag-over-after')
+      .off('dragstart.acu dragend.acu dragover.acu dragenter.acu dragleave.acu drop.acu');
+    bindHorizontalColumnDragEvents($section, tableName, deps);
+    return;
+  }
 
   if (!flags.isEditingRowOrder) {
     $rows
@@ -191,22 +356,7 @@ export function bindRowDragEvents($section, tableName, deps = {}) {
         return;
       }
 
-      const rawData = deps.getTableData?.();
-      const tables = deps.processJsonData?.(rawData);
-      if (tables && tables[tableName] && typeof deps.renderDataTable === 'function') {
-        const $tableSection = $(`#acu-table-${deps.getSafeTableId?.(tableName)}`);
-        if ($tableSection.length) {
-          const currentPage = deps.getCurrentPageForTable?.(tableName) || 0;
-          const paginationHtml = generatePaginationHTML(tableName, tables[tableName].rows.length, currentPage);
-          const newTableHtml = deps.renderDataTable(tables[tableName], tableName);
-          $tableSection.find('.acu-pagination-container').remove();
-          $tableSection.find('.section-title').after(paginationHtml);
-          $tableSection.find('.data-table-wrapper').replaceWith(newTableHtml);
-          deps.bindCellEventsForSection?.($tableSection);
-          deps.bindPaginationEvents?.($tableSection, tableName, tables[tableName]);
-          bindRowDragEvents($tableSection, tableName, deps);
-        }
-      }
+      refreshTableSectionAfterRowMove($section, tableName, deps);
       deps.showNotification?.('行顺序已调整', 'success');
     }
     $section.find('.drag-over-before, .drag-over-after').removeClass('drag-over-before drag-over-after');

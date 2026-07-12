@@ -1078,6 +1078,72 @@
   color: #ff9999 !important;
 }
 
+.acu-table-container .acu-horizontal-table-wrapper {
+  max-width: 100% !important;
+  overflow: auto !important;
+}
+.acu-table-container .acu-horizontal-data-table {
+  width: max-content !important;
+  min-width: 100% !important;
+  table-layout: auto !important;
+}
+.acu-table-container .acu-horizontal-data-table tr:nth-child(even) td {
+  background-color: var(--acu-table-even-row-bg, rgba(250, 245, 235, 0.9)) !important;
+}
+.acu-table-container.night-mode .acu-horizontal-data-table tr:nth-child(even) td {
+  background-color: rgba(58, 58, 58, 0.9) !important;
+}
+.acu-table-container .acu-horizontal-row-header {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 2 !important;
+  min-width: 120px !important;
+  max-width: 220px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  text-align: left !important;
+  vertical-align: middle !important;
+}
+.acu-table-container .acu-horizontal-data-table td {
+  min-width: 160px !important;
+  max-width: 320px !important;
+  vertical-align: top !important;
+}
+.acu-table-container .acu-horizontal-data-table td.pending-deletion-cell {
+  background-color: rgba(255, 200, 200, 0.6) !important;
+  border-color: rgba(255, 100, 100, 0.4) !important;
+  color: #8b0000 !important;
+}
+.acu-table-container.night-mode .acu-horizontal-data-table td.pending-deletion-cell {
+  background-color: rgba(139, 0, 0, 0.3) !important;
+  border-color: rgba(255, 100, 100, 0.3) !important;
+  color: #ff9999 !important;
+}
+.acu-table-container.editing-row-order .acu-horizontal-data-cell {
+  cursor: move !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.acu-table-container.editing-row-order .acu-horizontal-data-cell:hover {
+  background-color: var(--acu-row-sort-hover, var(--acu-hover-bg-soft, rgba(180, 138, 92, 0.15))) !important;
+}
+.acu-table-container .acu-horizontal-data-cell.dragging {
+  opacity: 0.55 !important;
+  background-color: rgba(255, 215, 0, 0.3) !important;
+  cursor: grabbing !important;
+}
+.acu-table-container.night-mode .acu-horizontal-data-cell.dragging {
+  background-color: rgba(255, 215, 0, 0.2) !important;
+}
+.acu-table-container .acu-horizontal-data-cell.drag-over-before {
+  border-left: 3px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+  background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
+}
+.acu-table-container .acu-horizontal-data-cell.drag-over-after {
+  border-right: 3px solid var(--acu-row-drop-border, var(--acu-primary, #5c9dff)) !important;
+  background-color: var(--acu-row-drop-bg, var(--acu-hover-bg-soft, rgba(92, 157, 255, 0.2))) !important;
+}
+
 .acu-highlight-user-edit {
   background-color: #90ee9080 !important;
   border: 2px solid #32cd32 !important;
@@ -2018,6 +2084,49 @@
   display: flex !important;
   flex-direction: column !important;
   gap: 12px !important;
+}
+.acu-table-direction-settings {
+  margin-top: 20px !important;
+  padding: 15px !important;
+  border: 1px solid var(--acu-border) !important;
+  border-radius: 8px !important;
+  background: var(--acu-secondary) !important;
+}
+.acu-table-direction-settings h5 {
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+  font-size: 13px !important;
+  color: var(--acu-text) !important;
+}
+.acu-table-direction-description {
+  margin: 0 0 12px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: var(--acu-text) !important;
+  opacity: 0.78 !important;
+}
+.acu-table-direction-list {
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+}
+.acu-table-direction-option {
+  padding: 8px 10px !important;
+  border: 1px solid rgba(90, 62, 43, 0.16) !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+.acu-settings-overlay.night-mode .acu-table-direction-option {
+  border-color: #444 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+.acu-table-direction-empty {
+  padding: 10px 12px !important;
+  border: 1px dashed var(--acu-border) !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  color: var(--acu-text) !important;
+  opacity: 0.75 !important;
 }
 .acu-checkbox {
   display: flex !important;

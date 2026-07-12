@@ -5,6 +5,7 @@
 import { getCore } from '../core/bridge.js';
 import { STORAGE_KEYS } from '../core/constants.js';
 import { markTabAsSeen, shouldShowBadge } from './diff-highlighting.js';
+import { replaceTableBodyHTML } from './pagination.js';
 import { escapeCellHtml } from './search.js';
 
 export function getActiveTabState() {
@@ -93,6 +94,7 @@ export function bindTabClickEvents({
   processJsonData,
   getCurrentPageForTable,
   generatePaginationHTML,
+  getTableViewState,
   renderDataTable,
   bindCellEventsForSection,
   bindPaginationEvents,
@@ -133,17 +135,15 @@ export function bindTabClickEvents({
         const tables = processJsonData(rawData);
         if (tables && tables[tableName]) {
           const $section = $(`#acu-table-${tableId}`);
-          const currentPage = getCurrentPageForTable(tableName);
-          const paginationHtml = generatePaginationHTML(
-            tableName,
-            tables[tableName].rows ? tables[tableName].rows.length : 0,
-            currentPage,
-          );
-          const newTableHtml = renderDataTable(tables[tableName], tableName);
+          const tableViewState = typeof getTableViewState === 'function'
+            ? getTableViewState(tables[tableName], tableName)
+            : { filteredTotalCount: tables[tableName].rows ? tables[tableName].rows.length : 0, currentPage: getCurrentPageForTable(tableName) };
+          const paginationHtml = generatePaginationHTML(tableName, tableViewState.filteredTotalCount, tableViewState.currentPage);
+          const newTableHtml = renderDataTable(tables[tableName], tableName, { tableViewState });
 
           $section.find('.acu-pagination-container').remove();
           $section.find('.section-title').after(paginationHtml);
-          $section.find('.data-table-wrapper').replaceWith(newTableHtml);
+          replaceTableBodyHTML($section, newTableHtml);
 
           if (typeof bindCellEventsForSection === 'function') {
             bindCellEventsForSection($section, tableName);

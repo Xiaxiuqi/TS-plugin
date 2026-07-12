@@ -12,7 +12,7 @@ import { showHistoryMenu } from './modules/cell-history.js';
 import { saveDataToDatabase } from './modules/database-sync.js';
 import { clearAllTabUpdates } from './modules/diff-highlighting.js';
 import { clearNotifications, showLoadSuccessNotification, showNotification } from './modules/notifications.js';
-import { bindPaginationEvents, generatePaginationHTML } from './modules/pagination.js';
+import { bindPaginationEvents, generatePaginationHTML, replaceTableBodyHTML } from './modules/pagination.js';
 import { bindRowDragEvents } from './modules/row-sort.js';
 import { bindSearchEvents } from './modules/search.js';
 import { showSettingsDialog } from './modules/settings-dialog.js';
@@ -24,6 +24,7 @@ import {
   checkAndUpdateTablePosition,
   insertTableAfterLatestAIMessage,
   performRefreshTable,
+  getTableViewState,
   renderDataTable,
   smartUpdateTable,
 } from './modules/table-renderer.js';
@@ -112,12 +113,12 @@ export function bootstrapAcuVisualizerTest() {
       const tableData = tables[tableName];
       const $tableSection = $(`#acu-table-${getSafeTableId(tableName)}`);
       if (!$tableSection.length) return;
-      const currentPage = deps.getCurrentPageForTable ? deps.getCurrentPageForTable(tableName) : 0;
-      const paginationHtml = generatePaginationHTML(tableName, tableData.rows ? tableData.rows.length : 0, currentPage);
-      const newTableHtml = renderDataTable(tableData, tableName, deps);
+      const tableViewState = getTableViewState(tableData, tableName, deps);
+      const paginationHtml = generatePaginationHTML(tableName, tableViewState.filteredTotalCount, tableViewState.currentPage);
+      const newTableHtml = renderDataTable(tableData, tableName, { ...deps, tableViewState });
       $tableSection.find('.acu-pagination-container').remove();
       $tableSection.find('.section-title').after(paginationHtml);
-      $tableSection.find('.data-table-wrapper').replaceWith(newTableHtml);
+      replaceTableBodyHTML($tableSection, newTableHtml);
       bindCellEventsForSection($tableSection, tableName);
       bindPaginationEvents($tableSection, tableName, tableData, deps);
       bindRowDragEvents($tableSection, tableName, deps);
@@ -299,8 +300,10 @@ export function bootstrapAcuVisualizerTest() {
     getTableData: () => getTableData(core),
     processJsonData,
     getSafeTableId,
-    renderDataTable: (tableData, tableName) => renderDataTable(tableData, tableName, deps),
+    getTableViewState: (tableData, tableName) => getTableViewState(tableData, tableName, deps),
+    renderDataTable: (tableData, tableName, extraDeps = {}) => renderDataTable(tableData, tableName, { ...deps, ...extraDeps }),
     generatePaginationHTML,
+    replaceTableBodyHTML,
     bindCellEventsForSection,
     bindPaginationEvents: ($section, tableName, tableData) =>
       bindPaginationEvents($section, tableName, tableData, deps),
