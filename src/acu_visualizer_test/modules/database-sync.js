@@ -197,7 +197,10 @@ export async function saveDataToDatabase(tableData, updateContext = null, deps =
 
         setTimeout(() => {
           const { $ } = deps.core || getCore();
-          if (typeof $ !== 'undefined') $('.pending-deletion').removeClass('pending-deletion');
+          if (typeof $ !== 'undefined') {
+            $('.pending-deletion').removeClass('pending-deletion');
+            $('.pending-deletion-cell').removeClass('pending-deletion-cell');
+          }
           state.currentDiffMap = generateDiffMap(tableData);
           state.currentUserEditMap.forEach(key => state.currentDiffMap.delete(key));
           cleanupRuntimeState(tableData, state);

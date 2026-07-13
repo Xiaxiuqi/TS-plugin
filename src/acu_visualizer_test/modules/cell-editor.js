@@ -29,6 +29,20 @@ function escapeTextareaValue(value) {
     .replace(/'/g, '&#039;');
 }
 
+function setRowPendingDeletionState($, cell, rowIndex, isPending) {
+  const $cell = $(cell);
+  if ($cell.closest('.acu-horizontal-data-table').length) {
+    const $table = $cell.closest('.acu-horizontal-data-table');
+    const $rowCells = $table.find('.acu-horizontal-data-cell').filter(function () {
+      return Number($(this).attr('data-original-index')) === rowIndex;
+    });
+    $rowCells.toggleClass('pending-deletion-cell', isPending);
+    return;
+  }
+
+  $cell.closest('tr').toggleClass('pending-deletion', isPending);
+}
+
 export function generateCellMenuHTML({ config, isNightMode, isPendingDelete, showSendToInput }) {
   return isPendingDelete
     ? `
@@ -495,7 +509,7 @@ export async function handleCellAction(
     case 'delete': {
       const deleteKey = `${tableName}-row-${rowIndex}`;
       deps.pendingDeletes?.add(deleteKey);
-      $(cell).closest('tr').addClass('pending-deletion');
+      setRowPendingDeletionState($, cell, rowIndex, true);
       deps.updateSaveBtnState?.();
       deps.showNotification?.(`已标记第${rowIndex + 1}行为待删除，点击保存到数据库生效`, 'warning');
       break;
@@ -504,7 +518,7 @@ export async function handleCellAction(
     case 'restore': {
       const restoreKey = `${tableName}-row-${rowIndex}`;
       deps.pendingDeletes?.delete(restoreKey);
-      $(cell).closest('tr').removeClass('pending-deletion');
+      setRowPendingDeletionState($, cell, rowIndex, false);
       deps.updateSaveBtnState?.();
       deps.showNotification?.(`已恢复第${rowIndex + 1}行`, 'success');
       break;
