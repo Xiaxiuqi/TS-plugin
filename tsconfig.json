@@ -26,6 +26,6 @@
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "5.0"
   },
-  "include": ["@types", "初始模板", "示例", "src", "util", "*.d.ts", "public/acu_visualizer/acu_visualizer.js"],
+  "include": ["@types", "初始模板", "示例", "src", "util", "*.d.ts"],
   "exclude": ["**/dist/**", "**/node_modules/**", "**/_backup/**"]
 }
