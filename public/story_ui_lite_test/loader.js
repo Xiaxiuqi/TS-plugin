@@ -3,11 +3,18 @@
   const LOADER_FLAG = '__storyRegexUiLoaderReady';
 
   if (window[LOADER_FLAG]) {
-    window[GLOBAL_KEY]?.scanner?.scan?.();
+    if (window[GLOBAL_KEY]?.loaderState?.status === 'ready') {
+      window[GLOBAL_KEY]?.scanner?.scan?.();
+    }
     return;
   }
 
   window[LOADER_FLAG] = true;
+  const ui = (window[GLOBAL_KEY] = window[GLOBAL_KEY] || {});
+  ui.loaderState = {
+    status: 'loading',
+    error: '',
+  };
 
   const currentScript = document.currentScript;
   const baseUrl = (() => {
@@ -24,7 +31,7 @@
 
   const state = {
     baseUrl,
-    version: 'lite_test-0.1.2',
+    version: 'lite_test-0.1.3',
     loadedCss: new Set(),
     loadedScripts: new Set(),
     modules: [
@@ -47,6 +54,11 @@
         id: 'db-status-bar',
         css: 'modules/db-status-bar/style.css',
         scripts: ['modules/db-status-bar/data.js', 'modules/db-status-bar/index.js'],
+      },
+      {
+        id: 'db-map',
+        css: 'modules/db-map/style.css',
+        scripts: ['modules/db-map/data.js', 'modules/db-map/index.js'],
       },
     ],
   };
@@ -164,10 +176,14 @@
 
       await loadModules();
 
-      window[GLOBAL_KEY]?.theme?.init?.();
-      window[GLOBAL_KEY]?.scanner?.init?.();
-      window[GLOBAL_KEY]?.scanner?.scan?.();
+      ui.theme?.init?.();
+      ui.scanner?.init?.();
+      ui.scanner?.scan?.();
+      ui.loaderState.status = 'ready';
     } catch (error) {
+      ui.loaderState.status = 'failed';
+      ui.loaderState.error = error?.message || String(error);
+      window[LOADER_FLAG] = false;
       console.error('[StoryRegexUI] 启动失败，保留原始正文。', error);
     }
   }

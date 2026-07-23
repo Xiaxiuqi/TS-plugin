@@ -137,6 +137,14 @@
     return currentTheme;
   }
 
+  function handleThemeToggleClick(event) {
+    const trigger = event.target?.closest?.('[data-story-ui-theme-toggle]');
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleTheme();
+  }
+
   function init() {
     if (initialized) {
       applyTheme(document);
@@ -147,20 +155,20 @@
     currentTheme = readStoredTheme();
     applyTheme(document);
 
-    document.addEventListener('click', event => {
-      const trigger = event.target?.closest?.('[data-story-ui-theme-toggle]');
-      if (!trigger) return;
-      event.preventDefault();
-      event.stopPropagation();
-      toggleTheme();
-    });
+    document.addEventListener('click', handleThemeToggleClick);
 
     return currentTheme;
+  }
+
+  function destroy() {
+    document.removeEventListener('click', handleThemeToggleClick);
+    initialized = false;
   }
 
   ui.theme = {
     STORAGE_KEY,
     init,
+    destroy,
     getTheme,
     setTheme,
     toggleTheme,

@@ -4,6 +4,8 @@
 
   const MODULE_ID = 'world-log';
   const MODULE_VERSION = '0.2.0-lite_test-flexible-sections';
+  let themeListenerBound = false;
+  const handleThemeChanged = () => rerenderAll();
   const BLOCK = {
     open: '<wlog',
     close: '</wlog>',
@@ -151,11 +153,17 @@
     ui.theme?.applyTheme?.(node);
     const root = node?.querySelector?.('.story-ui-wlog') || node?.querySelector?.('.story-ui-root.story-ui-wlog');
     if (!root) return;
-    if (document.documentElement.dataset.storyUiWlogThemeBound === 'true') return;
+    if (themeListenerBound) return;
+    themeListenerBound = true;
     document.documentElement.dataset.storyUiWlogThemeBound = 'true';
-    document.addEventListener('story-ui-theme-changed', () => {
-      rerenderAll();
-    });
+    document.addEventListener('story-ui-theme-changed', handleThemeChanged);
+  }
+
+  function cleanup() {
+    if (!themeListenerBound) return;
+    document.removeEventListener('story-ui-theme-changed', handleThemeChanged);
+    themeListenerBound = false;
+    delete document.documentElement.dataset.storyUiWlogThemeBound;
   }
 
   ui.registry?.register?.({
@@ -165,6 +173,7 @@
     block: BLOCK,
     renderContent: renderContentNode,
     mount,
+    cleanup,
   });
 
   ui.worldLog = {

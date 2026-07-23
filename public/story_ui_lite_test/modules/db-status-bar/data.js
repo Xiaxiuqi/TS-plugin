@@ -14,8 +14,7 @@
     shikigami: [],
     bindings: [],
     inventory: [],
-    quests: [],
-    mapElements: []
+    quests: []
   };
 
   function getAutoCardAPI() {
@@ -30,17 +29,7 @@
     return row[idx];
   }
 
-  const SHEET_NAME_ALIASES = {
-    sheet_MapElements: '地图元素表',
-    map_elements: '地图元素表',
-    sheet_map: '地图元素表'
-  };
-
-  function normalizeSheetName(uid, name) {
-    const rawName = String(name || '').trim();
-    const rawUid = String(uid || '').trim();
-    return SHEET_NAME_ALIASES[rawName] || SHEET_NAME_ALIASES[rawUid] || rawName;
-  }
+  function normalizeSheetName(uid, name) { return String(name || '').trim(); }
 
   function parseNum(v, fallback) { const n = Number(v); return isNaN(n) ? (fallback || 0) : n; }
 
@@ -63,7 +52,6 @@
         case '束缚表': parseBindings(rows, g); break;
         case '重要物品表': case '背包物品表': parseInventory(rows, g); break;
         case '任务与事件表': parseQuests(rows, g); break;
-        case '地图元素表': parseMapElements(rows, g); break;
       }
     }
   }
@@ -184,14 +172,6 @@
     });
   }
 
-  function parseMapElements(rows, g) {
-    GameState.mapElements = [];
-    rows.forEach(r => {
-      const name = g(r, '元素名称');
-      if (!name) return;
-      GameState.mapElements.push({ name, type: g(r, '元素类型') || '', x: parseNum(g(r, 'X坐标'), 400), y: parseNum(g(r, 'Y坐标'), 300), status: g(r, '状态') || '', desc: g(r, '描述') || '', area: g(r, '所属区域') || '', lore: g(r, '传说背景') || '' });
-    });
-  }
 
   function loadTestData() {
     GameState.time = '2018年10月15日 14:30 (周一)';
@@ -245,12 +225,6 @@
     GameState.quests = [
       { name: '收集宿傩手指', rating: '特级', target: '寻找散落各地的宿傩手指', client: '咒术高专', desc: '作为宿傩容器需收集所有20根手指后一并祓除', progress: '3/20', reward: '免除死刑' },
       { name: '百鬼夜行调查', rating: 'B级', target: '调查涉谷地区异常咒力波动', client: '辅助监督·伊地知', desc: '近期涉谷地区出现大量低级咒灵聚集现象', progress: '未开始', reward: 'KP+2, 经验+30 / 可能遭遇准一级咒灵' }
-    ];
-    GameState.mapElements = [
-      { name: '虎杖悠仁', type: '主角', x: 400, y: 300, status: '正常', desc: '站在校园中央', area: '咒术高专', lore: '' },
-      { name: '训练场入口', type: '地标', x: 600, y: 200, status: '正常', desc: '通往地下训练场的入口', area: '咒术高专', lore: '高专建校时由结界师设置' },
-      { name: '伏黑惠', type: '友方', x: 420, y: 310, status: '正常', desc: '站在主角旁边', area: '咒术高专', lore: '' },
-      { name: '咒灵反应点', type: '敌方', x: 700, y: 450, status: '活跃', desc: '检测到微弱咒力波动', area: '咒术高专·东区', lore: '偶尔有低级咒灵出没' }
     ];
   }
 

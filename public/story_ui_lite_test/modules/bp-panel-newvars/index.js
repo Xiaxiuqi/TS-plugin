@@ -4,6 +4,13 @@
 
   const MODULE_ID = 'bp-panel-newvars';
   const MODULE_VERSION = '1.0.0-lite_test-dual-panel';
+  let documentListenersBound = false;
+  const handleDocumentClick = event => {
+    if (event.target.closest?.('[data-bp-tab-role]')) {
+      handleTabClick(event);
+    }
+  };
+  const handleThemeChanged = () => rerenderAll();
   const BLOCK = {
     open: '<bp_panel>',
     close: '</bp_panel>',
@@ -405,19 +412,21 @@
     ui.theme?.applyTheme?.(node);
     const root = node?.querySelector?.('.bp-radar-widget');
     if (!root) return;
-    if (document.documentElement.dataset.storyUiBpNewvarsThemeBound === 'true') return;
+    if (documentListenersBound) return;
+    documentListenersBound = true;
     document.documentElement.dataset.storyUiBpNewvarsThemeBound = 'true';
 
     // 事件委托到 document 级别，避免 innerHTML 挂载后事件丢失
-    document.addEventListener('click', event => {
-      if (event.target.closest?.('[data-bp-tab-role]')) {
-        handleTabClick(event);
-      }
-    });
+    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('story-ui-theme-changed', handleThemeChanged);
+  }
 
-    document.addEventListener('story-ui-theme-changed', () => {
-      rerenderAll();
-    });
+  function cleanup() {
+    if (!documentListenersBound) return;
+    document.removeEventListener('click', handleDocumentClick);
+    document.removeEventListener('story-ui-theme-changed', handleThemeChanged);
+    documentListenersBound = false;
+    delete document.documentElement.dataset.storyUiBpNewvarsThemeBound;
   }
 
   ui.registry?.register?.({
@@ -428,5 +437,6 @@
     block: BLOCK,
     renderContent: renderContentNode,
     mount,
+    cleanup,
   });
 })();

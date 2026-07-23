@@ -27,6 +27,10 @@
     const saved = enabledState[module.id];
     if (typeof saved === 'boolean') {
       module.enabled = saved;
+    } else if (module.id === 'db-map') {
+      module.enabled = enabledState['db-status-bar'] !== false;
+      enabledState[module.id] = module.enabled;
+      saveEnabledState();
     } else if (typeof module.enabled !== 'boolean') {
       module.enabled = true;
     }
@@ -48,6 +52,10 @@
 
     const existingIndex = modules.findIndex(item => item.id === module.id);
     if (existingIndex >= 0) {
+      const previousModule = modules[existingIndex];
+      if (previousModule !== module) {
+        safelyCall(previousModule, 'cleanup');
+      }
       modules.splice(existingIndex, 1, module);
     } else {
       modules.push(module);
@@ -91,9 +99,12 @@
     const module = find(moduleId);
     if (!module) return false;
     const nextValue = enabled !== false;
+    const previousValue = module.enabled !== false;
+    if (previousValue === nextValue) return true;
     module.enabled = nextValue;
     enabledState[moduleId] = nextValue;
     saveEnabledState();
+    safelyCall(module, nextValue ? 'onEnable' : 'onDisable');
     return true;
   }
 

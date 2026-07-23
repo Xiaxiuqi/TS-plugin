@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'lite_test',
     displayEnv: '精简测试版',
-    version: 'lite_test-0.1.2',
+    version: 'lite_test-0.1.3',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady',
@@ -11,7 +11,6 @@
     reloadButtonName: '重载美化',
     managerRootId: 'jjks-story-ui-manager-lite_test',
   };
-  const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
   const EMPTY_MAP_CONFIG = {
     followDatabaseApi: true,
     apiUrl: '',
@@ -28,19 +27,20 @@
   const MODULE_LABELS = {
     'bp-panel-newvars': 'BP战力雷达（兼容）',
     'db-status-bar': '数据库状态栏',
+    'db-map': '数据库地图',
     'world-log': '世界运行报告',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
-    'db-status-bar': ['<DbStatusBar/>', 'DbStatusBar', '数据库状态栏', '地图元素表', '任务与事件表'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
-  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
+  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar', 'db-map'];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'world-log',
     'db-status-bar',
+    'db-map',
   ];
 
   function getModuleAnchorNeedles(moduleId) {
@@ -204,6 +204,16 @@
     return hostWindow[CONFIG.globalKey] || window[CONFIG.globalKey] || null;
   }
 
+  function getLoaderBootState() {
+    const ui = getUi();
+    const status = ui?.loaderState?.status || '';
+    return {
+      ready: status === 'ready' && Boolean(ui?.scanner),
+      failed: status === 'failed',
+      error: ui?.loaderState?.error || '',
+    };
+  }
+
   function getStoryDocument() {
     return hostDocument;
   }
@@ -310,7 +320,7 @@
   }
 
   function ensureLoader() {
-    if (getUi()?.scanner) {
+    if (getLoaderBootState().ready) {
       loaderStatus = 'ready';
       return Promise.resolve();
     }
@@ -325,10 +335,17 @@
       if (existed) {
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
-          if (getUi()?.scanner) {
+          const bootState = getLoaderBootState();
+          if (bootState.ready) {
             window.clearInterval(timer);
             loaderStatus = 'ready';
             resolve();
+          } else if (bootState.failed) {
+            window.clearInterval(timer);
+            existed.remove();
+            loaderStatus = 'failed';
+            lastError = bootState.error || 'StoryRegexUI 业务模块加载失败';
+            reject(new Error(lastError));
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
             existed.remove();
@@ -347,10 +364,17 @@
       script.onload = () => {
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
-          if (getUi()?.scanner) {
+          const bootState = getLoaderBootState();
+          if (bootState.ready) {
             window.clearInterval(timer);
             loaderStatus = 'ready';
             resolve();
+          } else if (bootState.failed) {
+            window.clearInterval(timer);
+            script.remove();
+            loaderStatus = 'failed';
+            lastError = bootState.error || 'StoryRegexUI 业务模块加载失败';
+            reject(new Error(lastError));
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
             loaderStatus = 'failed';
@@ -418,15 +442,15 @@
 
   function isAssistantChatMessage(chatMessage) {
     if (!chatMessage || typeof chatMessage !== 'object') return null;
+    if (chatMessage.is_system === true || chatMessage.extra?.type === 'system') return false;
     if (chatMessage.is_user === true) return false;
     if (chatMessage.is_user === false) return true;
-    if (chatMessage.is_system === true) return false;
-    if (chatMessage.extra?.type === 'system') return false;
     return null;
   }
 
   function isAssistantMessageElement(messageElement) {
     if (!messageElement) return null;
+    if (messageElement.classList?.contains('system_mes')) return false;
     const attrNames = ['is_user', 'data-is-user', 'is-user'];
     for (const attrName of attrNames) {
       const attrValue = messageElement.getAttribute?.(attrName);
@@ -434,7 +458,6 @@
       if (attrValue === 'false' || attrValue === '0') return true;
     }
     if (messageElement.classList?.contains('user_mes')) return false;
-    if (messageElement.classList?.contains('system_mes')) return false;
     if (messageElement.classList?.contains('ai_mes')) return true;
     if (messageElement.classList?.contains('char_mes')) return true;
     return null;
@@ -978,7 +1001,9 @@
     const renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
     const latestAssistantMessageId = getLatestAssistantMessageId(renderedIds);
     const allowDefaultAfterNative = messageId === latestAssistantMessageId;
-    if (allowDefaultAfterNative) clearDefaultAfterNativeMountedDom('db-status-bar', messageId);
+    if (allowDefaultAfterNative) {
+      DEFAULT_AFTER_NATIVE_MODULE_IDS.forEach(moduleId => clearDefaultAfterNativeMountedDom(moduleId, messageId));
+    }
 
     const ui = getUi();
     const registry = ui?.registry;
@@ -1100,6 +1125,8 @@
 
   function diagnose() {
     const ui = getUi();
+    const mapModule = ui?.registry?.find?.('db-map');
+    const mapDiagnosis = mapModule?.management?.diagnose?.() || null;
     const modules = ui?.registry?.list({ includeDisabled: true }) || [];
     const otherState =
       ['prod', 'test', 'releasetest']
@@ -1124,6 +1151,7 @@
       已注册模块: modules.map(
         module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
       ),
+      数据库地图诊断: mapDiagnosis,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
       UI实例来源: getUiSource(),
@@ -1167,7 +1195,7 @@
     return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
   }
 
-  const MAP_DEBUG_PREFIX = '[db-status-bar][map-debug]';
+  const MAP_DEBUG_PREFIX = '[db-map][map-debug]';
 
   function mapDebugLog(event, details = {}, level = 'info') {
     try {
@@ -1312,84 +1340,22 @@
   }
 
   function readMapAiConfig() {
-    try {
-      const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
-      if (!raw) {
-        const emptyConfig = getEmptyMapAiConfig();
-        mapDebugLog('manager:config:read:empty', summarizeMapConfig(emptyConfig));
-        return emptyConfig;
-      }
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') {
-        const emptyConfig = getEmptyMapAiConfig();
-        mapDebugLog(
-          'manager:config:read:invalid',
-          { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) },
-          'warn',
-        );
-        return emptyConfig;
-      }
-      const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
-      const modelList = normalizeMapModelList(parsed.modelList);
-      const model = normalizeMapConfigValue(parsed.model);
-      if (model && !modelList.includes(model)) modelList.unshift(model);
-      const config = {
-        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasUsableMapCustomConfig(parsed),
-        apiUrl: normalizeMapConfigValue(parsed.apiUrl),
-        apiKey: normalizeMapConfigValue(parsed.apiKey),
-        model,
-        enableMapGeneration: parsed.enableMapGeneration !== false,
-        modelList,
-      };
-      mapDebugLog('manager:config:read:ok', summarizeMapConfig(config));
-      return config;
-    } catch (error) {
-      const errorSummary = summarizeMapError(error);
-      console.warn(`${logPrefix} 读取地图 AI 配置失败`, errorSummary);
-      mapDebugLog(
-        'manager:config:read:failed',
-        { error: errorSummary, config: summarizeMapConfig(getEmptyMapAiConfig()) },
-        'warn',
-      );
-      return getEmptyMapAiConfig();
-    }
+    const management = getUi()?.registry?.find?.('db-map')?.management;
+    return typeof management?.getConfig === 'function' ? management.getConfig() : getEmptyMapAiConfig();
   }
 
   function writeMapAiConfig(config) {
-    const normalized = {
-      followDatabaseApi: config?.followDatabaseApi !== false,
-      apiUrl: normalizeMapConfigValue(config?.apiUrl),
-      apiKey: normalizeMapConfigValue(config?.apiKey),
-      model: normalizeMapConfigValue(config?.model),
-      enableMapGeneration: config?.enableMapGeneration !== false,
-    };
-    try {
-      localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
-      mapDebugLog('manager:config:write:ok', summarizeMapConfig(normalized));
-      return true;
-    } catch (error) {
-      const errorSummary = summarizeMapError(error);
-      console.warn(`${logPrefix} 保存地图 AI 配置失败`, errorSummary);
-      mapDebugLog(
-        'manager:config:write:failed',
-        { error: errorSummary, config: summarizeMapConfig(normalized) },
-        'warn',
-      );
-      return false;
-    }
+    const management = getUi()?.registry?.find?.('db-map')?.management;
+    if (typeof management?.saveConfig !== 'function') return false;
+    try { management.saveConfig(config); return true; }
+    catch (error) { console.warn(`${logPrefix} 保存地图 AI 配置失败`, summarizeMapError(error)); return false; }
   }
 
   function resetMapAiConfig() {
-    try {
-      localStorage.removeItem(MAP_CONFIG_STORAGE_KEY);
-      mapDebugLog('manager:config:reset:ok', summarizeMapConfig(getEmptyMapAiConfig()));
-      return true;
-    } catch (error) {
-      const errorSummary = summarizeMapError(error);
-      console.warn(`${logPrefix} 重置地图 AI 配置失败`, errorSummary);
-      mapDebugLog('manager:config:reset:failed', { error: errorSummary }, 'warn');
-      return false;
-    }
+    const management = getUi()?.registry?.find?.('db-map')?.management;
+    if (typeof management?.resetConfig !== 'function') return false;
+    try { management.resetConfig(); return true; }
+    catch (error) { console.warn(`${logPrefix} 重置地图 AI 配置失败`, summarizeMapError(error)); return false; }
   }
 
   function getManagerMapConfigForm(root) {
@@ -1429,12 +1395,28 @@
     }
   }
 
+  function isManagerMapModuleEnabled() {
+    const registry = getUi()?.registry;
+    const module = registry?.find?.('db-map');
+    return Boolean(module && module.enabled !== false && registry?.isEnabled?.('db-map') !== false);
+  }
+
   function setManagerMapCustomFieldsEnabled(root, enabled) {
     root?.querySelectorAll?.('[data-jjks-map-custom-field]').forEach(field => {
       field.disabled = !enabled;
     });
     const fetchButton = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
-    if (fetchButton) fetchButton.disabled = !enabled;
+    const moduleEnabled = isManagerMapModuleEnabled();
+    if (fetchButton) {
+      fetchButton.disabled = !enabled || !moduleEnabled;
+      fetchButton.title = moduleEnabled ? '' : '请先在模块状态中开启数据库地图';
+    }
+    const status = root?.querySelector?.('[data-jjks-map-model-status]');
+    if (status && !moduleEnabled) {
+      status.textContent = '数据库地图模块已关闭；开启后才能拉取模型列表。';
+    } else if (status?.textContent?.includes('数据库地图模块已关闭')) {
+      refreshManagerModelOptions(root);
+    }
   }
 
   function fillManagerMapConfigForm(root, config = readMapAiConfig()) {
@@ -1447,10 +1429,6 @@
     if (enableMapGenerationInput) enableMapGenerationInput.checked = config.enableMapGeneration !== false;
     refreshManagerModelOptions(root, config);
     setManagerMapCustomFieldsEnabled(root, config.followDatabaseApi === false);
-  }
-
-  function getTavernHelperApi() {
-    return hostWindow.TavernHelper || window.TavernHelper || globalThis.TavernHelper || null;
   }
 
   function collectManagerMapConfig(root) {
@@ -1472,6 +1450,14 @@
   }
 
   async function fetchManagerMapModels(root) {
+    const mapModule = getUi()?.registry?.find?.('db-map');
+    if (!isManagerMapModuleEnabled()) {
+      mapDebugLog('manager:models:fetch:skipped', { reason: 'db-map-disabled' }, 'warn');
+      notify('请先在模块状态中开启数据库地图，再拉取模型列表', 'info');
+      setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
+      return;
+    }
+    const management = mapModule?.management;
     const config = collectManagerMapConfig(root);
     if (!config) {
       mapDebugLog('manager:models:fetch:failed', { reason: 'form-not-ready' }, 'warn');
@@ -1488,14 +1474,13 @@
       notify('请先填写 API 地址，再拉取模型列表', 'error');
       return;
     }
-    const getModelList = getTavernHelperApi()?.getModelList || hostWindow.getModelList || window.getModelList;
-    if (typeof getModelList !== 'function') {
+    if (typeof management?.fetchModels !== 'function') {
       mapDebugLog(
         'manager:models:fetch:failed',
-        summarizeModelFetch(config, { reason: 'getModelList-unavailable' }),
+        summarizeModelFetch(config, { reason: 'db-map-management-unavailable' }),
         'warn',
       );
-      notify('酒馆助手 getModelList 不可用，无法拉取模型列表', 'error');
+      notify('数据库地图模块未就绪，无法拉取模型列表', 'error');
       return;
     }
 
@@ -1503,7 +1488,7 @@
     setManagerButtonBusy(button, '拉取中', true);
     try {
       mapDebugLog('manager:models:fetch:start', summarizeModelFetch(config, { generatorAvailable: true }));
-      const models = normalizeMapModelList(await getModelList({ apiurl: config.apiUrl, key: config.apiKey }));
+      const models = normalizeMapModelList(await management.fetchModels(config));
       if (models.length === 0) {
         mapDebugLog('manager:models:fetch:empty', summarizeModelFetch(config, { modelCount: 0 }), 'warn');
         notify('模型列表为空，请检查 API 地址和密钥', 'error');
@@ -1939,6 +1924,11 @@
     });
 
     renderManagerModuleList(root);
+    const mapForm = getManagerMapConfigForm(root);
+    setManagerMapCustomFieldsEnabled(
+      root,
+      mapForm ? getManagerMapMode(mapForm) === 'custom' : false,
+    );
 
     const warning = root.querySelector('[data-jjks-warning]');
     const otherState = data.另一个环境状态;
@@ -1972,10 +1962,28 @@
     lastError = '';
     refreshManagerState();
 
+    const previousUi = getUi();
     try {
-      getUi()?.scanner?.destroy?.();
+      previousUi?.scanner?.destroy?.();
     } catch (error) {
       console.warn(`${logPrefix} scanner destroy 失败`, error);
+    }
+
+    try {
+      const registry = previousUi?.registry;
+      const modules = registry?.list?.({ includeDisabled: true }) || [];
+      modules
+        .slice()
+        .reverse()
+        .forEach(module => registry.safelyCall?.(module, 'cleanup'));
+    } catch (error) {
+      console.warn(`${logPrefix} 旧模块 cleanup 失败`, error);
+    }
+
+    try {
+      previousUi?.theme?.destroy?.();
+    } catch (error) {
+      console.warn(`${logPrefix} theme destroy 失败`, error);
     }
 
     hostDocument

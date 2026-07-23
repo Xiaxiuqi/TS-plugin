@@ -9,7 +9,7 @@
 ## 基于版本
 
 - 源版本：`story_regex_ui_releasetest` (releasetest-0.1.1)
-- 当前版本：`lite_test-0.1.2`
+- 当前版本：`lite_test-0.1.3`
 
 ## 模块清单
 
@@ -18,7 +18,8 @@
 | `bp-panel-newvars` | BP战力雷达（兼容） | 开启     | 战力面板展示                                                                         |
 | `world-log`        | 世界运行报告       | 开启     | 世界状态日志展示                                                                     |
 | `manager-ui`       | 管理面板           | 开启     | 前端管理 UI（开关模块、主题切换等）                                                  |
-| `db-status-bar`    | 数据库状态栏       | 开启     | 从 `AutoCardUpdaterAPI.exportTableAsJson()` 读取数据库表，渲染咒回状态栏、任务与地图 |
+| `db-status-bar`    | 数据库状态栏       | 开启     | 读取状态数据，渲染世界状态、角色、能力、物品和独立任务档案 |
+| `db-map`           | 数据库地图         | 兼容迁移 | 独立读取地点/地图元素，独占 AI 生成、缓存、SVG 安全清理、交互和自动生成 |
 
 ## 与 releasetest 版本的差异
 
@@ -57,7 +58,8 @@ story_ui_lite_test/
 │   └── theme.js        # 主题管理
 ├── modules/
 │   ├── bp-panel-newvars/   # BP战力雷达
-│   ├── db-status-bar/      # 数据库状态栏（含地图与任务面板）
+│   ├── db-status-bar/      # 数据库状态栏（含独立任务档案）
+│   ├── db-map/             # 独立数据库地图
 │   ├── manager-ui/         # 管理面板
 │   └── world-log/          # 世界运行报告
 ├── index.js            # 主入口（正则脚本调用）
@@ -79,20 +81,16 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-17
+更新时间：2026-06-18
 
 | 项目项               | 状态                                            | 证据                                                                                                                                                                                                                                                                                   | 下一步                                                                                                           |
 | -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 数据库状态栏基础模块 | 已实现，默认挂载恢复                            | `modules/db-status-bar/data.js`、`modules/db-status-bar/index.js`、`modules/db-status-bar/style.css`；`index.js` 已恢复 `db-status-bar` 默认挂载到最后 AI/角色消息                                                                                                                     | 酒馆运行时复核状态栏在无 `<DbStatusBar/>` 显式标签时仍能显示                                                     |
-| 状态栏默认挂载位置   | 已修复，待酒馆运行时复核                        | `index.js` 使用最后 AI/角色消息判定驱动 `db-status-bar` 默认挂载；用户消息触发扫描时会刷新最后 AI 消息而不是挂到用户消息后                                                                                                                                                             | 在酒馆中验证用户发言后状态栏仍停留在最后 AI 消息内                                                               |
-| 角色头像弹窗         | 反馈确认，待按方案修复颜色                      | 点击链路存在，但 `style.css` 头像弹窗使用 `var(--db-panel)`、`var(--db-text)` 等状态栏变量；body 级挂载后颜色可能偏离 `preview-db-status.html` 浅色参考                                                                                                                                | 按预览浅色契约收敛弹窗局部 CSS，不污染预览页本体和全局 body 变量                                                 |
-| 状态栏地图刷新按钮   | 已补运行时反馈与日志，待酒馆运行时复核          | `data-map-action="refresh"` 调用 `doMap(root, false)`；`modules/db-status-bar/index.js` 已补缓存读取/命中/清除、签名匹配、生成入口与失败 reason 的 `[db-status-bar][map-debug]` 日志；地图提示只保留酒馆 toastr 通知，不再写入面板下方状态文字                                         | 在酒馆中触发刷新，确认缓存命中路径不重复生成且日志可定位                                                         |
-| 状态栏地图重绘按钮   | 已修复即时状态，待酒馆运行时复核                | `doMap(root, true)` 进入生成分支后立即显示地图遮罩；失败保留旧图或显示明确空状态；点击地图元素的详情改为点击处附近浮动卡片，不再追加到地图下方                                                                                                                                         | 在酒馆中触发有旧图/无旧图两种重绘路径，确认视觉反馈与失败状态；点击地图元素确认浮动卡片定位与关闭逻辑            |
-| 地图楼层自动重绘     | 已修复初次生成与遮罩链路，待酒馆运行时复核      | `initData` 初次加载完成后写入 `lastAutoMapSignature` 基线，避免进入聊天时因无缓存触发自动 AI 生成；自动重绘和 pending 恢复均优先使用当前 `activeDataRoot`，生成期间 rerender 后会恢复地图遮罩                                                                                          | 在酒馆中确认：首次进入聊天不自动 AI 生成；楼层变更后数据库更新完成才自动重绘，且生成期间遮罩持续显示             |
-| 地图 AI 生成链路     | 已补 debug 定位，待酒馆运行时复核               | `modules/db-status-bar/index.js` 已补配置读取、自定义 API 摘要、生成器选择、返回类型/长度、SVG 提取、sanitizer 结果、缓存和 doMap 失败 reason 日志                                                                                                                                     | 用空返回、非 SVG 返回、sanitizer 拒绝和成功 SVG 路径确认日志链完整                                               |
-| 地图 AI 运行时诊断   | 已实施测试版日志策略，待酒馆运行时复核          | `modules/db-status-bar/index.js` 与 `index.js` 的 `[db-status-bar][map-debug]` 摘要现在输出完整脱敏 URL 与当前模型；API Key 仍只输出存在性与尾号，URL 中常见 key/token/secret/password 参数值会替换为 `[redacted]`；`sanitizedLog` 仅保留当前模型                                      | 在酒馆中分别触发主 API、custom_api、模型拉取失败/成功路径，确认 URL 可定位、模型可见且无完整 API Key 泄露        |
-| 地图无缓存基础显示   | 已修复代码侧，待酒馆运行时复核                  | `modules/db-status-bar/index.js` 增加 `renderBaseMap(S)`，无缓存、AI 关闭或 AI 失败无旧图时基于 `GameState.mapElements` 渲染经 `sanitizeSVG()` 清理的基础 SVG；不写入 `mapCache`；“暂无 AI 地图缓存”等提示不再占用地图下方区域                                                         | 硬刷新后打开地图页，确认无 AI 缓存时仍显示地图元素；普通刷新不触发 AI，不污染缓存；确认地图下方无重复提示文字    |
-| 管理界面地图配置分页 | 已补测试版 URL/模型 debug log，待酒馆运行时复核 | `index.js` 已补地图配置读取/保存/重置和模型拉取的 `[db-status-bar][map-debug]` 日志；测试版输出完整脱敏 URL 与当前模型，API Key 只输出存在性与尾号，后续脱敏日志结构仅保留模型                                                                                                         | 在管理界面保存、重置、拉取模型时确认日志不泄露完整 API Key，且 URL query 中密钥参数被替换为 `[redacted]`         |
+| 状态栏/地图模块拆分 | 代码侧完成，待酒馆运行时复核 | `db-status-bar` 只保留状态、角色、能力、物品、任务和数据库 API；`db-map` 独立承担地点/地图解析、AI、缓存、SVG 清理和交互 | 验证两个模块可独立开关，互不残留 DOM、定时器、弹窗或异步结果 |
+| 默认挂载与顺序 | 代码侧完成，待酒馆运行时复核 | `index.js` 固定最后一条 AI 消息末尾顺序：`bp-panel-newvars → world-log → db-status-bar → db-map`，无需显式标签 | 用户消息、系统消息和新 AI 消息混合时复核归属与顺序 |
+| 热替换与异步失效 | 已完成静态修复 | registry 同 ID 替换先 cleanup；两个数据库模块使用实例身份、generation token 与 disposed 校验；地图并发锁按 owner 释放并移交最后一个 pending 请求 | 酒馆中快速开关/重载模块并在 AI 请求进行中触发表更新 |
+| 角色头像弹窗 | 已补销毁清理，待运行时复核 | 状态栏禁用/cleanup 会销毁当前模块的 body portal、Cropper 实例，并使未完成的异步初始化失效 | 在 Cropper CDN 加载中关闭模块，确认无浮层和迟到实例 |
+| 管理界面地图配置 | 已完成职责收口 | 配置和模型拉取统一调用 `db-map.management`；地图模块关闭时按钮禁用并提示，不再由管理页直连 AI API | 独立开关 `db-map` 后复核按钮、提示、保存与模型拉取 |
+| CSS 模块边界 | 已完成静态收口 | 地图顶层规则限定 `.db-map` 且使用自有 label/detail 类；状态栏内部规则限定 `.db-status-bar`，头像 body portal 保留独立作用域 | 运行时对比拆分前视觉，并检查其他模块无样式串扰 |
 | 主题切换联动         | 已修复缓存型回归，本轮补齐图标切换入口与 DB 重渲染          | `core/theme.js` 与 `index.js` 的主题应用链路只维护统一 `story-ui-day/night` 语义类；BP、世界报告与数据库状态栏消费同一主题类；本轮 DB 状态栏 `.db-sb-mark` 接入 `data-story-ui-theme-toggle`，并监听 `story-ui-theme-changed` 后重渲染；BP 与 DB 日间 mark 为 `✦`、夜间为 `✧` | 酒馆运行时复核 BP、世界报告、数据库状态栏三种入口点击后同步换色 |
 | 模块清理             | 已完成代码侧清理，待酒馆运行时复核              | `loader.js` 不再加载 `mvu-status-newvars` 与 `relation-status`；`index.js` 的模块标签、锚点、扫描顺序、管理面板模块列表和诊断来源均不再包含两者；旧消息折叠按钮、持久化和占位样式已删除 | 打开管理面板确认模块状态和诊断信息不再出现已删除模块，旧楼层不再生成折叠占位 |
 | 样式加载安全性       | 已修复代码侧，待酒馆运行时复核                  | `loader.js` 改为优先 `fetch` CSS 并内联为 `<style data-story-ui-css>`；`index.js` 的管理面板样式加载同样改为内联，不再主动创建跨域 CSS link                                                                                                                                            | 点击“重载美化”后确认 `dynamic-styles.js` 不再因跨域 `cssRules` 抛出 SecurityError                                |
