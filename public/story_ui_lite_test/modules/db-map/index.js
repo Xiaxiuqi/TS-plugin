@@ -599,11 +599,11 @@
       try {
         const toastr = candidate?.toastr;
         if (toastr?.[type]) {
-          toastr[type](text, '数据库地图');
+          toastr[type](text, '地图');
           break;
         }
         if (toastr?.info) {
-          toastr.info(text, '数据库地图');
+          toastr.info(text, '地图');
           break;
         }
       } catch {

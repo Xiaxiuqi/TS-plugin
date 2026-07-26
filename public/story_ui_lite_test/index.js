@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'lite_test',
     displayEnv: '精简测试版',
-    version: 'lite_test-0.1.4',
+    version: 'lite_test-0.1.5',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady_lite_test',
@@ -25,10 +25,10 @@
   const LOADER_MARK = `jjks-story-ui-loader-${CONFIG.env}`;
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
   const MODULE_LABELS = {
-    'bp-panel-newvars': 'BP战力雷达（兼容）',
-    'db-status-bar': '数据库状态栏',
-    'db-map': '数据库地图',
+    'bp-panel-newvars': 'BP战力雷达',
     'world-log': '世界运行报告',
+    'db-status-bar': '状态栏',
+    'db-map': '地图',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
@@ -1371,7 +1371,7 @@
       已注册模块: modules.map(
         module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
       ),
-      数据库地图诊断: mapDiagnosis,
+      地图诊断: mapDiagnosis,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
       UI实例来源: getUiSource(),
@@ -1629,12 +1629,12 @@
     const moduleEnabled = isManagerMapModuleEnabled();
     if (fetchButton) {
       fetchButton.disabled = !enabled || !moduleEnabled;
-      fetchButton.title = moduleEnabled ? '' : '请先在模块状态中开启数据库地图';
+      fetchButton.title = moduleEnabled ? '' : '请先在模块状态中开启地图';
     }
     const status = root?.querySelector?.('[data-jjks-map-model-status]');
     if (status && !moduleEnabled) {
-      status.textContent = '数据库地图模块已关闭；开启后才能拉取模型列表。';
-    } else if (status?.textContent?.includes('数据库地图模块已关闭')) {
+      status.textContent = '地图模块已关闭；开启后才能拉取模型列表。';
+    } else if (status?.textContent?.includes('地图模块已关闭')) {
       refreshManagerModelOptions(root);
     }
   }
@@ -1673,7 +1673,7 @@
     const mapModule = getUi()?.registry?.find?.('db-map');
     if (!isManagerMapModuleEnabled()) {
       mapDebugLog('manager:models:fetch:skipped', { reason: 'db-map-disabled' }, 'warn');
-      notify('请先在模块状态中开启数据库地图，再拉取模型列表', 'info');
+      notify('请先在模块状态中开启地图，再拉取模型列表', 'info');
       setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
       return;
     }
@@ -1700,7 +1700,7 @@
         summarizeModelFetch(config, { reason: 'db-map-management-unavailable' }),
         'warn',
       );
-      notify('数据库地图模块未就绪，无法拉取模型列表', 'error');
+      notify('地图模块未就绪，无法拉取模型列表', 'error');
       return;
     }
 

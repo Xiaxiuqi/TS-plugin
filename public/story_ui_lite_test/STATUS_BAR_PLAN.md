@@ -18,6 +18,8 @@
 
 固定默认挂载顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`，两个数据库模块均挂到最后一条 AI 消息末尾且不使用显式标签。
 
+> 2026-07-23 管理名称与迁移更新：管理列表显示顺序固定为“BP战力雷达 → 世界运行报告 → 状态栏 → 地图”。历史 `db-map=false` 没有来源标识，无法区分旧逻辑写入与手动关闭；为满足本次恢复地图显示的要求，首次升级时将其重置为默认开启并保留旧 `true`，迁移完成后两个数据库模块继续独立持久化开关。状态保存失败时不写完成标记，下次加载继续重试。
+
 ### 1.2 UI风格统一要求
 
 必须与以下现有模块保持视觉一致：`bp-panel-newvars`、`world-log`
@@ -488,6 +490,7 @@ function onTableUpdate() {
 - [x] 管理界面地图配置只通过 `db-map.management` 读写；地图模块关闭时模型拉取按钮禁用并给出提示
 - [x] `db-status-bar` 无 AI 调用，`db-map` 无状态栏运行时或样式依赖；两个模块可独立开关
 - [x] 固定默认挂载顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`，且不使用显式标签
+- [x] 管理模块名称与顺序固定为“BP战力雷达 → 世界运行报告 → 状态栏 → 地图”；首次升级按恢复显示要求重置无来源标识的旧 `db-map=false`，之后保留地图独立开关
 - [ ] 数据更新后UI自动刷新
 - [x] 日/夜主题切换链路已统一到 `story-ui-day/night`，并补齐内联 CSS 旧样式清理与版本失效；酒馆运行时仍需复核管理面板、BP 图标、世界报告图标三种入口均能同步换色
 - [x] 数据库状态栏 `.db-sb-mark` 已接入 `data-story-ui-theme-toggle`，点击后复用统一日夜切换链路，并监听 `story-ui-theme-changed` 重渲染以同步 `✦/✧` 图标

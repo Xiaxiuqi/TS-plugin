@@ -2,7 +2,7 @@
   const GLOBAL_KEY = 'StoryRegexUI';
   const LOADER_FLAG = '__storyRegexUiLoaderReady_lite_test';
   const LOADER_ENV = 'lite_test';
-  const LOADER_VERSION = 'lite_test-0.1.4';
+  const LOADER_VERSION = 'lite_test-0.1.5';
 
   const existingUi = window[GLOBAL_KEY];
   const existingLoaderState = existingUi?.loaderState;
