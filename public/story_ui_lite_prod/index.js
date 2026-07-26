@@ -1839,6 +1839,7 @@
     const managerView = getManagerView();
     panel.innerHTML =
       managerView?.buildPanelHtml?.({
+        displayEnv: CONFIG.version,
         version: CONFIG.version,
         loaderStatus: loaderRuntime.status,
       }) ||

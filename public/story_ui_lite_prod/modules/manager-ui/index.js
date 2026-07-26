@@ -4,11 +4,13 @@
   }
 
   const view = {
-    buildPanelHtml({ version, loaderStatus }) {
+    buildPanelHtml({ version, displayEnv, loaderStatus }) {
+      const runtimeVersion = window.__jjksStoryUiIndexState?.lite_prod?.version;
+      const versionLabel = version || runtimeVersion || displayEnv || 'unknown';
       return `
         <header class="jjks-manager-head">
           <div>
-            <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${version}</span>
+            <span class="jjks-manager-eyebrow">Jujutsu Kaisen Frontend · ${versionLabel}</span>
             <h2>咒回前端管理·lite</h2>
             <p>统一查看 Story UI 模块装载、扫描结果与前端主题状态。</p>
           </div>
