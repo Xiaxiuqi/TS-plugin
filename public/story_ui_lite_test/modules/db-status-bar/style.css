@@ -2,6 +2,8 @@
 
 .db-status-bar {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   margin: 0 auto 10px;
   padding: 2px 0;
   overflow-x: hidden;
@@ -66,6 +68,7 @@
 
 .db-status-bar .db-sb-root {
   width: 100%;
+  min-width: 0;
   display: grid;
   gap: 8px;
 }
@@ -74,6 +77,7 @@
 
 .db-status-bar .db-sb-panel {
   width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: none;
   position: relative;
@@ -1196,6 +1200,38 @@
 }
 
 /* Quest archive is a normal status panel; outer panel starts collapsed. */
-.db-status-bar .db-sb-quest-list { display: grid; gap: 6px; }
+.db-status-bar .db-sb-quest-panel .db-sb-body,
+.db-status-bar .db-sb-quest-list,
+.db-status-bar .db-sb-quest-panel .db-sb-toggle-header,
+.db-status-bar .db-sb-quest-panel .db-sb-toggle-content {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.db-status-bar .db-sb-quest-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  overflow-x: hidden;
+}
+
+.db-status-bar .db-sb-quest-panel .db-sb-toggle-header > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.db-status-bar .db-sb-quest-panel .db-sb-toggle-header > .db-sb-toggle-icon {
+  flex: 0 0 auto;
+}
+
+.db-status-bar .db-sb-quest-panel .db-sb-toggle-content,
+.db-status-bar .db-sb-quest-panel .db-sb-mini-body,
+.db-status-bar .db-sb-quest-panel .db-sb-mini-body p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .db-status-bar .db-sb-quest-panel .db-sb-toggle-header { border: 1px solid var(--db-line); border-radius: 6px; padding: 8px 10px; background: var(--db-card); }
 .db-status-bar .db-sb-quest-panel .db-sb-toggle-content { padding: 4px 10px 10px; }
