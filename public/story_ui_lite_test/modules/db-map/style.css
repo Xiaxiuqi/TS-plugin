@@ -10,7 +10,29 @@
 .db-map .db-map-title { font-size:13px;font-weight:900;letter-spacing:.1em; }
 .db-map .db-map-subtitle{font-size:9px;color:var(--db-muted);letter-spacing:.14em}
 .db-map .db-map-body{padding:9px 10px 10px}
-.db-map .db-sb-fn-toolbar-right{display:flex;gap:6px;overflow-x:auto}.db-map .db-sb-fn-btn{flex:0 0 auto;padding:5px 12px;border-radius:99px;border:1px solid var(--db-gold);background:transparent;color:var(--db-gold);font:800 10.5px inherit;white-space:nowrap;cursor:pointer}.db-map .db-sb-fn-btn:hover{background:var(--db-gold);color:#fff}
+.db-map .db-sb-fn-toolbar-right {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.db-map .db-sb-fn-btn {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border: 1px solid var(--db-gold);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--db-gold);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.db-map .db-sb-fn-btn:hover {
+  background: var(--db-gold);
+  color: #fff;
+}
 .db-map .db-sb-map-area {
   position: relative;
   align-self: stretch;
