@@ -9,7 +9,7 @@
 ## 基于版本
 
 - 源版本：`story_regex_ui_releasetest` (releasetest-0.1.1)
-- 当前版本：`lite_test-0.1.3`
+- 当前版本：`lite_test-0.1.4`
 
 ## 模块清单
 
@@ -42,7 +42,7 @@
 
 - `env`: `releasetest` → `lite_test`
 - `displayEnv`: `发布测试版` → `精简测试版`
-- `version`: `releasetest-0.1.1` → `lite_test-0.1.2`
+- `version`: `releasetest-0.1.1` → 当前 `lite_test-0.1.4`
 - `publicBaseUrl`: 指向 `story_ui_lite_test/`
 - 入口资源来源：无法从 `document.currentScript` 或 `document.scripts` 确认测试版 `index.js` 来源时，统一回退 `CONFIG.publicBaseUrl`，不再维护本地扩展目录 fallback
 - `managerRootId`: `jjks-story-ui-manager-releasetest` → `jjks-story-ui-manager-lite_test`
@@ -81,7 +81,7 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-06-18
+更新时间：2026-07-23
 
 | 项目项               | 状态                                            | 证据                                                                                                                                                                                                                                                                                   | 下一步                                                                                                           |
 | -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -93,6 +93,7 @@ story_ui_lite_test/
 | CSS 模块边界 | 已完成静态收口 | 地图顶层规则限定 `.db-map` 且使用自有 label/detail 类；状态栏内部规则限定 `.db-status-bar`，头像 body portal 保留独立作用域 | 运行时对比拆分前视觉，并检查其他模块无样式串扰 |
 | 主题切换联动         | 已修复缓存型回归，本轮补齐图标切换入口与 DB 重渲染          | `core/theme.js` 与 `index.js` 的主题应用链路只维护统一 `story-ui-day/night` 语义类；BP、世界报告与数据库状态栏消费同一主题类；本轮 DB 状态栏 `.db-sb-mark` 接入 `data-story-ui-theme-toggle`，并监听 `story-ui-theme-changed` 后重渲染；BP 与 DB 日间 mark 为 `✦`、夜间为 `✧` | 酒馆运行时复核 BP、世界报告、数据库状态栏三种入口点击后同步换色 |
 | 模块清理             | 已完成代码侧清理，待酒馆运行时复核              | `loader.js` 不再加载 `mvu-status-newvars` 与 `relation-status`；`index.js` 的模块标签、锚点、扫描顺序、管理面板模块列表和诊断来源均不再包含两者；旧消息折叠按钮、持久化和占位样式已删除 | 打开管理面板确认模块状态和诊断信息不再出现已删除模块，旧楼层不再生成折叠占位 |
+| loader 升级兼容 | 已完成静态修复，待酒馆运行时复核 | 仅认领带 `lite_test` 环境身份的运行时，或没有 scanner/registry/theme 且来源明确的测试版 loader 空壳；无环境身份但已有共享能力的运行时一律按 foreign/unknown 隔离。卡死周期会取消旧异步任务、清理测试版资源并自动重试一次，资源复用和 ready 状态均校验 API/模块版本契约 | 在旧测试版残留、无身份共享运行时、重复入口、超时恢复和手动重载场景复核不会误清理其他环境，且失败后仅显式重载重置恢复额度 |
 | 样式加载安全性       | 已修复代码侧，待酒馆运行时复核                  | `loader.js` 改为优先 `fetch` CSS 并内联为 `<style data-story-ui-css>`；`index.js` 的管理面板样式加载同样改为内联，不再主动创建跨域 CSS link                                                                                                                                            | 点击“重载美化”后确认 `dynamic-styles.js` 不再因跨域 `cssRules` 抛出 SecurityError                                |
 | 浮岛误改回滚         | 已完成                                          | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空                                                                                                                                 | 后续默认不碰 ci_island 路径                                                                                      |
 
@@ -105,6 +106,19 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.21-loader-upgrade-recovery (2026-07-23)
+
+**测试版 loader 协议升级恢复修复**
+
+- 根因是入口曾把 loader 标签存在等同于业务运行时可用，且恢复次数、资源标签和共享状态都缺少可靠的周期身份与执行契约，导致残留标签、重复入口和旧异步回调可能把启动卡死或误判成功。
+- 入口现在区分当前版本、带明确 `lite_test` 身份的过期版本、其他环境和未知卡死状态；无环境身份但已包含 scanner、registry 或 theme 的共享运行时不再凭测试版 loader 标签被认领，避免清理 prod 或其他精简环境。
+- 已存在 loader 标签或新 loader 执行后超过 8 秒仍未就绪时，只允许自动恢复一次；恢复失败会保留失败状态与已消耗的恢复额度，只有显式资源重载才开始新的手动恢复周期。
+- loader 标签改用宿主文档创建，入口与 loader 的缓存版本同步提升到 `lite_test-0.1.4`。
+- 重复执行 `index.js` 不再仅凭入口 flag 静默返回，而是复用 `window.__jjksStoryUiIndexState.lite_test.loaderRuntime` 中的共享 Promise、状态和恢复次数；当前版本就绪时重扫，残留或失败状态则由唯一启动周期执行受控恢复。
+- `StoryRegexUI.runtime` 的写入已后移到其他环境检查之后，避免精简测试版在拒绝启动前污染共享运行时。
+- loader 周期使用 cancel、AbortController 和对象身份阻止旧回调写入新周期；CSS 与脚本资源只有在节点有效且核心 API、数据 API、业务模块注册及版本契约满足时才允许复用或标记 ready。
+- `db-status-bar` 模块注册版本统一使用 `MODULE_VERSION = 1.1.0-lite_test`，避免 loader 契约与模块诊断版本分叉。
 
 ### v1.1.20-import-loader-public-base-fallback (2026-06-18)
 

@@ -2,7 +2,7 @@
   const ui = (window.StoryRegexUI = window.StoryRegexUI || {});
   const dom = ui.dom;
   const MODULE_ID = 'db-status-bar';
-  const MODULE_VERSION = '1.0.0-lite_test';
+  const MODULE_VERSION = '1.1.0-lite_test';
   const persistentRuntime = (window.__storyRegexUiRuntime ||= {});
   const databaseUpdateBridges = (persistentRuntime.dbStatusUpdateBridges ||= new WeakMap());
 
@@ -959,7 +959,7 @@
   function onEnable(){generationToken+=1;}
   function onDisable() { generationToken+=1; if(debounceTimer)clearTimeout(debounceTimer); debounceTimer=null; activeDataRoot=null; clearDatabaseUpdateHandler(); removeAvatarModals(); removeMountedDom(); }
   const themeChanged=()=>rerenderAll(); document.addEventListener('story-ui-theme-changed',themeChanged);
-  moduleDefinition={ id:MODULE_ID, version:'1.1.0-lite_test', priority:80, enabled:true, renderContent:renderContentNode, mount,
+  moduleDefinition={ id:MODULE_ID, version:MODULE_VERSION, priority:80, enabled:true, renderContent:renderContentNode, mount,
     onEnable, onDisable, cleanup(){if(disposed)return;disposed=true;onDisable();document.removeEventListener('story-ui-theme-changed',themeChanged);} };
   ui.registry?.register?.(moduleDefinition);
 })();

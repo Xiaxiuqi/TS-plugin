@@ -2,10 +2,10 @@
   const CONFIG = {
     env: 'lite_test',
     displayEnv: '精简测试版',
-    version: 'lite_test-0.1.3',
+    version: 'lite_test-0.1.4',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
     globalKey: 'StoryRegexUI',
-    loaderFlag: '__storyRegexUiLoaderReady',
+    loaderFlag: '__storyRegexUiLoaderReady_lite_test',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
     reloadButtonName: '重载美化',
@@ -108,6 +108,14 @@
   }
 
   const state = (window.__jjksStoryUiIndexState = window.__jjksStoryUiIndexState || {});
+  const envState = (state[CONFIG.env] = state[CONFIG.env] || {});
+  const loaderRuntime = (envState.loaderRuntime = envState.loaderRuntime || {
+    promise: null,
+    status: 'idle',
+    recoveryAttempted: false,
+    generation: 0,
+  });
+  if (!Number.isInteger(loaderRuntime.generation)) loaderRuntime.generation = 0;
   const currentScript = document.currentScript;
   function normalizeBaseUrl(value) {
     try {
@@ -137,8 +145,6 @@
   }
 
   const baseUrl = detectBaseUrl();
-  let loaderPromise = null;
-  let loaderStatus = 'idle';
   const INITIAL_SCAN_LIMIT = 5;
   const messageSignatures = new Map();
   const mountedModulesByMessage = new Map();
@@ -153,11 +159,17 @@
   const moduleToggleBusy = new Set();
 
   if (window[INDEX_FLAG]) {
-    hostWindow[CONFIG.globalKey]?.scanner?.scan?.(hostDocument);
+    ensureLoader()
+      .then(() => {
+        getUi()?.scanner?.scan?.(hostDocument);
+      })
+      .catch(error => {
+        console.error(`${logPrefix} 重复入口恢复 loader 失败`, error);
+      });
     return;
   }
   window[INDEX_FLAG] = true;
-  state[CONFIG.env] = {
+  Object.assign(envState, {
     env: CONFIG.env,
     displayEnv: CONFIG.displayEnv,
     version: CONFIG.version,
@@ -166,12 +178,7 @@
     hostHasTavernHelper: Boolean(hostWindow?.TavernHelper),
     hostLocation: hostWindow?.location?.href || '',
     startedAt: new Date().toISOString(),
-  };
-
-  const bootstrapUi = window[CONFIG.globalKey] || (window[CONFIG.globalKey] = {});
-  bootstrapUi.runtime = bootstrapUi.runtime || {};
-  bootstrapUi.runtime.renderDepth = INITIAL_SCAN_LIMIT;
-  bootstrapUi.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
+  });
 
   function notify(message, type = 'info') {
     try {
@@ -206,12 +213,61 @@
 
   function getLoaderBootState() {
     const ui = getUi();
-    const status = ui?.loaderState?.status || '';
+    const loaderState = ui?.loaderState || null;
+    const cycleId = loaderState?.cycleId || '';
+    const status = loaderState?.status || '';
+    const env = loaderState?.env || '';
+    const version = loaderState?.version || '';
+    const hasScanner = Boolean(ui?.scanner);
+    const hasStatefulRuntime = Boolean(ui && (hasScanner || ui.registry || ui.theme));
+    const currentLoaderTag = hostDocument.querySelector(`script[data-jjks-story-ui-loader="${LOADER_MARK}"]`);
+    const ownsCurrentLoaderTag = Boolean(
+      currentLoaderTag && String(currentLoaderTag.src || '').includes('/story_ui_lite_test/loader.js'),
+    );
+    const loaderTagState = currentLoaderTag?.dataset?.jjksStoryUiLoadState || '';
+    const ownsRuntime = env === CONFIG.env || (!env && ownsCurrentLoaderTag && !hasStatefulRuntime);
+    const legacyReady = !status && hasScanner;
+    const staleVersion = Boolean(status && ownsRuntime && version !== CONFIG.version);
+    const currentRuntime = env === CONFIG.env && version === CONFIG.version;
+    const foreignRuntime = Boolean(ui && !ownsRuntime && (status || hasStatefulRuntime));
     return {
-      ready: status === 'ready' && Boolean(ui?.scanner),
-      failed: status === 'failed',
-      error: ui?.loaderState?.error || '',
+      ready: currentRuntime && status === 'ready' && hasScanner,
+      failed: ownsRuntime && status === 'failed',
+      error: loaderState?.error || '',
+      cycleId,
+      loaderTagState,
+      loaderTagCycleId: currentLoaderTag?.dataset?.jjksStoryUiLoaderCycle || '',
+      legacyReady,
+      ownsRuntime,
+      staleVersion,
+      foreignRuntime,
+      protocol: currentRuntime
+        ? 'current'
+        : staleVersion
+          ? 'stale-version'
+          : legacyReady && ownsRuntime
+            ? 'legacy-ready'
+            : status
+              ? 'foreign-stateful'
+              : 'unknown',
     };
+  }
+
+  function prepareLiteRuntime() {
+    const bootState = getLoaderBootState();
+    if (bootState.foreignRuntime) {
+      throw new Error('检测到其他环境正在使用共享 StoryRegexUI，精简测试版已停止启动以避免混合运行时');
+    }
+
+    const existingUi = getUi();
+    const ui = existingUi || {};
+    if (!existingUi) {
+      hostWindow[CONFIG.globalKey] = ui;
+    }
+    ui.runtime = ui.runtime || {};
+    ui.runtime.renderDepth = INITIAL_SCAN_LIMIT;
+    ui.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
+    return ui;
   }
 
   function getStoryDocument() {
@@ -319,87 +375,251 @@
     return appliedTheme;
   }
 
+  function removeLiteTestResources() {
+    hostDocument
+      .querySelectorAll(
+        'script[data-jjks-story-ui-loader], script[data-story-ui-script], style[data-story-ui-css], link[data-story-ui-css]',
+      )
+      .forEach(node => {
+        const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
+        const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
+        const isCurrentLiteResource = String(resourceUrl).includes('/story_ui_lite_test/');
+        if (isCurrentLoader || isCurrentLiteResource) node.remove();
+      });
+
+    for (const candidate of [...new Set([window, hostWindow])]) {
+      try {
+        candidate[CONFIG.loaderFlag] = false;
+      } catch {
+        // ignore inaccessible or non-writable host globals
+      }
+    }
+  }
+
+  function resetStalledLoaderRuntime() {
+    const bootState = getLoaderBootState();
+    if (!bootState.ownsRuntime) {
+      throw new Error('检测到的 StoryRegexUI 不属于精简测试版，已拒绝清理共享运行时');
+    }
+
+    const staleUi = getUi();
+    try {
+      staleUi?.loaderState?.cancel?.('loader 启动周期已被精简测试版恢复流程替代');
+    } catch (error) {
+      console.warn(`${logPrefix} 取消残留 loader 周期失败`, error);
+    }
+
+    try {
+      staleUi?.scanner?.destroy?.();
+    } catch (error) {
+      console.warn(`${logPrefix} 清理残留 scanner 失败`, error);
+    }
+    try {
+      const registry = staleUi?.registry;
+      const modules = registry?.list?.({ includeDisabled: true }) || [];
+      modules
+        .slice()
+        .reverse()
+        .forEach(module => registry.safelyCall?.(module, 'cleanup'));
+    } catch (error) {
+      console.warn(`${logPrefix} 清理残留模块失败`, error);
+    }
+    try {
+      staleUi?.theme?.destroy?.();
+    } catch (error) {
+      console.warn(`${logPrefix} 清理残留主题监听失败`, error);
+    }
+
+    removeLiteTestResources();
+    for (const candidate of [...new Set([window, hostWindow])]) {
+      try {
+        if (candidate[CONFIG.globalKey] === staleUi) {
+          candidate[CONFIG.globalKey] = undefined;
+        }
+      } catch {
+        // ignore inaccessible or non-writable host globals
+      }
+    }
+  }
+
+  function recoverStalledLoader(attemptGeneration, resolve, reject, message) {
+    if (loaderRuntime.generation !== attemptGeneration) {
+      reject(new Error('loader 启动周期已失效'));
+      return;
+    }
+    if (loaderRuntime.recoveryAttempted) {
+      loaderRuntime.status = 'failed';
+      lastError = message;
+      reject(new Error(lastError));
+      return;
+    }
+
+    loaderRuntime.recoveryAttempted = true;
+    console.warn(`${logPrefix} ${message}，正在清理残留资源并自动重试一次。`);
+    try {
+      resetStalledLoaderRuntime();
+    } catch (error) {
+      if (loaderRuntime.generation === attemptGeneration) {
+        loaderRuntime.status = 'failed';
+        lastError = error?.message || String(error);
+      }
+      reject(error);
+      return;
+    }
+    loaderRuntime.promise = null;
+    resolve(ensureLoader());
+  }
+
   function ensureLoader() {
-    if (getLoaderBootState().ready) {
-      loaderStatus = 'ready';
+    const initialBootState = getLoaderBootState();
+    if (initialBootState.foreignRuntime) {
+      loaderRuntime.status = 'failed';
+      lastError = '检测到其他环境正在使用共享 StoryRegexUI，精简测试版已停止启动以避免混合运行时';
+      return Promise.reject(new Error(lastError));
+    }
+    if (initialBootState.ready) {
+      prepareLiteRuntime();
+      loaderRuntime.status = 'ready';
+      loaderRuntime.recoveryAttempted = false;
       return Promise.resolve();
     }
-    if (loaderPromise) return loaderPromise;
+    if ((initialBootState.legacyReady || initialBootState.staleVersion) && initialBootState.ownsRuntime && !loaderRuntime.recoveryAttempted) {
+      loaderRuntime.recoveryAttempted = true;
+      console.warn(`${logPrefix} 检测到旧版或过期 loader 运行时，正在清理并加载当前版本。`);
+      try {
+        resetStalledLoaderRuntime();
+      } catch (error) {
+        loaderRuntime.status = 'failed';
+        lastError = error?.message || String(error);
+        loaderRuntime.recoveryAttempted = false;
+        return Promise.reject(error);
+      }
+    }
+    prepareLiteRuntime();
+    if (loaderRuntime.promise) return loaderRuntime.promise;
 
-    loaderStatus = 'loading';
+    const attemptGeneration = loaderRuntime.generation + 1;
+    loaderRuntime.generation = attemptGeneration;
+    loaderRuntime.status = 'loading';
     lastError = '';
     const src = toUrl('loader.js');
+    const isCurrentAttempt = () => loaderRuntime.generation === attemptGeneration;
 
-    loaderPromise = new Promise((resolve, reject) => {
+    const attemptPromise = new Promise((resolve, reject) => {
       const existed = hostDocument.querySelector(`script[data-jjks-story-ui-loader="${LOADER_MARK}"]`);
       if (existed) {
+        const bootState = getLoaderBootState();
+        const canStillComplete =
+          bootState.loaderTagState === 'loading' &&
+          (!bootState.loaderTagCycleId || bootState.loaderTagCycleId === String(attemptGeneration));
+        if (!canStillComplete && !bootState.ready && !bootState.failed) {
+          recoverStalledLoader(
+            attemptGeneration,
+            resolve,
+            reject,
+            `检测到不可继续的 loader 残留标签（标签状态：${bootState.loaderTagState || 'unknown'}，协议：${bootState.protocol}）`,
+          );
+          return;
+        }
+
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
+          if (!isCurrentAttempt()) {
+            window.clearInterval(timer);
+            reject(new Error('loader 启动周期已被更新操作替代'));
+            return;
+          }
           const bootState = getLoaderBootState();
           if (bootState.ready) {
             window.clearInterval(timer);
-            loaderStatus = 'ready';
+            loaderRuntime.status = 'ready';
+            loaderRuntime.recoveryAttempted = false;
             resolve();
           } else if (bootState.failed) {
             window.clearInterval(timer);
-            existed.remove();
-            loaderStatus = 'failed';
-            lastError = bootState.error || 'StoryRegexUI 业务模块加载失败';
-            reject(new Error(lastError));
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `StoryRegexUI 业务模块加载失败：${bootState.error || '未知错误'}`,
+            );
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
-            existed.remove();
-            loaderStatus = 'failed';
-            lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪。请尝试刷新网页或开关美化脚本';
-            reject(new Error(lastError));
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `loader 启动等待超时（标签状态：${bootState.loaderTagState || 'unknown'}，协议：${bootState.protocol}）`,
+            );
           }
         }, 120);
         return;
       }
 
-      const script = document.createElement('script');
+      const script = createElementInHost('script');
       script.src = src;
       script.dataset.jjksStoryUiLoader = LOADER_MARK;
       script.dataset.jjksStoryUiEnv = CONFIG.env;
+      script.dataset.jjksStoryUiLoadState = 'loading';
+      script.dataset.jjksStoryUiLoaderCycle = String(attemptGeneration);
       script.onload = () => {
+        script.dataset.jjksStoryUiLoadState = 'loaded';
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
+          if (!isCurrentAttempt()) {
+            window.clearInterval(timer);
+            reject(new Error('loader 启动周期已被更新操作替代'));
+            return;
+          }
           const bootState = getLoaderBootState();
           if (bootState.ready) {
             window.clearInterval(timer);
-            loaderStatus = 'ready';
+            loaderRuntime.status = 'ready';
+            loaderRuntime.recoveryAttempted = false;
             resolve();
           } else if (bootState.failed) {
             window.clearInterval(timer);
-            script.remove();
-            loaderStatus = 'failed';
-            lastError = bootState.error || 'StoryRegexUI 业务模块加载失败';
-            reject(new Error(lastError));
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `StoryRegexUI 业务模块加载失败：${bootState.error || '未知错误'}`,
+            );
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
-            loaderStatus = 'failed';
-            lastError = 'loader 已加载，但扫描器未就绪';
-            reject(new Error(lastError));
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `loader 已加载，但扫描器未就绪（协议：${bootState.protocol}）`,
+            );
           }
         }, 120);
       };
       script.onerror = () => {
+        script.dataset.jjksStoryUiLoadState = 'failed';
         script.remove();
-        loaderStatus = 'failed';
-        lastError = `loader 加载失败: ${src}`;
-        loaderPromise = null;
-        reject(new Error(lastError));
+        const error = new Error(`loader 加载失败: ${src}`);
+        if (isCurrentAttempt()) {
+          loaderRuntime.status = 'failed';
+          lastError = error.message;
+        }
+        reject(error);
       };
       (hostDocument.head || hostDocument.body).appendChild(script);
-    }).catch(error => {
-      loaderStatus = 'failed';
-      lastError = error?.message || String(error);
-      loaderPromise = null;
-      console.error(`${logPrefix} 启动失败`, error);
-      throw error;
     });
 
-    return loaderPromise;
+    const managedPromise = attemptPromise.catch(error => {
+      if (isCurrentAttempt()) {
+        loaderRuntime.status = 'failed';
+        lastError = error?.message || String(error);
+        if (loaderRuntime.promise === managedPromise) loaderRuntime.promise = null;
+        console.error(`${logPrefix} 启动失败`, error);
+      }
+      throw error;
+    });
+    loaderRuntime.promise = managedPromise;
+    return managedPromise;
   }
 
   function getDisplayedMessageElement(messageId) {
@@ -1142,7 +1362,7 @@
       入口版本: CONFIG.version,
       入口目录: baseUrl,
       加载器地址: loaderUrl,
-      加载器状态: loaderStatus,
+      加载器状态: loaderRuntime.status,
       全局对象就绪: Boolean(ui),
       扫描器就绪: Boolean(ui?.scanner),
       主题模块就绪: Boolean(ui?.theme),
@@ -1620,7 +1840,7 @@
     panel.innerHTML =
       managerView?.buildPanelHtml?.({
         displayEnv: CONFIG.displayEnv,
-        loaderStatus,
+        loaderStatus: loaderRuntime.status,
       }) ||
       '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
     root.dataset.jjksManagerFallback = managerView ? 'false' : 'true';
@@ -1958,57 +2178,39 @@
     const reloadButton = root?.querySelector?.('[data-jjks-action="reload"]');
     setManagerButtonBusy(reloadButton, '重挂载中', true);
 
-    loaderStatus = 'loading';
+    loaderRuntime.status = 'loading';
     lastError = '';
     refreshManagerState();
 
-    const previousUi = getUi();
-    try {
-      previousUi?.scanner?.destroy?.();
-    } catch (error) {
-      console.warn(`${logPrefix} scanner destroy 失败`, error);
+    const bootState = getLoaderBootState();
+    if (bootState.foreignRuntime) {
+      loaderRuntime.status = 'failed';
+      lastError = '检测到其他环境正在使用共享 StoryRegexUI，已拒绝重载以避免破坏其他前端';
+      managerActionBusy = false;
+      setManagerButtonBusy(reloadButton, '', false);
+      refreshManagerState();
+      notify(lastError, 'error');
+      return;
     }
 
     try {
-      const registry = previousUi?.registry;
-      const modules = registry?.list?.({ includeDisabled: true }) || [];
-      modules
-        .slice()
-        .reverse()
-        .forEach(module => registry.safelyCall?.(module, 'cleanup'));
-    } catch (error) {
-      console.warn(`${logPrefix} 旧模块 cleanup 失败`, error);
-    }
-
-    try {
-      previousUi?.theme?.destroy?.();
-    } catch (error) {
-      console.warn(`${logPrefix} theme destroy 失败`, error);
-    }
-
-    hostDocument
-      .querySelectorAll(
-        'script[data-jjks-story-ui-loader], script[data-story-ui-script], style[data-story-ui-css], link[data-story-ui-css]',
-      )
-      .forEach(node => {
-        const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
-        const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
-        const isCurrentLiteResource = String(resourceUrl).includes('/story_ui_lite_test/');
-        if (isCurrentLoader || isCurrentLiteResource) node.remove();
-      });
-
-    try {
-      window[CONFIG.loaderFlag] = false;
-      window[CONFIG.globalKey] = undefined;
-      if (hostWindow && hostWindow !== window) {
-        hostWindow[CONFIG.loaderFlag] = false;
-        hostWindow[CONFIG.globalKey] = undefined;
+      if (bootState.ownsRuntime) {
+        resetStalledLoaderRuntime();
+      } else {
+        removeLiteTestResources();
       }
-    } catch {
-      // ignore reset failures
+    } catch (error) {
+      loaderRuntime.status = 'failed';
+      lastError = error?.message || String(error);
+      managerActionBusy = false;
+      setManagerButtonBusy(reloadButton, '', false);
+      refreshManagerState();
+      notify(`资源重载失败：${lastError}`, 'error');
+      return;
     }
 
-    loaderPromise = null;
+    loaderRuntime.promise = null;
+    loaderRuntime.recoveryAttempted = false;
     try {
       await ensureLoader();
       messageSignatures.clear();
@@ -2203,7 +2405,7 @@
   bindEvents();
   ensureLoader()
     .then(() => {
-      loaderStatus = 'ready';
+      loaderRuntime.status = 'ready';
     })
     .catch(error => {
       console.error(`${logPrefix} 初始化 loader 失败`, error);
