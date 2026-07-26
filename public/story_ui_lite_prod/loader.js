@@ -12,7 +12,7 @@
         (!existingLoaderState?.env && (existingUi.scanner || existingUi.registry || existingUi.theme))),
   );
   if (hasUnownedRuntime) {
-    console.warn('[StoryRegexUI] 检测到其他环境的共享运行时，精简正式版 loader 已停止启动。');
+    console.warn('[StoryRegexUI] 检测到其他环境的共享运行时，lite_prod loader 已停止启动。');
     return;
   }
 

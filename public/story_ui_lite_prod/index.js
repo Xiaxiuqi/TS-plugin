@@ -1,7 +1,7 @@
 (() => {
   const CONFIG = {
     env: 'lite_prod',
-    displayEnv: '精简正式版',
+    displayEnv: 'lite',
     version: 'v2.1',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_prod/',
     globalKey: 'StoryRegexUI',
@@ -256,7 +256,7 @@
   function prepareLiteRuntime() {
     const bootState = getLoaderBootState();
     if (bootState.foreignRuntime) {
-      throw new Error('检测到其他环境正在使用共享 StoryRegexUI，精简正式版已停止启动以避免混合运行时');
+      throw new Error('检测到其他环境正在使用共享 StoryRegexUI，lite_prod 已停止启动以避免混合运行时');
     }
 
     const existingUi = getUi();
@@ -399,12 +399,12 @@
   function resetStalledLoaderRuntime() {
     const bootState = getLoaderBootState();
     if (!bootState.ownsRuntime) {
-      throw new Error('检测到的 StoryRegexUI 不属于精简正式版，已拒绝清理共享运行时');
+      throw new Error('检测到的 StoryRegexUI 不属于 lite_prod，已拒绝清理共享运行时');
     }
 
     const staleUi = getUi();
     try {
-      staleUi?.loaderState?.cancel?.('loader 启动周期已被精简正式版恢复流程替代');
+      staleUi?.loaderState?.cancel?.('loader 启动周期已被 lite_prod 恢复流程替代');
     } catch (error) {
       console.warn(`${logPrefix} 取消残留 loader 周期失败`, error);
     }
@@ -474,7 +474,7 @@
     const initialBootState = getLoaderBootState();
     if (initialBootState.foreignRuntime) {
       loaderRuntime.status = 'failed';
-      lastError = '检测到其他环境正在使用共享 StoryRegexUI，精简正式版已停止启动以避免混合运行时';
+      lastError = '检测到其他环境正在使用共享 StoryRegexUI，lite_prod 已停止启动以避免混合运行时';
       return Promise.reject(new Error(lastError));
     }
     if (initialBootState.ready) {
@@ -1839,7 +1839,7 @@
     const managerView = getManagerView();
     panel.innerHTML =
       managerView?.buildPanelHtml?.({
-        displayEnv: CONFIG.displayEnv,
+        version: CONFIG.version,
         loaderStatus: loaderRuntime.status,
       }) ||
       '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
