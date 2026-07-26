@@ -1,17 +1,16 @@
 (() => {
   const CONFIG = {
     env: 'lite_prod',
-    displayEnv: 'lite',
+    displayEnv: '精简正式版',
     version: 'v2.1',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_prod/',
     globalKey: 'StoryRegexUI',
-    loaderFlag: '__storyRegexUiLoaderReady',
+    loaderFlag: '__storyRegexUiLoaderReady_lite_prod',
     themeKey: 'jjks_story_ui_theme',
     buttonName: '咒回前端管理',
     reloadButtonName: '重载美化',
     managerRootId: 'jjks-story-ui-manager-lite_prod',
   };
-  const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
   const EMPTY_MAP_CONFIG = {
     followDatabaseApi: true,
     apiUrl: '',
@@ -26,21 +25,22 @@
   const LOADER_MARK = `jjks-story-ui-loader-${CONFIG.env}`;
   const logPrefix = `[StoryRegexUI:${CONFIG.env}]`;
   const MODULE_LABELS = {
-    'bp-panel-newvars': 'BP战力雷达（兼容）',
-    'db-status-bar': '数据库状态栏',
+    'bp-panel-newvars': 'BP战力雷达',
     'world-log': '世界运行报告',
+    'db-status-bar': '状态栏',
+    'db-map': '地图',
   };
   const AFTER_NATIVE_ANCHOR_NEEDLES = {
     'bp-panel-newvars': ['bp_panel_player', 'bp_panel_enemy', 'bp_panel', '最终BP', '战力等级'],
-    'db-status-bar': ['<DbStatusBar/>', 'DbStatusBar', '数据库状态栏', '地图元素表', '任务与事件表'],
     'world-log': ['世界运行报告', '世界主线', '重要约定', '死亡角色', 'Time passed:', '当前地点'],
   };
   const BEFORE_NATIVE_MODULE_IDS = [];
-  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar'];
+  const DEFAULT_AFTER_NATIVE_MODULE_IDS = ['db-status-bar', 'db-map'];
   const AFTER_NATIVE_MODULE_ORDER = [
     'bp-panel-newvars',
     'world-log',
     'db-status-bar',
+    'db-map',
   ];
 
   function getModuleAnchorNeedles(moduleId) {
@@ -108,6 +108,14 @@
   }
 
   const state = (window.__jjksStoryUiIndexState = window.__jjksStoryUiIndexState || {});
+  const envState = (state[CONFIG.env] = state[CONFIG.env] || {});
+  const loaderRuntime = (envState.loaderRuntime = envState.loaderRuntime || {
+    promise: null,
+    status: 'idle',
+    recoveryAttempted: false,
+    generation: 0,
+  });
+  if (!Number.isInteger(loaderRuntime.generation)) loaderRuntime.generation = 0;
   const currentScript = document.currentScript;
   function normalizeBaseUrl(value) {
     try {
@@ -137,8 +145,6 @@
   }
 
   const baseUrl = detectBaseUrl();
-  let loaderPromise = null;
-  let loaderStatus = 'idle';
   const INITIAL_SCAN_LIMIT = 5;
   const messageSignatures = new Map();
   const mountedModulesByMessage = new Map();
@@ -153,11 +159,17 @@
   const moduleToggleBusy = new Set();
 
   if (window[INDEX_FLAG]) {
-    hostWindow[CONFIG.globalKey]?.scanner?.scan?.(hostDocument);
+    ensureLoader()
+      .then(() => {
+        getUi()?.scanner?.scan?.(hostDocument);
+      })
+      .catch(error => {
+        console.error(`${logPrefix} 重复入口恢复 loader 失败`, error);
+      });
     return;
   }
   window[INDEX_FLAG] = true;
-  state[CONFIG.env] = {
+  Object.assign(envState, {
     env: CONFIG.env,
     displayEnv: CONFIG.displayEnv,
     version: CONFIG.version,
@@ -166,12 +178,7 @@
     hostHasTavernHelper: Boolean(hostWindow?.TavernHelper),
     hostLocation: hostWindow?.location?.href || '',
     startedAt: new Date().toISOString(),
-  };
-
-  const bootstrapUi = window[CONFIG.globalKey] || (window[CONFIG.globalKey] = {});
-  bootstrapUi.runtime = bootstrapUi.runtime || {};
-  bootstrapUi.runtime.renderDepth = INITIAL_SCAN_LIMIT;
-  bootstrapUi.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
+  });
 
   function notify(message, type = 'info') {
     try {
@@ -202,6 +209,65 @@
 
   function getUi() {
     return hostWindow[CONFIG.globalKey] || window[CONFIG.globalKey] || null;
+  }
+
+  function getLoaderBootState() {
+    const ui = getUi();
+    const loaderState = ui?.loaderState || null;
+    const cycleId = loaderState?.cycleId || '';
+    const status = loaderState?.status || '';
+    const env = loaderState?.env || '';
+    const version = loaderState?.version || '';
+    const hasScanner = Boolean(ui?.scanner);
+    const hasStatefulRuntime = Boolean(ui && (hasScanner || ui.registry || ui.theme));
+    const currentLoaderTag = hostDocument.querySelector(`script[data-jjks-story-ui-loader="${LOADER_MARK}"]`);
+    const ownsCurrentLoaderTag = Boolean(
+      currentLoaderTag && String(currentLoaderTag.src || '').includes('/story_ui_lite_prod/loader.js'),
+    );
+    const loaderTagState = currentLoaderTag?.dataset?.jjksStoryUiLoadState || '';
+    const ownsRuntime = env === CONFIG.env || (!env && ownsCurrentLoaderTag && !hasStatefulRuntime);
+    const legacyReady = !status && hasScanner;
+    const staleVersion = Boolean(status && ownsRuntime && version !== CONFIG.version);
+    const currentRuntime = env === CONFIG.env && version === CONFIG.version;
+    const foreignRuntime = Boolean(ui && !ownsRuntime && (status || hasStatefulRuntime));
+    return {
+      ready: currentRuntime && status === 'ready' && hasScanner,
+      failed: ownsRuntime && status === 'failed',
+      error: loaderState?.error || '',
+      cycleId,
+      loaderTagState,
+      loaderTagCycleId: currentLoaderTag?.dataset?.jjksStoryUiLoaderCycle || '',
+      legacyReady,
+      ownsRuntime,
+      staleVersion,
+      foreignRuntime,
+      protocol: currentRuntime
+        ? 'current'
+        : staleVersion
+          ? 'stale-version'
+          : legacyReady && ownsRuntime
+            ? 'legacy-ready'
+            : status
+              ? 'foreign-stateful'
+              : 'unknown',
+    };
+  }
+
+  function prepareLiteRuntime() {
+    const bootState = getLoaderBootState();
+    if (bootState.foreignRuntime) {
+      throw new Error('检测到其他环境正在使用共享 StoryRegexUI，精简正式版已停止启动以避免混合运行时');
+    }
+
+    const existingUi = getUi();
+    const ui = existingUi || {};
+    if (!existingUi) {
+      hostWindow[CONFIG.globalKey] = ui;
+    }
+    ui.runtime = ui.runtime || {};
+    ui.runtime.renderDepth = INITIAL_SCAN_LIMIT;
+    ui.runtime.themeRerenderLimit = INITIAL_SCAN_LIMIT;
+    return ui;
   }
 
   function getStoryDocument() {
@@ -309,73 +375,251 @@
     return appliedTheme;
   }
 
+  function removeOwnedLiteResources() {
+    hostDocument
+      .querySelectorAll(
+        'script[data-jjks-story-ui-loader], script[data-story-ui-script], style[data-story-ui-css], link[data-story-ui-css]',
+      )
+      .forEach(node => {
+        const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
+        const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
+        const isCurrentLiteResource = String(resourceUrl).includes('/story_ui_lite_prod/');
+        if (isCurrentLoader || isCurrentLiteResource) node.remove();
+      });
+
+    for (const candidate of [...new Set([window, hostWindow])]) {
+      try {
+        candidate[CONFIG.loaderFlag] = false;
+      } catch {
+        // ignore inaccessible or non-writable host globals
+      }
+    }
+  }
+
+  function resetStalledLoaderRuntime() {
+    const bootState = getLoaderBootState();
+    if (!bootState.ownsRuntime) {
+      throw new Error('检测到的 StoryRegexUI 不属于精简正式版，已拒绝清理共享运行时');
+    }
+
+    const staleUi = getUi();
+    try {
+      staleUi?.loaderState?.cancel?.('loader 启动周期已被精简正式版恢复流程替代');
+    } catch (error) {
+      console.warn(`${logPrefix} 取消残留 loader 周期失败`, error);
+    }
+
+    try {
+      staleUi?.scanner?.destroy?.();
+    } catch (error) {
+      console.warn(`${logPrefix} 清理残留 scanner 失败`, error);
+    }
+    try {
+      const registry = staleUi?.registry;
+      const modules = registry?.list?.({ includeDisabled: true }) || [];
+      modules
+        .slice()
+        .reverse()
+        .forEach(module => registry.safelyCall?.(module, 'cleanup'));
+    } catch (error) {
+      console.warn(`${logPrefix} 清理残留模块失败`, error);
+    }
+    try {
+      staleUi?.theme?.destroy?.();
+    } catch (error) {
+      console.warn(`${logPrefix} 清理残留主题监听失败`, error);
+    }
+
+    removeOwnedLiteResources();
+    for (const candidate of [...new Set([window, hostWindow])]) {
+      try {
+        if (candidate[CONFIG.globalKey] === staleUi) {
+          candidate[CONFIG.globalKey] = undefined;
+        }
+      } catch {
+        // ignore inaccessible or non-writable host globals
+      }
+    }
+  }
+
+  function recoverStalledLoader(attemptGeneration, resolve, reject, message) {
+    if (loaderRuntime.generation !== attemptGeneration) {
+      reject(new Error('loader 启动周期已失效'));
+      return;
+    }
+    if (loaderRuntime.recoveryAttempted) {
+      loaderRuntime.status = 'failed';
+      lastError = message;
+      reject(new Error(lastError));
+      return;
+    }
+
+    loaderRuntime.recoveryAttempted = true;
+    console.warn(`${logPrefix} ${message}，正在清理残留资源并自动重试一次。`);
+    try {
+      resetStalledLoaderRuntime();
+    } catch (error) {
+      if (loaderRuntime.generation === attemptGeneration) {
+        loaderRuntime.status = 'failed';
+        lastError = error?.message || String(error);
+      }
+      reject(error);
+      return;
+    }
+    loaderRuntime.promise = null;
+    resolve(ensureLoader());
+  }
+
   function ensureLoader() {
-    if (getUi()?.scanner) {
-      loaderStatus = 'ready';
+    const initialBootState = getLoaderBootState();
+    if (initialBootState.foreignRuntime) {
+      loaderRuntime.status = 'failed';
+      lastError = '检测到其他环境正在使用共享 StoryRegexUI，精简正式版已停止启动以避免混合运行时';
+      return Promise.reject(new Error(lastError));
+    }
+    if (initialBootState.ready) {
+      prepareLiteRuntime();
+      loaderRuntime.status = 'ready';
+      loaderRuntime.recoveryAttempted = false;
       return Promise.resolve();
     }
-    if (loaderPromise) return loaderPromise;
+    if ((initialBootState.legacyReady || initialBootState.staleVersion) && initialBootState.ownsRuntime && !loaderRuntime.recoveryAttempted) {
+      loaderRuntime.recoveryAttempted = true;
+      console.warn(`${logPrefix} 检测到旧版或过期 loader 运行时，正在清理并加载当前版本。`);
+      try {
+        resetStalledLoaderRuntime();
+      } catch (error) {
+        loaderRuntime.status = 'failed';
+        lastError = error?.message || String(error);
+        loaderRuntime.recoveryAttempted = false;
+        return Promise.reject(error);
+      }
+    }
+    prepareLiteRuntime();
+    if (loaderRuntime.promise) return loaderRuntime.promise;
 
-    loaderStatus = 'loading';
+    const attemptGeneration = loaderRuntime.generation + 1;
+    loaderRuntime.generation = attemptGeneration;
+    loaderRuntime.status = 'loading';
     lastError = '';
     const src = toUrl('loader.js');
+    const isCurrentAttempt = () => loaderRuntime.generation === attemptGeneration;
 
-    loaderPromise = new Promise((resolve, reject) => {
+    const attemptPromise = new Promise((resolve, reject) => {
       const existed = hostDocument.querySelector(`script[data-jjks-story-ui-loader="${LOADER_MARK}"]`);
       if (existed) {
+        const bootState = getLoaderBootState();
+        const canStillComplete =
+          bootState.loaderTagState === 'loading' &&
+          (!bootState.loaderTagCycleId || bootState.loaderTagCycleId === String(attemptGeneration));
+        if (!canStillComplete && !bootState.ready && !bootState.failed) {
+          recoverStalledLoader(
+            attemptGeneration,
+            resolve,
+            reject,
+            `检测到不可继续的 loader 残留标签（标签状态：${bootState.loaderTagState || 'unknown'}，协议：${bootState.protocol}）`,
+          );
+          return;
+        }
+
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
-          if (getUi()?.scanner) {
+          if (!isCurrentAttempt()) {
             window.clearInterval(timer);
-            loaderStatus = 'ready';
+            reject(new Error('loader 启动周期已被更新操作替代'));
+            return;
+          }
+          const bootState = getLoaderBootState();
+          if (bootState.ready) {
+            window.clearInterval(timer);
+            loaderRuntime.status = 'ready';
+            loaderRuntime.recoveryAttempted = false;
             resolve();
+          } else if (bootState.failed) {
+            window.clearInterval(timer);
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `StoryRegexUI 业务模块加载失败：${bootState.error || '未知错误'}`,
+            );
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
-            existed.remove();
-            loaderStatus = 'failed';
-            lastError = '检测到 loader 标签存在，但 StoryRegexUI 未就绪。请尝试刷新网页或开关美化脚本';
-            reject(new Error(lastError));
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `loader 启动等待超时（标签状态：${bootState.loaderTagState || 'unknown'}，协议：${bootState.protocol}）`,
+            );
           }
         }, 120);
         return;
       }
 
-      const script = document.createElement('script');
+      const script = createElementInHost('script');
       script.src = src;
       script.dataset.jjksStoryUiLoader = LOADER_MARK;
       script.dataset.jjksStoryUiEnv = CONFIG.env;
+      script.dataset.jjksStoryUiLoadState = 'loading';
+      script.dataset.jjksStoryUiLoaderCycle = String(attemptGeneration);
       script.onload = () => {
+        script.dataset.jjksStoryUiLoadState = 'loaded';
         const waitStartedAt = Date.now();
         const timer = window.setInterval(() => {
-          if (getUi()?.scanner) {
+          if (!isCurrentAttempt()) {
             window.clearInterval(timer);
-            loaderStatus = 'ready';
+            reject(new Error('loader 启动周期已被更新操作替代'));
+            return;
+          }
+          const bootState = getLoaderBootState();
+          if (bootState.ready) {
+            window.clearInterval(timer);
+            loaderRuntime.status = 'ready';
+            loaderRuntime.recoveryAttempted = false;
             resolve();
+          } else if (bootState.failed) {
+            window.clearInterval(timer);
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `StoryRegexUI 业务模块加载失败：${bootState.error || '未知错误'}`,
+            );
           } else if (Date.now() - waitStartedAt > 8000) {
             window.clearInterval(timer);
-            loaderStatus = 'failed';
-            lastError = 'loader 已加载，但扫描器未就绪';
-            reject(new Error(lastError));
+            recoverStalledLoader(
+              attemptGeneration,
+              resolve,
+              reject,
+              `loader 已加载，但扫描器未就绪（协议：${bootState.protocol}）`,
+            );
           }
         }, 120);
       };
       script.onerror = () => {
+        script.dataset.jjksStoryUiLoadState = 'failed';
         script.remove();
-        loaderStatus = 'failed';
-        lastError = `loader 加载失败: ${src}`;
-        loaderPromise = null;
-        reject(new Error(lastError));
+        const error = new Error(`loader 加载失败: ${src}`);
+        if (isCurrentAttempt()) {
+          loaderRuntime.status = 'failed';
+          lastError = error.message;
+        }
+        reject(error);
       };
       (hostDocument.head || hostDocument.body).appendChild(script);
-    }).catch(error => {
-      loaderStatus = 'failed';
-      lastError = error?.message || String(error);
-      loaderPromise = null;
-      console.error(`${logPrefix} 启动失败`, error);
-      throw error;
     });
 
-    return loaderPromise;
+    const managedPromise = attemptPromise.catch(error => {
+      if (isCurrentAttempt()) {
+        loaderRuntime.status = 'failed';
+        lastError = error?.message || String(error);
+        if (loaderRuntime.promise === managedPromise) loaderRuntime.promise = null;
+        console.error(`${logPrefix} 启动失败`, error);
+      }
+      throw error;
+    });
+    loaderRuntime.promise = managedPromise;
+    return managedPromise;
   }
 
   function getDisplayedMessageElement(messageId) {
@@ -418,15 +662,15 @@
 
   function isAssistantChatMessage(chatMessage) {
     if (!chatMessage || typeof chatMessage !== 'object') return null;
+    if (chatMessage.is_system === true || chatMessage.extra?.type === 'system') return false;
     if (chatMessage.is_user === true) return false;
     if (chatMessage.is_user === false) return true;
-    if (chatMessage.is_system === true) return false;
-    if (chatMessage.extra?.type === 'system') return false;
     return null;
   }
 
   function isAssistantMessageElement(messageElement) {
     if (!messageElement) return null;
+    if (messageElement.classList?.contains('system_mes')) return false;
     const attrNames = ['is_user', 'data-is-user', 'is-user'];
     for (const attrName of attrNames) {
       const attrValue = messageElement.getAttribute?.(attrName);
@@ -434,7 +678,6 @@
       if (attrValue === 'false' || attrValue === '0') return true;
     }
     if (messageElement.classList?.contains('user_mes')) return false;
-    if (messageElement.classList?.contains('system_mes')) return false;
     if (messageElement.classList?.contains('ai_mes')) return true;
     if (messageElement.classList?.contains('char_mes')) return true;
     return null;
@@ -978,7 +1221,9 @@
     const renderedIds = getRenderedMessageIds(Number.MAX_SAFE_INTEGER);
     const latestAssistantMessageId = getLatestAssistantMessageId(renderedIds);
     const allowDefaultAfterNative = messageId === latestAssistantMessageId;
-    if (allowDefaultAfterNative) clearDefaultAfterNativeMountedDom('db-status-bar', messageId);
+    if (allowDefaultAfterNative) {
+      DEFAULT_AFTER_NATIVE_MODULE_IDS.forEach(moduleId => clearDefaultAfterNativeMountedDom(moduleId, messageId));
+    }
 
     const ui = getUi();
     const registry = ui?.registry;
@@ -1100,6 +1345,8 @@
 
   function diagnose() {
     const ui = getUi();
+    const mapModule = ui?.registry?.find?.('db-map');
+    const mapDiagnosis = mapModule?.management?.diagnose?.() || null;
     const modules = ui?.registry?.list({ includeDisabled: true }) || [];
     const otherState =
       ['prod', 'test', 'releasetest']
@@ -1115,7 +1362,7 @@
       入口版本: CONFIG.version,
       入口目录: baseUrl,
       加载器地址: loaderUrl,
-      加载器状态: loaderStatus,
+      加载器状态: loaderRuntime.status,
       全局对象就绪: Boolean(ui),
       扫描器就绪: Boolean(ui?.scanner),
       主题模块就绪: Boolean(ui?.theme),
@@ -1124,6 +1371,7 @@
       已注册模块: modules.map(
         module => `${module.id}@${module.version || 'unknown'}${module.enabled === false ? ' [off]' : ''}`,
       ),
+      地图诊断: mapDiagnosis,
       管理界面已创建: managerExists,
       宿主命中TavernHelper: Boolean(hostWindow?.TavernHelper),
       UI实例来源: getUiSource(),
@@ -1167,7 +1415,7 @@
     return [...new Set(value.map(item => normalizeMapConfigValue(item)).filter(Boolean))];
   }
 
-  const MAP_DEBUG_PREFIX = '[db-status-bar][map-debug]';
+  const MAP_DEBUG_PREFIX = '[db-map][map-debug]';
 
   function mapDebugLog(event, details = {}, level = 'info') {
     try {
@@ -1312,84 +1560,22 @@
   }
 
   function readMapAiConfig() {
-    try {
-      const raw = localStorage.getItem(MAP_CONFIG_STORAGE_KEY);
-      if (!raw) {
-        const emptyConfig = getEmptyMapAiConfig();
-        mapDebugLog('manager:config:read:empty', summarizeMapConfig(emptyConfig));
-        return emptyConfig;
-      }
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') {
-        const emptyConfig = getEmptyMapAiConfig();
-        mapDebugLog(
-          'manager:config:read:invalid',
-          { rawType: typeof parsed, config: summarizeMapConfig(emptyConfig) },
-          'warn',
-        );
-        return emptyConfig;
-      }
-      const hasExplicitMode = typeof parsed.followDatabaseApi === 'boolean';
-      const modelList = normalizeMapModelList(parsed.modelList);
-      const model = normalizeMapConfigValue(parsed.model);
-      if (model && !modelList.includes(model)) modelList.unshift(model);
-      const config = {
-        followDatabaseApi: hasExplicitMode ? parsed.followDatabaseApi : !hasUsableMapCustomConfig(parsed),
-        apiUrl: normalizeMapConfigValue(parsed.apiUrl),
-        apiKey: normalizeMapConfigValue(parsed.apiKey),
-        model,
-        enableMapGeneration: parsed.enableMapGeneration !== false,
-        modelList,
-      };
-      mapDebugLog('manager:config:read:ok', summarizeMapConfig(config));
-      return config;
-    } catch (error) {
-      const errorSummary = summarizeMapError(error);
-      console.warn(`${logPrefix} 读取地图 AI 配置失败`, errorSummary);
-      mapDebugLog(
-        'manager:config:read:failed',
-        { error: errorSummary, config: summarizeMapConfig(getEmptyMapAiConfig()) },
-        'warn',
-      );
-      return getEmptyMapAiConfig();
-    }
+    const management = getUi()?.registry?.find?.('db-map')?.management;
+    return typeof management?.getConfig === 'function' ? management.getConfig() : getEmptyMapAiConfig();
   }
 
   function writeMapAiConfig(config) {
-    const normalized = {
-      followDatabaseApi: config?.followDatabaseApi !== false,
-      apiUrl: normalizeMapConfigValue(config?.apiUrl),
-      apiKey: normalizeMapConfigValue(config?.apiKey),
-      model: normalizeMapConfigValue(config?.model),
-      enableMapGeneration: config?.enableMapGeneration !== false,
-    };
-    try {
-      localStorage.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
-      mapDebugLog('manager:config:write:ok', summarizeMapConfig(normalized));
-      return true;
-    } catch (error) {
-      const errorSummary = summarizeMapError(error);
-      console.warn(`${logPrefix} 保存地图 AI 配置失败`, errorSummary);
-      mapDebugLog(
-        'manager:config:write:failed',
-        { error: errorSummary, config: summarizeMapConfig(normalized) },
-        'warn',
-      );
-      return false;
-    }
+    const management = getUi()?.registry?.find?.('db-map')?.management;
+    if (typeof management?.saveConfig !== 'function') return false;
+    try { management.saveConfig(config); return true; }
+    catch (error) { console.warn(`${logPrefix} 保存地图 AI 配置失败`, summarizeMapError(error)); return false; }
   }
 
   function resetMapAiConfig() {
-    try {
-      localStorage.removeItem(MAP_CONFIG_STORAGE_KEY);
-      mapDebugLog('manager:config:reset:ok', summarizeMapConfig(getEmptyMapAiConfig()));
-      return true;
-    } catch (error) {
-      const errorSummary = summarizeMapError(error);
-      console.warn(`${logPrefix} 重置地图 AI 配置失败`, errorSummary);
-      mapDebugLog('manager:config:reset:failed', { error: errorSummary }, 'warn');
-      return false;
-    }
+    const management = getUi()?.registry?.find?.('db-map')?.management;
+    if (typeof management?.resetConfig !== 'function') return false;
+    try { management.resetConfig(); return true; }
+    catch (error) { console.warn(`${logPrefix} 重置地图 AI 配置失败`, summarizeMapError(error)); return false; }
   }
 
   function getManagerMapConfigForm(root) {
@@ -1429,12 +1615,28 @@
     }
   }
 
+  function isManagerMapModuleEnabled() {
+    const registry = getUi()?.registry;
+    const module = registry?.find?.('db-map');
+    return Boolean(module && module.enabled !== false && registry?.isEnabled?.('db-map') !== false);
+  }
+
   function setManagerMapCustomFieldsEnabled(root, enabled) {
     root?.querySelectorAll?.('[data-jjks-map-custom-field]').forEach(field => {
       field.disabled = !enabled;
     });
     const fetchButton = root?.querySelector?.('[data-jjks-map-action="fetch-models"]');
-    if (fetchButton) fetchButton.disabled = !enabled;
+    const moduleEnabled = isManagerMapModuleEnabled();
+    if (fetchButton) {
+      fetchButton.disabled = !enabled || !moduleEnabled;
+      fetchButton.title = moduleEnabled ? '' : '请先在模块状态中开启地图';
+    }
+    const status = root?.querySelector?.('[data-jjks-map-model-status]');
+    if (status && !moduleEnabled) {
+      status.textContent = '地图模块已关闭；开启后才能拉取模型列表。';
+    } else if (status?.textContent?.includes('地图模块已关闭')) {
+      refreshManagerModelOptions(root);
+    }
   }
 
   function fillManagerMapConfigForm(root, config = readMapAiConfig()) {
@@ -1447,10 +1649,6 @@
     if (enableMapGenerationInput) enableMapGenerationInput.checked = config.enableMapGeneration !== false;
     refreshManagerModelOptions(root, config);
     setManagerMapCustomFieldsEnabled(root, config.followDatabaseApi === false);
-  }
-
-  function getTavernHelperApi() {
-    return hostWindow.TavernHelper || window.TavernHelper || globalThis.TavernHelper || null;
   }
 
   function collectManagerMapConfig(root) {
@@ -1472,6 +1670,14 @@
   }
 
   async function fetchManagerMapModels(root) {
+    const mapModule = getUi()?.registry?.find?.('db-map');
+    if (!isManagerMapModuleEnabled()) {
+      mapDebugLog('manager:models:fetch:skipped', { reason: 'db-map-disabled' }, 'warn');
+      notify('请先在模块状态中开启地图，再拉取模型列表', 'info');
+      setManagerMapCustomFieldsEnabled(root, getManagerMapConfigForm(root) ? getManagerMapMode(getManagerMapConfigForm(root)) === 'custom' : false);
+      return;
+    }
+    const management = mapModule?.management;
     const config = collectManagerMapConfig(root);
     if (!config) {
       mapDebugLog('manager:models:fetch:failed', { reason: 'form-not-ready' }, 'warn');
@@ -1488,14 +1694,13 @@
       notify('请先填写 API 地址，再拉取模型列表', 'error');
       return;
     }
-    const getModelList = getTavernHelperApi()?.getModelList || hostWindow.getModelList || window.getModelList;
-    if (typeof getModelList !== 'function') {
+    if (typeof management?.fetchModels !== 'function') {
       mapDebugLog(
         'manager:models:fetch:failed',
-        summarizeModelFetch(config, { reason: 'getModelList-unavailable' }),
+        summarizeModelFetch(config, { reason: 'db-map-management-unavailable' }),
         'warn',
       );
-      notify('酒馆助手 getModelList 不可用，无法拉取模型列表', 'error');
+      notify('地图模块未就绪，无法拉取模型列表', 'error');
       return;
     }
 
@@ -1503,7 +1708,7 @@
     setManagerButtonBusy(button, '拉取中', true);
     try {
       mapDebugLog('manager:models:fetch:start', summarizeModelFetch(config, { generatorAvailable: true }));
-      const models = normalizeMapModelList(await getModelList({ apiurl: config.apiUrl, key: config.apiKey }));
+      const models = normalizeMapModelList(await management.fetchModels(config));
       if (models.length === 0) {
         mapDebugLog('manager:models:fetch:empty', summarizeModelFetch(config, { modelCount: 0 }), 'warn');
         notify('模型列表为空，请检查 API 地址和密钥', 'error');
@@ -1635,8 +1840,7 @@
     panel.innerHTML =
       managerView?.buildPanelHtml?.({
         displayEnv: CONFIG.displayEnv,
-        version: CONFIG.version,
-        loaderStatus,
+        loaderStatus: loaderRuntime.status,
       }) ||
       '<header class="jjks-manager-head"><div><h2>咒回前端管理</h2><p>界面模块未就绪，请稍后重试。</p></div><button class="jjks-manager-close" type="button" data-jjks-manager-close aria-label="关闭">×</button></header><main class="jjks-manager-body"><div class="jjks-manager-column"><section class="jjks-manager-card"><h3>界面模块未就绪</h3></section></div></main>';
     root.dataset.jjksManagerFallback = managerView ? 'false' : 'true';
@@ -1940,6 +2144,11 @@
     });
 
     renderManagerModuleList(root);
+    const mapForm = getManagerMapConfigForm(root);
+    setManagerMapCustomFieldsEnabled(
+      root,
+      mapForm ? getManagerMapMode(mapForm) === 'custom' : false,
+    );
 
     const warning = root.querySelector('[data-jjks-warning]');
     const otherState = data.另一个环境状态;
@@ -1969,39 +2178,39 @@
     const reloadButton = root?.querySelector?.('[data-jjks-action="reload"]');
     setManagerButtonBusy(reloadButton, '重挂载中', true);
 
-    loaderStatus = 'loading';
+    loaderRuntime.status = 'loading';
     lastError = '';
     refreshManagerState();
 
-    try {
-      getUi()?.scanner?.destroy?.();
-    } catch (error) {
-      console.warn(`${logPrefix} scanner destroy 失败`, error);
+    const bootState = getLoaderBootState();
+    if (bootState.foreignRuntime) {
+      loaderRuntime.status = 'failed';
+      lastError = '检测到其他环境正在使用共享 StoryRegexUI，已拒绝重载以避免破坏其他前端';
+      managerActionBusy = false;
+      setManagerButtonBusy(reloadButton, '', false);
+      refreshManagerState();
+      notify(lastError, 'error');
+      return;
     }
 
-    hostDocument
-      .querySelectorAll(
-        'script[data-jjks-story-ui-loader], script[data-story-ui-script], style[data-story-ui-css], link[data-story-ui-css]',
-      )
-      .forEach(node => {
-        const resourceUrl = node.dataset.storyUiScript || node.dataset.storyUiCss || node.src || node.href || '';
-        const isCurrentLoader = node.dataset.jjksStoryUiLoader === LOADER_MARK;
-        const isCurrentLiteResource = String(resourceUrl).includes('/story_ui_lite_prod/');
-        if (isCurrentLoader || isCurrentLiteResource) node.remove();
-      });
-
     try {
-      window[CONFIG.loaderFlag] = false;
-      window[CONFIG.globalKey] = undefined;
-      if (hostWindow && hostWindow !== window) {
-        hostWindow[CONFIG.loaderFlag] = false;
-        hostWindow[CONFIG.globalKey] = undefined;
+      if (bootState.ownsRuntime) {
+        resetStalledLoaderRuntime();
+      } else {
+        removeOwnedLiteResources();
       }
-    } catch {
-      // ignore reset failures
+    } catch (error) {
+      loaderRuntime.status = 'failed';
+      lastError = error?.message || String(error);
+      managerActionBusy = false;
+      setManagerButtonBusy(reloadButton, '', false);
+      refreshManagerState();
+      notify(`资源重载失败：${lastError}`, 'error');
+      return;
     }
 
-    loaderPromise = null;
+    loaderRuntime.promise = null;
+    loaderRuntime.recoveryAttempted = false;
     try {
       await ensureLoader();
       messageSignatures.clear();
@@ -2196,7 +2405,7 @@
   bindEvents();
   ensureLoader()
     .then(() => {
-      loaderStatus = 'ready';
+      loaderRuntime.status = 'ready';
     })
     .catch(error => {
       console.error(`${logPrefix} 初始化 loader 失败`, error);

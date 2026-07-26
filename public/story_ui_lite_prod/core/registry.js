@@ -2,7 +2,9 @@
   const ui = (window.StoryRegexUI = window.StoryRegexUI || {});
   const modules = [];
   const STORAGE_KEY = 'jjks_story_ui_module_enabled_state';
+  const DB_MAP_INDEPENDENT_STATE_MIGRATION_KEY = 'jjks_story_ui_db_map_independent_state_v1';
   const enabledState = readEnabledState();
+  migrateDbMapEnabledState();
 
   function readEnabledState() {
     try {
@@ -17,8 +19,23 @@
   function saveEnabledState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(enabledState));
+      return true;
     } catch {
       // ignore persistence failures
+      return false;
+    }
+  }
+
+  function migrateDbMapEnabledState() {
+    try {
+      if (localStorage.getItem(DB_MAP_INDEPENDENT_STATE_MIGRATION_KEY) === 'done') return;
+      // 历史 db-map=false 没有来源标识，无法区分旧逻辑写入与用户手动关闭；
+      // 本次按恢复地图显示的产品要求首次重置 false，保留 true，之后继续尊重地图的独立开关。
+      if (enabledState['db-map'] === false) delete enabledState['db-map'];
+      if (!saveEnabledState()) return;
+      localStorage.setItem(DB_MAP_INDEPENDENT_STATE_MIGRATION_KEY, 'done');
+    } catch {
+      // keep the migration retryable when persistence is unavailable
     }
   }
 
@@ -48,6 +65,10 @@
 
     const existingIndex = modules.findIndex(item => item.id === module.id);
     if (existingIndex >= 0) {
+      const previousModule = modules[existingIndex];
+      if (previousModule !== module) {
+        safelyCall(previousModule, 'cleanup');
+      }
       modules.splice(existingIndex, 1, module);
     } else {
       modules.push(module);
@@ -91,9 +112,12 @@
     const module = find(moduleId);
     if (!module) return false;
     const nextValue = enabled !== false;
+    const previousValue = module.enabled !== false;
+    if (previousValue === nextValue) return true;
     module.enabled = nextValue;
     enabledState[moduleId] = nextValue;
     saveEnabledState();
+    safelyCall(module, nextValue ? 'onEnable' : 'onDisable');
     return true;
   }
 
