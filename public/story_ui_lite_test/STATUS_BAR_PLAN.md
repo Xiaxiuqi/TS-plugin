@@ -490,6 +490,7 @@ function onTableUpdate() {
 - [x] 管理界面地图配置只通过 `db-map.management` 读写；地图模块关闭时模型拉取按钮禁用并给出提示
 - [x] `db-status-bar` 无 AI 调用，`db-map` 无状态栏运行时或样式依赖；两个模块可独立开关
 - [x] 固定默认挂载顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`，且不使用显式标签
+- [x] `db-map` 已补回拆分时遗漏的 `getState()`，统一读取 `dbMapData.MapState`，默认挂载不再因未定义状态访问函数中断
 - [x] 管理模块名称与顺序固定为“BP战力雷达 → 世界运行报告 → 状态栏 → 地图”；首次升级按恢复显示要求重置无来源标识的旧 `db-map=false`，之后保留地图独立开关
 - [ ] 数据更新后UI自动刷新
 - [x] 日/夜主题切换链路已统一到 `story-ui-day/night`，并补齐内联 CSS 旧样式清理与版本失效；酒馆运行时仍需复核管理面板、BP 图标、世界报告图标三种入口均能同步换色

@@ -2,7 +2,7 @@
   const GLOBAL_KEY = 'StoryRegexUI';
   const LOADER_FLAG = '__storyRegexUiLoaderReady_lite_test';
   const LOADER_ENV = 'lite_test';
-  const LOADER_VERSION = 'lite_test-0.1.5';
+  const LOADER_VERSION = 'lite_test-0.1.6';
 
   const existingUi = window[GLOBAL_KEY];
   const existingLoaderState = existingUi?.loaderState;
@@ -87,7 +87,7 @@
       },
       {
         id: 'db-map',
-        version: '1.1.0-lite_test',
+        version: '1.1.1-lite_test',
         css: 'modules/db-map/style.css',
         scripts: ['modules/db-map/data.js', 'modules/db-map/index.js'],
       },
@@ -160,7 +160,14 @@
     if (path === 'core/scanner.js') return typeof ui.scanner?.init === 'function' && typeof ui.scanner?.scan === 'function';
     if (path === 'modules/manager-ui/index.js') return typeof window.JJKSStoryUiManagerView?.buildPanelHtml === 'function';
     if (path === 'modules/db-status-bar/data.js') return typeof ui.dbStatusData?.parseTables === 'function';
-    if (path === 'modules/db-map/data.js') return typeof ui.dbMapData?.parseTables === 'function';
+    if (path === 'modules/db-map/data.js') {
+      return (
+        typeof ui.dbMapData?.parseTables === 'function' &&
+        ui.dbMapData?.MapState &&
+        typeof ui.dbMapData.MapState === 'object' &&
+        Array.isArray(ui.dbMapData.MapState.mapElements)
+      );
+    }
     const moduleDef = state.modules.find(item => item.script === path || item.scripts?.includes(path));
     return moduleDef ? ui.registry?.find?.(moduleDef.id)?.version === moduleDef.version : false;
   }

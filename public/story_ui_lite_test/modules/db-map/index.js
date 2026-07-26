@@ -2,7 +2,7 @@
   const ui = (window.StoryRegexUI = window.StoryRegexUI || {});
   const dom = ui.dom;
   const MODULE_ID = 'db-map';
-  const MODULE_VERSION = '1.1.0-lite_test';
+  const MODULE_VERSION = '1.1.1-lite_test';
   const persistentRuntime = (window.__storyRegexUiRuntime ||= {});
   const databaseUpdateBridges = (persistentRuntime.dbMapUpdateBridges ||= new WeakMap());
   const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
@@ -18,6 +18,13 @@
     modelList: [],
   };
 
+  function getState() {
+    const state = ui.dbMapData?.MapState;
+    if (!state || typeof state !== 'object' || !Array.isArray(state.mapElements)) {
+      throw new Error('db-map data contract unavailable: expected dbMapData.MapState.mapElements');
+    }
+    return state;
+  }
 
   function esc(v) { return dom ? dom.escapeHtml(String(v ?? '')) : String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 

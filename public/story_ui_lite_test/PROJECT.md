@@ -9,7 +9,7 @@
 ## 基于版本
 
 - 源版本：`story_regex_ui_releasetest` (releasetest-0.1.1)
-- 当前版本：`lite_test-0.1.5`
+- 当前版本：`lite_test-0.1.6`
 
 ## 模块清单
 
@@ -42,7 +42,7 @@
 
 - `env`: `releasetest` → `lite_test`
 - `displayEnv`: `发布测试版` → `精简测试版`
-- `version`: `releasetest-0.1.1` → 当前 `lite_test-0.1.5`
+- `version`: `releasetest-0.1.1` → 当前 `lite_test-0.1.6`
 - `publicBaseUrl`: 指向 `story_ui_lite_test/`
 - 入口资源来源：无法从 `document.currentScript` 或 `document.scripts` 确认测试版 `index.js` 来源时，统一回退 `CONFIG.publicBaseUrl`，不再维护本地扩展目录 fallback
 - `managerRootId`: `jjks-story-ui-manager-releasetest` → `jjks-story-ui-manager-lite_test`
@@ -85,7 +85,7 @@ story_ui_lite_test/
 
 | 项目项               | 状态                                            | 证据                                                                                                                                                                                                                                                                                   | 下一步                                                                                                           |
 | -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 状态栏/地图模块拆分 | 代码侧完成，待酒馆运行时复核 | `db-status-bar` 只保留状态、角色、能力、物品、任务和数据库 API；`db-map` 独立承担地点/地图解析、AI、缓存、SVG 清理和交互 | 验证两个模块可独立开关，互不残留 DOM、定时器、弹窗或异步结果 |
+| 状态栏/地图模块拆分 | 已修复地图渲染回归，待酒馆运行时复核 | `db-status-bar` 只保留状态、角色、能力、物品、任务和数据库 API；`db-map` 通过 `getState()` 读取 `dbMapData.MapState`，不再因拆分遗漏状态访问函数而在 `renderContent` 阶段抛错 | 重载 `lite_test-0.1.6` 后确认地图面板、刷新、重绘和元素详情均可正常工作 |
 | 默认挂载、顺序与名称 | 已修复代码侧，待酒馆运行时复核 | `index.js` 的挂载与管理列表统一为 `BP战力雷达 → 世界运行报告 → 状态栏 → 地图`；历史 `db-map=false` 无来源标识，无法区分旧逻辑写入与手动关闭，本次按恢复地图显示的产品要求在首次升级时重置为默认开启，之后地图独立持久化 | 重载资源后确认地图恢复显示，管理列表名称、顺序及两个模块独立开关均正确 |
 | 热替换与异步失效 | 已完成静态修复 | registry 同 ID 替换先 cleanup；两个数据库模块使用实例身份、generation token 与 disposed 校验；地图并发锁按 owner 释放并移交最后一个 pending 请求 | 酒馆中快速开关/重载模块并在 AI 请求进行中触发表更新 |
 | 角色头像弹窗 | 已补销毁清理，待运行时复核 | 状态栏禁用/cleanup 会销毁当前模块的 body portal、Cropper 实例，并使未完成的异步初始化失效 | 在 Cropper CDN 加载中关闭模块，确认无浮层和迟到实例 |
@@ -106,6 +106,15 @@ story_ui_lite_test/
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
 
 ## 变更日志
+
+### v1.1.23-db-map-state-accessor (2026-07-23)
+
+**地图状态访问函数回归修复**
+
+- 根因是地图从状态栏拆分后保留了五处 `getState()` 调用，却遗漏对应函数定义，导致默认挂载在 `renderMapShell()` 阶段抛出 `ReferenceError`，因此地图模块已注册但无法生成 DOM。
+- `db-map` 现在通过 `getState()` 读取 `ui.dbMapData.MapState`；loader 同步校验 `parseTables`、`MapState` 对象和 `mapElements` 数组，契约缺失时明确失败，不再把数据模块异常静默伪装为空地图。
+- 地图模块版本提升到 `1.1.1-lite_test`，入口与 loader 缓存版本同步提升到 `lite_test-0.1.6`，强制失效浏览器中的旧地图脚本。
+- 已用 `no-undef` 定向 ESLint 和实际执行 `data.js → index.js → renderContent()` 的 VM smoke test 锁定本次未定义函数回归。
 
 ### v1.1.22-map-visibility-and-manager-order (2026-07-23)
 
