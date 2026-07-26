@@ -2,7 +2,7 @@
   const GLOBAL_KEY = 'StoryRegexUI';
   const LOADER_FLAG = '__storyRegexUiLoaderReady_lite_test';
   const LOADER_ENV = 'lite_test';
-  const LOADER_VERSION = 'lite_test-0.1.6';
+  const LOADER_VERSION = 'lite_test-0.1.7';
 
   const existingUi = window[GLOBAL_KEY];
   const existingLoaderState = existingUi?.loaderState;
@@ -87,7 +87,7 @@
       },
       {
         id: 'db-map',
-        version: '1.1.1-lite_test',
+        version: '1.1.2-lite_test',
         css: 'modules/db-map/style.css',
         scripts: ['modules/db-map/data.js', 'modules/db-map/index.js'],
       },

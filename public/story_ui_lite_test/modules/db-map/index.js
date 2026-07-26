@@ -2,7 +2,7 @@
   const ui = (window.StoryRegexUI = window.StoryRegexUI || {});
   const dom = ui.dom;
   const MODULE_ID = 'db-map';
-  const MODULE_VERSION = '1.1.1-lite_test';
+  const MODULE_VERSION = '1.1.2-lite_test';
   const persistentRuntime = (window.__storyRegexUiRuntime ||= {});
   const databaseUpdateBridges = (persistentRuntime.dbMapUpdateBridges ||= new WeakMap());
   const MAP_CONFIG_STORAGE_KEY = 'db-status-map-config';
@@ -176,12 +176,19 @@
   function summarizeMapAiResult(result) {
     const type = Array.isArray(result) ? 'array' : typeof result;
     const text = typeof result === 'string' ? result : '';
+    const candidates = collectMapAiTextCandidates(result);
+    const hasSvgStart = candidates.some(candidate => /<svg\b/i.test(decodeMapAiText(candidate)));
+    const hasCompleteSvg = candidates.some(candidate => {
+      const decoded = decodeMapAiText(candidate);
+      return /<svg\b/i.test(decoded) && /<\/svg\s*>/i.test(decoded);
+    });
     return {
       type,
       isString: typeof result === 'string',
       length: text.length,
       trimmedLength: text.trim().length,
-      hasSvg: /<svg[\s\S]*<\/svg>/i.test(text),
+      hasSvgStart,
+      hasCompleteSvg,
     };
   }
 
@@ -230,7 +237,7 @@
   }
 
   function buildMapAiOptions() {
-    return { max_tokens: 4000 };
+    return { max_tokens: 8000 };
   }
 
   function hasMapCustomApiConfig(config) {
@@ -262,7 +269,7 @@
       mapDebugLog('custom-api:build:empty', { config: summarizeMapConfig(config) });
       return null;
     }
-    customApi.max_tokens = 4000;
+    customApi.max_tokens = 8000;
     mapDebugLog('custom-api:build:ok', summarizeMapCustomApi(customApi));
     return customApi;
   }
@@ -326,13 +333,9 @@
         if (resultType === 'string' && result.trim()) {
           return { ok: true, text: result, reason: '' };
         }
-        // object 类型：尝试提取文本内容
+        // 保留结构化结果，交由统一的 SVG 候选提取器递归处理。
         if (resultType === 'object' && result !== null) {
-          const extracted = result.text || result.content || result.message || (Array.isArray(result.choices) && result.choices[0]?.message?.content) || '';
-          if (typeof extracted === 'string' && extracted.trim()) {
-            mapDebugLog('ai:result:extracted-from-object', { extractedLength: extracted.length });
-            return { ok: true, text: extracted, reason: '' };
-          }
+          if (collectMapAiTextCandidates(result).length > 0) return { ok: true, text: result, reason: '' };
         }
         console.error('[db-map] TavernHelper.generate 返回无效结果:', resultSummary);
         return fail('TavernHelper.generate returned no usable map text');
@@ -353,7 +356,11 @@
       mapDebugLog('ai:generator:selected', { generator: 'AutoCardUpdaterAPI.callAI', currentModel, options, sanitizedLog: summarizeMapModelOnlyConfig(config) });
       const result = await api.callAI(messages, options);
       mapDebugLog('ai:result', { generator: 'AutoCardUpdaterAPI.callAI', currentModel, result: summarizeMapAiResult(result), sanitizedLog: summarizeMapModelOnlyConfig(config) });
-      return typeof result === 'string' && result.trim() ? { ok: true, text: result, reason: '' } : fail('database plugin callAI returned no usable map text');
+      if (typeof result === 'string' && result.trim()) return { ok: true, text: result, reason: '' };
+      if (typeof result === 'object' && result !== null && collectMapAiTextCandidates(result).length > 0) {
+        return { ok: true, text: result, reason: '' };
+      }
+      return fail('database plugin callAI returned no usable map text');
     } catch (e) {
       return fail('database plugin callAI failed', e);
     }
@@ -447,11 +454,120 @@
     }
   }
 
+  function collectMapAiTextCandidates(value, candidates = [], depth = 0) {
+    if (depth > 4 || candidates.length >= 24 || value == null) return candidates;
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (text && !candidates.includes(text)) candidates.push(text);
+      if (text && ['[', '{', '"'].includes(text[0])) {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed !== value) collectMapAiTextCandidates(parsed, candidates, depth + 1);
+        } catch {
+          // plain model output, not JSON
+        }
+      }
+      return candidates;
+    }
+    if (Array.isArray(value)) {
+      value.slice(0, 12).forEach(item => collectMapAiTextCandidates(item, candidates, depth + 1));
+      return candidates;
+    }
+    if (typeof value === 'object') {
+      ['svg', 'text', 'content', 'message', 'output', 'response', 'choices'].forEach(key => {
+        if (key in value) collectMapAiTextCandidates(value[key], candidates, depth + 1);
+      });
+    }
+    return candidates;
+  }
+
+  function decodeMapHtmlEntitiesOnce(value) {
+    const named = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' };
+    return String(value ?? '').replace(/&(?:#(\d+)|#x([\da-f]+)|(lt|gt|quot|apos|amp));/gi, (match, decimal, hex, entityName) => {
+      if (decimal) {
+        const codePoint = Number.parseInt(decimal, 10);
+        return Number.isSafeInteger(codePoint) && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+      }
+      if (hex) {
+        const codePoint = Number.parseInt(hex, 16);
+        return Number.isSafeInteger(codePoint) && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+      }
+      return named[String(entityName || '').toLowerCase()] || match;
+    });
+  }
+
+  function decodeMapAiText(value) {
+    let text = String(value ?? '');
+    if (/<svg\b/i.test(text)) return text;
+
+    const unicodeDecoded = text
+      .replace(/\\u003c/gi, '<')
+      .replace(/\\u003e/gi, '>')
+      .replace(/\\x3c/gi, '<')
+      .replace(/\\x3e/gi, '>')
+      .replace(/<\\\/svg/gi, '</svg')
+      .replace(/\\(["'])/g, '$1');
+    if (/<svg\b/i.test(unicodeDecoded)) return unicodeDecoded;
+
+    text = unicodeDecoded;
+    for (let pass = 0; pass < 2 && !/<svg\b/i.test(text); pass += 1) {
+      if (!/(?:&lt;|&#0*60;|&#x0*3c;)svg\b/i.test(text)) break;
+      const decoded = decodeMapHtmlEntitiesOnce(text);
+      if (decoded === text) break;
+      text = decoded;
+    }
+    return text;
+  }
+
   function extractSvgMarkup(value) {
-    const match = String(value ?? '').match(/<svg[\s\S]*<\/svg>/i);
-    const svg = match ? match[0] : '';
-    mapDebugLog('svg:extract', { inputType: typeof value, inputLength: typeof value === 'string' ? value.length : 0, found: Boolean(svg), svgLength: svg.length });
-    return svg;
+    const candidates = collectMapAiTextCandidates(value);
+    let sawSvgStart = false;
+    let recoverableSvg = '';
+    for (let index = 0; index < candidates.length; index += 1) {
+      const text = decodeMapAiText(candidates[index]);
+      const start = text.search(/<svg\b/i);
+      if (start < 0) continue;
+      sawSvgStart = true;
+      const tail = text.slice(start);
+      const closeMatch = /<\/svg\s*>/i.exec(tail);
+      if (!closeMatch) {
+        const withoutFence = tail.replace(/\s*```\s*$/i, '').trim();
+        if (!recoverableSvg && withoutFence.endsWith('>')) recoverableSvg = `${withoutFence}</svg>`;
+        continue;
+      }
+      const svg = tail.slice(0, closeMatch.index + closeMatch[0].length);
+      mapDebugLog('svg:extract', {
+        inputType: typeof value,
+        inputLength: typeof value === 'string' ? value.length : 0,
+        candidateCount: candidates.length,
+        candidateIndex: index,
+        found: true,
+        reason: 'complete-svg',
+        svgLength: svg.length,
+      });
+      return { svg, reason: 'complete-svg' };
+    }
+    if (recoverableSvg) {
+      mapDebugLog('svg:extract', {
+        inputType: typeof value,
+        inputLength: typeof value === 'string' ? value.length : 0,
+        candidateCount: candidates.length,
+        found: true,
+        reason: 'recovered-missing-closing-svg',
+        svgLength: recoverableSvg.length,
+      }, 'warn');
+      return { svg: recoverableSvg, reason: 'recovered-missing-closing-svg' };
+    }
+    const reason = sawSvgStart ? 'missing-closing-svg' : 'svg-start-not-found';
+    mapDebugLog('svg:extract', {
+      inputType: typeof value,
+      inputLength: typeof value === 'string' ? value.length : 0,
+      candidateCount: candidates.length,
+      found: false,
+      reason,
+      svgLength: 0,
+    }, 'warn');
+    return { svg: '', reason };
   }
 
   function mapNum(v, fallback) {
@@ -503,11 +619,14 @@
   const CHAR_TYPES = ['protagonist', 'ally', 'enemy', 'npc', '主角', '友方', '敌方', 'NPC'];
   const LAND_TYPES = ['landmark', 'obstacle', 'exit', '地标', '障碍物', '出口'];
   const mapCache = Object.create(null);
+  const mapRootReplacements = new WeakMap();
+  const mapNoticeStates = new WeakMap();
+  const activeMapNoticeStates = new Set();
   let mapBusy = false;
   let pendingAutoMapRequest = null;
   let lastAutoMapSignature = '';
   let lastCity = '';
-  let mapLoadingOverlayState = { active: false, message: '' };
+  let mapLoadingOverlayState = { active: false, message: '', root: null };
 
   function buildMapSignature(S) {
     const elements = Array.isArray(S?.mapElements) ? S.mapElements : [];
@@ -595,9 +714,94 @@
     return parts[0] || loc;
   }
 
+  function resolveCurrentMapRoot(root) {
+    let current = root;
+    const visited = new Set();
+    while (current && !current.isConnected && !visited.has(current)) {
+      visited.add(current);
+      current = mapRootReplacements.get(current) || null;
+    }
+    return current?.isConnected ? current : null;
+  }
+
+  function getMapNoticeState(root, create = false) {
+    if (!root) return null;
+    let state = mapNoticeStates.get(root);
+    if (!state && create) {
+      state = { message: '', type: 'info', expiresAt: 0, timer: null, root };
+      mapNoticeStates.set(root, state);
+      activeMapNoticeStates.add(state);
+    }
+    return state;
+  }
+
+  function clearMapNoticeState(state) {
+    if (!state) return;
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = null;
+    state.message = '';
+    state.expiresAt = 0;
+    activeMapNoticeStates.delete(state);
+  }
+
+  function clearAllMapNotices() {
+    Array.from(activeMapNoticeStates).forEach(clearMapNoticeState);
+  }
+
+  function renderMapNotice(root) {
+    const currentRoot = resolveCurrentMapRoot(root);
+    if (!currentRoot) return false;
+    const state = getMapNoticeState(currentRoot);
+    const notice = currentRoot.querySelector('.db-sb-map-notification');
+    if (!notice || !state) return false;
+    const remaining = state.expiresAt - Date.now();
+    if (!state.message || remaining <= 0) {
+      clearMapNoticeState(state);
+      notice.hidden = true;
+      return true;
+    }
+    const noticeType = state.type;
+    notice.className = `db-sb-map-notification db-sb-map-notification--${noticeType}`;
+    notice.textContent = state.message;
+    notice.hidden = false;
+    notice.setAttribute('role', noticeType === 'error' ? 'alert' : 'status');
+    notice.setAttribute('aria-live', noticeType === 'error' ? 'assertive' : 'polite');
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => {
+      state.timer = null;
+      state.message = '';
+      state.expiresAt = 0;
+      activeMapNoticeStates.delete(state);
+      const currentNotice = resolveCurrentMapRoot(state.root)?.querySelector?.('.db-sb-map-notification');
+      if (currentNotice) currentNotice.hidden = true;
+    }, remaining);
+    return true;
+  }
+
   function notifyMap(message, type = 'info', root) {
     const text = String(message || '').trim();
     if (!text) return;
+    const targetRoot = resolveCurrentMapRoot(root);
+    const container = targetRoot?.querySelector?.('.db-sb-map-container');
+    if (container) {
+      let notice = container.querySelector('.db-sb-map-notification');
+      if (!notice) {
+        notice = document.createElement('div');
+        notice.className = 'db-sb-map-notification';
+        const viewport = container.querySelector('.db-sb-map-viewport');
+        container.insertBefore(notice, viewport || null);
+      }
+      const noticeType = ['error', 'warning', 'info', 'success'].includes(type) ? type : 'info';
+      const state = getMapNoticeState(targetRoot, true);
+      if (state.timer) clearTimeout(state.timer);
+      state.message = text;
+      state.type = noticeType;
+      state.expiresAt = Date.now() + 7000;
+      renderMapNotice(targetRoot);
+      return;
+    }
+
+    // 组件尚未挂载时才降级到全局通知，正常地图流程不得打扰酒馆界面。
     const candidates = [];
     try { candidates.push(window); } catch { /* ignore */ }
     try { candidates.push(parent); } catch { /* ignore */ }
@@ -622,8 +826,9 @@
   function setMapLoadingOverlay(root, visible, message) {
     const active = visible === true;
     const text = active ? String(message || '正在生成地图…') : '';
-    mapLoadingOverlayState = { active, message: text };
-    const overlay = root?.querySelector?.('[data-map-loading-overlay]');
+    const currentRoot = resolveCurrentMapRoot(root) || root;
+    mapLoadingOverlayState = { active, message: text, root: active ? currentRoot : null };
+    const overlay = currentRoot?.querySelector?.('[data-map-loading-overlay]');
     if (!overlay) return;
     overlay.dataset.active = active ? 'true' : 'false';
     overlay.setAttribute('aria-hidden', active ? 'false' : 'true');
@@ -814,7 +1019,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       } else if (allowGenerate && !mapGenerationEnabled) {
         const baseMap = renderBaseMap(S);
         setMapViewportMarkup(root, baseMap || renderMapEmptyState('AI 地图生成已关闭，且暂无地图元素可显示。'));
-        notifyMap('AI 地图生成已关闭，未生成地图。', 'error', root);
+        notifyMap('AI 地图生成已关闭，未生成地图。', 'info', root);
       } else {
         const baseMap = renderBaseMap(S);
         setMapViewportMarkup(root, baseMap || renderMapEmptyState('暂无地图元素。请点击重绘地图生成。'));
@@ -824,17 +1029,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       return;
     }
 
-    if (force) {
-      mapDebugLog('domap:force:clear-cache', { loc });
-      removeMapCacheEntry(loc);
-    }
-
     mapBusy = true;
     mapBusyOwner = busyOwner;
-    if (activeDataRoot?.isConnected && activeDataRoot !== root) {
-      root = activeDataRoot;
-      viewport = root.querySelector('.db-sb-map-viewport');
-    }
     const refreshBtn = root.querySelector('[data-map-action="refresh"]');
     const redrawBtn = root.querySelector('[data-map-action="redraw"]');
     if (refreshBtn) refreshBtn.disabled = true;
@@ -848,31 +1044,44 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     try {
       let svg = '';
       let aiReturnedSvg = false;
+      let generationFailureMessage = '';
       try {
         const api = ui.dbMapData?.getAutoCardAPI?.();
         if ((api && typeof api.callAI === 'function') || getTavernHelperGenerate()) {
           const prompt = buildMapPrompt(S);
           const result = await callMapAI(api, prompt);
-          if (!isGenerationCurrent(requestToken, root)) return;
+          if (!isModuleEnabled() || requestToken !== generationToken) return;
+          root = resolveCurrentMapRoot(root);
+          if (!root) return;
+          viewport = root.querySelector('.db-sb-map-viewport');
           if (result?.ok && result.text) {
-            const rawSvg = extractSvgMarkup(result.text);
+            const extracted = extractSvgMarkup(result.text);
+            const rawSvg = extracted.svg;
             aiReturnedSvg = Boolean(rawSvg);
+            mapDebugLog('svg:extract:decision', { loc, reason: extracted.reason, aiReturnedSvg, rawSvgLength: rawSvg.length });
             svg = sanitizeSVG(rawSvg);
-            if (rawSvg && !svg) {
+            if (svg && extracted.reason === 'recovered-missing-closing-svg') {
+              notifyMap('AI 返回的 SVG 缺少结束标签，已安全修复后显示。', 'warning', root);
+            } else if (rawSvg && !svg) {
               console.warn('[db-map] AI map SVG rejected by sanitizer');
               mapDebugLog('domap:generate:svg-rejected', { loc, rawSvgLength: rawSvg.length }, 'warn');
-              notifyMap('AI 返回的地图 SVG 未通过安全检查，已保留旧图。', 'error', root);
+              generationFailureMessage = 'AI 返回的地图 SVG 未通过安全检查。';
+            } else if (!rawSvg) {
+              const reasonText = extracted.reason === 'missing-closing-svg'
+                ? 'AI 返回的 SVG 被截断且无法安全修复'
+                : 'AI 返回内容中未找到 SVG';
+              generationFailureMessage = `${reasonText}。`;
             }
           } else if (result?.reason) {
-            notifyMap(`地图 AI 调用失败：${result.reason}`, 'error', root);
+            generationFailureMessage = `地图 AI 调用失败：${result.reason}`;
           }
         } else {
-          notifyMap('没有可用的地图 AI 生成接口。', 'error', root);
+          generationFailureMessage = '没有可用的地图 AI 生成接口。';
         }
       } catch (e) {
         const errorSummary = summarizeMapError(e);
         console.warn('[db-map] AI map generation failed:', errorSummary);
-        notifyMap(`地图 AI 生成失败：${errorSummary.message}`, 'error', root);
+        generationFailureMessage = `地图 AI 生成失败：${errorSummary.message}`;
       }
 
       if (svg) {
@@ -880,11 +1089,6 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         setMapCacheEntry(loc, svg, signature);
         mapDebugLog('domap:generate:success', { loc, svgLength: svg.length, updateAutoSignature: shouldUpdateAutoSignature });
         if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
-        if (activeDataRoot?.isConnected && activeDataRoot !== root) {
-          root = activeDataRoot;
-          viewport = root.querySelector('.db-sb-map-viewport');
-          if (mapLoadingOverlayState.active) setMapLoadingOverlay(root, true, mapLoadingOverlayState.message);
-        }
         if (viewport) {
           viewport.innerHTML = svg;
           normalizeMapClickTargets(root);
@@ -896,12 +1100,9 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       if (previousSvg) {
         mapDebugLog('domap:generate:failed-keep-previous', { loc, aiReturnedSvg, previousSvgLength: previousSvg.length }, 'warn');
         const previousIsBaseMap = isBaseMapMarkup(previousSvg);
-        notifyMap(previousIsBaseMap ? '地图生成失败，已显示数据库基础地图。' : (aiReturnedSvg ? '地图生成失败，已保留旧图。' : 'AI 未返回可用 SVG，已保留旧图。'), 'error', root);
-        if (activeDataRoot?.isConnected && activeDataRoot !== root) {
-          root = activeDataRoot;
-          viewport = root.querySelector('.db-sb-map-viewport');
-          if (mapLoadingOverlayState.active) setMapLoadingOverlay(root, true, mapLoadingOverlayState.message);
-        }
+        const fallbackMessage = previousIsBaseMap ? '已显示数据库基础地图。' : '已保留旧图。';
+        const defaultMessage = aiReturnedSvg ? '地图生成失败。' : 'AI 未返回可用 SVG。';
+        notifyMap(`${generationFailureMessage || defaultMessage} ${fallbackMessage}`, 'error', root);
         if (viewport) {
           viewport.innerHTML = previousSvg;
           normalizeMapClickTargets(root);
@@ -912,8 +1113,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
       if (mapGenerationEnabled && !aiReturnedSvg) console.warn('[db-map] AI map generation returned no SVG');
       mapDebugLog('domap:generate:failed-empty', { loc, aiReturnedSvg, mapGenerationEnabled }, 'warn');
-      setMapViewportMarkup(root, renderBaseMap(S) || renderMapEmptyState('地图生成失败，且暂无地图元素可显示。请检查 API 设置后重试。'));
-      notifyMap('地图生成失败，未写入伪造地图缓存。请检查 API 设置后重试。', 'error', root);
+      setMapViewportMarkup(root, renderBaseMap(S) || renderMapEmptyState('地图生成失败，且暂无地图元素可显示。'));
+      notifyMap(`${generationFailureMessage || '地图生成失败。'} 未更新地图缓存，请重试。`, 'error', root);
       if (shouldUpdateAutoSignature) lastAutoMapSignature = signature;
     } catch (e) {
       const errorSummary = summarizeMapError(e);
@@ -926,15 +1127,18 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
         mapBusyOwner = null;
         const pending = pendingAutoMapRequest;
         pendingAutoMapRequest = null;
-        if (isGenerationCurrent(requestToken, root)) {
-          if (activeDataRoot?.isConnected && activeDataRoot !== root) {
-            setMapLoadingOverlay(activeDataRoot, false);
-          }
-          setMapLoadingOverlay(root, false);
-          if (refreshBtn) refreshBtn.disabled = false;
-          if (redrawBtn) redrawBtn.disabled = false;
+        const connectedRoot = resolveCurrentMapRoot(root);
+        mapLoadingOverlayState = { active: false, message: '', root: null };
+        if (connectedRoot) {
+          setMapLoadingOverlay(connectedRoot, false);
+          const currentRefreshBtn = connectedRoot.querySelector('[data-map-action="refresh"]');
+          const currentRedrawBtn = connectedRoot.querySelector('[data-map-action="redraw"]');
+          if (currentRefreshBtn) currentRefreshBtn.disabled = false;
+          if (currentRedrawBtn) currentRedrawBtn.disabled = false;
         }
-        const pendingRoot = activeDataRoot?.isConnected ? activeDataRoot : pending?.root;
+        if (refreshBtn?.isConnected) refreshBtn.disabled = false;
+        if (redrawBtn?.isConnected) redrawBtn.disabled = false;
+        const pendingRoot = resolveCurrentMapRoot(pending?.root);
         if (pending && pendingRoot?.isConnected && isModuleEnabled()) {
           mapDebugLog('domap:pending-auto:resume', { loc, pendingOptions: pending.options });
           setTimeout(() => {
@@ -971,6 +1175,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
       <div class="db-sb-map-header">
         <span class="db-map-area-label">当前区域: ${esc(area)}</span>
       </div>
+      <div class="db-sb-map-notification db-sb-map-notification--info" role="status" aria-live="polite" hidden></div>
       <div class="db-sb-map-viewport">
         ${renderBaseMap(S) || renderMapEmptyState('暂无地图元素。点击重绘地图生成。')}
       </div>
@@ -1042,14 +1247,38 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
 
   function rerender(root) {
     if (!root?.parentElement || !isModuleEnabled()) return root;
+    const noticeState = getMapNoticeState(root);
+    const currentMarkup = root.querySelector('.db-sb-map-viewport')?.innerHTML.trim() || '';
+    const safeCurrentMarkup = currentMarkup ? sanitizeSVG(currentMarkup) : '';
+    const cached = safeCurrentMarkup ? null : getSafeCachedMap(getState().location || '未知');
+    const wasActiveRoot = activeDataRoot === root;
     const host = document.createElement('div');
     host.innerHTML = renderMapShell();
     const nextRoot = host.firstElementChild;
     root.replaceWith(nextRoot);
+    mapRootReplacements.set(root, nextRoot);
+    if (noticeState) {
+      mapNoticeStates.set(nextRoot, noticeState);
+      noticeState.root = nextRoot;
+    }
     bindEvents(nextRoot);
-    activeDataRoot = nextRoot;
+    if (wasActiveRoot) activeDataRoot = nextRoot;
+    const preservedMarkup = safeCurrentMarkup || cached?.svg;
+    if (preservedMarkup) {
+      setMapViewportMarkup(nextRoot, preservedMarkup);
+    }
     normalizeMapClickTargets(nextRoot);
-    if (mapLoadingOverlayState.active) setMapLoadingOverlay(nextRoot, true, mapLoadingOverlayState.message);
+    if (
+      mapLoadingOverlayState.active &&
+      resolveCurrentMapRoot(mapLoadingOverlayState.root) === nextRoot
+    ) {
+      setMapLoadingOverlay(nextRoot, true, mapLoadingOverlayState.message);
+      const refreshBtn = nextRoot.querySelector('[data-map-action="refresh"]');
+      const redrawBtn = nextRoot.querySelector('[data-map-action="redraw"]');
+      if (refreshBtn) refreshBtn.disabled = true;
+      if (redrawBtn) redrawBtn.disabled = true;
+    }
+    renderMapNotice(nextRoot);
     return nextRoot;
   }
 
@@ -1078,7 +1307,7 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     const token = generationToken;
     autoMapTimer = setTimeout(() => {
       autoMapTimer = null;
-      const target = activeDataRoot?.isConnected ? activeDataRoot : root;
+      const target = resolveCurrentMapRoot(root);
       if (isGenerationCurrent(token, target)) maybeAutoMap(target, { allowGenerate: true });
     }, 0);
   }
@@ -1090,17 +1319,23 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     try {
       if (api?.exportTableAsJson) {
         const tables = await api.exportTableAsJson();
-        if (!isGenerationCurrent(token, root)) return;
+        if (!isModuleEnabled() || token !== generationToken) return;
+        root = resolveCurrentMapRoot(root);
+        if (!root) return;
         ui.dbMapData.parseTables(typeof tables === 'string' ? JSON.parse(tables) : tables);
       } else {
         ui.dbMapData?.loadTestData?.();
       }
-      if (!isGenerationCurrent(token, root)) return;
-      activeDataRoot = rerender(root) || root;
-      if (allowAutoGenerate) scheduleAutoMap(activeDataRoot);
+      if (!isModuleEnabled() || token !== generationToken) return;
+      root = resolveCurrentMapRoot(root);
+      if (!root) return;
+      const nextRoot = rerender(root) || root;
+      if (allowAutoGenerate) scheduleAutoMap(nextRoot);
       else lastAutoMapSignature = buildMapSignature(getState());
     } catch (error) {
-      if (!isGenerationCurrent(token, root)) return;
+      if (!isModuleEnabled() || token !== generationToken) return;
+      root = resolveCurrentMapRoot(root);
+      if (!root) return;
       lastError = summarizeMapError(error).message;
       console.warn('[db-map] database load failed:', summarizeMapError(error));
       if (!allowAutoGenerate) ui.dbMapData?.loadTestData?.();
@@ -1182,7 +1417,8 @@ SVG viewBox="0 0 800 600"，底色#f5ead0。建筑和道路用柔和描边(strok
     activeDataRoot = null;
     mapBusy = false;
     mapBusyOwner = null;
-    mapLoadingOverlayState = { active: false, message: '' };
+    mapLoadingOverlayState = { active: false, message: '', root: null };
+    clearAllMapNotices();
     clearDatabaseUpdateHandler();
     removeMountedDom();
   }

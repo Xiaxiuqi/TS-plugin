@@ -2,7 +2,7 @@
   const CONFIG = {
     env: 'lite_test',
     displayEnv: '精简测试版',
-    version: 'lite_test-0.1.6',
+    version: 'lite_test-0.1.7',
     publicBaseUrl: 'https://ts-plugin.pages.dev/story_ui_lite_test/',
     globalKey: 'StoryRegexUI',
     loaderFlag: '__storyRegexUiLoaderReady_lite_test',

@@ -49,6 +49,50 @@
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.062), transparent);
 }
 
+.db-map .db-sb-map-notification {
+  position: relative;
+  margin: 6px 8px;
+  padding: 7px 10px 7px 12px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--db-line);
+  border-radius: 7px;
+  background: var(--db-card);
+  color: var(--db-text);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.db-map .db-sb-map-notification::before {
+  position: absolute;
+  inset: 5px auto 5px 4px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--db-gold);
+  content: '';
+}
+
+.db-map .db-sb-map-notification[hidden] {
+  display: none;
+}
+
+.db-map .db-sb-map-notification--info::before {
+  background: #6b9fcb;
+}
+
+.db-map .db-sb-map-notification--success::before {
+  background: #45a878;
+}
+
+.db-map .db-sb-map-notification--warning::before {
+  background: #c79a43;
+}
+
+.db-map .db-sb-map-notification--error::before {
+  background: #c86464;
+}
+
 .db-map .db-sb-map-refresh {
   padding: 3px 10px;
   border-radius: 4px;
