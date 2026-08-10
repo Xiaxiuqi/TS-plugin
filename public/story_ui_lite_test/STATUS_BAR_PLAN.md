@@ -16,7 +16,9 @@
 
 > 2026-06-18 边界更新：地图已拆分为独立 `db-map` 模块。`db-status-bar` 只保留世界状态、角色、术式/式神/束缚、物品、任务和数据库 API；任务位于状态栏底部独立默认折叠面板。地图的数据库解析、AI API、配置键 `db-status-map-config`、缓存、SVG sanitizer、渲染、交互和自动生成均归 `db-map`。
 
-固定默认挂载顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`，两个数据库模块均挂到最后一条 AI 消息末尾且不使用显式标签。
+**当前已实施默认挂载顺序**（`combat-panel` 落地前）为四段 `bp-panel-newvars → world-log → db-status-bar → db-map`，两个数据库模块均挂到最后一条 AI 消息末尾且不使用显式标签；**`combat-panel` 落地后的目标顺序**才是五段 `bp-panel-newvars → combat-panel → world-log → db-status-bar → db-map`，届时 `combat-panel` 是计划中的战斗面板模块，位置在 `bp-panel-newvars` 之后、其余报告与数据库模块之前。
+
+> 2026-07-24 战斗面板边界更新（设计基线，未实施）：新增计划模块 `combat-panel`，数据源不是当前 AI 楼层 rawText。唯一输入来自消息层 API，分两步调用：第一步 `const TH = window.TavernHelper; const lastId = TH.getLastMessageId();`；第二步以模板字符串 `0-${lastId}` 作为楼层范围调用 `TH.getChatMessages(range, options)`，`range` 由 ``0-${lastId}`` 模板拼得、`options` 为 `{ role: 'user', hide_state: 'unhidden', include_swipes: false }`，从返回数组中提取最新一条未隐藏 user 消息并解析其中完整闭合 `<combat_driver>`。Markdown 行内代码与本行不再把 `'0-{{lastMessageId}}'` 宏字符串与 `getLastMessageId()` 混写。主路径可用条件：`window.TavernHelper` 存在，且 `getLastMessageId`/`getChatMessages` 均为函数；调用自身不抛异常；`lastId` 有效（非 `undefined`/`NaN`/负数）；返回数组且存在 `role === 'user' && is_hidden === false` 的消息。任一条件不满足才进入 fallback。fallback 读取 `SillyTavern.getContext().chat`（证据：`nailongwang/奶龙工具箱/docs/SHUJUKU_API.md:758-759`），当前工作区只确认该 API 暴露 `.chat` 字段，未确认元素结构、字段命名或排序契约；fallback 必须先 `Array.isArray(chat)`，再对可识别 `role === 'user'`、未隐藏（仅 `is_hidden === false` 视为候选；字段缺失或类型不符排除该候选）且 `message` 为非空字符串的项目按最大有效 `message_id` 选择一条；任一步骤无法安全确认则放弃挂载，不得臆测。读取或解析失败、未闭合 `<combat_driver>` 或空白战斗块同样不挂载。挂载位置固定在最新 AI 楼层；当前默认挂载顺序仍为四段 `bp-panel-newvars → world-log → db-status-bar → db-map`，**目标顺序**（`combat-panel` 落地后）才扩展为五段 `bp-panel-newvars → combat-panel → world-log → db-status-bar → db-map`。V8 `preview-v8.html` 已删除 body 黑幕、深色 result、result 斜纹和底部流动条；summary 比较型结论使用两个等宽核心 BP 数值舱，双倍阈值公式独立下沉，移动端保持三列；clash 内环删除错误连接断弧的浅色侧线；阵营标签使用 18s 连续左右往返的局部白金亮核，轨迹端点为 `112%/-12%`，PLAYER/ENEMY 镜像，局部重复文字层提供 `blur(2px)`、透明度 `.24-.42` 的扩散光；头像框保留 34px 尺寸、边框、圆角、文字、背景及 PLAYER/ENEMY 阵营配色，但已删除头像自身的常驻动画绑定、专属 `story-ui-combat-v8-avatar-charge` 关键帧和头像伪元素效果；replay 的 `.cp-unit` 父级入场仍按原契约保留，不属于头像自身动效；meter、power、`.cp-summary-equation em`、V4 字体链、result 常驻反馈和 reduced-motion 约束保持有效。V2-V8 均不接 API、loader/index；正式 `combat-panel` 仍未实施。
 
 > 2026-07-23 管理名称与迁移更新：管理列表显示顺序固定为“BP战力雷达 → 世界运行报告 → 状态栏 → 地图”。历史 `db-map=false` 没有来源标识，无法区分旧逻辑写入与手动关闭；为满足本次恢复地图显示的要求，首次升级时将其重置为默认开启并保留旧 `true`，迁移完成后两个数据库模块继续独立持久化开关。状态保存失败时不写完成标记，下次加载继续重试。
 
@@ -329,7 +331,7 @@ ui.registry?.register?.({
 | 5.1  | 更新 `loader.js` 添加模块加载   | 分别加载 db-status-bar 与 db-map 的 CSS 和 JS                                         |
 | 5.2  | 更新主入口 `index.js`           | 配置最后一条 AI 消息的默认挂载列表与固定顺序，不使用显式标签                          |
 | 5.3  | 编写测试数据 mock               | 模拟 exportTableAsJson 返回                                                           |
-| 5.4  | preview.html 本地验证           | 确认渲染效果                                                                          |
+| 5.4  | 游戏化战斗裁定 HUD v2/v3/v4/v5/v6/v7/v8 静态对照 | V8 已完成最终独立验收：中央 VS 保留 V3 的 180px 中列竞技场、150px clash、单根 rose 斩线、纯文字核心与虚线旋转环，并在 720px 下收敛为 112px；BP 保留 V2 `.cp-power-track/.cp-power-half/.cp-power-fill` 条体，数值使用独立对称 summary 和整行阈值说明；`.cp-stage-track/.cp-stage` 保留 V4 的连线节点、ARIA、点击、左右键与 680px 竖向响应式契约。阶段 facts 已按本轮反馈改为金色短横、细分隔线和等宽数字排版的非卡片文字清单；result 改为横向铺底的 V4 式深色终局板；重播终段由 `.cp-body::after` 覆盖整个 body 揭幕，延迟期保持 `scaleX(0)`，结束态使用 `forwards`。常驻动效仅保留慢速 clash 环、战场纹理、阈值线和结果板环境光，并统一受 reduced-motion 约束。参考栏仍在组件外；V8 不接 API/loader/index、不创建正式 `combat-panel` |
 | 5.5  | 更新 PROJECT.md                 | 记录变更                                                                              |
 | 5.6  | 管理界面地图配置分页复核/补实现 | 已补 `data-jjks-map-config-form`、四字段输入、保存/重置和每次打开回填链路；待本轮验证 |
 | 5.7  | 地图 AI/SVG 安全验收            | 验证 AI 失败通知、旧地图保留、空状态、SVG 注入风险、按钮防重入和 API 预设桥接         |
@@ -412,9 +414,45 @@ function onTableUpdate() {
 
 ### 9.2 挂载规则
 
-`db-status-bar` 与 `db-map` 均不使用显式标签。入口只在最后一条 AI 消息末尾创建默认挂载，固定顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`。
+`db-status-bar` 与 `db-map` 均不使用显式标签。入口只在最后一条 AI 消息末尾创建默认挂载；**当前已实施默认挂载顺序**（`combat-panel` 落地前）为四段 `bp-panel-newvars → world-log → db-status-bar → db-map`，**`combat-panel` 落地后的目标顺序**才扩展为五段 `bp-panel-newvars → combat-panel → world-log → db-status-bar → db-map`。`combat-panel` 的输入契约见 9.4。
 
 ### 9.3 loader.js 模块定义
+
+### 9.4 战斗面板输入与挂载契约（设计基线，未实施）
+
+酒馆命令搜索结果（已确认）：`window.TavernHelper.getChatMessages` / `window.TavernHelper.getLastMessageId` / `SillyTavern.getContext().chat` 三条为本模块唯一允许使用的聊天层 API，禁止重新实现消息层扫描。`combat-panel` 文档基线不接受把 `'0-{{lastMessageId}}'` 宏字符串与 `getLastMessageId()` 在同一行内联模板中混写；调用链以两步显式 JS 表达。
+
+`combat-panel` 不参与当前 AI 楼层 rawText 的 `<combat_driver>` 扫描；唯一输入来自消息层 API，按以下契约解析：
+
+1. 第一步：取 `window.TavernHelper` 引用与最新楼层号。
+   - `const TH = window.TavernHelper;`
+   - `const lastId = TH.getLastMessageId();`
+   - 该 API 在 `nailongwang/奶龙工具箱/docs/JS_SLASH_RUNNER_API.md:457,471` 中确认返回最新楼层号。
+2. 第二步：以模板字符串拼接楼层范围，再带过滤参数调用主路径。
+   - `` const messages = TH.getChatMessages(`0-${lastId}`, { role: 'user', hide_state: 'unhidden', include_swipes: false }); ``
+   - 返回数组结构 `Array<{ message_id, name, role, is_hidden, message, data, extra }>`，证据：`nailongwang/奶龙工具箱/docs/JS_SLASH_RUNNER_API.md:71-104`；`include_swipes: false` 不展开 swipes。
+   - `@types/function/chat_message.d.ts:34-40,56-59` 明确返回数组按 `message_id` 从低到高排序，因此可以直接取过滤后数组的最后一项作为最新一条未隐藏 user 消息。
+3. 主路径**可用条件**（必须**全部**成立）才视为可调用主路径：
+   - `window.TavernHelper` 存在；
+   - `typeof TH.getLastMessageId === 'function'` 且 `typeof TH.getChatMessages === 'function'`；
+   - 调用 `getLastMessageId()` 自身不抛异常；
+   - `lastId` 为有效数字（非 `undefined`/`NaN` 且不为负数）；
+   - `getChatMessages(...)` 调用不抛异常；
+   - 返回值为数组且其中存在 `role === 'user' && is_hidden === false` 的消息。
+   任一条件不满足即**不**视作主路径可用，立即进入 fallback，不得继续解析主路径返回。
+4. Fallback：`SillyTavern.getContext().chat`，证据：`nailongwang/奶龙工具箱/docs/SHUJUKU_API.md:758-759`。当前工作区只确认该 API 暴露 `.chat` 字段，**未**确认元素结构、字段命名或排序契约；因此 fallback 实施前必须满足以下条件：
+   - `Array.isArray(chat)` 成立；
+   - 对每一项先识别 `role === 'user'`、未隐藏（`is_hidden === false`）且 `message` 为非空字符串，才视为候选；
+   - 在候选中按**最大有效 `message_id`**（数字、非 `NaN`）选择一条作为最新 user 消息；
+   - 任一步骤无法安全确认（结构不符、字段缺失、排序契约未确认）则**放弃挂载**，不得臆测拼接或伪造战斗数据。
+   Fallback 同样要求其 `message` 字段包含完整闭合 `<combat_driver>...</combat_driver>`；解析失败或不闭合走"不挂载"路径。
+5. 主路径与 fallback 全部不可用时视为无战斗消息，不挂载。
+6. 挂载位置：最新一条 AI 楼层；**当前已实施默认挂载顺序**（`combat-panel` 落地前）为四段 `bp-panel-newvars → world-log → db-status-bar → db-map`，**`combat-panel` 落地后的目标顺序**才扩展为五段 `bp-panel-newvars → combat-panel → world-log → db-status-bar → db-map`，且 `combat-panel` 始终位于 BP 之后，不依赖显式标签。
+7. 失败兜底：API 异常、解析异常、未闭合标签、空白 `<combat_driver>`、主路径返回值非数组、fallback 结构无法确认，全部走"不挂载"路径，不得伪造战斗数据。
+
+用例模板见 `nailongwang/奶龙工具箱/docs/TARGET_RUNTIME_MODES.md:80-86`。
+
+> **v2/v3/v4/v5/v6/v7/v8 静态战斗 HUD 对照说明**：V8 已针对 V7 目视偏差完成重新实施。中央 VS 保留 V3 的结构、尺寸和 720px 响应式契约，只保留单根斩线、旋转环、clash burst/slash；BP 采用 V2 power-half 条体和独立对称数值布局；阶段节点保留 V4 的连线、动画、680px 竖向响应式、ARIA、点击和键盘钳制契约。本轮最终修订将详情 facts 改为非卡片文字清单，将 result 改为横向铺底的深色终局板，并加入 body 级终局揭幕及克制常驻动效；移动 power summary 改为单列，所有动画受 reduced-motion 约束。V7 保留为历史对照，不覆盖。所有预览均不调用运行时 API、不接 loader/index；V8 已完成本地 Edge 桌面、430px 移动端和揭幕中间态复核，并通过最终独立验收。
 
 ```javascript
 { id: 'db-status-bar', css: 'modules/db-status-bar/style.css', scripts: [
@@ -447,7 +485,7 @@ function onTableUpdate() {
 | 地图工具条或空状态高度异常      | 窄宽度下按钮换行或空内容可能挤压地图区域                                                                                               | 地图样式由 `.db-map` 独立作用域约束，工具条保持稳定布局，viewport 与空状态设置可见最小高度                                                                                                                      |
 | 无缓存地图区域空白              | 普通刷新不允许生成 AI，且之前无缓存/AI失败无旧图路径只显示纯空状态                                                                     | `db-map` 基于自身 `MapState.mapElements` 生成基础 SVG；基础 SVG 经 `sanitizeSVG()` 后进入 DOM，不写入 `mapCache`，不恢复静态默认地图                                                                           |
 | 地图缓存签名污染                | AI 失败保留旧图时若用当前 signature 写入 previousSvg，会把旧图伪装成新地图缓存                                                         | 已删除失败保留旧图路径的 `setMapCacheEntry()`，只有 AI 成功生成和缓存规范化路径写缓存                                                                                                                          |
-| 头像弹窗颜色偏离预览            | body 级弹窗继续消费状态栏 CSS 变量，颜色不再对齐 `preview-db-status.html` 浅色预览                                                     | 收敛头像弹窗局部 CSS 颜色，不改预览页本体，不新增全局 body 变量                                                                                                                                                |
+| 头像弹窗颜色偏离预览            | body 级弹窗继续消费状态栏 CSS 变量，颜色不再对齐状态栏浅色主题下的视觉基线                                                     | 收敛头像弹窗局部 CSS 颜色，不改预览页本体，不新增全局 body 变量                                                                                                                                                |
 | 束缚表缔结方格式不确定          | 筛选逻辑错误                                                                                                                           | 用 includes() 模糊匹配                                                                                                                                                                                         |
 | 状态栏默认挂载缺失或错位        | 用户输入后状态栏位置错乱，或最新 AI 消息没有默认状态栏                                                                                  | `index.js` 定位最后 AI 消息，并将 `db-status-bar` 加入默认 after-native 挂载列表；用户消息触发扫描时会刷新最后 AI 消息并移除其他默认状态栏实例                                                                 |
 | 头像弹窗挂在消息容器内不可见    | 点击角色头像无弹窗，或被消息容器层级、overflow、状态栏 rerender 影响                                                                   | 当前点击链路已复核为 `.db-sb-avatar-box` 事件委托到 `showAvatarModal()`，弹窗挂载到 `document.body`；仍需酒馆运行时复核 URL、本地上传、移除和裁剪                                                              |
@@ -468,7 +506,7 @@ function onTableUpdate() {
 - [ ] 用户消息渲染后，数据库状态栏默认实例仍挂在最后一条 AI 消息末尾，不出现在用户输入消息后，且不依赖显式标签
 - [ ] 主角与重要角色头部信息栏强调样式一致
 
-- [ ] 头像弹窗颜色与 `preview-db-status.html` 浅色参考一致，且没有新增污染全局或预览页本体的 CSS 变量
+- [ ] 头像弹窗颜色与状态栏浅色主题下的视觉基线一致，且没有新增污染全局或视觉基线本体的 CSS 变量
 - [x] 禁用或清理状态栏时会移除当前模块创建的 body 级头像弹窗、销毁 Cropper，并阻止迟到的异步初始化
 - [ ] 重要角色TAB显示信息+好感度/信任度
 - [ ] 主角与重要角色右栏显示各自关联的扩展术式、式神和束缚
@@ -489,7 +527,8 @@ function onTableUpdate() {
 - [ ] 数据库表更新后，地点或地图元素签名变化会自动触发受控 AI 地图重绘；签名未变且缓存命中时不重复生成
 - [x] 管理界面地图配置只通过 `db-map.management` 读写；地图模块关闭时模型拉取按钮禁用并给出提示
 - [x] `db-status-bar` 无 AI 调用，`db-map` 无状态栏运行时或样式依赖；两个模块可独立开关
-- [x] 固定默认挂载顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`，且不使用显式标签
+- [x] **当前已实施顺序（`combat-panel` 落地前）**固定默认挂载顺序为 `bp-panel-newvars → world-log → db-status-bar → db-map`，且不使用显式标签；该顺序文档独立于 `combat-panel` 设计基线
+- [ ] **`combat-panel` 落地后目标顺序**为五段 `bp-panel-newvars → combat-panel → world-log → db-status-bar → db-map`，且 `combat-panel` 显示在最新 AI 楼层 BP 之后，不使用显式标签；代码 PR 落地前保持未勾选
 - [x] `db-map` 已补回拆分时遗漏的 `getState()`，统一读取 `dbMapData.MapState`，默认挂载不再因未定义状态访问函数中断
 - [x] 管理模块名称与顺序固定为“BP战力雷达 → 世界运行报告 → 状态栏 → 地图”；首次升级按恢复显示要求重置无来源标识的旧 `db-map=false`，之后保留地图独立开关
 - [ ] 数据更新后UI自动刷新

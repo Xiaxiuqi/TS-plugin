@@ -1,245 +1,1372 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BP战力雷达 - 前端预览</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>战斗裁定视觉预览</title>
+  <link rel="stylesheet" href="./shared.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
-      background: #f0ebe3;
-      padding: 20px;
-      min-height: 100vh;
+    .combat-preview {
+      --cp-bg: #f7f1e6;
+      --cp-panel: rgba(255, 253, 248, 0.94);
+      --cp-ink: #342f29;
+      --cp-muted: #746d63;
+      --cp-gold: #b79a62;
+      --cp-gold-ink: #765e31;
+      --cp-blue: #748b9d;
+      --cp-blue-ink: #435f74;
+      --cp-rose: #a07e74;
+      --cp-rose-ink: #744f47;
+      --cp-line: rgba(87, 76, 59, 0.22);
+      --cp-grid: rgba(116, 139, 157, 0.08);
+      --cp-player-soft: rgba(116, 139, 157, 0.14);
+      --cp-enemy-soft: rgba(160, 126, 116, 0.14);
+      --cp-gold-soft: rgba(183, 154, 98, 0.14);
+      max-width: 1040px;
+      margin: 20px auto;
+      padding: 0 12px;
+      color: var(--cp-ink);
+      font-family: var(--story-ui-font, "Noto Serif SC", serif);
+      line-height: 1.55;
     }
-    body.night {
-      background: #141418;
+
+    .combat-preview.combat-preview-night {
+      --cp-bg: #1a1a1c;
+      --cp-panel: rgba(29, 30, 33, 0.95);
+      --cp-ink: #ddd9d3;
+      --cp-muted: #9f9a92;
+      --cp-gold: #c8a86c;
+      --cp-gold-ink: #dbc188;
+      --cp-blue: #88aeb8;
+      --cp-blue-ink: #9bc3cc;
+      --cp-rose: #b9877e;
+      --cp-rose-ink: #d29a90;
+      --cp-line: rgba(221, 217, 211, 0.16);
+      --cp-grid: rgba(136, 174, 184, 0.07);
+      --cp-player-soft: rgba(136, 174, 184, 0.15);
+      --cp-enemy-soft: rgba(185, 135, 126, 0.15);
+      --cp-gold-soft: rgba(200, 168, 108, 0.15);
     }
-    .preview-controls {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 999;
-      display: flex;
-      gap: 8px;
+
+    .combat-preview .combat-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--cp-line);
+      border-radius: 12px;
+      background: var(--cp-bg);
+      box-shadow: 0 14px 38px rgba(20, 18, 15, 0.14);
+      isolation: isolate;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: story-ui-combat-game-panel-in 520ms ease-out forwards;
     }
-    .preview-controls button {
-      padding: 6px 14px;
-      border: none;
-      border-radius: 6px;
+
+    .combat-preview.combat-preview-night .combat-panel::before,
+    .combat-preview.combat-preview-night .combat-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    .combat-preview.combat-preview-night .combat-panel::before {
+      background:
+        linear-gradient(118deg, rgba(200, 168, 108, 0.16), transparent 37%),
+        linear-gradient(298deg, rgba(136, 174, 184, 0.13), transparent 42%);
+    }
+
+    .combat-preview.combat-preview-night .combat-panel::after {
+      z-index: -1;
+      background:
+        linear-gradient(rgba(136, 174, 184, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 168, 108, 0.035) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.62;
+      animation: story-ui-combat-game-grid-drift 28s linear infinite;
+    }
+
+    .combat-preview .combat-panel-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      min-height: 56px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--cp-line);
+      background: var(--cp-panel);
       cursor: pointer;
-      font-size: 12px;
-      font-weight: 700;
-      background: #a07e74;
-      color: #fff;
-      transition: all 0.2s;
+      user-select: none;
     }
-    .preview-controls button:hover { opacity: 0.85; }
-    .preview-controls button.active { background: #5a7a8f; }
-    .preview-title {
-      text-align: center;
-      color: #756b60;
-      font-size: 11px;
-      font-weight: 700;
+
+    .combat-preview .combat-panel-head:focus-visible,
+    .combat-preview button:focus-visible {
+      outline: 2px solid var(--cp-gold);
+      outline-offset: 2px;
+    }
+
+    .combat-preview .cp-mark {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      margin-right: 10px;
+      border: 1px solid var(--cp-gold);
+      border-radius: 8px;
+      color: var(--cp-gold-ink);
+      background: var(--cp-gold-soft);
+      transform: rotate(45deg);
+    }
+
+    .combat-preview .cp-mark svg {
+      width: 17px;
+      height: 17px;
+      transform: rotate(-45deg);
+    }
+
+    .combat-preview .cp-heading {
+      min-width: 0;
+    }
+
+    .combat-preview .cp-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 900;
       letter-spacing: 0.1em;
-      margin-bottom: 16px;
     }
-    body.night .preview-title { color: #9a9488; }
+
+    .combat-preview .cp-subtitle {
+      display: block;
+      overflow: hidden;
+      color: var(--cp-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .combat-preview .cp-collapse {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--cp-muted);
+      font-size: 10px;
+    }
+
+    .combat-preview .cp-caret {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-right: 1px solid currentColor;
+      border-bottom: 1px solid currentColor;
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform 180ms ease;
+    }
+
+    .combat-preview .combat-panel[data-state="collapsed"] .cp-caret {
+      transform: rotate(-45deg);
+    }
+
+    .combat-preview .combat-panel[data-state="collapsed"] .combat-panel-body {
+      display: none;
+    }
+
+    .combat-preview [hidden] {
+      display: none !important;
+    }
+
+    .combat-preview .cp-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--cp-line);
+      background: var(--cp-panel);
+    }
+
+    .combat-preview .cp-toggle {
+      min-height: 28px;
+      padding: 4px 11px;
+      border: 1px solid var(--cp-gold);
+      border-radius: 999px;
+      color: var(--cp-muted);
+      background: transparent;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .combat-preview .cp-toggle[aria-pressed="true"] {
+      color: var(--cp-gold-ink);
+      background: var(--cp-gold-soft);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    }
+
+    .combat-preview .combat-panel-body {
+      padding: 16px;
+    }
+
+    .combat-preview .cp-battlefield {
+      position: relative;
+      overflow: hidden;
+      min-height: 294px;
+      border: 1px solid var(--cp-line);
+      border-radius: 12px;
+      background:
+        linear-gradient(var(--cp-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--cp-grid) 1px, transparent 1px),
+        linear-gradient(135deg, var(--cp-player-soft), transparent 38%, var(--cp-enemy-soft));
+      background-size: 24px 24px, 24px 24px, 100% 100%;
+    }
+
+    .combat-preview .cp-battlefield::before {
+      content: "TACTICAL RESOLUTION";
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      color: var(--cp-muted);
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      opacity: 0.58;
+      transform: translateX(-50%);
+    }
+
+    .combat-preview .cp-versus {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 116px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+      min-height: 294px;
+      padding: 34px 24px 22px;
+    }
+
+    .combat-preview .cp-side-stack {
+      position: relative;
+      display: grid;
+      gap: 12px;
+    }
+
+    .combat-preview .cp-side-stack::before {
+      content: "";
+      position: absolute;
+      top: 25%;
+      bottom: 25%;
+      left: 20px;
+      width: 1px;
+      background: linear-gradient(transparent, var(--cp-blue), transparent);
+    }
+
+    .combat-preview .cp-fighter {
+      position: relative;
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      min-height: 118px;
+      padding: 13px 15px;
+      border: 1px solid var(--cp-blue);
+      border-radius: 12px;
+      background: linear-gradient(110deg, var(--cp-player-soft), var(--cp-panel) 48%);
+      box-shadow: inset 3px 0 0 var(--cp-blue), 0 8px 20px rgba(20, 18, 15, 0.09);
+      opacity: 0;
+      transform: translateX(-22px);
+      animation: story-ui-combat-game-hud-left 520ms cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+    }
+
+    .combat-preview .cp-fighter[data-side="enemy"] {
+      grid-template-columns: minmax(0, 1fr) 54px;
+      border-color: var(--cp-rose);
+      background: linear-gradient(250deg, var(--cp-enemy-soft), var(--cp-panel) 48%);
+      box-shadow: inset -3px 0 0 var(--cp-rose), 0 8px 20px rgba(20, 18, 15, 0.09);
+      text-align: right;
+      transform: translateX(22px);
+      animation-name: story-ui-combat-game-hud-right;
+    }
+
+    .combat-preview .cp-fighter[data-boss="true"] {
+      min-height: 166px;
+      border-width: 2px;
+      background:
+        linear-gradient(135deg, transparent 10px, var(--cp-enemy-soft) 0) top left,
+        linear-gradient(315deg, transparent 10px, var(--cp-panel) 0) bottom right;
+      background-size: 55% 100%;
+      background-repeat: no-repeat;
+      box-shadow: inset -5px 0 0 var(--cp-rose), inset 0 0 0 5px rgba(160, 126, 116, 0.06);
+    }
+
+    .combat-preview .cp-fighter[data-winner="true"] {
+      animation-name: story-ui-combat-game-hud-left, story-ui-combat-game-winner-breathe;
+      animation-duration: 520ms, 4.8s;
+      animation-delay: 0ms, 900ms;
+      animation-iteration-count: 1, 2;
+      animation-timing-function: cubic-bezier(0.2, 0.75, 0.25, 1), ease-in-out;
+    }
+
+    .combat-preview .cp-fighter[data-side="enemy"][data-winner="true"] {
+      animation-name: story-ui-combat-game-hud-right, story-ui-combat-game-winner-breathe;
+    }
+
+    .combat-preview .cp-side-stack .cp-fighter:nth-child(2) {
+      margin-left: 22px;
+      animation-delay: 110ms;
+    }
+
+    .combat-preview .cp-avatar {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border: 1px solid currentColor;
+      border-radius: 12px;
+      color: var(--cp-blue-ink);
+      background: var(--cp-player-soft);
+      transform: rotate(45deg);
+    }
+
+    .combat-preview [data-side="enemy"] .cp-avatar {
+      order: 2;
+      color: var(--cp-rose-ink);
+      background: var(--cp-enemy-soft);
+    }
+
+    .combat-preview .cp-avatar svg {
+      width: 29px;
+      height: 29px;
+      transform: rotate(-45deg);
+    }
+
+    .combat-preview .cp-avatar::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border: 1px solid currentColor;
+      border-radius: 8px;
+    }
+
+    .combat-preview .cp-fighter-copy {
+      min-width: 0;
+    }
+
+    .combat-preview .cp-fighter-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--cp-muted);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+    }
+
+    .combat-preview [data-side="enemy"] .cp-fighter-head {
+      flex-direction: row-reverse;
+    }
+
+    .combat-preview .cp-role {
+      display: inline-flex;
+      padding: 1px 7px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      color: var(--cp-blue-ink);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .combat-preview [data-side="enemy"] .cp-role {
+      color: var(--cp-rose-ink);
+    }
+
+    .combat-preview .cp-name {
+      margin: 4px 0 1px;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      line-height: 1.25;
+    }
+
+    .combat-preview .cp-meta {
+      margin: 0;
+      overflow: hidden;
+      color: var(--cp-muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .combat-preview .cp-bp-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 7px;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+
+    .combat-preview [data-side="enemy"] .cp-bp-row {
+      flex-direction: row-reverse;
+    }
+
+    .combat-preview .cp-bp-row strong {
+      color: var(--cp-blue-ink);
+      font-size: 21px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+
+    .combat-preview [data-side="enemy"] .cp-bp-row strong {
+      color: var(--cp-rose-ink);
+    }
+
+    .combat-preview .cp-energy {
+      position: relative;
+      overflow: hidden;
+      height: 6px;
+      margin-top: 4px;
+      border-radius: 999px;
+      background: rgba(80, 70, 58, 0.12);
+    }
+
+    .combat-preview .cp-energy::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform-origin: left;
+      background: linear-gradient(90deg, var(--cp-blue), var(--cp-gold));
+      transform: scaleX(var(--energy, 1));
+    }
+
+    .combat-preview [data-side="enemy"] .cp-energy::before {
+      transform-origin: right;
+      background: linear-gradient(90deg, var(--cp-gold), var(--cp-rose));
+    }
+
+    .combat-preview .cp-clash {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 104px;
+      height: 104px;
+      color: var(--cp-gold-ink);
+      justify-self: center;
+    }
+
+    .combat-preview .cp-clash::before,
+    .combat-preview .cp-clash::after {
+      content: "";
+      position: absolute;
+      width: 118px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cp-gold), transparent);
+      transform: rotate(42deg) scaleX(1);
+    }
+
+    .combat-preview .cp-clash::after {
+      transform: rotate(-42deg) scaleX(1);
+    }
+
+    .combat-preview .cp-clash-core {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 68px;
+      height: 68px;
+      border: 1px solid var(--cp-gold);
+      background: var(--cp-panel);
+      box-shadow: inset 0 0 0 6px var(--cp-gold-soft);
+      transform: rotate(45deg);
+    }
+
+    .combat-preview .cp-clash-core span {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-align: center;
+      transform: rotate(-45deg);
+    }
+
+    .combat-preview .cp-clash-arrow {
+      position: absolute;
+      top: 50%;
+      width: 38px;
+      height: 8px;
+      color: var(--cp-blue-ink);
+      transform: translateY(-50%);
+    }
+
+    .combat-preview .cp-clash[data-winner-direction="left"] .cp-clash-arrow {
+      right: 88px;
+    }
+
+    .combat-preview .cp-clash[data-winner-direction="right"] .cp-clash-arrow {
+      left: 88px;
+      color: var(--cp-rose-ink);
+      transform: translateY(-50%) rotate(180deg);
+    }
+
+    .combat-preview .cp-clash-arrow::before,
+    .combat-preview .cp-clash-arrow::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: currentColor;
+    }
+
+    .combat-preview .cp-clash-arrow::before {
+      top: 2px;
+      transform: skewX(-35deg);
+    }
+
+    .combat-preview .cp-clash-arrow::after {
+      bottom: 2px;
+      transform: skewX(35deg);
+    }
+
+    .combat-preview .cp-battlefield.is-replaying .cp-clash {
+      animation: story-ui-combat-game-clash-burst 580ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+    }
+
+    .combat-preview .cp-battlefield.is-replaying .cp-clash::before {
+      animation: story-ui-combat-game-slash-a 520ms ease-out both;
+    }
+
+    .combat-preview .cp-battlefield.is-replaying .cp-clash::after {
+      animation: story-ui-combat-game-slash-b 520ms ease-out both;
+    }
+
+    .combat-preview .cp-power {
+      position: relative;
+      margin-top: 14px;
+      padding: 13px 14px 12px;
+      border: 1px solid var(--cp-line);
+      border-radius: 12px;
+      background: var(--cp-panel);
+    }
+
+    .combat-preview .cp-power-head,
+    .combat-preview .cp-power-values {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .combat-preview .cp-power-head {
+      color: var(--cp-muted);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+
+    .combat-preview .cp-power-head span:last-child,
+    .combat-preview .cp-power-values span:last-child {
+      text-align: right;
+    }
+
+    .combat-preview .cp-ratio {
+      padding: 2px 8px;
+      border: 1px solid var(--cp-gold);
+      border-radius: 999px;
+      color: var(--cp-gold-ink);
+      background: var(--cp-gold-soft);
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .combat-preview .cp-power-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 18px;
+      margin: 8px 0 5px;
+      background:
+        repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), var(--cp-line) 10%);
+    }
+
+    .combat-preview .cp-power-track::after {
+      content: "";
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      left: 50%;
+      width: 2px;
+      background: var(--cp-gold);
+      transform: translateX(-1px);
+    }
+
+    .combat-preview .cp-power-half {
+      position: relative;
+      overflow: hidden;
+      border-top: 1px solid var(--cp-line);
+      border-bottom: 1px solid var(--cp-line);
+    }
+
+    .combat-preview .cp-power-half:first-child {
+      border-left: 1px solid var(--cp-line);
+      border-radius: 9px 0 0 9px;
+    }
+
+    .combat-preview .cp-power-half:last-child {
+      border-right: 1px solid var(--cp-line);
+      border-radius: 0 9px 9px 0;
+    }
+
+    .combat-preview .cp-power-fill {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      width: var(--fill, 100%);
+    }
+
+    .combat-preview .cp-power-player .cp-power-fill {
+      right: 0;
+      background: linear-gradient(90deg, var(--cp-gold), var(--cp-blue));
+      transform-origin: right;
+    }
+
+    .combat-preview .cp-power-enemy .cp-power-fill {
+      left: 0;
+      background: linear-gradient(90deg, var(--cp-rose), var(--cp-gold));
+      transform-origin: left;
+    }
+
+    .combat-preview .cp-power-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.72) 48%, transparent 70%);
+      transform: translateX(-140%);
+    }
+
+    .combat-preview .cp-power.is-replaying .cp-power-fill {
+      animation: story-ui-combat-game-power-fill 620ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+    }
+
+    .combat-preview .cp-power.is-replaying .cp-power-fill::after {
+      animation: story-ui-combat-game-power-sweep 620ms ease-out 520ms both;
+    }
+
+    .combat-preview .cp-power-values {
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .combat-preview .cp-power-values strong {
+      color: var(--cp-blue-ink);
+      font-size: 17px;
+    }
+
+    .combat-preview .cp-power-values span:last-child strong {
+      color: var(--cp-rose-ink);
+    }
+
+    .combat-preview .cp-stages {
+      margin-top: 14px;
+      padding: 13px 14px 15px;
+      border: 1px solid var(--cp-line);
+      border-radius: 12px;
+      background: var(--cp-panel);
+    }
+
+    .combat-preview .cp-section-title {
+      margin: 0 0 11px;
+      color: var(--cp-muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+    }
+
+    .combat-preview .cp-track {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(112px, 1fr));
+      gap: 0;
+      overflow-x: auto;
+      padding: 3px 2px 6px;
+    }
+
+    .combat-preview .cp-stage {
+      position: relative;
+      min-width: 0;
+      padding: 9px 8px 8px 31px;
+      border-top: 1px solid var(--cp-line);
+      border-bottom: 1px solid var(--cp-line);
+      opacity: 0;
+      transform: translateY(5px);
+      animation: story-ui-combat-game-stage-on 320ms ease-out forwards;
+    }
+
+    .combat-preview .cp-stage:first-child {
+      border-left: 1px solid var(--cp-line);
+      border-radius: 8px 0 0 8px;
+    }
+
+    .combat-preview .cp-stage:last-child {
+      border-right: 1px solid var(--cp-gold);
+      border-radius: 0 8px 8px 0;
+      background: var(--cp-gold-soft);
+    }
+
+    .combat-preview .cp-stage::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 9px;
+      width: 12px;
+      height: 12px;
+      border: 1px solid var(--cp-gold);
+      background: var(--cp-panel);
+      transform: translateY(-50%) rotate(45deg);
+    }
+
+    .combat-preview .cp-stage:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      top: 50%;
+      right: -6px;
+      width: 12px;
+      height: 12px;
+      border-top: 1px solid var(--cp-gold);
+      border-right: 1px solid var(--cp-gold);
+      background: var(--cp-panel);
+      transform: translateY(-50%) rotate(45deg);
+    }
+
+    .combat-preview .cp-stage:nth-child(1) { animation-delay: 90ms; }
+    .combat-preview .cp-stage:nth-child(2) { animation-delay: 180ms; }
+    .combat-preview .cp-stage:nth-child(3) { animation-delay: 270ms; }
+    .combat-preview .cp-stage:nth-child(4) { animation-delay: 360ms; }
+    .combat-preview .cp-stage:nth-child(5) {
+      animation-delay: 450ms;
+      animation-name: story-ui-combat-game-stage-on, story-ui-combat-game-stage-pulse;
+      animation-duration: 320ms, 620ms;
+      animation-delay: 450ms, 720ms;
+    }
+
+    .combat-preview .cp-stage b,
+    .combat-preview .cp-stage span {
+      display: block;
+      white-space: nowrap;
+    }
+
+    .combat-preview .cp-stage b {
+      color: var(--cp-gold-ink);
+      font-size: 10px;
+    }
+
+    .combat-preview .cp-stage span {
+      color: var(--cp-muted);
+      font-size: 9px;
+    }
+
+    .combat-preview .cp-result {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+      margin-top: 14px;
+      padding: 17px 20px;
+      border: 1px solid var(--winner-color, var(--cp-blue));
+      border-radius: 12px;
+      background:
+        linear-gradient(105deg, var(--winner-soft, var(--cp-player-soft)), transparent 58%),
+        var(--cp-panel);
+      box-shadow: inset 5px 0 0 var(--winner-color, var(--cp-blue));
+    }
+
+    .combat-preview .cp-result[data-winner="enemy"] {
+      --winner-color: var(--cp-rose);
+      --winner-soft: var(--cp-enemy-soft);
+      box-shadow: inset -5px 0 0 var(--cp-rose);
+    }
+
+    .combat-preview .cp-result::after {
+      content: "";
+      position: absolute;
+      top: -40%;
+      bottom: -40%;
+      left: -30%;
+      width: 18%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+      transform: skewX(-22deg) translateX(0);
+      animation: story-ui-combat-game-result-sweep 780ms ease-out 460ms both;
+      pointer-events: none;
+    }
+
+    .combat-preview .cp-result-mark {
+      border-right: 1px solid var(--cp-line);
+      color: var(--winner-color, var(--cp-blue));
+    }
+
+    .combat-preview .cp-result-mark span,
+    .combat-preview .cp-result-mark strong {
+      display: block;
+    }
+
+    .combat-preview .cp-result-mark span {
+      font-size: 9px;
+      letter-spacing: 0.22em;
+    }
+
+    .combat-preview .cp-result-mark strong {
+      font-size: 23px;
+      letter-spacing: 0.08em;
+    }
+
+    .combat-preview .cp-result-label {
+      color: var(--cp-muted);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+
+    .combat-preview .cp-result h2 {
+      margin: 2px 0 5px;
+      color: var(--winner-color, var(--cp-blue));
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+    }
+
+    .combat-preview .cp-result p {
+      margin: 3px 0;
+      font-size: 11px;
+    }
+
+    .combat-preview .cp-rule {
+      color: var(--cp-muted);
+      font-size: 10px !important;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .combat-preview .cp-sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes story-ui-combat-game-panel-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes story-ui-combat-game-grid-drift {
+      to { background-position: 28px 28px, -28px -28px; }
+    }
+
+    @keyframes story-ui-combat-game-hud-left {
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes story-ui-combat-game-hud-right {
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes story-ui-combat-game-winner-breathe {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.08); }
+    }
+
+    @keyframes story-ui-combat-game-clash-burst {
+      0% { opacity: 0.4; transform: scale(0.72) rotate(-2deg); }
+      48% { opacity: 1; transform: scale(1.12) rotate(1deg); }
+      68% { transform: scale(0.98) translateX(-2px); }
+      82% { transform: scale(1.01) translateX(2px); }
+      100% { opacity: 1; transform: scale(1) translateX(0); }
+    }
+
+    @keyframes story-ui-combat-game-slash-a {
+      from { opacity: 0; transform: rotate(42deg) scaleX(0); }
+      to { opacity: 1; transform: rotate(42deg) scaleX(1); }
+    }
+
+    @keyframes story-ui-combat-game-slash-b {
+      from { opacity: 0; transform: rotate(-42deg) scaleX(0); }
+      to { opacity: 1; transform: rotate(-42deg) scaleX(1); }
+    }
+
+    @keyframes story-ui-combat-game-power-fill {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
+    @keyframes story-ui-combat-game-power-sweep {
+      from { transform: translateX(-140%); }
+      to { transform: translateX(140%); }
+    }
+
+    @keyframes story-ui-combat-game-stage-on {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes story-ui-combat-game-stage-pulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.12); }
+    }
+
+    @keyframes story-ui-combat-game-result-sweep {
+      from { opacity: 0; transform: skewX(-22deg) translateX(0); }
+      25% { opacity: 1; }
+      to { opacity: 0; transform: skewX(-22deg) translateX(780%); }
+    }
+
+    @media (max-width: 720px) {
+      .combat-preview .cp-versus {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 36px 14px 18px;
+      }
+
+      .combat-preview .cp-clash {
+        width: 100%;
+        height: 48px;
+      }
+
+      .combat-preview .cp-clash::before,
+      .combat-preview .cp-clash::after {
+        width: 42%;
+        transform: rotate(0);
+      }
+
+      .combat-preview .cp-clash::before { left: 0; }
+      .combat-preview .cp-clash::after { right: 0; }
+
+      .combat-preview .cp-clash-core {
+        width: 43px;
+        height: 43px;
+      }
+
+      .combat-preview .cp-clash-core span { font-size: 10px; }
+      .combat-preview .cp-clash-arrow { display: none; }
+
+      .combat-preview .cp-battlefield.is-replaying .cp-clash::before {
+        animation-name: story-ui-combat-game-mobile-slash-left;
+      }
+
+      .combat-preview .cp-battlefield.is-replaying .cp-clash::after {
+        animation-name: story-ui-combat-game-mobile-slash-right;
+      }
+
+      .combat-preview .cp-result {
+        grid-template-columns: 84px minmax(0, 1fr);
+        gap: 12px;
+        padding: 14px 15px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .combat-preview { padding: 0 7px; }
+      .combat-preview .combat-panel-head { padding: 0 11px; }
+      .combat-preview .cp-collapse [data-collapse-label] { display: none; }
+
+      .combat-preview .cp-toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        padding: 9px 11px;
+      }
+
+      .combat-preview .combat-panel-body { padding: 10px; }
+
+      .combat-preview .cp-fighter,
+      .combat-preview .cp-fighter[data-side="enemy"] {
+        grid-template-columns: 44px minmax(0, 1fr);
+        gap: 10px;
+        min-height: 104px;
+        padding: 11px 12px;
+        text-align: left;
+      }
+
+      .combat-preview .cp-fighter[data-side="enemy"] .cp-avatar {
+        order: 0;
+      }
+
+      .combat-preview [data-side="enemy"] .cp-fighter-head,
+      .combat-preview [data-side="enemy"] .cp-bp-row {
+        flex-direction: row;
+      }
+
+      .combat-preview .cp-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 9px;
+      }
+
+      .combat-preview .cp-avatar svg { width: 23px; height: 23px; }
+      .combat-preview .cp-name { font-size: 16px; }
+      .combat-preview .cp-bp-row strong { font-size: 18px; }
+      .combat-preview .cp-side-stack .cp-fighter:nth-child(2) { margin-left: 10px; }
+      .combat-preview .cp-power { padding: 11px 10px; }
+      .combat-preview .cp-power-head span:not(.cp-ratio) { display: none; }
+      .combat-preview .cp-result { grid-template-columns: 1fr; }
+
+      .combat-preview .cp-result-mark {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        border-right: 0;
+        border-bottom: 1px solid var(--cp-line);
+        padding-bottom: 7px;
+      }
+    }
+
+    @keyframes story-ui-combat-game-mobile-slash-left {
+      from { opacity: 0; transform: scaleX(0); transform-origin: right; }
+      to { opacity: 1; transform: scaleX(1); transform-origin: right; }
+    }
+
+    @keyframes story-ui-combat-game-mobile-slash-right {
+      from { opacity: 0; transform: scaleX(0); transform-origin: left; }
+      to { opacity: 1; transform: scaleX(1); transform-origin: left; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .combat-preview .combat-panel,
+      .combat-preview .cp-fighter,
+      .combat-preview .cp-fighter[data-winner="true"],
+      .combat-preview .cp-stage,
+      .combat-preview .cp-stage:nth-child(5),
+      .combat-preview .cp-result::after,
+      .combat-preview .cp-battlefield.is-replaying .cp-clash,
+      .combat-preview .cp-battlefield.is-replaying .cp-clash::before,
+      .combat-preview .cp-battlefield.is-replaying .cp-clash::after,
+      .combat-preview .cp-power.is-replaying .cp-power-fill,
+      .combat-preview .cp-power.is-replaying .cp-power-fill::after,
+      .combat-preview.combat-preview-night .combat-panel::after {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .combat-preview .combat-panel,
+      .combat-preview .cp-fighter,
+      .combat-preview .cp-stage {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+      }
+    }
   </style>
-  <link rel="stylesheet" href="modules/bp-panel-newvars/style.css">
 </head>
 <body>
-  <div class="preview-controls">
-    <button onclick="toggleTheme()" id="themeBtn">切换夜间模式</button>
-    <button onclick="showSingle()">单人模式</button>
-    <button onclick="showMulti()">多人模式</button>
+  <div class="combat-preview" data-theme="day">
+    <main class="combat-panel" data-state="expanded">
+      <header
+        class="combat-panel-head"
+        role="button"
+        tabindex="0"
+        aria-expanded="true"
+        aria-controls="combat-body"
+        aria-label="展开或折叠战斗裁定面板"
+      >
+        <span class="cp-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 12h16M12 4v16M7 7l10 10M17 7 7 17"/>
+          </svg>
+        </span>
+        <span class="cp-heading">
+          <span class="cp-title">战斗裁定</span>
+          <span class="cp-subtitle">TACTICAL RESOLUTION · 已完成裁定揭示</span>
+        </span>
+        <span class="cp-collapse" aria-hidden="true">
+          <span data-collapse-label>收起</span>
+          <span class="cp-caret"></span>
+        </span>
+      </header>
+
+      <nav class="cp-toolbar" aria-label="战斗示例与主题切换">
+        <button type="button" class="cp-toggle" data-mode="single" aria-pressed="true" aria-label="切换到单人战斗示例">单人对峙</button>
+        <button type="button" class="cp-toggle" data-mode="multi" aria-pressed="false" aria-label="切换到多人战斗示例">多人对抗</button>
+        <button type="button" class="cp-toggle" data-theme="day" aria-pressed="true" aria-label="切换到日间主题">日间</button>
+        <button type="button" class="cp-toggle" data-theme="night" aria-pressed="false" aria-label="切换到夜间主题">夜间</button>
+      </nav>
+
+      <div class="combat-panel-body" id="combat-body">
+        <section class="cp-battlefield is-replaying" data-battlefield aria-label="战斗裁定主战区">
+          <div class="cp-versus" data-view="single" aria-label="文半盏对陀艮单人对峙">
+            <article class="cp-fighter" data-side="player" data-winner="true">
+              <span class="cp-avatar" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="16" cy="16" r="8"/><path d="M16 3v6M16 23v6M3 16h6M23 16h6M9 9l4 4M23 9l-4 4"/>
+                </svg>
+              </span>
+              <div class="cp-fighter-copy">
+                <div class="cp-fighter-head"><span class="cp-role">PLAYER · 主攻</span><span>WINNER · 绝对碾压</span></div>
+                <h2 class="cp-name">文半盏</h2>
+                <p class="cp-meta">刻界群控 · 虚空斩</p>
+                <div class="cp-bp-row"><span>FINAL BP</span><strong>6624.8</strong></div>
+                <div class="cp-energy" style="--energy: 1" aria-label="战力能量满载"></div>
+              </div>
+            </article>
+
+            <div class="cp-clash" data-clash data-winner-direction="left" aria-label="胜负方向指向 Player 文半盏">
+              <span class="cp-clash-arrow" aria-hidden="true"></span>
+              <span class="cp-clash-core"><span data-clash-label>VS</span></span>
+            </div>
+
+            <article class="cp-fighter" data-side="enemy">
+              <div class="cp-fighter-copy">
+                <div class="cp-fighter-head"><span class="cp-role">ENEMY · 主攻</span><span>致命重创</span></div>
+                <h2 class="cp-name">陀艮</h2>
+                <p class="cp-meta">领域内必中压制 · 荡蕴平线崩解临界</p>
+                <div class="cp-bp-row"><span>FINAL BP</span><strong>1790.1</strong></div>
+                <div class="cp-energy" style="--energy: .27" aria-label="战力能量百分之二十七"></div>
+              </div>
+              <span class="cp-avatar" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M5 21c4-9 7-12 11-12s7 3 11 12M8 22c4 3 12 3 16 0M12 15h.01M20 15h.01"/>
+                  <path d="M16 4v5M6 9l5 4M26 9l-5 4"/>
+                </svg>
+              </span>
+            </article>
+          </div>
+
+          <div class="cp-versus" data-view="multi" hidden aria-label="五条悟与夏油杰对伏黑甚尔多人对抗">
+            <div class="cp-side-stack" aria-label="Player 二人阵列">
+              <article class="cp-fighter" data-side="player">
+                <span class="cp-avatar" aria-hidden="true">
+                  <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="16" cy="16" r="9"/><path d="M7 15h18M10 11l12 10M22 11 10 21"/>
+                  </svg>
+                </span>
+                <div class="cp-fighter-copy">
+                  <div class="cp-fighter-head"><span class="cp-role">PLAYER · 主攻</span><span>纯肉搏</span></div>
+                  <h2 class="cp-name">五条悟</h2>
+                  <p class="cp-meta">术式受限 · 极度疲劳</p>
+                  <div class="cp-bp-row"><span>FINAL BP</span><strong>728</strong></div>
+                  <div class="cp-energy" style="--energy: .25" aria-label="战力能量百分之二十五"></div>
+                </div>
+              </article>
+
+              <article class="cp-fighter" data-side="ally">
+                <span class="cp-avatar" aria-hidden="true">
+                  <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M6 24c3-8 7-12 10-12s7 4 10 12M10 9c2-4 10-4 12 0M11 18h10"/>
+                  </svg>
+                </span>
+                <div class="cp-fighter-copy">
+                  <div class="cp-fighter-head"><span class="cp-role">PLAYER · 助战</span><span>计入 30%</span></div>
+                  <h2 class="cp-name">夏油杰</h2>
+                  <p class="cp-meta">共同承压 · 纯肉搏</p>
+                  <div class="cp-bp-row"><span>FINAL BP</span><strong>368</strong></div>
+                  <div class="cp-energy" style="--energy: .13" aria-label="战力能量百分之十三"></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="cp-clash" data-clash data-winner-direction="right" aria-label="胜负方向指向 Enemy 伏黑甚尔">
+              <span class="cp-clash-arrow" aria-hidden="true"></span>
+              <span class="cp-clash-core"><span data-clash-label>2 VS 1</span></span>
+            </div>
+
+            <article class="cp-fighter" data-side="enemy" data-boss="true" data-winner="true">
+              <div class="cp-fighter-copy">
+                <div class="cp-fighter-head"><span class="cp-role">ENEMY · BOSS</span><span>WINNER · 绝对碾压</span></div>
+                <h2 class="cp-name">伏黑甚尔</h2>
+                <p class="cp-meta">天与暴君肉体补正 ×2.0</p>
+                <div class="cp-bp-row"><span>FINAL BP</span><strong>2880</strong></div>
+                <div class="cp-energy" style="--energy: 1" aria-label="战力能量满载"></div>
+              </div>
+              <span class="cp-avatar" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M5 25 16 5l11 20M10 21h12M12 16h8"/><path d="M7 8l5 4M25 8l-5 4"/>
+                </svg>
+              </span>
+            </article>
+          </div>
+        </section>
+
+        <section class="cp-power is-replaying" data-power aria-label="双方队伍最终 BP 双向对比" aria-live="polite">
+          <div class="cp-power-head">
+            <span>PLAYER POWER</span>
+            <span class="cp-ratio" data-ratio>优势 3.70×</span>
+            <span>ENEMY POWER</span>
+          </div>
+          <div class="cp-power-track" role="img" data-power-track aria-label="Player 队伍 BP 6624.8，Enemy 队伍 BP 1790.1，Player 优势 3.70 倍">
+            <span class="cp-power-half cp-power-player"><span class="cp-power-fill" data-player-fill style="--fill: 100%"></span></span>
+            <span class="cp-power-half cp-power-enemy"><span class="cp-power-fill" data-enemy-fill style="--fill: 27.02%"></span></span>
+          </div>
+          <div class="cp-power-values">
+            <span>PLAYER <strong data-player-bp>6624.8</strong></span>
+            <span class="cp-sr" data-live-summary>Player 队伍 BP 6624.8 对 Enemy 队伍 BP 1790.1，Player 绝对碾压。</span>
+            <span>ENEMY <strong data-enemy-bp>1790.1</strong></span>
+          </div>
+        </section>
+
+        <section class="cp-stages" aria-label="五阶段战斗流程">
+          <h2 class="cp-section-title">BATTLE FLOW · 已完成裁定揭示</h2>
+          <div class="cp-track" role="list">
+            <div class="cp-stage" role="listitem"><b>01 初始化</b><span>已完成 · 阵营锁定</span></div>
+            <div class="cp-stage" role="listitem"><b>02 术式检定</b><span>已完成 · 条件确认</span></div>
+            <div class="cp-stage" role="listitem"><b>03 修正计算</b><span>已完成 · 补正计入</span></div>
+            <div class="cp-stage" role="listitem"><b>04 对抗判定</b><span>已完成 · BP 比较</span></div>
+            <div class="cp-stage" role="listitem" aria-current="step"><b>05 结果检定</b><span>当前 · 裁定揭示</span></div>
+          </div>
+        </section>
+
+        <section class="cp-result" data-result="single" data-winner="player" aria-label="单人战斗裁定结果">
+          <div class="cp-result-mark"><span>RESULT</span><strong>裁定</strong></div>
+          <div>
+            <div class="cp-result-label">已完成裁定揭示 · WINNER PLAYER</div>
+            <h2>文半盏 · 绝对碾压</h2>
+            <p>「刻界」迟滞必中追踪，继而以「虚空斩」完成毁灭性空间斩切。</p>
+            <p><strong>陀艮致命重创，荡蕴平线即将崩解。</strong></p>
+            <p class="cp-rule">Atk_BP(6624.8) &gt; Def_BP(1790.1) × 2.0</p>
+          </div>
+        </section>
+
+        <section class="cp-result" data-result="multi" data-winner="enemy" hidden aria-label="多人战斗裁定结果">
+          <div class="cp-result-mark"><span>RESULT</span><strong>裁定</strong></div>
+          <div>
+            <div class="cp-result-label">已完成裁定揭示 · WINNER ENEMY BOSS</div>
+            <h2>伏黑甚尔 · 绝对碾压</h2>
+            <p>Player 队伍由五条悟主攻、夏油杰助战；助战战力按 30% 计入，队伍最终 BP 为 838.4。</p>
+            <p><strong>伏黑甚尔维持绝对物理压制。</strong></p>
+            <p class="cp-rule">Atk_BP(甚尔 2880) &gt; Def_BP(Player 队伍 838.4) × 2.0</p>
+          </div>
+        </section>
+      </div>
+    </main>
   </div>
-  <div class="preview-title">BP战力雷达 · 前端预览 · story_ui_lite_test</div>
-  <div id="container"></div>
 
   <script>
-    // Mock StoryRegexUI DOM helper
-    window.StoryRegexUI = window.StoryRegexUI || {};
-    window.StoryRegexUI.dom = {
-      escapeHtml(value) {
-        const div = document.createElement('div');
-        div.textContent = String(value ?? '');
-        return div.innerHTML;
-      },
-      createElement(tag, options = {}) {
-        const el = document.createElement(tag);
-        if (options.className) el.className = options.className;
-        if (options.html) el.innerHTML = options.html;
-        return el;
+    (function () {
+      "use strict";
+
+      var root = document.querySelector(".combat-preview");
+      if (!root) return;
+
+      var panel = root.querySelector(".combat-panel");
+      var head = root.querySelector(".combat-panel-head");
+      var battlefield = root.querySelector("[data-battlefield]");
+      var power = root.querySelector("[data-power]");
+      var replayTimer = null;
+
+      if (!panel || !head) return;
+
+      var modes = {
+        single: {
+          player: "6624.8",
+          enemy: "1790.1",
+          playerFill: "100%",
+          enemyFill: "27.02%",
+          ratio: "优势 3.70×",
+          summary: "Player 队伍 BP 6624.8 对 Enemy 队伍 BP 1790.1，Player 绝对碾压。"
+        },
+        multi: {
+          player: "838.4",
+          enemy: "2880",
+          playerFill: "29.11%",
+          enemyFill: "100%",
+          ratio: "敌方优势 3.43×",
+          summary: "Player 队伍 BP 838.4 对伏黑甚尔 BP 2880，伏黑甚尔绝对碾压。"
+        }
+      };
+
+      function setPressed(selector, value, attribute) {
+        root.querySelectorAll(selector).forEach(function (button) {
+          button.setAttribute("aria-pressed", button.getAttribute(attribute) === value ? "true" : "false");
+        });
       }
-    };
-    window.StoryRegexUI.theme = {
-      getTheme() { return document.body.classList.contains('night') ? 'night' : 'day'; }
-    };
-    window.StoryRegexUI.registry = {
-      register(module) {
-        window.__bpModule = module;
-        console.log('[Preview] Module registered:', module.id, module.version);
+
+      function replayCombat() {
+        if (!battlefield || !power) return;
+        if (replayTimer !== null) window.clearTimeout(replayTimer);
+
+        battlefield.classList.remove("is-replaying");
+        power.classList.remove("is-replaying");
+        void battlefield.offsetWidth;
+        battlefield.classList.add("is-replaying");
+        power.classList.add("is-replaying");
+
+        replayTimer = window.setTimeout(function () {
+          battlefield.classList.remove("is-replaying");
+          power.classList.remove("is-replaying");
+          replayTimer = null;
+        }, 1250);
       }
-    };
-  </script>
-  <script src="modules/bp-panel-newvars/index.js"></script>
-  <script>
-    const SINGLE_DATA = `<bp_panel>
-<bp_panel_player>
-名称: 王皓光
-最终BP: 74
-战力等级: 四级
-行为模式：使用无为转变攻击
-咒力量上限: 200
-咒力量当前: 200
-咒力操纵精度: 0.1
-总肉体值_BPA: 62
-基础肉体: 50
-武艺: 10
-术式名称: 无为转变
-术式强度_BPB: 124
-术式潜力: 1200
-术式精通: 1
-熔断状态: 未熔断
-生理状态: 40%
-特性备注: 灵魂庇护（被动）
-</bp_panel_player>
-<bp_panel_enemy>
-名称: 伏黑甚尔
-最终BP: 3328
-战力等级: 强特级
-行为模式：纯肉搏，配合海量咒具
-咒力量上限: 0
-咒力量当前: 0
-咒力操纵精度: 0
-总肉体值_BPA: 2800
-基础肉体: 2000
-武艺: 800
-术式名称: 无
-术式强度_BPB: 0
-术式潜力: 0
-术式精通: 0
-熔断状态:未熔断
-生理状态: 90%
-特性备注: 天与咒缚（纯肉体）: 以咒力归零为代价，获得极端强化的肉体与物理攻击补正。（战力补正标签：最终BP*2）
-</bp_panel_enemy>
-</bp_panel>`;
 
-    const MULTI_DATA = `<bp_panel>
-<bp_panel_player>
-名称: 王皓光
-最终BP: 74
-战力等级: 四级
-行为模式：使用无为转变攻击
-咒力量上限: 200
-咒力量当前: 150
-咒力操纵精度: 0.1
-总肉体值_BPA: 62
-基础肉体: 50
-武艺: 10
-术式名称: 无为转变
-术式强度_BPB: 124
-术式潜力: 1200
-术式精通: 1
-熔断状态: 未熔断
-生理状态: 40%
-特性备注: 灵魂庇护（被动）
-</bp_panel_player>
-<bp_panel_player>
-名称: 五条悟
-最终BP: 9500
-战力等级: 特级
-行为模式：无下限术式输出
-咒力量上限: 99999
-咒力量当前: 99999
-咒力操纵精度: 0.01
-总肉体值_BPA: 1800
-基础肉体: 1200
-武艺: 600
-术式名称: 无下限咒术
-术式强度_BPB: 8000
-术式潜力: 99999
-术式精通: 10
-熔断状态: 未熔断
-生理状态: 100%
-特性备注: 反转术式红（自动）、六眼、无量空处
-</bp_panel_player>
-<bp_panel_enemy>
-名称: 伏黑甚尔
-最终BP: 3328
-战力等级: 强特级
-行为模式：纯肉搏，配合海量咒具
-咒力量上限: 0
-咒力量当前: 0
-咒力操纵精度: 0
-总肉体值_BPA: 2800
-基础肉体: 2000
-武艺: 800
-术式名称: 无
-术式强度_BPB: 0
-术式潜力: 0
-术式精通: 0
-熔断状态: 未熔断
-生理状态: 90%
-特性备注: 天与咒缚（纯肉体）
-</bp_panel_enemy>
-<bp_panel_enemy>
-名称: 两面宿傩
-最终BP: 12000
-战力等级: 特级
-行为模式：领域展开 + 式神召唤
-咒力量上限: 80000
-咒力量当前: 75000
-咒力操纵精度: 0.01
-总肉体值_BPA: 1600
-基础肉体: 1000
-武艺: 600
-术式名称: 十种影法
-术式强度_BPB: 10000
-术式潜力: 99999
-术式精通: 10
-熔断状态: 未熔断
-生理状态: 100%
-特性备注: 式神「魔虚罗」、领域展开「幻影天地」
-</bp_panel_enemy>
-</bp_panel>`;
+      function setMode(value, shouldReplay) {
+        var data = modes[value];
+        if (!data) return;
 
-    function render(rawText) {
-      const module = window.__bpModule;
-      if (!module) { console.error('Module not registered'); return; }
-      const node = module.renderContent('', { rawText });
-      const container = document.getElementById('container');
-      container.innerHTML = '';
-      if (node) {
-        container.appendChild(node);
-        module.mount(node);
-      } else {
-        container.innerHTML = '<div style="text-align:center;color:#a07e74;padding:40px;">No render output. Check console.</div>';
+        root.querySelectorAll("[data-view]").forEach(function (view) {
+          view.hidden = view.getAttribute("data-view") !== value;
+        });
+        root.querySelectorAll("[data-result]").forEach(function (result) {
+          result.hidden = result.getAttribute("data-result") !== value;
+        });
+
+        var playerBP = root.querySelector("[data-player-bp]");
+        var enemyBP = root.querySelector("[data-enemy-bp]");
+        var playerFill = root.querySelector("[data-player-fill]");
+        var enemyFill = root.querySelector("[data-enemy-fill]");
+        var ratio = root.querySelector("[data-ratio]");
+        var track = root.querySelector("[data-power-track]");
+        var live = root.querySelector("[data-live-summary]");
+
+        if (playerBP) playerBP.textContent = data.player;
+        if (enemyBP) enemyBP.textContent = data.enemy;
+        if (playerFill) playerFill.style.setProperty("--fill", data.playerFill);
+        if (enemyFill) enemyFill.style.setProperty("--fill", data.enemyFill);
+        if (ratio) ratio.textContent = data.ratio;
+        if (track) track.setAttribute("aria-label", data.summary);
+        if (live) live.textContent = data.summary;
+
+        setPressed("button[data-mode]", value, "data-mode");
+        root.setAttribute("data-mode", value);
+        if (shouldReplay) replayCombat();
       }
-    }
 
-    function toggleTheme() {
-      document.body.classList.toggle('night');
-      const btn = document.getElementById('themeBtn');
-      btn.textContent = document.body.classList.contains('night') ? '切换日间模式' : '切换夜间模式';
-      // Re-render with current data
-      const current = document.getElementById('container').dataset.mode || 'single';
-      render(current === 'multi' ? MULTI_DATA : SINGLE_DATA);
-    }
+      function setTheme(value) {
+        if (value !== "day" && value !== "night") return;
+        root.classList.toggle("combat-preview-night", value === "night");
+        root.setAttribute("data-theme", value);
+        setPressed("button[data-theme]", value, "data-theme");
+      }
 
-    function showSingle() {
-      document.getElementById('container').dataset.mode = 'single';
-      render(SINGLE_DATA);
-    }
+      function toggleCollapse() {
+        var isOpen = panel.getAttribute("data-state") === "expanded";
+        panel.setAttribute("data-state", isOpen ? "collapsed" : "expanded");
+        head.setAttribute("aria-expanded", isOpen ? "false" : "true");
 
-    function showMulti() {
-      document.getElementById('container').dataset.mode = 'multi';
-      render(MULTI_DATA);
-    }
+        var label = root.querySelector("[data-collapse-label]");
+        if (label) label.textContent = isOpen ? "展开" : "收起";
+      }
 
-    // Initial render
-    showSingle();
+      root.addEventListener("click", function (event) {
+        var modeButton = event.target.closest("button[data-mode]");
+        if (modeButton && root.contains(modeButton)) {
+          setMode(modeButton.getAttribute("data-mode"), true);
+          return;
+        }
+
+        var themeButton = event.target.closest("button[data-theme]");
+        if (themeButton && root.contains(themeButton)) {
+          setTheme(themeButton.getAttribute("data-theme"));
+          return;
+        }
+
+        if (event.target.closest(".combat-panel-head")) toggleCollapse();
+      });
+
+      head.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleCollapse();
+        }
+      });
+
+      setMode("single", false);
+      setTheme("day");
+      replayCombat();
+    }());
   </script>
 </body>
 </html>

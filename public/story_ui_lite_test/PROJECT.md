@@ -81,7 +81,7 @@ story_ui_lite_test/
 
 ## 当前进度快照
 
-更新时间：2026-07-23
+更新时间：2026-07-24
 
 | 项目项               | 状态                                            | 证据                                                                                                                                                                                                                                                                                   | 下一步                                                                                                           |
 | -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -96,6 +96,15 @@ story_ui_lite_test/
 | loader 升级兼容 | 已完成静态修复，待酒馆运行时复核 | 仅认领带 `lite_test` 环境身份的运行时，或没有 scanner/registry/theme 且来源明确的测试版 loader 空壳；无环境身份但已有共享能力的运行时一律按 foreign/unknown 隔离。卡死周期会取消旧异步任务、清理测试版资源并自动重试一次，资源复用和 ready 状态均校验 API/模块版本契约 | 在旧测试版残留、无身份共享运行时、重复入口、超时恢复和手动重载场景复核不会误清理其他环境，且失败后仅显式重载重置恢复额度 |
 | 样式加载安全性       | 已修复代码侧，待酒馆运行时复核                  | `loader.js` 改为优先 `fetch` CSS 并内联为 `<style data-story-ui-css>`；`index.js` 的管理面板样式加载同样改为内联，不再主动创建跨域 CSS link                                                                                                                                            | 点击“重载美化”后确认 `dynamic-styles.js` 不再因跨域 `cssRules` 抛出 SecurityError                                |
 | 浮岛误改回滚         | 已完成                                          | `git diff --name-only -- src/ci_island_test src/ci_island-release dist/ci_island-release dist/ci_island_test dist/ci_island_map public/ci_island` 为空                                                                                                                                 | 后续默认不碰 ci_island 路径                                                                                      |
+| 预览文件沿革         | v2 稳定基线保留；旧 DB 空壳已重新定义为 v3 | 旧 `preview.html` 的 DB/BP 专项内容与 `preview-db-status.html` 在此前阶段已清理（当时事实）；当前 `preview.html` 保留为第二版游戏化 HUD 稳定基线，`preview-db-status.html` 因普通新文件创建工具不可用，复用当时已清空且不被 loader/index/modules 引用的旧 DB 预览空壳，并正式重新定义为“战斗裁定 v3 动效实验预览”，不再表示 DB status 预览 | 静态验收需分别独立打开 v2/v3 比对；运行时模块验证另行进行 |
+| 战斗面板视觉预览 v2 | 第二版游戏化 HUD 静态实现完成并冻结为稳定基线，正式模块未实施 | `public/story_ui_lite_test/preview.html` 保留第二版游戏化回合制战斗裁定 HUD；动效以角色入场、clash burst、BP 填充扫光、阶段点亮、结果斜光等一次性演出为主，保留既有单人/多人布局、日夜主题、响应式、ARIA/键盘及固定样例数据。文件未修改，不接 API、loader/index，不创建 `combat-panel` 模块 | 与 v3 并列进行独立浏览器静态目视比对；不得视为正式模块验收 |
+| 战斗面板视觉预览 v3 | v3 动效实验版静态实现完成，待助手目视反馈，正式模块未实施 | `public/story_ui_lite_test/preview-db-status.html`（约 495 行）已由旧 DB 预览空壳正式重新定义为 v3：独立打开且仅引用 `./shared.css`，不调用 API、不接 loader/index、不建正式模块。header mark 与 BP 同源（32×32、8px、rose soft、无旋转/无边框），header 约 40px、padding 10px 14px，字体为 story-ui/Noto Serif，主圆角 12px；新增重播演出、数值 RAF 滚动、持续扫描线、clash 慢转外环、卡边能量流、6 个速度粒子、主题 crossfade；重播覆盖战场冲击、HUD 入场、clash/斩线/箭头、BP 填充、能量 ripple、阶段点亮、结果斜光/边框；`prefers-reduced-motion` 全禁，timer/RAF 可清理，覆盖 `<=720px`/`<=430px` 与 ARIA 折叠契约。数据严格为文半盏 6624.8 vs 陀艮 1790.1；五条悟 728、夏油杰 368 且 30%、队伍 838.4 vs 伏黑甚尔 2880 | 尚未真实浏览器目视验收；需与 v2 比对动效、主题、响应式、折叠和重播清理 |
+| 战斗面板视觉预览 v4 | 中央战术裁定舞台静态实现完成，待助手目视反馈，正式模块未实施 | `public/story_ui_lite_test/preview-v4.html` 已推翻早期错误的双列阅读器方案，当前为纯战斗 HUD：顶部战局态势带、中部斜切阵营板与倍率判定核心、底部可交互五阶段详情和最终裁定情报轨。单人展示文半盏对陀艮；多人采用五条悟主阵营板、夏油杰嵌入式助战翼与伏黑甚尔 BOSS 板。原始 `combat` 仅作为信息核对依据，不在界面展示，也无复制、定位或侧栏功能。演出仅在载入、模式切换、重播和阶段点击时触发，删除所有持续扫描、旋转、粒子、流光及 `infinite` 动画；阶段快速切换使用单独计时器覆盖并可统一清理，避免旧脉冲回调提前移除新状态 | 已通过 JS 语法、13 个 V4 keyframe 前缀、零禁止项、5 个阶段按钮、9 个数值动画节点及 CSS 作用域检查；尚未真实浏览器目视验收，需与 v2/v3 并列比较视觉方向、信息密度与动效节奏 |
+| 战斗面板视觉预览 v5 | V3 风格紧凑整合版已通过最终独立静态验收，正式模块未实施 | 新建 `public/story_ui_lite_test/preview-v5.html`，战斗本体回归 V2/V3 的紧凑角色卡、中央 clash、双向 BP 槽、摘要和结果区，吸收 V4 的字体、可选五阶段“战斗情报与裁定”、阶段详情及一次性主动演出；战场最小高度压缩为 450px，删除持续扫描、旋转环、卡边流光和粒子。页面外层另设兄弟节点 `.combat-reference`，逐字显示当前模式的原始 `combat`，仅作开发对比基准；它不属于 `.combat-preview`，也不属于未来正式 `combat-panel`，可整块删除而不影响战斗组件；最终静态验收补齐主题按钮快速连击的目标状态锁定，避免延迟切换期间重复点击丢失切换意图 | 已通过 JS 语法、单人 25 行/多人 42 行原文逐字一致、组件与参考栏兄弟关系、CSS 双向零污染、11 个 V5 keyframe、`infinite=0`、10 个阶段按钮和 9 个数值节点检查；本结论仅为独立静态验收，尚未真实浏览器目视验收 |
+| 战斗面板视觉预览 v6 | 最终独立静态验收通过，正式模块未实施 | 目标文件为新建 `public/story_ui_lite_test/preview-v6.html`。V6 不再把普通信息卡加动画冒充战斗界面：以现有 `bp-panel-newvars` 的日夜配色、Noto Serif、32×32 rose-soft mark、12px 主圆角、22px 金色 BP 行和 6px meter 为视觉底座；参考《崩坏：星穹铁道》《鸣潮》的战斗 HUD 信息组织与反馈节奏但不复制资产。角色区淘汰 V5 `.cp-stat` 三方块，改为阵营状态板、主 BP 行、BPB/BPA 辅助标签和战力槽；阶段区必须保留 V4 `.cp-stage-track` 连线节点、圆点光晕、`aria-current` 与错峰动效；外置原文参考栏继续作为 `.combat-preview` 的兄弟节点，不进入未来正式组件 | 已完成 V2/V4/V5 与 `bp-panel-newvars` 真实 CSS 对照，并通过 V6 最终独立静态验收：单位状态板、镜像阵营、BOSS 强调、中央斩线/倍率/方向、双向 BP 槽、连续结果轨与 V4 连线节点均保留；`.cp-stat/.cp-stats` 为 0，参考栏保持组件外兄弟节点，原文与固定判定未改；尚未进行真实浏览器目视验收 |
+| 战斗面板视觉预览 v7 | 最终独立静态验收通过，正式模块未实施 | 已新建 `public/story_ui_lite_test/preview-v7.html`，未覆盖 V2-V6。只继承 V4 的五阶段连线节点，不继承 `.cp-detail-focus` 斜切详情；删除 V6 `.cp-unit::before` 单位侧边条和所有胜负指向箭头；中央 VS 回归 V3 的 150px clash、明确 VS 核心、1 VS 1/2 VS 1 与双斩线；队伍 BP 对抗条采用 V2 `.cp-power/.cp-power-track/.cp-power-half/.cp-power-fill` 的 18px 双向轨道、2px 金色中线、反向填充、双向渐变和延迟扫光；新增非持续性的战场冲击、HUD 入场、徽记锁入、单位 meter、VS burst、shock、power fill/sweep、阶段级联、节点 pulse、规整详情揭示、结果 mask/边框/扫光/判定章和动作链演出，并修复主题淡出期间切换模式可能遗留 `.is-theme-fading` 的交错操作缺口 | 已通过 JS 语法、HTML 解析、21 个全 V7 keyframe、`infinite=0`、10 个阶段按钮、2 套 VS、2 套 V2 power、19 个数值动画节点、禁止项零命中及单人 25 行/多人 42 行参考原文逐字一致检查；独立验收无新增问题。尚未真实浏览器目视验收 |
+| 战斗面板视觉预览 v8 | 本轮视觉修订已完成静态与运行脚本检查，正式模块未实施 | `public/story_ui_lite_test/preview-v8.html` 保留 V3 clash、V2 power 条体与 V4 阶段节点契约。角色标签使用 18s 连续左右往返的文字内窄白金亮核，PLAYER/ENEMY 镜像，轨迹端点为 `112%/-12%`；重复文字层只在亮核经过的字符附近提供 `blur(2px)`、透明度 `.24-.42` 的含蓄扩散光。头像框现为完全静态样式：保留 34px 尺寸、边框、圆角、文字、背景以及 PLAYER/ENEMY 阵营配色，删除头像自身的常驻动画绑定、专属 `story-ui-combat-v8-avatar-charge` 关键帧和所有头像伪元素效果。replay 的 `.cp-unit` 父级入场仍按原契约保留，不属于头像自身动效。meter、power、TACTICAL SUMMARY、`.cp-summary-equation em`、V4 字体链及 result 常驻反馈保持原契约，全部受 reduced-motion 约束 | 已通过 JS 语法、头像无 `animation`/动态 `transform`、头像伪元素零残留、专属关键帧及引用零残留、PLAYER/ENEMY 静态样式、replay 父级入场、34px 移动端布局、number/equation/stage/标签流光等其他动画保留、关键帧引用及 reduced-motion 检查；独立终验确认仅删除头像自身动效且无范围越界或其他模块回归；按助手要求不执行截图验证 |
+| 战斗面板设计         | 仅文档基线同步，未实施                          | `combat-panel` 不读当前 AI 楼层 rawText；唯一输入来自消息层 API，不复用显式模板。第一步取最新楼层号：`const TH = window.TavernHelper; const lastId = TH.getLastMessageId();`；第二步用模板字符串拼楼层范围，再以过滤参数调用：楼层范围固定为 ``0-${lastId}``，调用形式为 `TH.getChatMessages(range, options)`，其 `range` 在代码中由 ``0-${lastId}`` 模板拼得，`options` 为 `{ role: 'user', hide_state: 'unhidden', include_swipes: false }` 主路径可用条件：`window.TavernHelper` 存在，且 `getLastMessageId`/`getChatMessages` 均为函数；调用自身不抛异常；`lastId` 有效（非 `undefined`/`NaN`/负数）；返回数组且存在 `role === 'user' && is_hidden === false` 的消息。任一条件不满足才进入 fallback。fallback 读取 `SillyTavern.getContext().chat`（证据：`nailongwang/奶龙工具箱/docs/SHUJUKU_API.md:758-759`），当前工作区只确认该 API 暴露 `.chat` 字段，未确认元素结构、字段命名或排序契约；因此 fallback 必须先 `Array.isArray(chat)`，再对可识别 `role === 'user'`、未隐藏（仅 `is_hidden === false` 视为候选；字段缺失或类型不符排除该候选）且 `message` 为非空字符串的项目按最大有效 `message_id` 选择一条；任一步骤无法安全确认时放弃挂载，不得臆测。读取或解析失败、未闭合 `<combat_driver>`、空白战斗块同样不挂载。**当前已实施顺序**（combat-panel 未落地）仍为四段 `bp-panel-newvars → world-log → db-status-bar → db-map`；**combat-panel 落地后的目标顺序**为五段 `bp-panel-newvars → combat-panel → world-log → db-status-bar → db-map`，且 `combat-panel` 挂在最新 AI 楼层 BP 之后。本页基线条目保持未实施直至代码 PR 落地 | 酒馆运行时验证主路径条件、fallback 条件、闭合标签匹配、失败兜底；本页基线条目保持未实施直至代码 PR 落地 |
 
 ## 当前工作边界
 
@@ -104,8 +113,32 @@ story_ui_lite_test/
 - 管理界面模块：`public/story_ui_lite_test/modules/manager-ui/`
 - 项目文档：`public/story_ui_lite_test/PROJECT.md`、`public/story_ui_lite_test/STATUS_BAR_PLAN.md`
 - 禁止默认修改：`src/ci_island_test/**`、`src/ci_island-release/**`、`public/ci_island/**`
+- 未来战斗面板模块（设计基线，未实施）：`public/story_ui_lite_test/modules/combat-panel/`
+- 战斗面板输入契约文档依据：`nailongwang/奶龙工具箱/docs/JS_SLASH_RUNNER_API.md:71-104,452-475`（`getChatMessages(range,{role:'user',hide_state:'unhidden',include_swipes:false})` 返回 `message_id/role/message` 结构化数组；`getLastMessageId()` 返回最新楼层号）；`nailongwang/奶龙工具箱/docs/TARGET_RUNTIME_MODES.md:80-86`（window.TavernHelper 用例模板）
 
 ## 变更日志
+
+### v1.1.25-design-baseline-sync (2026-07-24)
+
+**设计基线同步、旧预览专项清理与战斗面板视觉原型**
+
+- v1.1.25 同步阶段完成战斗面板输入与挂载设计基线；正式 `combat-panel` 模块仍未实施。
+- 当时已完成旧 `preview.html` 的 DB/BP 专项内容与 `preview-db-status.html` 空壳清理；该条仅记录当时事实。当前用途以本段后续 v2/v3 同步记录为准，`preview-db-status.html` 已不再处于清理/空文件状态。
+- 第二版视觉重构已将第一版普通图表卡片方向明确否定并替换为游戏化回合制战斗裁定 HUD；参考游戏 UI 的信息分层与锐利动势，但未复制任何游戏资产。静态实现继承现有 test CSS 的共同视觉基线：Noto Serif SC、12px 主圆角、13px/900/0.1em 标题、10px 副标题，以及日夜低饱和金/青/玫瑰配色；仍为独立 `preview.html`，不接 loader/index，不创建正式 `combat-panel` 模块。
+- 原型数据严格来自 `数据库前端/咒回前端/推进战斗参考`：单人 lines 1-25 为文半盏 6624.8 对陀艮 1790.1，Player 绝对碾压且陀艮致命重创、荡蕴平线即将崩解；多人 lines 119-160 为五条悟 728、夏油杰 368、Player 队伍 838.4 对伏黑甚尔 2880，甚尔绝对碾压。
+- 第二版原型采用单人 player/clash/enemy 三栏，以及多人五条悟+夏油杰纵向阵列、2 VS 1、甚尔 BOSS 切角框；包含纯 CSS/内联 SVG 战术徽记、角色状态、BP 能量槽、中线双向战力槽、连线式五阶段节点与结算横幅。角色入场、clash burst、BP 填充扫光、阶段点亮和结果斜光均为一次性；唯一无限动画是夜间 28 秒低透明背景网格漂移，并在 `prefers-reduced-motion` 下禁用。`<=720px` 切为上下对峙，`<=430px` 适配工具栏和阶段节点，ARIA 与键盘操作保留。
+- 该 HTML 仅作静态视觉基线，不是消息 API 或 `<combat_driver>` 解析实现；后续解析样例和酒馆运行时验证按 `STATUS_BAR_PLAN.md` 分层执行。
+- 本轮冻结 `preview.html` 为 v2 稳定基线，并新增独立 v3 动效实验：受普通新文件创建工具不可用限制，复用当时已清空且不被 loader/index/modules 引用的 `preview-db-status.html`，将旧 DB 预览空壳正式重新定义为“战斗裁定 v3 动效实验预览”；文件名仅是沿用路径，当前不再表示 DB status 预览。v3 约 495 行、仅引用 `./shared.css`，不调用 API、不接 loader/index、不创建正式模块。
+- v3 对齐 BP header mark（32×32、8px、rose soft、无旋转/无边框），修正约 40px header、10px 14px padding、story-ui/Noto Serif 字体和 12px 主圆角；增加重播、数值 RAF 滚动、持续扫描线、clash 慢转外环、卡边能量流、6 个速度粒子、主题 crossfade，以及完整战场冲击/HUD 入场/clash/斩线/箭头/BP/能量 ripple/阶段/结果演出。`prefers-reduced-motion` 全禁，timer/RAF 可清理，覆盖 `<=720px`/`<=430px` 与 ARIA 折叠契约；固定战斗数据保持不变。
+- 本轮仅完成 v3 静态实现与文档同步，尚未进行真实浏览器目视验收；后续静态验收必须并列比对 v2 `preview.html` 与 v3 `preview-db-status.html`。
+- 后续根据助手纠正，V4 不再沿用“V2 加原文侧栏”的错误方向，而是整体重写为独立的中央战术裁定舞台：顶部战局态势带、中部斜切阵营板与大型倍率判定核心、底部战斗情报和最终裁定轨。原始 `combat` 仅用于核对界面中的提炼信息，不进入页面 DOM 或交互。
+- V4 的五阶段为可交互按钮，支持左右方向键和阶段详情；最终裁定以动作链、伤害/状态、后续推进三段情报呈现。单人和多人各有完整战术舞台，多人使用五条悟主板、夏油杰嵌入式助战翼和伏黑甚尔 BOSS 板，不复用 V2 的纵向普通卡堆叠。
+- V4 已通过 `new Function` 脚本语法检查、13 个 `story-ui-combat-v4-*` keyframe 前缀检查、禁止项为 0、5 个阶段按钮、9 个 RAF 数值节点及 CSS 作用域检查；最终独立验收补齐阶段快速切换的单计时器覆盖与卸载清理，避免旧脉冲回调干扰新状态；仍仅为独立静态设计工件，尚未完成真实浏览器目视验收，也不代表正式 `combat-panel` 已实施。
+- 根据助手对 V4 的目视反馈，新建 V5 并回到 V3/V2 原有 CSS 语言：紧凑角色卡、中央 clash、双向 BP 槽和连续结果区；仅吸收 V4 的字体、五阶段情报详情与一次性主动动效，拒绝大面积斜切舞台和无效留白。
+- V5 的 `.combat-reference` 与 `.combat-preview` 是预览页中的兄弟节点，逐字展示单人 1–25 行或多人 119–160 行原始 `combat` 作为开发对比基准。参考栏不属于战斗组件 CSS/DOM 边界，不进入未来正式模块；模式同步与显隐均有空值保护，移除参考栏不影响战斗功能。
+- V5 已通过脚本语法、参考原文逐字一致、CSS 作用域隔离、11 个 `story-ui-combat-v5-*` keyframe、零持续动画、10 个阶段按钮和 9 个数值节点静态检查；仍待真实浏览器目视比较，不代表正式 `combat-panel` 已实施。
+- 助手进一步指出 V5 未保留 V4 连线式 `.cp-stage` 视觉、`.cp-stat` 三方块廉价且整体不像游戏战斗 HUD。V6 随后以 `modules/bp-panel-newvars/style.css` 的真实视觉契约为底座，恢复 V4 阶段轨并重做角色状态板和战斗反馈；项目文档从实施开始即同步。本轮最终独立静态验收已通过，真实浏览器目视仍未完成。
+- 助手对 V6 继续收紧边界：只保留 V4 节点，不保留 `.cp-detail-focus` 斜切详情；删除 `.cp-unit::before` 侧边条；VS 改用 V3 且不含箭头；BP 条改用 V2 中间双向 power track；V7 从侦察阶段开始同步文档并进入新文件实施。
 
 ### v1.1.24-db-map-svg-and-inline-notice (2026-07-23)
 
