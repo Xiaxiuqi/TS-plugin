@@ -5,6 +5,52 @@
   const MODULE_VERSION = '1.1.0-lite_test';
   const persistentRuntime = (window.__storyRegexUiRuntime ||= {});
   const databaseUpdateBridges = (persistentRuntime.dbStatusUpdateBridges ||= new WeakMap());
+  const STATUS_DETAILS_KEY = 'jjks_story_ui_details_db-status-bar';
+  const PANEL_TOGGLE_PREFIX = 'jjks_story_ui_db_status_panel_';
+  const INVENTORY_TOGGLE_KEY = 'jjks_story_ui_db_status_inv_open';
+
+  function isPanelExpanded(panelKey, defaultExpanded = true) {
+    try {
+      if (panelKey === 'char-body') {
+        const globalVal = localStorage.getItem(STATUS_DETAILS_KEY);
+        if (globalVal === 'open') return true;
+        if (globalVal === 'closed') return false;
+      }
+      const val = localStorage.getItem(PANEL_TOGGLE_PREFIX + panelKey);
+      if (val === 'open') return true;
+      if (val === 'closed') return false;
+    } catch (e) {
+      // ignore persistence read errors
+    }
+    return defaultExpanded;
+  }
+
+  function savePanelExpanded(panelKey, expanded) {
+    const val = expanded ? 'open' : 'closed';
+    try {
+      if (panelKey === 'char-body') {
+        localStorage.setItem(STATUS_DETAILS_KEY, val);
+      }
+      localStorage.setItem(PANEL_TOGGLE_PREFIX + panelKey, val);
+    } catch (e) {
+      // ignore persistence write errors
+    }
+  }
+
+  function isInvExpanded() {
+    try {
+      const val = localStorage.getItem(INVENTORY_TOGGLE_KEY);
+      if (val === 'open') return true;
+      if (val === 'closed') return false;
+    } catch (e) {}
+    return false;
+  }
+
+  function saveInvExpanded(expanded) {
+    try {
+      localStorage.setItem(INVENTORY_TOGGLE_KEY, expanded ? 'open' : 'closed');
+    } catch (e) {}
+  }
 
   function esc(v) { return dom ? dom.escapeHtml(String(v ?? '')) : String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function safeAvatarSrc(v) {
@@ -66,6 +112,9 @@
     const chars = (S.characters || []).filter(c => !c.isAbsent);
     const pName = (S.protagonist && S.protagonist.name) || '主角';
     const markIcon = theme === 'night' ? '✧' : '✦';
+    const isCharOpen = isPanelExpanded('char-body', true);
+    const iconCollapsedClass = isCharOpen ? '' : ' collapsed';
+    const bodyHiddenClass = isCharOpen ? '' : ' hidden';
     let tabs = `<span class="db-sb-tab active" data-tab="char-protagonist">${esc(pName)}</span>`;
     chars.forEach((c, i) => { tabs += `<span class="db-sb-tab" data-tab="char-${i}">${esc(c.name)}</span>`; });
 
@@ -77,9 +126,9 @@
       <div class="db-sb-header" data-db-toggle="char-body">
         <span class="db-sb-mark" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
         <div><div class="db-sb-title">角色档案</div><div class="db-sb-subtitle">CHARACTER ARCHIVE</div></div>
-        <span class="db-sb-toggle-icon">▼</span>
+        <span class="db-sb-toggle-icon${iconCollapsedClass}">▼</span>
       </div>
-      <div class="db-sb-body" id="db-char-body">
+      <div class="db-sb-body${bodyHiddenClass}" id="db-char-body">
         <div class="db-sb-tabs" data-tab-group="characters">
           <div class="db-sb-tab-bar">${tabs}</div>
           ${contents}
@@ -206,13 +255,16 @@
   // --- Independent quest archive panel ---
   function renderQuestPanel(S, theme) {
     const markIcon = theme === 'night' ? '✧' : '✦';
+    const isQuestOpen = isPanelExpanded('quest-body', false);
+    const iconCollapsedClass = isQuestOpen ? '' : ' collapsed';
+    const bodyHiddenClass = isQuestOpen ? '' : ' hidden';
     return `<section class="db-sb-panel db-sb-quest-panel">
       <div class="db-sb-header" data-db-toggle="quest-body">
         <span class="db-sb-mark" data-story-ui-theme-toggle title="切换日夜主题">${markIcon}</span>
         <div><div class="db-sb-title">任务档案</div><div class="db-sb-subtitle">QUEST ARCHIVE</div></div>
-        <span class="db-sb-toggle-icon collapsed">▼</span>
+        <span class="db-sb-toggle-icon${iconCollapsedClass}">▼</span>
       </div>
-      <div class="db-sb-body hidden" id="db-quest-body"><div class="db-sb-quest-list">${renderQuestTab(S)}</div></div>
+      <div class="db-sb-body${bodyHiddenClass}" id="db-quest-body"><div class="db-sb-quest-list">${renderQuestTab(S)}</div></div>
     </section>`;
   }
 
@@ -270,7 +322,10 @@
   // --- Inventory Panel (物品栏 - collapsible) ---
   function renderInventoryTab(S) {
     const list = S.inventory || [];
-    if (list.length === 0) return '<div class="db-sb-inv-bar"><div class="db-sb-inv-bar-header" data-inv-toggle><span class="db-sb-inv-title">物品栏</span><span class="db-sb-toggle-icon collapsed">▼</span></div></div>';
+    const invOpen = isInvExpanded();
+    const invCollapsedClass = invOpen ? '' : ' collapsed';
+    const invContentStyle = invOpen ? '' : ' style="display:none"';
+    if (list.length === 0) return `<div class="db-sb-inv-bar"><div class="db-sb-inv-bar-header" data-inv-toggle><span class="db-sb-inv-title">物品栏</span><span class="db-sb-toggle-icon${invCollapsedClass}">▼</span></div></div>`;
 
     // Currency display
     const pName = String((S.protagonist && S.protagonist.name) || '').trim();
@@ -289,10 +344,10 @@
 
     let html = '<div class="db-sb-inv-bar">';
     // Header bar: title + currency + recycle button + toggle
-    html += `<div class="db-sb-inv-bar-header" data-inv-toggle><span class="db-sb-inv-title">物品栏</span><span class="db-sb-inv-currency">${currencyHtml}</span><button class="db-sb-inv-recycle-btn" data-inv-action="recycle">再利用</button><span class="db-sb-toggle-icon collapsed">▼</span></div>`;
+    html += `<div class="db-sb-inv-bar-header" data-inv-toggle><span class="db-sb-inv-title">物品栏</span><span class="db-sb-inv-currency">${currencyHtml}</span><button class="db-sb-inv-recycle-btn" data-inv-action="recycle">再利用</button><span class="db-sb-toggle-icon${invCollapsedClass}">▼</span></div>`;
 
     // Collapsible content (hidden by default)
-    html += '<div class="db-sb-inv-bar-content" style="display:none">';
+    html += `<div class="db-sb-inv-bar-content"${invContentStyle}>`;
 
     // Tab bar: owner tabs + category tabs in one line
     html += '<div class="db-sb-inv-tab-bar">';
@@ -373,12 +428,17 @@
       // Panel toggle
       const header = e.target.closest('[data-db-toggle]');
       if (header && root.contains(header)) {
+        const toggleTarget = header.dataset.dbToggle;
         const body = header.nextElementSibling;
         if (body) {
           const hidden = body.classList.contains('hidden');
-          body.classList.toggle('hidden', !hidden);
+          const nextHidden = !hidden;
+          body.classList.toggle('hidden', nextHidden);
           const icon = header.querySelector('.db-sb-toggle-icon');
-          if (icon) icon.classList.toggle('collapsed', !hidden);
+          if (icon) icon.classList.toggle('collapsed', nextHidden);
+          if (toggleTarget) {
+            savePanelExpanded(toggleTarget, !nextHidden);
+          }
         }
         return;
       }
@@ -437,6 +497,7 @@
           const isHidden = content.style.display === 'none';
           content.style.display = isHidden ? '' : 'none';
           if (icon) icon.classList.toggle('collapsed', !isHidden);
+          saveInvExpanded(isHidden);
         }
         return;
       }
