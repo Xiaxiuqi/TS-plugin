@@ -2,21 +2,14 @@
   'use strict';
 
   const KEY = 'cryptLord.debugToolbar';
-  const BUTTON_SELECTOR = '[data-crypt-lord-debug-toggle]';
-  const PROBE_INTERVAL_MS = 500;
-  const PROBE_DURATION_MS = 30000;
-  const MAX_PROBES = PROBE_DURATION_MS / PROBE_INTERVAL_MS;
+  const BUTTON_NAME = '🐞 诊断';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   const existing = modules[KEY];
   if (existing) {
-    if (
-      typeof existing.status !== 'function' ||
-      typeof existing.reconnect !== 'function' ||
-      typeof existing.dispose !== 'function'
-    ) {
+    if (!['status', 'reconnect', 'dispose'].every(method => typeof existing[method] === 'function')) {
       throw new Error(`[${KEY}] 拒绝复用形状不匹配的模块API`);
     }
     contract.initializeGlobal(KEY, existing);
@@ -24,169 +17,173 @@
     return;
   }
 
-  let buttonElement = null;
-  let statusElement = null;
-  let wrapperElement = null;
-  let anchorName = null;
-  let retry = 0;
-  let probeTicks = 0;
-  let lastError = '';
+  const bindingOwner = `crypt-lord-${root.loader?.instanceId || 'standalone'}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const localBindings = new Map();
   let disposed = false;
-  let probeTimer = null;
-  let observer = null;
-  let observerProbeTimer = null;
+  let registered = false;
+  let registrationMethod = null;
+  let bindingMethod = null;
+  let eventName = null;
+  let eventHandler = null;
+  let lastError = '';
 
   function safeMessage(error) {
     return error instanceof Error ? error.message : String(error || '未知错误');
   }
 
-  function getDebug() {
-    const debug = root.debug;
-    return debug && typeof debug === 'object' ? debug : null;
-  }
-
   function debugEvent(action, details, level = 'info') {
-    try {
-      const debug = getDebug();
-      if (typeof debug?.event === 'function') debug.event('lifecycle', KEY, action, details, level);
-    } catch {
-      // Toolbar behavior must not depend on diagnostics.
-    }
+    try { root.debug?.event?.('lifecycle', KEY, action, details, level); } catch { /* diagnostics are optional */ }
   }
 
-  function showFailure(error) {
-    lastError = safeMessage(error);
-    if (statusElement?.isConnected) statusElement.textContent = `诊断面板打开失败：${lastError}`;
-    try {
-      if (typeof window.toastr?.error === 'function') {
-        window.toastr.error(lastError, 'Crypt Lord 诊断');
-      } else {
-        window.console?.error?.(`[${KEY}]`, lastError);
-      }
-    } catch {
-      // Visible inline status remains the fallback.
-    }
-    debugEvent('toolbar-open-failure', lastError, 'error');
-  }
-
-  function clearStatus() {
-    lastError = '';
-    if (statusElement?.isConnected) statusElement.textContent = '';
+  function ownsCurrentModule() {
+    return !disposed && modules[KEY] === api;
   }
 
   function openPanel() {
-    debugEvent('toolbar-open-dispatch', '用户通过输入区按钮请求打开诊断面板');
-    const debug = getDebug();
+    if (!ownsCurrentModule()) return false;
     try {
+      const debug = root.debug;
       if (!debug?.panel || typeof debug.panel.mount !== 'function' || typeof debug.setEnabled !== 'function') {
         throw new Error('cryptLord.debug API 当前不可用');
       }
-      const mounted = debug.panel.mount();
+      const mounted = debug.panel.mount(document);
       debug.setEnabled(true);
-      if (mounted !== true) throw new Error('调试面板挂载被宿主拒绝或缺少可用 DOM');
-      clearStatus();
-      debugEvent('toolbar-open-success', '用户通过输入区按钮请求打开诊断面板');
+      if (mounted !== true) throw new Error('调试面板无法挂载到当前脚本文档');
+      lastError = '';
+      return true;
     } catch (error) {
-      showFailure(error);
+      lastError = `诊断面板打开失败：${safeMessage(error)}`;
+      debugEvent('button-open-failure', lastError, 'error');
+      return false;
     }
   }
 
-  function findAnchor() {
-    const sendForm = document.querySelector?.('#send_form');
-    if (sendForm?.parentNode) return { node: sendForm, parent: sendForm.parentNode, name: '#send_form' };
-
-    const textarea = document.querySelector?.('textarea#send_textarea');
-    if (textarea) {
-      const container = textarea.closest?.('form') || textarea.parentNode;
-      if (container?.parentNode) {
-        return {
-          node: container,
-          parent: container.parentNode,
-          name: textarea.closest?.('form') ? 'textarea#send_textarea closest form' : 'textarea#send_textarea parent',
-        };
-      }
-    }
-
-    const fallbackForm = document.querySelector?.('form[id^="send"]');
-    if (fallbackForm?.parentNode) {
-      return { node: fallbackForm, parent: fallbackForm.parentNode, name: 'form[id^="send"]' };
-    }
-    return null;
-  }
-
-  function removeDuplicateButtons() {
-    const buttons = Array.from(document.querySelectorAll?.(BUTTON_SELECTOR) || []);
-    buttons.forEach(button => {
-      if (button !== buttonElement) {
-        const wrapper = button.closest?.('.crypt-lord-debug-toolbar');
-        (wrapper || button).remove?.();
-      }
+  function removeLocalBindings() {
+    localBindings.forEach((handler, button) => {
+      try {
+        button.removeEventListener?.('click', handler);
+        if (button.dataset?.cryptLordDebugBinding === bindingOwner) delete button.dataset.cryptLordDebugBinding;
+      } catch { /* stale local nodes are harmless */ }
     });
+    localBindings.clear();
+    if (bindingMethod === 'local-document') bindingMethod = null;
   }
 
-  function createToolbar() {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'crypt-lord-root crypt-lord-debug-toolbar';
+  function bindLocalButtons() {
+    removeLocalBindings();
+    const buttons = Array.from(document.querySelectorAll?.('button') || []).filter(button => {
+      const text = (button.textContent || '').trim();
+      return text === BUTTON_NAME || text.includes(BUTTON_NAME);
+    });
+    buttons.forEach(button => {
+      const handler = event => {
+        if (!ownsCurrentModule() || button.dataset?.cryptLordDebugBinding !== bindingOwner) return;
+        try {
+          event?.preventDefault?.();
+          event?.stopPropagation?.();
+        } catch { /* opening diagnostics does not depend on event cancellation */ }
+        openPanel();
+      };
+      button.dataset.cryptLordDebugBinding = bindingOwner;
+      button.addEventListener('click', handler);
+      localBindings.set(button, handler);
+    });
+    if (localBindings.size > 0) bindingMethod = 'local-document';
+    return localBindings.size > 0;
+  }
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'crypt-lord-debug-toolbar-button';
-    button.dataset.cryptLordDebugToggle = '';
-    button.setAttribute('aria-label', '打开 Crypt Lord 诊断面板');
-    button.title = '打开 Crypt Lord 诊断面板';
-    button.textContent = '🐞 诊断';
-    button.addEventListener('click', openPanel);
+  function registerNativeButton() {
+    if (registered) return true;
+    const descriptor = [{ name: BUTTON_NAME, visible: true }];
+    try {
+      if (typeof window.replaceScriptButtons === 'function') {
+        window.replaceScriptButtons(descriptor);
+        registered = true;
+        registrationMethod = 'replaceScriptButtons';
+        return true;
+      }
+      if (typeof window.appendInexistentScriptButtons === 'function') {
+        window.appendInexistentScriptButtons(descriptor);
+        registered = true;
+        registrationMethod = 'appendInexistentScriptButtons';
+        return true;
+      }
+      registered = false;
+      registrationMethod = null;
+      lastError = '原生助手脚本按钮注册 API 不可用';
+      return false;
+    } catch (error) {
+      registered = false;
+      registrationMethod = null;
+      lastError = `原生诊断按钮注册失败：${safeMessage(error)}`;
+      debugEvent('button-registration-failure', lastError, 'error');
+      return false;
+    }
+  }
 
-    const status = document.createElement('span');
-    status.className = 'crypt-lord-debug-toolbar-status';
-    status.setAttribute('role', 'status');
-    status.setAttribute('aria-live', 'polite');
+  function bindButton() {
+    let nextEventName = null;
+    try {
+      if (typeof window.getButtonEvent === 'function') nextEventName = window.getButtonEvent(BUTTON_NAME) || null;
+    } catch (error) {
+      lastError = `读取原生按钮事件失败：${safeMessage(error)}`;
+    }
 
-    wrapper.appendChild(button);
-    wrapper.appendChild(status);
-    wrapperElement = wrapper;
-    buttonElement = button;
-    statusElement = status;
-    return wrapper;
+    if (nextEventName && typeof window.eventOn === 'function') {
+      removeLocalBindings();
+      if (eventName === nextEventName && eventHandler) {
+        bindingMethod = 'eventOn';
+        return true;
+      }
+      const ownedApi = api;
+      const handler = () => {
+        if (disposed || modules[KEY] !== ownedApi || api !== ownedApi || eventHandler !== handler) return false;
+        return openPanel();
+      };
+      try {
+        window.eventOn(nextEventName, handler);
+      } catch (error) {
+        eventName = null;
+        eventHandler = null;
+        bindingMethod = null;
+        lastError = `绑定原生按钮事件失败：${safeMessage(error)}`;
+        debugEvent('button-event-binding-failure', lastError, 'error');
+        return bindLocalButtons();
+      }
+      eventName = nextEventName;
+      eventHandler = handler;
+      bindingMethod = 'eventOn';
+      return true;
+    }
+
+    eventName = null;
+    eventHandler = null;
+    bindingMethod = null;
+    return bindLocalButtons();
   }
 
   function reconnect() {
-    if (disposed) return false;
-    if (modules[KEY] !== api) {
-      dispose();
-      return false;
-    }
-
-    removeDuplicateButtons();
-    if (buttonElement?.isConnected && wrapperElement?.isConnected) return true;
-
-    const anchor = findAnchor();
-    if (!anchor) {
-      anchorName = null;
-      lastError = '未找到 SillyTavern 输入区锚点';
-      return false;
-    }
-
-    try {
-      const wrapper = createToolbar();
-      anchor.parent.insertBefore(wrapper, anchor.node);
-      anchorName = anchor.name;
+    if (!ownsCurrentModule()) return false;
+    const registrationReady = registerNativeButton();
+    const bindingReady = bindButton();
+    if (registrationReady && bindingReady) {
       lastError = '';
-      removeDuplicateButtons();
-      return buttonElement?.isConnected === true;
-    } catch (error) {
-      anchorName = anchor.name;
-      lastError = safeMessage(error);
-      return false;
+      return true;
     }
+    if (!bindingReady && !lastError) lastError = '原生按钮事件 API 不可用，且当前脚本文档中尚未找到可绑定按钮';
+    return false;
   }
 
   function status() {
     return Object.freeze({
       key: KEY,
-      installed: buttonElement?.isConnected === true,
-      anchor: buttonElement?.isConnected ? anchorName : null,
-      retry,
+      installed: registered && bindingMethod !== null,
+      registered,
+      registrationMethod,
+      bindingMethod,
+      buttonName: BUTTON_NAME,
+      eventName,
+      localBindingCount: localBindings.size,
       lastError,
     });
   }
@@ -194,31 +191,14 @@
   function dispose() {
     if (disposed) return true;
     disposed = true;
-    if (probeTimer !== null) window.clearInterval(probeTimer);
-    if (observerProbeTimer !== null) window.clearTimeout(observerProbeTimer);
-    observer?.disconnect?.();
-    probeTimer = null;
-    observerProbeTimer = null;
-    observer = null;
-    try {
-      wrapperElement?.remove();
-    } catch {
-      // Best-effort host DOM cleanup.
-    }
-    wrapperElement = null;
-    buttonElement = null;
-    statusElement = null;
-    anchorName = null;
-    try {
-      contract.releaseGlobal(KEY, api);
-    } catch (error) {
-      lastError = `释放全局契约失败：${safeMessage(error)}`;
-      try {
-        window.console?.error?.(`[${KEY}]`, lastError);
-      } catch {
-        // The module registry cleanup below is still safe when it owns the exact API.
-      }
-    }
+    try { root.debug?.panel?.unmount?.(); } catch { /* debug disposal remains independently safe */ }
+    removeLocalBindings();
+    registered = false;
+    registrationMethod = null;
+    bindingMethod = null;
+    eventName = null;
+    eventHandler = null;
+    try { contract.releaseGlobal(KEY, api); } catch { /* loader also releases exact ownership */ }
     if (modules[KEY] === api) delete modules[KEY];
     return true;
   }
@@ -232,29 +212,5 @@
     dispose();
     throw error;
   }
-
   reconnect();
-  probeTimer = window.setInterval(() => {
-    if (disposed || modules[KEY] !== api || probeTicks >= MAX_PROBES) {
-      window.clearInterval(probeTimer);
-      probeTimer = null;
-      if (modules[KEY] !== api) dispose();
-      return;
-    }
-    probeTicks += 1;
-    if (!buttonElement?.isConnected) retry += 1;
-    if (!buttonElement?.isConnected) reconnect();
-  }, PROBE_INTERVAL_MS);
-
-  if (typeof window.MutationObserver === 'function' && document.documentElement) {
-    observer = new window.MutationObserver(() => {
-      if (disposed || buttonElement?.isConnected) return;
-      if (observerProbeTimer !== null) return;
-      observerProbeTimer = window.setTimeout(() => {
-        observerProbeTimer = null;
-        reconnect();
-      }, 50);
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-  }
 })();

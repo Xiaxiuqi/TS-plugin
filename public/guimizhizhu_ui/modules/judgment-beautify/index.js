@@ -8,7 +8,12 @@
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   const existing = modules[KEY];
   if (existing) {
-    if (typeof existing.status !== 'function' || typeof existing.isReady !== 'function' || typeof existing.decorate !== 'function') {
+    if (
+      typeof existing.status !== 'function' ||
+      typeof existing.isReady !== 'function' ||
+      typeof existing.decorate !== 'function' ||
+      typeof existing.dispose !== 'function'
+    ) {
       throw new Error(`[${KEY}] 拒绝复用形状不匹配的模块API`);
     }
     contract.initializeGlobal(KEY, existing);
@@ -38,6 +43,11 @@
     decorate() {
       debugEvent('refusal', 'decorate-not-ready', '判定美化尚未迁移，未修改消息正文', 'warn');
       return Promise.reject(new Error('cryptLord.judgmentBeautify.decorate 尚未迁移'));
+    },
+    dispose() {
+      try { contract.releaseGlobal(KEY, api); } catch { /* idempotent cleanup */ }
+      if (modules[KEY] === api) delete modules[KEY];
+      return true;
     },
   });
 

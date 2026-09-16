@@ -9,7 +9,7 @@
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   const existing = modules[KEY];
   if (existing) {
-    if (typeof existing.status !== 'function' || typeof existing.submit !== 'function') {
+    if (typeof existing.status !== 'function' || typeof existing.submit !== 'function' || typeof existing.dispose !== 'function') {
       throw new Error(`[${KEY}] 拒绝复用形状不匹配的模块API`);
     }
     contract.initializeGlobal(KEY, existing);
@@ -44,6 +44,11 @@
         debugEvent('failure', 'submit-delegation-failure', error?.message || error, 'error');
         throw error;
       }
+    },
+    dispose() {
+      try { contract.releaseGlobal(KEY, api); } catch { /* idempotent cleanup */ }
+      if (modules[KEY] === api) delete modules[KEY];
+      return true;
     },
   });
 

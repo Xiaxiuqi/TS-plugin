@@ -35,6 +35,8 @@
   const dedupe = new Map();
   const budgets = new Map();
   let panelElement = null;
+  let panelSummaryElement = null;
+  let panelLogElement = null;
   let panelCollapsed = false;
   let globalErrorHandler = null;
   let globalRejectionHandler = null;
@@ -108,18 +110,21 @@
     });
   }
 
-  function append(parent, tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
+  function append(parent, tag, text, style) {
+    const node = parent.ownerDocument.createElement(tag);
     if (text !== undefined) node.textContent = text;
+    if (style) node.setAttribute('style', style);
     parent.appendChild(node);
     return node;
   }
 
+  const BUTTON_STYLE = 'padding:3px 7px;border:1px solid rgba(180,151,104,.65);border-radius:5px;color:inherit;background:rgba(255,255,255,.06);cursor:pointer';
+  const ROW_STYLE = 'overflow-wrap:anywhere;margin:3px 0';
+
   function renderPanel() {
     if (!panelElement || !panelElement.isConnected) return;
-    const summary = panelElement.querySelector('[data-crypt-lord-debug-summary]');
-    const log = panelElement.querySelector('[data-crypt-lord-debug-log]');
+    const summary = panelSummaryElement;
+    const log = panelLogElement;
     if (!summary || !log) return;
     summary.textContent = '';
     log.textContent = '';
@@ -127,39 +132,44 @@
     if (enableButton) enableButton.textContent = enabled ? '停用' : '启用';
 
     const state = snapshot();
-    append(summary, 'div', 'crypt-lord-debug-state', `诊断：${state.enabled ? '已启用' : '已停用'}；加载器：${state.loader?.status || '未启动'}`);
+    append(summary, 'div', `诊断：${state.enabled ? '已启用' : '已停用'}；加载器：${state.loader?.status || '未启动'}`, ROW_STYLE);
     state.modules.forEach(item => {
       const registered = item.registered ? '资源已注册' : '资源未注册';
       const mounted = item.mounted ? '业务功能已挂载' : '业务功能未挂载/不可用';
-      append(summary, 'div', 'crypt-lord-debug-module', `${item.key}: ${registered}；${mounted}`);
+      append(summary, 'div', `${item.key}: ${registered}；${mounted}`, ROW_STYLE);
     });
-    state.limitations.forEach(text => append(summary, 'div', 'crypt-lord-debug-limitation', `限制：${text}`));
+    state.limitations.forEach(text => append(summary, 'div', `限制：${text}`, `${ROW_STYLE};color:#f0c674`));
     state.events.slice().reverse().forEach(item => {
       append(
         log,
         'div',
-        `crypt-lord-debug-event crypt-lord-debug-level-${item.level}`,
         `${item.timestamp} [${item.category}] ${item.module} · ${item.action}${item.details ? ` — ${item.details}` : ''}`,
+        `${ROW_STYLE};${item.level === 'error' ? 'color:#ff8f8f' : item.level === 'warn' ? 'color:#f0c674' : ''}`,
       );
     });
-    panelElement.classList.toggle('crypt-lord-debug-collapsed', panelCollapsed);
+    summary.setAttribute('style', `margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12);${panelCollapsed ? 'display:none' : ''}`);
+    log.setAttribute('style', `max-height:36vh;overflow:auto;${panelCollapsed ? 'display:none' : ''}`);
   }
 
-  function mount() {
+  function mount(requestedDocument) {
     try {
-      if (!document?.createElement || !document.documentElement) return false;
-      if (panelElement?.isConnected) {
+      const targetDocument = requestedDocument?.createElement ? requestedDocument : (typeof document !== 'undefined' ? document : null);
+      if (typeof targetDocument?.createElement !== 'function' || (!targetDocument.body && !targetDocument.documentElement)) return false;
+      if (panelElement?.isConnected && panelElement.ownerDocument === targetDocument) {
         renderPanel();
         return true;
       }
-      const panel = document.createElement('section');
-      panel.className = 'crypt-lord-root crypt-lord-debug-panel';
+      if (panelElement?.isConnected) panelElement.remove();
+      const panel = targetDocument.createElement('section');
+      panel.dataset.cryptLordInstance = root.loader?.instanceId || '';
+      panel.dataset.cryptLordDiagnostic = '';
       panel.setAttribute('aria-label', 'Crypt Lord 调试面板');
-      const header = append(panel, 'div', 'crypt-lord-debug-header');
-      append(header, 'strong', '', 'Crypt Lord 诊断');
-      const controls = append(header, 'div', 'crypt-lord-debug-controls');
+      panel.setAttribute('style', 'position:fixed;right:12px;bottom:12px;z-index:2147483000;box-sizing:border-box;width:min(520px,calc(100vw - 24px));max-height:min(70vh,680px);overflow:auto;padding:10px;border:1px solid rgba(180,151,104,.75);border-radius:10px;color:#d9d5cc;background:rgba(28,29,33,.96);box-shadow:0 8px 28px rgba(0,0,0,.42);font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;pointer-events:auto');
+      const header = append(panel, 'div', undefined, 'display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:-10px;padding:8px 0;background:rgba(28,29,33,.96)');
+      append(header, 'strong', 'Crypt Lord 诊断');
+      const controls = append(header, 'div', undefined, 'display:flex;flex-wrap:wrap;gap:4px');
       const makeButton = (label, action) => {
-        const button = append(controls, 'button', '', label);
+        const button = append(controls, 'button', label, BUTTON_STYLE);
         button.type = 'button';
         button.addEventListener('click', action);
         return button;
@@ -169,9 +179,11 @@
       enableButton.dataset.cryptLordDebugEnable = '';
       makeButton('复制', () => { void copy(); });
       makeButton('清空', () => clear());
-      append(panel, 'div', 'crypt-lord-debug-summary', '').dataset.cryptLordDebugSummary = '';
-      append(panel, 'div', 'crypt-lord-debug-log', '').dataset.cryptLordDebugLog = '';
-      (document.body || document.documentElement).appendChild(panel);
+      panelSummaryElement = append(panel, 'div', '');
+      panelSummaryElement.dataset.cryptLordDebugSummary = '';
+      panelLogElement = append(panel, 'div', '');
+      panelLogElement.dataset.cryptLordDebugLog = '';
+      (targetDocument.body || targetDocument.documentElement).appendChild(panel);
       panelElement = panel;
       renderPanel();
       return true;
@@ -184,6 +196,8 @@
     try {
       panelElement?.remove();
       panelElement = null;
+      panelSummaryElement = null;
+      panelLogElement = null;
       return true;
     } catch {
       return false;
@@ -279,12 +293,16 @@
     return snapshot();
   }
 
-  function dispose() {
+  function dispose(reason) {
     try {
       if (globalErrorHandler) window.removeEventListener?.('error', globalErrorHandler);
       if (globalRejectionHandler) window.removeEventListener?.('unhandledrejection', globalRejectionHandler);
       if (root.__debugGlobalCaptureInstalled === api) delete root.__debugGlobalCaptureInstalled;
       unmount();
+      events.length = 0;
+      dedupe.clear();
+      budgets.clear();
+      if (reason === 'reset-preferences') window.localStorage?.removeItem(STORAGE_KEY);
       return true;
     } catch {
       return false;

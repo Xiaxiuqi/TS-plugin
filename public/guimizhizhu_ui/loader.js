@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = 'stage1-1.0.0';
+  const VERSION = 'stage1-1.1.0';
   const PUBLIC_BASE_URL = 'https://ts-plugin.pages.dev/guimizhizhu_ui/';
   const RESOURCE_TIMEOUT_MS = 15000;
   const LOG_PREFIX = `[CryptLordLoader:${VERSION}]`;
@@ -9,6 +9,36 @@
 
   // 同一轮加载只允许一个执行者；失败后重新执行 loader.js 会创建全新批次与 ready Promise。
   if (root.loader?.status === 'loading' || root.loader?.status === 'ready') return;
+  const instanceId = root.__stage1Index?.instanceId || `loader_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  function scoreHostWindow(candidate) {
+    try {
+      const doc = candidate?.document;
+      if (!doc?.documentElement) return -1;
+      let score = doc.body && doc.head ? 2 : 0;
+      if (candidate.SillyTavern) score += 8;
+      if (candidate.TavernHelper) score += 6;
+      if (doc.querySelector?.('#send_textarea')) score += 12;
+      if (doc.querySelector?.('#extensions_settings')) score += 3;
+      return score;
+    } catch {
+      return -1;
+    }
+  }
+  function getHostDocument() {
+    const candidates = [];
+    for (const candidate of [window, window.parent, window.top]) {
+      if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
+    }
+    try {
+      return candidates.reduce(
+        (best, candidate) => scoreHostWindow(candidate) > scoreHostWindow(best) ? candidate : best,
+        window,
+      ).document;
+    } catch {
+      return document;
+    }
+  }
 
   function getDebug() {
     const debug = root.debug;
@@ -57,13 +87,15 @@
           'initializeGlobal',
           'waitGlobalInitialized',
           'releaseGlobal',
+          'cancelWaiters',
+          'reset',
         ]),
     },
     {
       path: 'shared/debug.js',
       key: 'cryptLord.debug',
       validate: api => {
-        validateMethods('cryptLord.debug', api, ['isEnabled', 'setEnabled', 'event', 'status', 'snapshot']);
+        validateMethods('cryptLord.debug', api, ['isEnabled', 'setEnabled', 'event', 'status', 'snapshot', 'dispose']);
         return validateMethods('cryptLord.debug.panel', api.panel, ['mount', 'unmount', 'toggle', 'copy', 'clear']);
       },
     },
@@ -75,23 +107,23 @@
     {
       path: 'modules/native-floor/index.js',
       key: 'cryptLord.nativeFloor',
-      validate: api => validateMethods('cryptLord.nativeFloor', api, ['status', 'submitNativeTurn']),
+      validate: api => validateMethods('cryptLord.nativeFloor', api, ['status', 'submitNativeTurn', 'dispose']),
     },
     {
       path: 'modules/input-adapter/index.js',
       key: 'cryptLord.inputAdapter',
-      validate: api => validateMethods('cryptLord.inputAdapter', api, ['status', 'submit']),
+      validate: api => validateMethods('cryptLord.inputAdapter', api, ['status', 'submit', 'dispose']),
     },
     {
       path: 'modules/floating-variable-editor/index.js',
       key: 'cryptLord.floatingVariableEditor',
       validate: api =>
-        validateMethods('cryptLord.floatingVariableEditor', api, ['status', 'isReady', 'mount', 'unmount']),
+        validateMethods('cryptLord.floatingVariableEditor', api, ['status', 'isReady', 'mount', 'unmount', 'dispose']),
     },
     {
       path: 'modules/judgment-beautify/index.js',
       key: 'cryptLord.judgmentBeautify',
-      validate: api => validateMethods('cryptLord.judgmentBeautify', api, ['status', 'isReady', 'decorate']),
+      validate: api => validateMethods('cryptLord.judgmentBeautify', api, ['status', 'isReady', 'decorate', 'dispose']),
     },
   ];
   const cssPromises = new Map();
@@ -102,8 +134,10 @@
     styles: [],
     scripts: [],
     controllers: new Set(),
+    pendingCleanups: new Set(),
     registeredApis: [],
     contractAdded: null,
+    disposed: false,
   };
 
   function resourceUrl(path) {
@@ -113,6 +147,10 @@
   function resourceError(stage, url, error) {
     const detail = error instanceof Error ? error.message : String(error);
     return new Error(`[${stage}] ${url}; ${detail}`);
+  }
+
+  function disposalError() {
+    return new DOMException('loader已释放', 'AbortError');
   }
 
   function getResourceApi(resource) {
@@ -126,12 +164,15 @@
   }
 
   function loadCss(path) {
+    if (batch.disposed) return Promise.reject(disposalError());
     const url = resourceUrl(path);
     debugEvent('resource', 'css-load-start', path);
     if (cssPromises.has(url)) return cssPromises.get(url);
 
     const existing = Array.from(document.querySelectorAll('style[data-crypt-lord-css]')).find(
-      style => style.dataset.cryptLordCss === url && style.dataset.cryptLordLoadState === 'loaded',
+      style => style.dataset.cryptLordCss === url &&
+        style.dataset.cryptLordInstance === instanceId &&
+        style.dataset.cryptLordLoadState === 'loaded',
     );
     if (existing) return Promise.resolve(existing);
 
@@ -141,59 +182,97 @@
     let timer = null;
     let timedOut = false;
     let injectedStyle = null;
+    let settled = false;
+    let cancel = () => {};
 
+    const cleanupPending = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      batch.pendingCleanups.delete(cancel);
+      batch.controllers.delete(controller);
+    };
     const promise = new Promise((resolve, reject) => {
+      const finish = (operation, value) => {
+        if (settled) return;
+        settled = true;
+        cleanupPending();
+        operation(value);
+      };
+      cancel = () => {
+        if (settled) return;
+        controller.abort();
+        finish(reject, disposalError());
+      };
+      batch.pendingCleanups.add(cancel);
       timer = setTimeout(() => {
+        if (settled) return;
         timedOut = true;
         controller.abort();
-        reject(new Error(`加载超时(${RESOURCE_TIMEOUT_MS}ms)`));
+        finish(reject, new Error(`加载超时(${RESOURCE_TIMEOUT_MS}ms)`));
       }, RESOURCE_TIMEOUT_MS);
 
-      fetch(url, { signal: controller.signal }).then(resolve, reject);
-    })
-      .then(response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.text();
-      })
-      .then(cssText => {
-        const style = document.createElement('style');
-        style.dataset.cryptLordCss = url;
-        style.dataset.cryptLordLoadState = 'loaded';
-        style.textContent = `${cssText}\n/*# sourceURL=${url} */`;
-        (document.head || document.documentElement).appendChild(style);
-        injectedStyle = style;
-        batch.styles.push(style);
-        debugEvent('resource', 'css-load-success', path);
-        return style;
-      })
-      .catch(error => {
-        if (!controller.signal.aborted) controller.abort();
-        if (injectedStyle) {
-          injectedStyle.remove();
-          const index = batch.styles.indexOf(injectedStyle);
-          if (index >= 0) batch.styles.splice(index, 1);
-        }
-        cssPromises.delete(url);
-        const stage = timedOut ? 'CSS fetch timeout' : 'CSS fetch';
-        debugEvent('failure', 'css-load-failure', `${path}: ${error?.message || error}`, 'error');
-        throw resourceError(stage, url, error);
-      })
-      .finally(() => {
-        if (timer !== null) clearTimeout(timer);
-        batch.controllers.delete(controller);
-      });
+      Promise.resolve()
+        .then(() => fetch(url, { signal: controller.signal }))
+        .then(response => {
+          if (batch.disposed) throw disposalError();
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then(cssText => {
+          if (batch.disposed) throw disposalError();
+          const documents = [document, getHostDocument()].filter((doc, index, list) => doc && list.indexOf(doc) === index);
+          const injected = documents.map(targetDocument => {
+            const style = targetDocument.createElement('style');
+            style.dataset.cryptLordCss = url;
+            style.dataset.cryptLordInstance = instanceId;
+            style.dataset.cryptLordLoadState = 'loaded';
+            style.textContent = `${cssText}\n/*# sourceURL=${url} */`;
+            (targetDocument.head || targetDocument.documentElement).appendChild(style);
+            batch.styles.push(style);
+            return style;
+          });
+          injectedStyle = injected[0];
+          debugEvent('resource', 'css-load-success', path);
+          finish(resolve, injectedStyle);
+        })
+        .catch(error => {
+          if (settled) return;
+          if (!controller.signal.aborted) controller.abort();
+          if (injectedStyle) {
+            for (let index = batch.styles.length - 1; index >= 0; index -= 1) {
+              const style = batch.styles[index];
+              if (style.dataset.cryptLordCss === url && style.dataset.cryptLordInstance === instanceId) {
+                style.remove(); batch.styles.splice(index, 1);
+              }
+            }
+          }
+          cssPromises.delete(url);
+          if (batch.disposed && error?.name === 'AbortError') {
+            finish(reject, error);
+            return;
+          }
+          const stage = timedOut ? 'CSS fetch timeout' : 'CSS fetch';
+          debugEvent('failure', 'css-load-failure', `${path}: ${error?.message || error}`, 'error');
+          finish(reject, resourceError(stage, url, error));
+        });
+    }).catch(error => {
+      cssPromises.delete(url);
+      throw error;
+    });
 
     cssPromises.set(url, promise);
     return promise;
   }
 
   function loadScript(resource) {
+    if (batch.disposed) return Promise.reject(disposalError());
     const url = resourceUrl(resource.path);
     debugEvent('resource', 'script-load-start', resource.path);
     if (scriptPromises.has(url)) return scriptPromises.get(url);
 
     const found = Array.from(document.querySelectorAll('script[data-crypt-lord-script]')).find(
-      script => script.dataset.cryptLordScript === url,
+      script => script.dataset.cryptLordScript === url &&
+        script.dataset.cryptLordInstance === instanceId,
     );
     if (found?.dataset.cryptLordLoadState === 'failed') found.remove();
 
@@ -234,6 +313,13 @@
         script.onload = null;
         script.onerror = null;
         window.removeEventListener('error', onWindowError);
+        batch.pendingCleanups.delete(cancel);
+      };
+      const cancel = () => {
+        if (settled) return;
+        settled = true;
+        cleanupHandlers();
+        reject(disposalError());
       };
       const fail = (stage, error) => {
         if (settled) return;
@@ -250,6 +336,10 @@
       };
       const succeed = () => {
         if (settled) return;
+        if (batch.disposed) {
+          cancel();
+          return;
+        }
         try {
           validateResource(resource);
         } catch (error) {
@@ -264,6 +354,7 @@
         resolve(script);
       };
 
+      batch.pendingCleanups.add(cancel);
       timer = setTimeout(
         () => fail('动态模块script超时', new Error(`加载超时(${RESOURCE_TIMEOUT_MS}ms)`)),
         RESOURCE_TIMEOUT_MS,
@@ -274,6 +365,7 @@
       script.src = url;
       script.async = false;
       script.dataset.cryptLordScript = url;
+      script.dataset.cryptLordInstance = instanceId;
       script.dataset.cryptLordLoadState = 'loading';
       if (!script.isConnected) (document.head || document.documentElement).appendChild(script);
     }).catch(error => {
@@ -285,8 +377,10 @@
     return promise;
   }
 
-  async function rollback(originalError) {
-    debugEvent('failure', 'rollback-start', originalError?.message || originalError, 'error');
+  async function cleanup(reason) {
+    if (batch.disposed) return true;
+    batch.disposed = true;
+    state.status = 'disposing';
     const cleanupErrors = [];
     const capture = operation => {
       try {
@@ -296,23 +390,18 @@
       }
     };
 
+    Array.from(batch.pendingCleanups).forEach(cancel => capture(cancel));
+    batch.pendingCleanups.clear();
     batch.controllers.forEach(controller => capture(() => controller.abort()));
     batch.controllers.clear();
 
+    try { batch.contractAdded?.cancelWaiters?.(reason); } catch (error) { cleanupErrors.push(String(error)); }
     for (let index = batch.registeredApis.length - 1; index >= 0; index -= 1) {
       const { key, api } = batch.registeredApis[index];
+      capture(() => { if (typeof api.dispose === 'function') api.dispose(reason); });
       capture(() => {
         const contract = root.contract;
-        if (!contract || typeof contract.releaseGlobal !== 'function') {
-          throw new Error(`无法释放本轮API，契约不可用: ${key}`);
-        }
-        contract.releaseGlobal(key, api);
-      });
-      capture(() => {
-        if (key === 'cryptLord.debugToolbar' && typeof api.dispose === 'function') api.dispose();
-      });
-      capture(() => {
-        if (key === 'cryptLord.debug' && typeof api.dispose === 'function') api.dispose();
+        if (contract?.releaseGlobal) contract.releaseGlobal(key, api);
       });
       capture(() => { if (key === 'cryptLord.debug' && root.debug === api) delete root.debug; });
       capture(() => {
@@ -320,9 +409,17 @@
       });
     }
 
-    capture(() => {
-      if (batch.contractAdded && root.contract === batch.contractAdded) delete root.contract;
-    });
+    capture(() => { batch.contractAdded?.reset?.(reason); });
+    capture(() => { if (batch.contractAdded && root.contract === batch.contractAdded) delete root.contract; });
+    const ownedSelector = [
+      `[data-crypt-lord-loader][data-crypt-lord-instance="${instanceId}"]`,
+      `[data-crypt-lord-script][data-crypt-lord-instance="${instanceId}"]`,
+      `[data-crypt-lord-css][data-crypt-lord-instance="${instanceId}"]`,
+    ].join(',');
+    const documents = [document, getHostDocument()].filter((doc, index, list) => doc && list.indexOf(doc) === index);
+    documents.forEach(targetDocument => capture(() => {
+      Array.from(targetDocument.querySelectorAll?.(ownedSelector) || []).forEach(node => node.remove?.());
+    }));
     for (let index = batch.scripts.length - 1; index >= 0; index -= 1) {
       capture(() => batch.scripts[index].remove());
     }
@@ -331,9 +428,22 @@
     }
     batch.scriptMapEntries.forEach(url => scriptPromises.delete(url));
     batch.cssMapEntries.forEach(url => cssPromises.delete(url));
+    scriptPromises.clear();
+    cssPromises.clear();
+    batch.registeredApis.length = 0;
+    batch.scripts.length = 0;
+    batch.styles.length = 0;
+    if (root.__stage1Modules && Object.keys(root.__stage1Modules).length === 0) delete root.__stage1Modules;
+    state.status = 'disposed';
+    if (root.loader === state) delete root.loader;
+    if (cleanupErrors.length) console.error(LOG_PREFIX, `[dispose] ${cleanupErrors.join(' | ')}`);
+    return cleanupErrors.length === 0;
+  }
 
+  async function rollback(originalError) {
+    debugEvent('failure', 'rollback-start', originalError?.message || originalError, 'error');
+    await cleanup('rollback');
     const error = originalError instanceof Error ? originalError : new Error(String(originalError));
-    if (cleanupErrors.length > 0) error.message += `; [批次清理异常] ${cleanupErrors.join(' | ')}`;
     debugEvent('failure', 'rollback-complete', error.message, 'error');
     return error;
   }
@@ -342,9 +452,11 @@
     version: VERSION,
     publicBaseUrl: PUBLIC_BASE_URL,
     baseUrl,
+    instanceId,
     status: 'loading',
     error: '',
     ready: null,
+    dispose: cleanup,
   };
   root.loader = state;
 
@@ -354,6 +466,7 @@
       // 顺序加载，确保失败后没有仍在后台完成并晚到注入的同批资源。
       for (const path of cssResources) await loadCss(path);
       for (const resource of scriptResources) await loadScript(resource);
+      if (batch.disposed) return state;
       state.status = 'ready';
       debugEvent(
         'lifecycle',
@@ -364,6 +477,7 @@
       console.info(LOG_PREFIX, '契约、调试设施、诊断工具栏与四个阶段1模块已按顺序加载并通过注册验证；注册不代表调试面板或业务功能当前已挂载。');
       return state;
     } catch (error) {
+      if (batch.disposed) return state;
       const diagnosed = await rollback(error);
       state.status = 'failed';
       state.error = diagnosed.message;

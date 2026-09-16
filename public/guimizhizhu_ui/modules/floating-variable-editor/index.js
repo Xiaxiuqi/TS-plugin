@@ -12,7 +12,8 @@
       typeof existing.status !== 'function' ||
       typeof existing.isReady !== 'function' ||
       typeof existing.mount !== 'function' ||
-      typeof existing.unmount !== 'function'
+      typeof existing.unmount !== 'function' ||
+      typeof existing.dispose !== 'function'
     ) {
       throw new Error(`[${KEY}] 拒绝复用形状不匹配的模块API`);
     }
@@ -47,6 +48,11 @@
     unmount() {
       debugEvent('refusal', 'unmount-not-ready', '模块未挂载，无可卸载内容', 'warn');
       return false;
+    },
+    dispose() {
+      try { contract.releaseGlobal(KEY, api); } catch { /* idempotent cleanup */ }
+      if (modules[KEY] === api) delete modules[KEY];
+      return true;
     },
   });
 
