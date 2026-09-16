@@ -1,0 +1,6 @@
+/* 阶段1仅预留模块根选择器 token；当前模块不创建或渲染 DOM。 */
+.crypt-lord-floating-variable-editor {
+  --crypt-lord-vared-layer: var(--crypt-lord-layer-overlay);
+  --crypt-lord-vared-panel: var(--crypt-lord-color-panel);
+  --crypt-lord-vared-accent: var(--crypt-lord-color-accent);
+}

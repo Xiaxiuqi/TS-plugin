@@ -1,0 +1,12 @@
+/* 所有未来模块根节点必须使用 .crypt-lord-* 独立类名；禁止裸标签、宿主类名和全局重置。 */
+.crypt-lord-root {
+  --crypt-lord-layer-overlay: 2147483000;
+  --crypt-lord-color-text: #d9d5cc;
+  --crypt-lord-color-muted: #9f998f;
+  --crypt-lord-color-panel: rgba(28, 29, 33, 0.96);
+  --crypt-lord-color-accent: #b49768;
+  --crypt-lord-radius: 10px;
+  --crypt-lord-space-1: 4px;
+  --crypt-lord-space-2: 8px;
+  --crypt-lord-space-3: 12px;
+}

@@ -1,0 +1,6 @@
+/* 阶段1仅预留模块根选择器 token；当前模块不注册 hook，也不接触 DOM。 */
+.crypt-lord-judgment-beautify {
+  --crypt-lord-judge-text: var(--crypt-lord-color-text);
+  --crypt-lord-judge-muted: var(--crypt-lord-color-muted);
+  --crypt-lord-judge-accent: var(--crypt-lord-color-accent);
+}
