@@ -251,8 +251,8 @@
       modules: moduleStatuses(),
       limitations: Object.freeze([
         '未注册 cryptLord.nativeFloorBridge，原生楼层业务链路不可用',
-        '未注册 AI 消息/MVU 生命周期监听器，不会解析或应用消息正文变量',
-        '浮动变量编辑器尚未迁移',
+        '已挂载只读助手消息体状态卡（cryptLord.floatingVariableEditor）；仅渲染 stat_data，不解析、不应用、不写入消息变量指令',
+        '浮动变量编辑器的编辑与变量写入能力尚未迁移',
         '判定美化尚未迁移',
       ]),
       events: Object.freeze(events.map(item => Object.freeze({ ...item }))),

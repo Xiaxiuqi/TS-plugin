@@ -4,3 +4,44 @@
   --crypt-lord-vared-panel: var(--crypt-lord-color-panel);
   --crypt-lord-vared-accent: var(--crypt-lord-color-accent);
 }
+
+/* 阶段1只读状态卡：紧贴 .mes_text；不接管样式 token，仅追加与模块类绑定的可读外观。 */
+.crypt-lord-floating-variable-editor-card {
+  margin: 6px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid rgba(180, 151, 104, 0.45);
+  border-radius: 6px;
+  background: rgba(28, 29, 33, 0.55);
+  color: var(--crypt-lord-color-text, #d9d5cc);
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.crypt-lord-floating-variable-editor-card__title {
+  font-weight: 600;
+  color: var(--crypt-lord-color-accent, #b49768);
+  margin-bottom: 4px;
+}
+
+.crypt-lord-floating-variable-editor-card__list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 6px;
+}
+
+.crypt-lord-floating-variable-editor-card__key {
+  color: #8b8478;
+  padding-right: 4px;
+}
+
+.crypt-lord-floating-variable-editor-card__value {
+  margin: 0;
+}
+
+.crypt-lord-floating-variable-editor-card__empty {
+  grid-column: 1 / -1;
+  color: #8b8478;
+  font-style: italic;
+}
