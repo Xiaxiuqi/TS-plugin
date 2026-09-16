@@ -52,6 +52,18 @@
     }
   }
 
+  function emitConsole(level, formattedText, payload) {
+    try {
+      const target = typeof console !== 'undefined' ? console : null;
+      const method = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'info';
+      if (typeof target?.[method] === 'function') {
+        target[method](`[cryptLord.debug] ${formattedText}`, payload);
+      }
+    } catch {
+      // Diagnostics must never break the host when its console implementation throws.
+    }
+  }
+
   function isFailure(entry) {
     return ['error', 'failure', 'failed', 'refusal', 'timeout', 'cancel'].some(token =>
       `${entry.category} ${entry.action} ${entry.level}`.toLowerCase().includes(token),
@@ -154,7 +166,10 @@
   function mount(requestedDocument) {
     try {
       const targetDocument = requestedDocument?.createElement ? requestedDocument : (typeof document !== 'undefined' ? document : null);
-      if (typeof targetDocument?.createElement !== 'function' || (!targetDocument.body && !targetDocument.documentElement)) return false;
+      if (typeof targetDocument?.createElement !== 'function' || (!targetDocument.body && !targetDocument.documentElement)) {
+        emitConsole('error', 'panel mount failed: usable document root is unavailable', { reason: 'usable document root is unavailable' });
+        return false;
+      }
       if (panelElement?.isConnected && panelElement.ownerDocument === targetDocument) {
         renderPanel();
         return true;
@@ -187,7 +202,8 @@
       panelElement = panel;
       renderPanel();
       return true;
-    } catch {
+    } catch (error) {
+      emitConsole('error', `panel mount failed: ${safeText(error)}`, { reason: safeText(error) });
       return false;
     }
   }
@@ -233,14 +249,8 @@
 
   function notify(entry) {
     if (!enabled) return;
-    const message = `${entry.module} · ${entry.action}${entry.details ? `: ${entry.details}` : ''}`;
-    try {
-      const toastr = window.toastr;
-      const method = entry.level === 'error' ? 'error' : entry.level === 'warn' ? 'warning' : 'info';
-      if (toastr && typeof toastr[method] === 'function') toastr[method](message, 'Crypt Lord');
-    } catch {
-      // The panel remains the safe visible fallback.
-    }
+    const formattedText = `${entry.module} · ${entry.action}${entry.details ? `: ${entry.details}` : ''}`;
+    emitConsole(entry.level, formattedText, entry);
     mount();
   }
 

@@ -31,6 +31,17 @@
     return error instanceof Error ? error.message : String(error || '未知错误');
   }
 
+  function directConsole(level, action, details = '') {
+    try {
+      const method = level === 'error' ? 'error' : 'info';
+      if (typeof console?.[method] === 'function') {
+        console[method](`[cryptLord.debugToolbar] button=${BUTTON_NAME} action=${action}${details ? ` reason=${details}` : ''}`);
+      }
+    } catch {
+      // Host consoles are not guaranteed to be callable.
+    }
+  }
+
   function debugEvent(action, details, level = 'info') {
     try { root.debug?.event?.('lifecycle', KEY, action, details, level); } catch { /* diagnostics are optional */ }
   }
@@ -53,6 +64,7 @@
       return true;
     } catch (error) {
       lastError = `诊断面板打开失败：${safeMessage(error)}`;
+      directConsole('error', 'open-panel-failure', lastError);
       debugEvent('button-open-failure', lastError, 'error');
       return false;
     }
@@ -77,6 +89,7 @@
     });
     buttons.forEach(button => {
       const handler = event => {
+        directConsole('info', 'local-fallback-click');
         if (!ownsCurrentModule() || button.dataset?.cryptLordDebugBinding !== bindingOwner) return;
         try {
           event?.preventDefault?.();
@@ -111,11 +124,14 @@
       registered = false;
       registrationMethod = null;
       lastError = '原生助手脚本按钮注册 API 不可用';
+      directConsole('error', 'native-registration-failure', lastError);
+      debugEvent('button-registration-failure', lastError, 'error');
       return false;
     } catch (error) {
       registered = false;
       registrationMethod = null;
       lastError = `原生诊断按钮注册失败：${safeMessage(error)}`;
+      directConsole('error', 'native-registration-failure', lastError);
       debugEvent('button-registration-failure', lastError, 'error');
       return false;
     }
@@ -127,6 +143,8 @@
       if (typeof window.getButtonEvent === 'function') nextEventName = window.getButtonEvent(BUTTON_NAME) || null;
     } catch (error) {
       lastError = `读取原生按钮事件失败：${safeMessage(error)}`;
+      directConsole('error', 'native-event-binding-failure', lastError);
+      debugEvent('button-event-binding-failure', lastError, 'error');
     }
 
     if (nextEventName && typeof window.eventOn === 'function') {
@@ -137,6 +155,7 @@
       }
       const ownedApi = api;
       const handler = () => {
+        directConsole('info', 'native-event-click');
         if (disposed || modules[KEY] !== ownedApi || api !== ownedApi || eventHandler !== handler) return false;
         return openPanel();
       };
@@ -147,6 +166,7 @@
         eventHandler = null;
         bindingMethod = null;
         lastError = `绑定原生按钮事件失败：${safeMessage(error)}`;
+        directConsole('error', 'native-event-binding-failure', lastError);
         debugEvent('button-event-binding-failure', lastError, 'error');
         return bindLocalButtons();
       }
@@ -170,7 +190,11 @@
       lastError = '';
       return true;
     }
-    if (!bindingReady && !lastError) lastError = '原生按钮事件 API 不可用，且当前脚本文档中尚未找到可绑定按钮';
+    if (!bindingReady && !lastError) {
+      lastError = '原生按钮事件 API 不可用，且当前脚本文档中尚未找到可绑定按钮';
+      directConsole('error', 'native-event-binding-failure', lastError);
+      debugEvent('button-event-binding-failure', lastError, 'error');
+    }
     return false;
   }
 
