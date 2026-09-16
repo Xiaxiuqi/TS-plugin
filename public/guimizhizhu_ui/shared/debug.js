@@ -250,12 +250,31 @@
       enabled,
       loader: root.loader ? { status: root.loader.status, error: root.loader.error || '' } : null,
       modules: moduleStatuses(),
+      mountEvidence: Object.freeze(moduleStatuses().flatMap(entry => {
+        const location = entry.status?.location;
+        if (!location) return [];
+        const reasons = entry.status?.visibilityReasons || [];
+        return [{
+          key: entry.key,
+          mounted: entry.mounted,
+          ready: entry.status?.ready !== false,
+          scriptWindow: location.scriptWindow,
+          button: location.button,
+          overlay: location.overlay,
+          visibilityReasons: reasons,
+        }];
+      })),
       limitations: Object.freeze([
         '未注册 cryptLord.nativeFloorBridge，原生楼层业务链路不可用',
         '已挂载只读助手消息体状态卡（cryptLord.floatingVariableEditor）；仅渲染 stat_data，不解析、不应用、不写入消息变量指令',
         '浮动变量编辑器的编辑与变量写入能力尚未迁移',
         '判定美化尚未迁移',
         '⚔️ 战斗前端现为旧 BattleUI 的可见入口与页面容器；战斗引擎、判定和数据写入尚未迁移',
+        ...moduleStatuses().flatMap(entry => {
+          const reasons = entry.status?.visibilityReasons || [];
+          if (!entry.mounted || reasons.length === 0) return [];
+          return [`挂载证据：${entry.key} 报告以下不可见原因 — ${reasons.join(' | ')}`];
+        }),
       ]),
       events: Object.freeze(events.map(item => Object.freeze({ ...item }))),
     });

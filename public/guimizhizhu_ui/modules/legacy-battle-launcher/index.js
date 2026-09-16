@@ -134,6 +134,100 @@
     debugEvent('lifecycle', 'battle-frontend-mounted', '已自动挂载 ⚔️ 浮动入口与战斗前端容器');
     return true;
   }
+function safeWindowMetric(win, property) {
+    try { return Number(win?.[property]) || 0; } catch { return 0; }
+  }
+
+  function safeRect(node) {
+    if (!node || typeof node.getBoundingClientRect !== 'function') return null;
+    try {
+      const r = node.getBoundingClientRect();
+      return {
+        x: Number(r?.x) || 0,
+        y: Number(r?.y) || 0,
+        width: Number(r?.width) || 0,
+        height: Number(r?.height) || 0,
+        top: Number(r?.top) || 0,
+        right: Number(r?.right) || 0,
+        bottom: Number(r?.bottom) || 0,
+        left: Number(r?.left) || 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function describeLocation(node) {
+    if (!node) return Object.freeze({ mounted: false, reason: '节点尚未创建' });
+    if (!node.isConnected) return Object.freeze({ mounted: false, reason: '节点已脱离 DOM 树（可能被宿主清理或 dispose）' });
+    const doc = node.ownerDocument || (typeof document !== 'undefined' ? document : null);
+    const win = (doc && doc.defaultView) || window;
+    let topURL = '';
+    let parentURL = '';
+    let isInIframe = false;
+    let isSameAsTop = false;
+    try { topURL = String(win.top?.document?.URL || ''); } catch { /* cross-origin or detached */ }
+    try { parentURL = String(win.parent?.document?.URL || ''); } catch { /* cross-origin or detached */ }
+    try { isInIframe = !!(win.top && win.self && win.top !== win.self); } catch { isInIframe = false; }
+    try { isSameAsTop = !!doc && win.top?.document === doc; } catch { isSameAsTop = false; }
+    const rect = safeRect(node);
+    const viewport = { width: safeWindowMetric(win, 'innerWidth'), height: safeWindowMetric(win, 'innerHeight') };
+    const reasons = [];
+    if (isInIframe && !isSameAsTop) {
+      const selfHref = (() => { try { return String(win.self?.location?.href || ''); } catch { return ''; } })();
+      reasons.push(`脚本运行在 iframe 容器（self=${selfHref || '不可访问'}），附加节点到非顶层 document（${doc?.URL || '?'}）；顶层可见页面 URL=${topURL || '不可访问（同源受限）'}；用户看到的页面与挂载点不是同一个 document`);
+    }
+    if (!doc?.body) reasons.push('ownerDocument 缺少 body 元素');
+    if (rect && (rect.width === 0 || rect.height === 0)) {
+      reasons.push(`节点矩形为零（width=${rect.width}, height=${rect.height}），可能被 display:none / visibility:hidden / 脱离可见 body`);
+    }
+    if (rect && viewport.width > 0 && viewport.height > 0) {
+      if (rect.right < 0 || rect.bottom < 0) reasons.push(`节点在视口左侧/上侧之外（rect=${JSON.stringify(rect)}）`);
+      else if (rect.left > viewport.width || rect.top > viewport.height) reasons.push(`节点在视口右侧/下侧之外（rect=${JSON.stringify(rect)}）`);
+    }
+    return Object.freeze({
+      mounted: true,
+      selector: node.id ? `#${node.id}` : (node.tagName ? node.tagName.toLowerCase() : 'node'),
+      documentURL: String(doc?.URL || ''),
+      documentTitle: String(doc?.title || ''),
+      documentReadyState: String(doc?.readyState || ''),
+      isInIframe,
+      isSameAsTopDocument: isSameAsTop,
+      topDocumentURL: topURL,
+      parentDocumentURL: parentURL,
+      rect,
+      viewport,
+      visibilityReasons: Object.freeze(reasons),
+    });
+  }
+
+  function locate() {
+    return Object.freeze({
+      button: describeLocation(button),
+      overlay: describeLocation(overlay),
+      scriptWindow: Object.freeze({
+        selfLocation: String((() => { try { return window.location?.href || ''; } catch { return ''; } })()),
+        topLocation: String((() => { try { return window.top?.location?.href || ''; } catch { return ''; } })()),
+        isInIframe: (() => { try { return !!(window.top && window.self && window.top !== window.self); } catch { return false; } })(),
+      }),
+    });
+  }
+
+  function aggregateVisibilityReasons() {
+    try {
+      const evidence = locate();
+      const reasons = [];
+      ['button', 'overlay'].forEach(role => {
+        const entry = evidence[role];
+        if (entry && entry.visibilityReasons && entry.visibilityReasons.length) {
+          entry.visibilityReasons.forEach(reason => reasons.push(`[${role}] ${reason}`));
+        }
+      });
+      return Object.freeze(reasons);
+    } catch {
+      return Object.freeze([]);
+    }
+  }
 
 
   function unmount() {
@@ -167,6 +261,8 @@
         phase: 'legacy-battle-ui-shell',
         ready: !disposed,
         mounted: isMounted(),
+        location: locate(),
+        visibilityReasons: aggregateVisibilityReasons(),
         open: !!(overlay && !overlay.hidden),
         buttonId: BUTTON_ID,
         overlayId: OVERLAY_ID,
@@ -176,6 +272,7 @@
     open,
     close,
     unmount,
+    locate,
     dispose,
   });
 
