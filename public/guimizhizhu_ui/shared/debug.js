@@ -303,6 +303,13 @@
   function mount(requestedDocument) {
     let targetDocument = null;
     try {
+      // Once the host manager is registered it exclusively owns visible UI.  Debug
+      // events and preference changes must not resurrect this compatibility panel.
+      const manager = root.debugManager;
+      if (manager && ['status', 'open', 'close', 'refresh', 'dispose'].every(method => typeof manager[method] === 'function')) {
+        unmount();
+        return false;
+      }
       targetDocument = requestedDocument?.createElement ? requestedDocument : (typeof document !== 'undefined' ? document : null);
       if (typeof targetDocument?.createElement !== 'function' || (!targetDocument.body && !targetDocument.documentElement)) {
         emitPanelLocation(targetDocument, panelElement, false, 'usable document root is unavailable');

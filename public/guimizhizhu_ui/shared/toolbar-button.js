@@ -42,18 +42,25 @@
     }
   }
 
-  function panelOpenResult(debug, mounted) {
-    const selector = '[data-cryptLordDiagnostic]';
+  function panelOpenResult(debug, opened, manager, fallback) {
+    const managerSelector = '[data-crypt-lord-manager-root]';
+    const selector = fallback ? '[data-cryptLordDiagnostic]' : managerSelector;
     let panelCount = 0;
     let documentURL = '';
     let enabled;
-    try { panelCount = Number(document?.querySelectorAll?.(selector)?.length) || 0; } catch { panelCount = 0; }
-    try { documentURL = String(document?.URL || ''); } catch { documentURL = ''; }
+    let managerStatus = null;
+    try { managerStatus = manager?.status?.() || null; } catch { managerStatus = null; }
+    try { panelCount = Number(!fallback && managerStatus?.host?.url ? 1 : document?.querySelectorAll?.(selector)?.length) || 0; } catch { panelCount = 0; }
+    try { documentURL = String(managerStatus?.host?.url || document?.URL || ''); } catch { documentURL = ''; }
     try { enabled = debug?.isEnabled?.(); } catch { enabled = undefined; }
     try {
       if (typeof console?.info === 'function') {
         console.info('[cryptLord.debugToolbar] action=panel-open-result', {
-          mounted: mounted === true,
+          mounted: opened === true,
+          opened: opened === true,
+          managerAvailable: !!manager,
+          manager: managerStatus,
+          fallback: fallback === true,
           enabled,
           selector,
           panelCount,
@@ -76,15 +83,27 @@
   function openPanel() {
     if (!ownsCurrentModule()) return false;
     let debug = null;
-    let mounted = false;
+    let manager = null;
+    let opened = false;
+    let fallback = false;
     try {
       debug = root.debug;
-      if (!debug?.panel || typeof debug.panel.mount !== 'function' || typeof debug.setEnabled !== 'function') {
+      if (typeof debug?.setEnabled !== 'function') {
         throw new Error('cryptLord.debug API 当前不可用');
       }
-      mounted = debug.panel.mount(document) === true;
       debug.setEnabled(true);
-      if (!mounted) throw new Error('调试面板无法挂载到当前脚本文档');
+      manager = root.debugManager;
+      if (manager && ['open', 'status'].every(method => typeof manager[method] === 'function')) {
+        opened = manager.open() === true;
+        // The legacy floating panel is a compatibility fallback, never the manager UI.
+        debug?.panel?.unmount?.();
+        if (!opened) throw new Error('调试管理器无法打开可见宿主界面');
+      } else {
+        fallback = true;
+        opened = debug?.panel?.mount?.(document) === true;
+        if (!opened) throw new Error('兼容调试面板无法挂载到当前脚本文档');
+        directConsole('info', 'open-panel-fallback', 'debugManager unavailable; local compatibility panel used');
+      }
       lastError = '';
       return true;
     } catch (error) {
@@ -93,7 +112,7 @@
       debugEvent('button-open-failure', lastError, 'error');
       return false;
     } finally {
-      panelOpenResult(debug, mounted);
+      panelOpenResult(debug, opened, manager, fallback);
     }
   }
 
@@ -242,7 +261,8 @@
   function dispose() {
     if (disposed) return true;
     disposed = true;
-    try { root.debug?.panel?.unmount?.(); } catch { /* debug disposal remains independently safe */ }
+    try { root.debugManager?.dispose?.(); } catch { /* manager disposal remains independently safe */ }
+    try { root.debug?.panel?.unmount?.(); } catch { /* compatibility panel disposal remains independently safe */ }
     removeLocalBindings();
     registered = false;
     registrationMethod = null;

@@ -11,35 +11,6 @@
   if (root.loader?.status === 'loading' || root.loader?.status === 'ready') return;
   const instanceId = root.__stage1Index?.instanceId || `loader_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-  function scoreHostWindow(candidate) {
-    try {
-      const doc = candidate?.document;
-      if (!doc?.documentElement) return -1;
-      let score = doc.body && doc.head ? 2 : 0;
-      if (candidate.SillyTavern) score += 8;
-      if (candidate.TavernHelper) score += 6;
-      if (doc.querySelector?.('#send_textarea')) score += 12;
-      if (doc.querySelector?.('#extensions_settings')) score += 3;
-      return score;
-    } catch {
-      return -1;
-    }
-  }
-  function getHostDocument() {
-    const candidates = [];
-    for (const candidate of [window, window.parent, window.top]) {
-      if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
-    }
-    try {
-      return candidates.reduce(
-        (best, candidate) => scoreHostWindow(candidate) > scoreHostWindow(best) ? candidate : best,
-        window,
-      ).document;
-    } catch {
-      return document;
-    }
-  }
-
   function getDebug() {
     const debug = root.debug;
     return debug && typeof debug.event === 'function' ? debug : null;
@@ -78,6 +49,10 @@
     'modules/floating-variable-editor/style.css',
     'modules/judgment-beautify/style.css',
   ];
+  const managerStyleResource = {
+    type: 'css',
+    path: 'modules/manager-ui/style.css',
+  };
   const scriptResources = [
     {
       path: 'shared/contract.js',
@@ -98,6 +73,12 @@
         validateMethods('cryptLord.debug', api, ['isEnabled', 'setEnabled', 'event', 'status', 'snapshot', 'dispose']);
         return validateMethods('cryptLord.debug.panel', api.panel, ['mount', 'unmount', 'toggle', 'copy', 'clear']);
       },
+    },
+    managerStyleResource,
+    {
+      path: 'modules/manager-ui/index.js',
+      key: 'cryptLord.debugManager',
+      validate: api => validateMethods('cryptLord.debugManager', api, ['status', 'open', 'close', 'refresh', 'dispose']),
     },
     {
       path: 'shared/toolbar-button.js',
@@ -156,6 +137,7 @@
   function getResourceApi(resource) {
     if (resource.key === 'contract') return root.contract;
     if (resource.key === 'cryptLord.debug') return root.debug;
+    if (resource.key === 'cryptLord.debugManager') return root.debugManager;
     return root.__stage1Modules?.[resource.key];
   }
 
@@ -220,7 +202,10 @@
         })
         .then(cssText => {
           if (batch.disposed) throw disposalError();
-          const documents = [document, getHostDocument()].filter((doc, index, list) => doc && list.indexOf(doc) === index);
+          // The manager moves this exact loader-owned node to the selected host.  Do
+          // not pre-inject a second copy there: that leaves duplicate host CSS.
+          const documents = [document]
+            .filter((doc, index, list) => doc && list.indexOf(doc) === index);
           const injected = documents.map(targetDocument => {
             const style = targetDocument.createElement('style');
             style.dataset.cryptLordCss = url;
@@ -404,6 +389,7 @@
         if (contract?.releaseGlobal) contract.releaseGlobal(key, api);
       });
       capture(() => { if (key === 'cryptLord.debug' && root.debug === api) delete root.debug; });
+      capture(() => { if (key === 'cryptLord.debugManager' && root.debugManager === api) delete root.debugManager; });
       capture(() => {
         if (root.__stage1Modules?.[key] === api) delete root.__stage1Modules[key];
       });
@@ -416,7 +402,7 @@
       `[data-crypt-lord-script][data-crypt-lord-instance="${instanceId}"]`,
       `[data-crypt-lord-css][data-crypt-lord-instance="${instanceId}"]`,
     ].join(',');
-    const documents = [document, getHostDocument()].filter((doc, index, list) => doc && list.indexOf(doc) === index);
+    const documents = [document];
     documents.forEach(targetDocument => capture(() => {
       Array.from(targetDocument.querySelectorAll?.(ownedSelector) || []).forEach(node => node.remove?.());
     }));
@@ -465,13 +451,16 @@
     try {
       // 顺序加载，确保失败后没有仍在后台完成并晚到注入的同批资源。
       for (const path of cssResources) await loadCss(path);
-      for (const resource of scriptResources) await loadScript(resource);
+      for (const resource of scriptResources) {
+        if (resource.type === 'css') await loadCss(resource.path);
+        else await loadScript(resource);
+      }
       if (batch.disposed) return state;
       state.status = 'ready';
       debugEvent(
         'lifecycle',
         'resources-ready',
-        '诊断工具栏与阶段1资源已注册；不等于调试面板或业务功能当前已挂载。当前限制：无 nativeFloorBridge、无消息/MVU监听、浮动编辑器与判定美化未迁移',
+        '诊断工具栏与阶段1资源已注册；不等于调试面板或业务功能当前已挂载。当前限制：无 nativeFloorBridge、无消息生命周期监听、浮动编辑器与判定美化未迁移',
         'warn',
       );
       console.info(LOG_PREFIX, '契约、调试设施、诊断工具栏与四个阶段1模块已按顺序加载并通过注册验证；注册不代表调试面板或业务功能当前已挂载。');
