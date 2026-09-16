@@ -34,12 +34,15 @@
   const events = [];
   const dedupe = new Map();
   const budgets = new Map();
+  const PANEL_SELECTOR = '[data-cryptLordDiagnostic]';
+  const PANEL_LOCATION_DEDUPE_MS = 250;
   let panelElement = null;
   let panelSummaryElement = null;
   let panelLogElement = null;
   let panelCollapsed = false;
   let globalErrorHandler = null;
   let globalRejectionHandler = null;
+  let lastPanelLocationAt = 0;
 
   function safeText(value) {
     if (value instanceof Error) return `${value.name}: ${value.message}`;
@@ -61,6 +64,140 @@
       }
     } catch {
       // Diagnostics must never break the host when its console implementation throws.
+    }
+  }
+
+  function safeString(value) {
+    try {
+      return value === null || value === undefined ? '' : String(value).slice(0, 500);
+    } catch {
+      return '';
+    }
+  }
+
+  function safeRead(read, fallback = '') {
+    try {
+      const value = read();
+      return value === undefined || value === null ? fallback : value;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function compactElement(node) {
+    if (!node) return '';
+    try {
+      const tag = safeString(node.tagName || node.nodeName || 'node').toLowerCase() || 'node';
+      const id = safeString(node.id).slice(0, 80);
+      const classes = safeString(node.className).trim().split(/\s+/).filter(Boolean).slice(0, 4).map(name => name.slice(0, 60));
+      return `${tag}${id ? `#${id}` : ''}${classes.length ? `.${classes.join('.')}` : ''}`.slice(0, 240);
+    } catch {
+      return '';
+    }
+  }
+
+  function styleValues(style, properties) {
+    const output = {};
+    properties.forEach(property => {
+      output[property] = safeString(safeRead(() => style?.[property], ''));
+    });
+    return output;
+  }
+
+  function panelLocationPayload(targetDocument, panel, mountResult, reason = '') {
+    const payload = {
+      mountResult: mountResult === true,
+      selector: PANEL_SELECTOR,
+      documentURL: safeString(safeRead(() => targetDocument?.URL, '')),
+      documentTitle: safeString(safeRead(() => targetDocument?.title, '')),
+      documentReadyState: safeString(safeRead(() => targetDocument?.readyState, '')),
+      localFrame: false,
+      bodyAvailable: !!safeRead(() => targetDocument?.body, null),
+      rootAvailable: !!safeRead(() => targetDocument?.documentElement, null),
+      selectorCount: 0,
+      panelIsConnected: !!safeRead(() => panel?.isConnected, false),
+      panelParent: compactElement(safeRead(() => panel?.parentNode, null)),
+      ownerDocumentURL: safeString(safeRead(() => panel?.ownerDocument?.URL, '')),
+      computedStyle: {},
+      rect: null,
+      viewport: { width: 0, height: 0 },
+      ancestorStylePath: [],
+    };
+    if (mountResult !== true) payload.reason = safeString(reason || 'mount returned false');
+
+    try {
+      payload.selectorCount = Number(targetDocument?.querySelectorAll?.(PANEL_SELECTOR)?.length) || 0;
+    } catch {
+      payload.selectorCount = 0;
+    }
+
+    const ownerWindow = safeRead(() => panel?.ownerDocument?.defaultView || targetDocument?.defaultView, null);
+    payload.localFrame = ownerWindow === window;
+    payload.viewport = {
+      width: Number(safeRead(() => ownerWindow?.innerWidth, 0)) || 0,
+      height: Number(safeRead(() => ownerWindow?.innerHeight, 0)) || 0,
+    };
+
+    const getStyle = safeRead(() => ownerWindow?.getComputedStyle, null);
+    const panelStyleProperties = [
+      'display', 'visibility', 'opacity', 'zIndex', 'position', 'top', 'right', 'bottom', 'left',
+      'width', 'height', 'transform', 'filter', 'perspective', 'willChange', 'contain', 'overflow', 'pointerEvents',
+    ];
+    if (panel && typeof getStyle === 'function') {
+      try {
+        payload.computedStyle = styleValues(getStyle.call(ownerWindow, panel), panelStyleProperties);
+      } catch {
+        payload.computedStyle = {};
+      }
+    }
+
+    if (panel && typeof safeRead(() => panel.getBoundingClientRect, null) === 'function') {
+      try {
+        const rect = panel.getBoundingClientRect();
+        payload.rect = {
+          x: Number(rect?.x) || 0,
+          y: Number(rect?.y) || 0,
+          width: Number(rect?.width) || 0,
+          height: Number(rect?.height) || 0,
+          top: Number(rect?.top) || 0,
+          right: Number(rect?.right) || 0,
+          bottom: Number(rect?.bottom) || 0,
+          left: Number(rect?.left) || 0,
+        };
+      } catch {
+        payload.rect = null;
+      }
+    }
+
+    const ancestorProperties = ['position', 'zIndex', 'display', 'visibility', 'opacity', 'transform', 'filter', 'perspective', 'contain', 'overflow', 'overflowX', 'overflowY', 'clip', 'clipPath', 'isolation'];
+    let ancestor = safeRead(() => panel?.parentElement || panel?.parentNode, null);
+    for (let index = 0; ancestor && index < 5; index += 1) {
+      const entry = { element: compactElement(ancestor), style: {} };
+      if (typeof getStyle === 'function') {
+        try {
+          entry.style = styleValues(getStyle.call(ownerWindow, ancestor), ancestorProperties);
+        } catch {
+          entry.style = {};
+        }
+      }
+      payload.ancestorStylePath.push(entry);
+      ancestor = safeRead(() => ancestor.parentElement || ancestor.parentNode, null);
+    }
+    return payload;
+  }
+
+  function emitPanelLocation(targetDocument, panel, mountResult, reason = '') {
+    try {
+      const now = Date.now();
+      if (mountResult === true && now - lastPanelLocationAt < PANEL_LOCATION_DEDUPE_MS) return;
+      if (mountResult === true) lastPanelLocationAt = now;
+      emitConsole(
+        mountResult === true ? 'info' : 'error',
+        mountResult === true ? 'panel-located' : 'panel-mount-failure',
+        panelLocationPayload(targetDocument, panel, mountResult, reason),
+      );
+    } catch {
+      // Location diagnostics are strictly best-effort and cannot affect mounting.
     }
   }
 
@@ -164,20 +301,23 @@
   }
 
   function mount(requestedDocument) {
+    let targetDocument = null;
     try {
-      const targetDocument = requestedDocument?.createElement ? requestedDocument : (typeof document !== 'undefined' ? document : null);
+      targetDocument = requestedDocument?.createElement ? requestedDocument : (typeof document !== 'undefined' ? document : null);
       if (typeof targetDocument?.createElement !== 'function' || (!targetDocument.body && !targetDocument.documentElement)) {
-        emitConsole('error', 'panel mount failed: usable document root is unavailable', { reason: 'usable document root is unavailable' });
+        emitPanelLocation(targetDocument, panelElement, false, 'usable document root is unavailable');
         return false;
       }
       if (panelElement?.isConnected && panelElement.ownerDocument === targetDocument) {
         renderPanel();
+        emitPanelLocation(targetDocument, panelElement, true);
         return true;
       }
       if (panelElement?.isConnected) panelElement.remove();
       const panel = targetDocument.createElement('section');
       panel.dataset.cryptLordInstance = root.loader?.instanceId || '';
       panel.dataset.cryptLordDiagnostic = '';
+      panel.setAttribute('data-cryptLordDiagnostic', '');
       panel.setAttribute('aria-label', 'Crypt Lord 调试面板');
       panel.setAttribute('style', 'position:fixed;right:12px;bottom:12px;z-index:2147483000;box-sizing:border-box;width:min(520px,calc(100vw - 24px));max-height:min(70vh,680px);overflow:auto;padding:10px;border:1px solid rgba(180,151,104,.75);border-radius:10px;color:#d9d5cc;background:rgba(28,29,33,.96);box-shadow:0 8px 28px rgba(0,0,0,.42);font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;pointer-events:auto');
       const header = append(panel, 'div', undefined, 'display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:-10px;padding:8px 0;background:rgba(28,29,33,.96)');
@@ -201,9 +341,10 @@
       (targetDocument.body || targetDocument.documentElement).appendChild(panel);
       panelElement = panel;
       renderPanel();
+      emitPanelLocation(targetDocument, panelElement, true);
       return true;
     } catch (error) {
-      emitConsole('error', `panel mount failed: ${safeText(error)}`, { reason: safeText(error) });
+      emitPanelLocation(targetDocument, panelElement, false, safeText(error));
       return false;
     }
   }

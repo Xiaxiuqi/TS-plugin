@@ -42,6 +42,29 @@
     }
   }
 
+  function panelOpenResult(debug, mounted) {
+    const selector = '[data-cryptLordDiagnostic]';
+    let panelCount = 0;
+    let documentURL = '';
+    let enabled;
+    try { panelCount = Number(document?.querySelectorAll?.(selector)?.length) || 0; } catch { panelCount = 0; }
+    try { documentURL = String(document?.URL || ''); } catch { documentURL = ''; }
+    try { enabled = debug?.isEnabled?.(); } catch { enabled = undefined; }
+    try {
+      if (typeof console?.info === 'function') {
+        console.info('[cryptLord.debugToolbar] action=panel-open-result', {
+          mounted: mounted === true,
+          enabled,
+          selector,
+          panelCount,
+          documentURL,
+        });
+      }
+    } catch {
+      // Result instrumentation must not affect button behavior.
+    }
+  }
+
   function debugEvent(action, details, level = 'info') {
     try { root.debug?.event?.('lifecycle', KEY, action, details, level); } catch { /* diagnostics are optional */ }
   }
@@ -52,14 +75,16 @@
 
   function openPanel() {
     if (!ownsCurrentModule()) return false;
+    let debug = null;
+    let mounted = false;
     try {
-      const debug = root.debug;
+      debug = root.debug;
       if (!debug?.panel || typeof debug.panel.mount !== 'function' || typeof debug.setEnabled !== 'function') {
         throw new Error('cryptLord.debug API 当前不可用');
       }
-      const mounted = debug.panel.mount(document);
+      mounted = debug.panel.mount(document) === true;
       debug.setEnabled(true);
-      if (mounted !== true) throw new Error('调试面板无法挂载到当前脚本文档');
+      if (!mounted) throw new Error('调试面板无法挂载到当前脚本文档');
       lastError = '';
       return true;
     } catch (error) {
@@ -67,6 +92,8 @@
       directConsole('error', 'open-panel-failure', lastError);
       debugEvent('button-open-failure', lastError, 'error');
       return false;
+    } finally {
+      panelOpenResult(debug, mounted);
     }
   }
 
