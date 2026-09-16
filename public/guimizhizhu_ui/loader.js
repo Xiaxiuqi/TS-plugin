@@ -10,6 +10,19 @@
   // 同一轮加载只允许一个执行者；失败后重新执行 loader.js 会创建全新批次与 ready Promise。
   if (root.loader?.status === 'loading' || root.loader?.status === 'ready') return;
 
+  function getDebug() {
+    const debug = root.debug;
+    return debug && typeof debug.event === 'function' ? debug : null;
+  }
+
+  function debugEvent(category, action, details, level = 'info') {
+    try {
+      getDebug()?.event(category, 'cryptLord.loader', action, details, level);
+    } catch {
+      // Diagnostics must never affect resource loading.
+    }
+  }
+
   function detectBaseUrl() {
     const current = document.currentScript?.src;
     const discovered = Array.from(document.scripts)
@@ -45,6 +58,14 @@
           'waitGlobalInitialized',
           'releaseGlobal',
         ]),
+    },
+    {
+      path: 'shared/debug.js',
+      key: 'cryptLord.debug',
+      validate: api => {
+        validateMethods('cryptLord.debug', api, ['isEnabled', 'setEnabled', 'event', 'status', 'snapshot']);
+        return validateMethods('cryptLord.debug.panel', api.panel, ['mount', 'unmount', 'toggle', 'copy', 'clear']);
+      },
     },
     {
       path: 'modules/native-floor/index.js',
@@ -90,7 +111,9 @@
   }
 
   function getResourceApi(resource) {
-    return resource.key === 'contract' ? root.contract : root.__stage1Modules?.[resource.key];
+    if (resource.key === 'contract') return root.contract;
+    if (resource.key === 'cryptLord.debug') return root.debug;
+    return root.__stage1Modules?.[resource.key];
   }
 
   function validateResource(resource) {
@@ -99,6 +122,7 @@
 
   function loadCss(path) {
     const url = resourceUrl(path);
+    debugEvent('resource', 'css-load-start', path);
     if (cssPromises.has(url)) return cssPromises.get(url);
 
     const existing = Array.from(document.querySelectorAll('style[data-crypt-lord-css]')).find(
@@ -134,6 +158,7 @@
         (document.head || document.documentElement).appendChild(style);
         injectedStyle = style;
         batch.styles.push(style);
+        debugEvent('resource', 'css-load-success', path);
         return style;
       })
       .catch(error => {
@@ -145,6 +170,7 @@
         }
         cssPromises.delete(url);
         const stage = timedOut ? 'CSS fetch timeout' : 'CSS fetch';
+        debugEvent('failure', 'css-load-failure', `${path}: ${error?.message || error}`, 'error');
         throw resourceError(stage, url, error);
       })
       .finally(() => {
@@ -158,6 +184,7 @@
 
   function loadScript(resource) {
     const url = resourceUrl(resource.path);
+    debugEvent('resource', 'script-load-start', resource.path);
     if (scriptPromises.has(url)) return scriptPromises.get(url);
 
     const found = Array.from(document.querySelectorAll('script[data-crypt-lord-script]')).find(
@@ -209,6 +236,7 @@
         settled = true;
         cleanupHandlers();
         if (createdByBatch) script.dataset.cryptLordLoadState = 'failed';
+        debugEvent('failure', 'script-load-failure', `${resource.path}: ${error?.message || error}`, 'error');
         reject(resourceError(stage, url, error));
       };
       const onWindowError = event => {
@@ -227,6 +255,7 @@
         settled = true;
         cleanupHandlers();
         script.dataset.cryptLordLoadState = 'loaded';
+        debugEvent('resource', 'script-load-success', `${resource.path}: 资源已注册`);
         resolve(script);
       };
 
@@ -252,6 +281,7 @@
   }
 
   async function rollback(originalError) {
+    debugEvent('failure', 'rollback-start', originalError?.message || originalError, 'error');
     const cleanupErrors = [];
     const capture = operation => {
       try {
@@ -274,6 +304,10 @@
         contract.releaseGlobal(key, api);
       });
       capture(() => {
+        if (key === 'cryptLord.debug' && typeof api.dispose === 'function') api.dispose();
+      });
+      capture(() => { if (key === 'cryptLord.debug' && root.debug === api) delete root.debug; });
+      capture(() => {
         if (root.__stage1Modules?.[key] === api) delete root.__stage1Modules[key];
       });
     }
@@ -292,6 +326,7 @@
 
     const error = originalError instanceof Error ? originalError : new Error(String(originalError));
     if (cleanupErrors.length > 0) error.message += `; [批次清理异常] ${cleanupErrors.join(' | ')}`;
+    debugEvent('failure', 'rollback-complete', error.message, 'error');
     return error;
   }
 
@@ -306,17 +341,25 @@
   root.loader = state;
 
   state.ready = (async () => {
+    debugEvent('lifecycle', 'loading', '阶段1资源加载开始');
     try {
       // 顺序加载，确保失败后没有仍在后台完成并晚到注入的同批资源。
       for (const path of cssResources) await loadCss(path);
       for (const resource of scriptResources) await loadScript(resource);
       state.status = 'ready';
-      console.info(LOG_PREFIX, '契约与四个阶段1模块已按顺序加载并通过注册验证。');
+      debugEvent(
+        'lifecycle',
+        'resources-ready',
+        '资源已注册；不等于业务功能已挂载。当前限制：无 nativeFloorBridge、无消息/MVU监听、浮动编辑器与判定美化未迁移',
+        'warn',
+      );
+      console.info(LOG_PREFIX, '契约、调试设施与四个阶段1模块已按顺序加载并通过注册验证；业务功能挂载状态请查看调试面板。');
       return state;
     } catch (error) {
       const diagnosed = await rollback(error);
       state.status = 'failed';
       state.error = diagnosed.message;
+      debugEvent('failure', 'loader-failed', diagnosed.message, 'error');
       console.error(LOG_PREFIX, diagnosed);
       throw diagnosed;
     }

@@ -12,7 +12,20 @@
       throw new Error(`[${KEY}] 拒绝复用形状不匹配的模块API`);
     }
     contract.initializeGlobal(KEY, existing);
- return;
+    return;
+  }
+
+  function getDebug() {
+    const debug = root.debug;
+    return debug && typeof debug.event === 'function' ? debug : null;
+  }
+
+  function debugEvent(category, action, details, level = 'info') {
+    try {
+      getDebug()?.event(category, KEY, action, details, level);
+    } catch {
+      // Stub behavior must not depend on diagnostics.
+    }
   }
 
   const api = Object.freeze({
@@ -23,6 +36,7 @@
       return false;
     },
     decorate() {
+      debugEvent('refusal', 'decorate-not-ready', '判定美化尚未迁移，未修改消息正文', 'warn');
       return Promise.reject(new Error('cryptLord.judgmentBeautify.decorate 尚未迁移'));
     },
   });
@@ -30,7 +44,9 @@
   modules[KEY] = api;
   try {
     contract.initializeGlobal(KEY, api);
+    debugEvent('lifecycle', 'registered-not-ready', '资源已注册；业务功能未挂载，判定美化尚未迁移', 'warn');
   } catch (error) {
+    debugEvent('failure', 'registration-failure', error?.message || error, 'error');
     if (modules[KEY] === api) delete modules[KEY];
     throw error;
   }

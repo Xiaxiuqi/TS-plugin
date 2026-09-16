@@ -16,6 +16,19 @@
     return;
   }
 
+  function getDebug() {
+    const debug = root.debug;
+    return debug && typeof debug.event === 'function' ? debug : null;
+  }
+
+  function debugEvent(category, action, details, level = 'info') {
+    try {
+      getDebug()?.event(category, KEY, action, details, level);
+    } catch {
+      // Native transaction behavior must never depend on diagnostics.
+    }
+  }
+
   const state = {
     active: null,
     retiredGenerationIds: new Set(),
@@ -37,7 +50,15 @@
   }
 
   async function getBridge() {
-    return contract.waitGlobalInitialized(BRIDGE_KEY, { timeoutMs: 10000 });
+    debugEvent('bridge', 'bridge-wait', `等待 ${BRIDGE_KEY}`);
+    try {
+      const bridge = await contract.waitGlobalInitialized(BRIDGE_KEY, { timeoutMs: 10000 });
+      debugEvent('bridge', 'bridge-ready', `${BRIDGE_KEY} 已注册`);
+      return bridge;
+    } catch (error) {
+      debugEvent('failure', 'bridge-timeout-or-failure', `${BRIDGE_KEY}: ${error?.message || error}`, 'error');
+      throw error;
+    }
   }
 
   function normalizeOptions(sourceOrOptions, maybeOptions) {
@@ -96,8 +117,9 @@
     return created.message_id;
   }
 
-  async function writeAssistantFloor(messageId, patch, replaceData = false) {
+  async function writeAssistantFloorUnsafe(messageId, patch, replaceData = false) {
     if (!Number.isInteger(messageId)) throw new Error(`[${KEY}] assistant 楼层ID无效`);
+    debugEvent('assistant', 'assistant-write-start', `messageId=${messageId}`);
     const tavern = helper();
     const set = requireHostFunction('setChatMessages', tavern);
     const payload = { message_id: messageId };
@@ -112,6 +134,16 @@
       }
     }
     await set([payload], { refresh: 'none' });
+    debugEvent('assistant', 'assistant-write-success', `messageId=${messageId}`);
+  }
+
+  async function writeAssistantFloor(messageId, patch, replaceData = false) {
+    try {
+      return await writeAssistantFloorUnsafe(messageId, patch, replaceData);
+    } catch (error) {
+      debugEvent('failure', 'assistant-write-failure', `messageId=${messageId}; ${error?.message || error}`, 'error');
+      throw error;
+    }
   }
 
   function structuredCloneSafe(value) {
@@ -119,7 +151,8 @@
     return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   }
 
-  async function claimAssistantFloor(finalText) {
+  async function claimAssistantFloorUnsafe(finalText) {
+    debugEvent('assistant', 'assistant-claim-start', '尝试认领或创建真实 assistant 楼层');
     const txn = state.active;
     if (!txn) throw new Error(`[${KEY}] 无活动事务，不能认领 assistant 楼层`);
     if (Number.isInteger(txn.assistantMessageId)) return txn.assistantMessageId;
@@ -133,6 +166,7 @@
       if (txn.pendingAssistantData) patch.data = txn.pendingAssistantData;
       await writeAssistantFloor(claimed.message_id, patch, false);
       txn.pendingAssistantData = null;
+      debugEvent('assistant', 'assistant-claim-success', `认领 messageId=${claimed.message_id}`);
       return claimed.message_id;
     }
 
@@ -147,8 +181,19 @@
       await writeAssistantFloor(created.message_id, { data: txn.pendingAssistantData }, false);
       txn.pendingAssistantData = null;
     }
+    debugEvent('assistant', 'assistant-claim-success', `创建并认领 messageId=${created.message_id}`);
     return created.message_id;
   }
+
+  async function claimAssistantFloor(finalText) {
+    try {
+      return await claimAssistantFloorUnsafe(finalText);
+    } catch (error) {
+      debugEvent('failure', 'assistant-claim-failure', error?.message || error, 'error');
+      throw error;
+    }
+  }
+
 
   function clearWatchdog() {
     if (state.watchdog?.timerId) clearTimeout(state.watchdog.timerId);
@@ -181,6 +226,7 @@
       }
       if (!stopped && typeof window.stopAllGeneration === 'function') window.stopAllGeneration();
     } catch (error) {
+      debugEvent('failure', 'generation-stop-failure', error?.message || error, 'error');
       console.warn(`[${KEY}] 中断超时生成失败，将继续重试流程`, error);
     }
     if (await retryNarrative(`生成超时（${seconds}秒）`)) return;
@@ -205,8 +251,10 @@
       if (!target || target.role !== 'user' || String(target.message || '').trim() !== String(txn.rawText || '').trim()) return;
       const remove = requireHostFunction('deleteChatMessages', helper());
       await remove([txn.userMessageId], { refresh: 'none' });
+      debugEvent('assistant', 'orphan-user-cleanup-success', `messageId=${txn.userMessageId}; ${reason}`, 'warn');
       console.warn(`[${KEY}] 已删除孤立 user 楼层 #${txn.userMessageId}: ${reason}`);
     } catch (error) {
+      debugEvent('failure', 'orphan-user-cleanup-failure', error?.message || error, 'error');
       console.error(`[${KEY}] 删除孤立 user 楼层失败`, error);
     }
   }
@@ -224,8 +272,16 @@
 
   async function invokeGenerate(config) {
     const generate = requireHostFunction('generate', helper());
+    debugEvent('generation', 'generation-dispatch', `generationId=${config?.generation_id || '未知'}`);
     armWatchdog();
-    return generate(config);
+    try {
+      const result = await generate(config);
+      debugEvent('generation', 'generation-dispatch-success', `generationId=${config?.generation_id || '未知'}`);
+      return result;
+    } catch (error) {
+      debugEvent('failure', 'generation-dispatch-failure', error?.message || error, 'error');
+      throw error;
+    }
   }
 
   async function retryNarrative(reason) {
@@ -233,6 +289,7 @@
     const retry = state.retry;
     if (!txn || !retry || retry.count >= retry.limit) return false;
     retry.count += 1;
+    debugEvent('generation', 'generation-retry', `${reason}; ${retry.count}/${retry.limit}`, 'warn');
     const bridge = await getBridge();
     const delay = Number(await bridge.getRetryDelayMs?.(retry.count)) || 0;
     await bridge.onRetry?.(reason, retry.count, retry.limit, delay);
@@ -247,6 +304,7 @@
       const message = String(error?.message || '').toLowerCase();
       if (error?.name === 'AbortError' || message.includes('abort')) {
         if (consumeWatchdogAbort()) return true;
+        debugEvent('cancel', 'generation-retry-cancelled', '重试过程中被玩家中断', 'warn');
         await abortTurn('重试过程中被玩家中断');
         await bridge.onTurnAborted?.('重试过程中被玩家中断');
         return true;
@@ -259,8 +317,12 @@
   }
 
   async function submitNativeTurn(rawText = '', sourceOrOptions, maybeOptions) {
-    if (state.active) throw new Error(`[${KEY}] 上一回合仍在处理中，拒绝并发叙事事务`);
+    if (state.active) {
+      debugEvent('refusal', 'submit-refused-concurrent', '上一回合仍在处理中', 'warn');
+      throw new Error(`[${KEY}] 上一回合仍在处理中，拒绝并发叙事事务`);
+    }
     const options = normalizeOptions(sourceOrOptions, maybeOptions);
+    debugEvent('action', 'submit-native-turn', `source=${options.source}`);
     const bridge = await getBridge();
     const txn = {
       rawText: String(rawText ?? ''),
@@ -279,6 +341,7 @@
     try {
       const prepared = await bridge.prepareTurn(txn.rawText, options);
       if (!prepared || prepared.accepted === false) {
+        debugEvent('refusal', 'submit-cancelled-by-bridge', 'bridge.prepareTurn 未接受回合', 'warn');
         closeTurn();
         return prepared?.result;
       }
@@ -291,11 +354,13 @@
       txn.watchdogSeconds = Number(built.watchdogSeconds) || 0;
       state.retry = { count: 0, limit: Math.max(0, Number(built.retryLimit) || 0), config };
       await invokeGenerate(config);
+      debugEvent('action', 'submit-dispatched', `generationId=${txn.generationId}`);
     } catch (error) {
       clearWatchdog();
       const message = String(error?.message || '').toLowerCase();
       if (error?.name === 'AbortError' || message.includes('abort')) {
         if (consumeWatchdogAbort()) return;
+        debugEvent('cancel', 'submit-cancelled', '玩家中断生成', 'warn');
         await abortTurn('玩家中断生成');
         await bridge.onTurnAborted?.('玩家中断生成');
         return;
@@ -303,6 +368,7 @@
       if (txn.userMessageId && await retryNarrative('生成请求失败')) return;
       await abortTurn(`生成请求最终失败: ${error?.message || error}`);
       await bridge.onTurnFailed?.(error);
+      debugEvent('failure', 'submit-failure', error?.message || error, 'error');
       throw error;
     }
   }
@@ -313,16 +379,22 @@
 
   function onGenerationStarted(generationId) {
     const txn = state.active;
-    if (!txn || !generationId) return false;
-    if (!txn.generationId || txn.generationId !== generationId) return false;
+    if (!txn || !generationId || !txn.generationId || txn.generationId !== generationId) {
+      debugEvent('refusal', 'generation-start-ignored', `generationId=${generationId || '缺失'}; 无匹配活动事务`, 'warn');
+      return false;
+    }
+    debugEvent('generation', 'generation-started', `generationId=${generationId}`);
     return true;
   }
 
   async function onGenerationEnded(finalText, generationId = null) {
     const txn = state.active;
-    if (!txn) return false;
-    if (!generationId || generationId !== txn.generationId || isStaleGeneration(generationId)) return false;
+    if (!txn || !generationId || generationId !== txn?.generationId || isStaleGeneration(generationId)) {
+      debugEvent('refusal', 'generation-end-ignored', `generationId=${generationId || '缺失'}; 无匹配活动事务`, 'warn');
+      return false;
+    }
     if (txn.responseCommitted) return true;
+    debugEvent('generation', 'generation-ended', `generationId=${generationId}`);
     clearWatchdog();
 
     const bridge = await getBridge();
@@ -333,6 +405,7 @@
     });
     if (!inspected?.passed) {
       if (inspected?.autoRetryable && await retryNarrative('剧情生成质量异常')) return true;
+      debugEvent('cancel', 'narrative-cancelled', '质量检查未通过且未继续修复', 'warn');
       await abortTurn('剧情生成质量异常且玩家取消修复');
       await bridge.onNarrativeCancelled?.();
       return true;
@@ -347,6 +420,7 @@
         assistantMessageId,
         generationId: txn.generationId,
       });
+      debugEvent('assistant', 'assistant-complete-success', `messageId=${assistantMessageId}`);
     } finally {
       closeTurn();
     }
@@ -366,7 +440,9 @@
   modules[KEY] = api;
   try {
     contract.initializeGlobal(KEY, api);
+    debugEvent('lifecycle', 'registered', '资源已注册；业务功能依赖 cryptLord.nativeFloorBridge 与宿主生成事件接入', 'warn');
   } catch (error) {
+    debugEvent('failure', 'registration-failure', error?.message || error, 'error');
     if (modules[KEY] === api) delete modules[KEY];
     throw error;
   }

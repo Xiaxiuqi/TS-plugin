@@ -20,6 +20,19 @@
     return;
   }
 
+  function getDebug() {
+    const debug = root.debug;
+    return debug && typeof debug.event === 'function' ? debug : null;
+  }
+
+  function debugEvent(category, action, details, level = 'info') {
+    try {
+      getDebug()?.event(category, KEY, action, details, level);
+    } catch {
+      // Stub behavior must not depend on diagnostics.
+    }
+  }
+
   const api = Object.freeze({
     status() {
       return Object.freeze({ key: KEY, phase: 'stage1-skeleton', ready: false, mounted: false });
@@ -28,9 +41,11 @@
       return false;
     },
     mount() {
+      debugEvent('refusal', 'mount-refused', '浮动变量编辑器尚未迁移，未执行挂载', 'warn');
       return Promise.reject(new Error('cryptLord.floatingVariableEditor.mount 尚未迁移'));
     },
     unmount() {
+      debugEvent('refusal', 'unmount-not-ready', '模块未挂载，无可卸载内容', 'warn');
       return false;
     },
   });
@@ -38,7 +53,9 @@
   modules[KEY] = api;
   try {
     contract.initializeGlobal(KEY, api);
+    debugEvent('lifecycle', 'registered-not-ready', '资源已注册；业务功能未挂载，浮动变量编辑器尚未迁移', 'warn');
   } catch (error) {
+    debugEvent('failure', 'registration-failure', error?.message || error, 'error');
     if (modules[KEY] === api) delete modules[KEY];
     throw error;
   }

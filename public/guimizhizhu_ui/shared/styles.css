@@ -10,3 +10,94 @@
   --crypt-lord-space-2: 8px;
   --crypt-lord-space-3: 12px;
 }
+
+.crypt-lord-debug-panel {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: var(--crypt-lord-layer-overlay, 2147483000);
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 24px));
+  max-height: min(70vh, 680px);
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid rgba(180, 151, 104, 0.75);
+  border-radius: var(--crypt-lord-radius, 10px);
+  color: var(--crypt-lord-color-text, #d9d5cc);
+  background: var(--crypt-lord-color-panel, rgba(28, 29, 33, 0.96));
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+  pointer-events: auto;
+}
+
+.crypt-lord-debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: sticky;
+  top: -10px;
+  padding: 8px 0;
+  background: var(--crypt-lord-color-panel, rgba(28, 29, 33, 0.96));
+}
+
+.crypt-lord-debug-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.crypt-lord-debug-controls button {
+  padding: 3px 7px;
+  border: 1px solid rgba(180, 151, 104, 0.65);
+  border-radius: 5px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.crypt-lord-debug-controls button:hover,
+.crypt-lord-debug-controls button:focus-visible {
+  background: rgba(180, 151, 104, 0.22);
+}
+
+.crypt-lord-debug-summary {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.crypt-lord-debug-module,
+.crypt-lord-debug-limitation,
+.crypt-lord-debug-event {
+  overflow-wrap: anywhere;
+  margin: 3px 0;
+}
+
+.crypt-lord-debug-limitation,
+.crypt-lord-debug-level-warn {
+  color: #f0c674;
+}
+
+.crypt-lord-debug-level-error {
+  color: #ff8f8f;
+}
+
+.crypt-lord-debug-log {
+  max-height: 36vh;
+  overflow: auto;
+}
+
+.crypt-lord-debug-collapsed .crypt-lord-debug-summary,
+.crypt-lord-debug-collapsed .crypt-lord-debug-log {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .crypt-lord-debug-panel {
+    right: 6px;
+    bottom: 6px;
+    width: calc(100vw - 12px);
+    max-height: 55vh;
+  }
+}

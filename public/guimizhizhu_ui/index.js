@@ -14,6 +14,19 @@
     return;
   }
 
+  function getDebug() {
+    const debug = root.debug;
+    return debug && typeof debug.event === 'function' ? debug : null;
+  }
+
+  function debugEvent(category, action, details, level = 'info') {
+    try {
+      getDebug()?.event(category, 'cryptLord.index', action, details, level);
+    } catch {
+      // Entry startup must not depend on diagnostics.
+    }
+  }
+
   function normalizeBaseUrl(value) {
     try {
       return new URL('./', value).href;
@@ -47,6 +60,7 @@
 
   function waitForLoaderScript() {
     const found = Array.from(document.scripts).find(script => script.dataset.cryptLordLoader === loaderUrl);
+    debugEvent('lifecycle', 'loader-script-wait', loaderUrl);
     if (found?.dataset.cryptLordLoadState === 'failed') found.remove();
 
     return new Promise((resolve, reject) => {
@@ -63,6 +77,7 @@
         cleanupHandlers();
         loaderScript.dataset.cryptLordLoadState = 'failed';
         loaderScript.remove();
+        debugEvent('failure', 'loader-script-failure', error?.message || error, 'error');
         reject(toError(error, '入口loader script', loaderUrl));
       };
       const succeed = () => {
@@ -70,6 +85,7 @@
         settled = true;
         cleanupHandlers();
         loaderScript.dataset.cryptLordLoadState = 'loaded';
+        debugEvent('lifecycle', 'loader-script-loaded', 'loader.js 已执行，等待资源注册');
         resolve(loaderScript);
       };
       const timer = setTimeout(
@@ -103,7 +119,13 @@
         throw new Error(`[等待loader ready] ${loaderUrl}; loader状态不是ready`);
       }
       state.status = 'ready';
-      console.info(LOG_PREFIX, '阶段1资源已全部就绪。');
+      debugEvent(
+        'lifecycle',
+        'entry-ready',
+        '资源已注册；业务功能未全部挂载。无消息/MVU监听，浮动编辑器与判定美化未迁移',
+        'warn',
+      );
+      console.info(LOG_PREFIX, '阶段1资源已注册；这不表示业务功能已全部挂载。');
       return state;
     })
     .catch(error => {
@@ -117,6 +139,7 @@
       }
       state.status = 'failed';
       state.error = diagnosed.message;
+      debugEvent('failure', 'entry-failed', diagnosed.message, 'error');
       console.error(LOG_PREFIX, diagnosed);
       throw diagnosed;
     });
