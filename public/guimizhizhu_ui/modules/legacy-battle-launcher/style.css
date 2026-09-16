@@ -1,0 +1,71 @@
+.crypt-lord-battle-launcher__button {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147482990;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(218, 181, 114, .85);
+  border-radius: 50%;
+  color: #fff1cd;
+  background: radial-gradient(circle at 30% 25%, #8c6330, #25180f 72%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255, 241, 205, .22);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.crypt-lord-battle-launcher__button:hover,
+.crypt-lord-battle-launcher__button:focus-visible {
+  transform: scale(1.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .62), 0 0 0 3px rgba(218, 181, 114, .25);
+  outline: none;
+}
+.crypt-lord-battle-launcher__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482995;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  box-sizing: border-box;
+  background: rgba(6, 7, 10, .76);
+  backdrop-filter: blur(7px);
+}
+.crypt-lord-battle-launcher__overlay[hidden] { display: none; }
+.crypt-lord-battle-launcher__panel {
+  width: min(860px, 100%);
+  min-height: min(460px, calc(100dvh - 36px));
+  border: 1px solid rgba(218, 181, 114, .5);
+  border-radius: 14px;
+  overflow: hidden;
+  color: #e9e0d0;
+  background: linear-gradient(145deg, #27201b, #120f0d 70%);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, .62);
+  font: 14px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.crypt-lord-battle-launcher__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid rgba(218, 181, 114, .28);
+  background: rgba(255, 255, 255, .035);
+}
+.crypt-lord-battle-launcher__title-group { display: flex; align-items: center; gap: 10px; }
+.crypt-lord-battle-launcher__emblem { font-size: 25px; }
+.crypt-lord-battle-launcher__title { margin: 0; color: #ffe1a2; font-size: 17px; }
+.crypt-lord-battle-launcher__close {
+  width: 32px; height: 32px; border: 1px solid rgba(255, 255, 255, .22); border-radius: 7px;
+  color: inherit; background: rgba(255, 255, 255, .06); font-size: 22px; cursor: pointer;
+}
+.crypt-lord-battle-launcher__body { padding: clamp(24px, 6vw, 66px); }
+.crypt-lord-battle-launcher__eyebrow { margin: 0 0 9px; color: #c99d60; font-size: 11px; letter-spacing: .12em; }
+.crypt-lord-battle-launcher__headline { margin: 0; color: #fff2d3; font-size: clamp(24px, 4vw, 38px); }
+.crypt-lord-battle-launcher__copy { max-width: 620px; color: #bdb1a0; }
+.crypt-lord-battle-launcher__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 30px; }
+.crypt-lord-battle-launcher__status-card { padding: 14px; border: 1px solid rgba(218, 181, 114, .2); border-radius: 9px; background: rgba(255, 255, 255, .035); }
+.crypt-lord-battle-launcher__status-label { display: block; color: #9f998f; font-size: 12px; }
+.crypt-lord-battle-launcher__status-value { display: block; margin-top: 5px; color: #d9b873; }
+@media (max-width: 560px) { .crypt-lord-battle-launcher__grid { grid-template-columns: 1fr; } }

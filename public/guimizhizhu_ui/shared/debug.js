@@ -226,6 +226,7 @@
       'cryptLord.inputAdapter',
       'cryptLord.floatingVariableEditor',
       'cryptLord.judgmentBeautify',
+      'cryptLord.legacyBattleLauncher',
     ];
     return known.map(key => {
       const module = root.__stage1Modules?.[key];
@@ -254,6 +255,7 @@
         '已挂载只读助手消息体状态卡（cryptLord.floatingVariableEditor）；仅渲染 stat_data，不解析、不应用、不写入消息变量指令',
         '浮动变量编辑器的编辑与变量写入能力尚未迁移',
         '判定美化尚未迁移',
+        '⚔️ 战斗前端现为旧 BattleUI 的可见入口与页面容器；战斗引擎、判定和数据写入尚未迁移',
       ]),
       events: Object.freeze(events.map(item => Object.freeze({ ...item }))),
     });

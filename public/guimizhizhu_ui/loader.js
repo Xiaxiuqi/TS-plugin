@@ -48,6 +48,7 @@
     'shared/styles.css',
     'modules/floating-variable-editor/style.css',
     'modules/judgment-beautify/style.css',
+    'modules/legacy-battle-launcher/style.css',
   ];
   const managerStyleResource = {
     type: 'css',
@@ -105,6 +106,11 @@
       path: 'modules/judgment-beautify/index.js',
       key: 'cryptLord.judgmentBeautify',
       validate: api => validateMethods('cryptLord.judgmentBeautify', api, ['status', 'isReady', 'decorate', 'dispose']),
+    },
+    {
+      path: 'modules/legacy-battle-launcher/index.js',
+      key: 'cryptLord.legacyBattleLauncher',
+      validate: api => validateMethods('cryptLord.legacyBattleLauncher', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
     },
   ];
   const cssPromises = new Map();
