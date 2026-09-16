@@ -11,6 +11,51 @@
   --crypt-lord-space-3: 12px;
 }
 
+.crypt-lord-debug-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--crypt-lord-space-2, 8px);
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 var(--crypt-lord-space-1, 4px);
+  color: var(--crypt-lord-color-text, #d9d5cc);
+  font: 12px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.crypt-lord-debug-toolbar-button {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid rgba(180, 151, 104, 0.65);
+  border-radius: 6px;
+  color: inherit;
+  background: rgba(28, 29, 33, 0.88);
+  font: inherit;
+  cursor: pointer;
+}
+
+.crypt-lord-debug-toolbar-button:hover,
+.crypt-lord-debug-toolbar-button:focus-visible {
+  border-color: var(--crypt-lord-color-accent, #b49768);
+  background: rgba(180, 151, 104, 0.22);
+}
+
+.crypt-lord-debug-toolbar-button:focus-visible {
+  outline: 2px solid var(--crypt-lord-color-accent, #b49768);
+  outline-offset: 2px;
+}
+
+.crypt-lord-debug-toolbar-status {
+  min-width: 0;
+  color: #ffb3b3;
+  overflow-wrap: anywhere;
+}
+
+.crypt-lord-debug-toolbar-status:empty {
+  display: none;
+}
+
 .crypt-lord-debug-panel {
   position: fixed;
   right: 12px;

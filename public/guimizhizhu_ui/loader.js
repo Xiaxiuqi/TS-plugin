@@ -68,6 +68,11 @@
       },
     },
     {
+      path: 'shared/toolbar-button.js',
+      key: 'cryptLord.debugToolbar',
+      validate: api => validateMethods('cryptLord.debugToolbar', api, ['status', 'reconnect', 'dispose']),
+    },
+    {
       path: 'modules/native-floor/index.js',
       key: 'cryptLord.nativeFloor',
       validate: api => validateMethods('cryptLord.nativeFloor', api, ['status', 'submitNativeTurn']),
@@ -304,6 +309,9 @@
         contract.releaseGlobal(key, api);
       });
       capture(() => {
+        if (key === 'cryptLord.debugToolbar' && typeof api.dispose === 'function') api.dispose();
+      });
+      capture(() => {
         if (key === 'cryptLord.debug' && typeof api.dispose === 'function') api.dispose();
       });
       capture(() => { if (key === 'cryptLord.debug' && root.debug === api) delete root.debug; });
@@ -350,10 +358,10 @@
       debugEvent(
         'lifecycle',
         'resources-ready',
-        '资源已注册；不等于业务功能已挂载。当前限制：无 nativeFloorBridge、无消息/MVU监听、浮动编辑器与判定美化未迁移',
+        '诊断工具栏与阶段1资源已注册；不等于调试面板或业务功能当前已挂载。当前限制：无 nativeFloorBridge、无消息/MVU监听、浮动编辑器与判定美化未迁移',
         'warn',
       );
-      console.info(LOG_PREFIX, '契约、调试设施与四个阶段1模块已按顺序加载并通过注册验证；业务功能挂载状态请查看调试面板。');
+      console.info(LOG_PREFIX, '契约、调试设施、诊断工具栏与四个阶段1模块已按顺序加载并通过注册验证；注册不代表调试面板或业务功能当前已挂载。');
       return state;
     } catch (error) {
       const diagnosed = await rollback(error);
