@@ -4,7 +4,7 @@
   const KEY = 'cryptLord.nativeFloorBridge';
   const HOST_API_KEY = 'cryptLord.hostApi';
   const STATE_STORE_KEY = 'cryptLord.stateStore';
-  const POLICY_KEY = 'cryptLord.nativeHistoryPolicy';
+  const CONTEXT_BUILDER_KEY = 'cryptLord.contextBuilder';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);
@@ -28,12 +28,12 @@
   }
 
   async function dependencies() {
-    const [hostApi, policy, stateStore] = await Promise.all([
+    const [hostApi, contextBuilder, stateStore] = await Promise.all([
       contract.waitGlobalInitialized(HOST_API_KEY, { timeoutMs: 10000 }),
-      contract.waitGlobalInitialized(POLICY_KEY, { timeoutMs: 10000 }),
+      contract.waitGlobalInitialized(CONTEXT_BUILDER_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }),
     ]);
-    return { hostApi, policy, stateStore };
+    return { hostApi, contextBuilder, stateStore };
   }
 
   async function prepareTurn(rawText) {
@@ -46,11 +46,11 @@
   }
 
   async function buildGenerationConfig(rawText) {
-    const { policy } = await dependencies();
+    const { contextBuilder } = await dependencies();
     return {
       config: {
         user_input: String(rawText ?? '').trim(),
-        injects: [policy.createInjection()],
+        injects: await contextBuilder.build({ rawText: String(rawText ?? '').trim(), source: 'narrative' }),
         max_chat_history: 'all',
         should_stream: Boolean(root.settings?.narrativeStreamingEnabled),
       },

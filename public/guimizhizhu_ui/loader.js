@@ -103,6 +103,11 @@
       validate: api => validateMethods('cryptLord.nativeHistoryPolicy', api, ['status', 'createInjection', 'dispose']),
     },
     {
+      path: 'prompts/context-builder.js',
+      key: 'cryptLord.contextBuilder',
+      validate: api => validateMethods('cryptLord.contextBuilder', api, ['status', 'register', 'build', 'dispose']),
+    },
+    {
       path: 'core/state-store.js',
       key: 'cryptLord.stateStore',
       validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'readMessage', 'writeAssistantData', 'writeAssistantMessage', 'dispose']),
