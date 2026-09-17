@@ -2,6 +2,7 @@
   'use strict';
 
   const KEY = 'cryptLord.floatingVariableEditor';
+  const STATE_STORE_KEY = 'cryptLord.stateStore';
   const CARD_ATTR = 'data-crypt-lord-floating-variable-editor-card';
   const CARD_CLASS = 'crypt-lord-floating-variable-editor-card';
   const CARD_LIST_CLASS = 'crypt-lord-floating-variable-editor-card__list';
@@ -183,6 +184,7 @@
   let listenersInstalled = false;
   let mvuAvailable = false;
   let mvuPromise = null;
+  let stateStorePromise = null;
   let mvuResolved = false;
   let booted = false;
   let disposed = false;
@@ -196,7 +198,7 @@
   }
 
   function attachCard(messageId, statData) {
-    if (disposed || !mvuAvailable) return false;
+    if (disposed) return false;
     const container = findMessageContainer(messageId);
     if (!container) return false;
     const doc = container.ownerDocument || getOwnerDocument();
@@ -242,6 +244,14 @@
   }
 
   async function fetchStatData(messageId) {
+    try {
+      const store = await ensureStateStore();
+      const payload = await store?.readMessageData?.(messageId);
+      const statData = extractStatData(payload);
+      if (statData) return statData;
+    } catch {
+      // MVU remains a compatibility fallback while old chats are being migrated.
+    }
     if (!mvuAvailable || !mvuPromise) return null;
     let mvu = null;
     try { mvu = await mvuPromise; } catch { return null; }
@@ -253,6 +263,13 @@
       return null;
     }
     return extractStatData(payload);
+  }
+
+  function ensureStateStore() {
+    if (!stateStorePromise) {
+      stateStorePromise = contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: MVU_WAIT_TIMEOUT_MS }).catch(() => null);
+    }
+    return stateStorePromise;
   }
 
   function isAssistantRenderType(type) {
@@ -334,14 +351,14 @@
   }
 
   async function handleRender(messageId) {
-    if (disposed || !mvuAvailable) return;
+    if (disposed) return;
     const statData = await fetchStatData(messageId);
     if (disposed || !statData) return;
     attachCard(messageId, statData);
   }
 
   async function handleUpdate(messageId) {
-    if (disposed || !mvuAvailable) return;
+    if (disposed) return;
     const statData = await fetchStatData(messageId);
     if (disposed) return;
     if (!statData) {
@@ -382,17 +399,18 @@
     if (disposed) return Promise.resolve(false);
     booted = true;
     ensureListeners();
-    const mvuReady = ensureMvu();
+    const stateStoreReady = ensureStateStore();
+    void ensureMvu();
     if (messageId !== undefined && messageId !== null) {
       // Wait for the read-only Mvu lookup before refreshing; otherwise this same
       // microtask turn sees mvuAvailable=false and drops the manual request.
-      return mvuReady.then(async () => {
+      return stateStoreReady.then(async () => {
         if (disposed) return false;
         await handleUpdate(messageId);
         return !disposed;
       });
     }
-    return mvuReady.then(() => !disposed);
+    return stateStoreReady.then(() => !disposed);
   }
 
   function unmount() {

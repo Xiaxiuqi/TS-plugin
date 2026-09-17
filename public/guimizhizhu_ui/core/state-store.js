@@ -37,6 +37,13 @@
     return clone((await findLatestAssistant(beforeMessageId))?.data || {});
   }
 
+  async function readMessageData(messageId) {
+    if (!Number.isInteger(messageId)) throw new Error(`[${KEY}] 消息楼层 ID 无效`);
+    const { hostApi } = await messages();
+    const list = await hostApi.getChatMessages(String(messageId));
+    return clone(Array.isArray(list) ? list[0]?.data || {} : {});
+  }
+
   async function writeAssistantData(messageId, data, refresh = 'affected') {
     if (!Number.isInteger(messageId)) throw new Error(`[${KEY}] assistant 楼层 ID 无效`);
     const { hostApi } = await messages();
@@ -47,6 +54,7 @@
     status() { return Object.freeze({ key: KEY, ready: true, source: 'native-assistant-floor' }); },
     findLatestAssistant,
     readAssistantData,
+    readMessageData,
     writeAssistantData,
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }

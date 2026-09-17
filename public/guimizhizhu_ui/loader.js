@@ -104,7 +104,7 @@
     {
       path: 'core/state-store.js',
       key: 'cryptLord.stateStore',
-      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'writeAssistantData', 'dispose']),
+      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'writeAssistantData', 'dispose']),
     },
     {
       path: 'core/generation-bridge.js',
