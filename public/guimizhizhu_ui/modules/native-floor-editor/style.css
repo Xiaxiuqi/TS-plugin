@@ -1,8 +1,10 @@
 .crypt-lord-native-editor-trigger { position: fixed; right: 16px; bottom: 188px; z-index: 10000; width: 42px; height: 42px; border: 1px solid #8b6a2f; border-radius: 6px; background: #241c12; color: #f5deb3; cursor: pointer; font-size: 20px; }
 .crypt-lord-native-editor-mask { position: fixed; inset: 0; z-index: 10001; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, .68); }
 .crypt-lord-native-editor-mask[data-open="true"] { display: flex; }
-.crypt-lord-native-editor-dialog { display: flex; flex-direction: column; width: min(900px, 100%); height: min(78vh, 760px); border: 1px solid #8b6a2f; border-radius: 6px; background: #17120c; color: #f5deb3; box-shadow: 0 18px 56px rgba(0, 0, 0, .55); }
+.crypt-lord-native-editor-dialog { display: flex; flex-direction: column; width: min(900px, 100%); height: min(82vh, 820px); border: 1px solid #8b6a2f; border-radius: 6px; background: #17120c; color: #f5deb3; box-shadow: 0 18px 56px rgba(0, 0, 0, .55); }
 .crypt-lord-native-editor-head, .crypt-lord-native-editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(139, 106, 47, .6); }
 .crypt-lord-native-editor-actions { border-top: 1px solid rgba(139, 106, 47, .6); border-bottom: 0; justify-content: flex-end; }
-.crypt-lord-native-editor-text { flex: 1; min-height: 0; width: 100%; resize: none; border: 0; padding: 16px; box-sizing: border-box; background: #120e09; color: #f5deb3; font: 14px/1.6 Consolas, "Microsoft YaHei", monospace; }
+.crypt-lord-native-editor-body { display: grid; flex: 1; min-height: 0; grid-template-rows: minmax(180px, 1fr) minmax(140px, .72fr); gap: 12px; overflow: auto; padding: 14px 16px; }
+.crypt-lord-native-editor-label { display: flex; min-height: 0; flex-direction: column; gap: 6px; color: #d5c5a7; font-size: 13px; }
+.crypt-lord-native-editor-text, .crypt-lord-native-editor-data { min-height: 0; width: 100%; flex: 1; resize: vertical; border: 1px solid rgba(139, 106, 47, .6); border-radius: 4px; padding: 12px; box-sizing: border-box; background: #120e09; color: #f5deb3; font: 14px/1.6 Consolas, "Microsoft YaHei", monospace; }
 .crypt-lord-native-editor-dialog button { border: 1px solid #8b6a2f; border-radius: 4px; padding: 6px 12px; background: #332515; color: #f5deb3; cursor: pointer; }

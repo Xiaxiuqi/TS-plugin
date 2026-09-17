@@ -21,6 +21,9 @@
   }
 
   async function save(messageId, message, data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new TypeError(`[${KEY}] 楼层 data 必须是对象`);
+    }
     const stateStore = await store();
     await stateStore.writeAssistantMessage(messageId, message, data);
     return open(messageId);
