@@ -102,6 +102,11 @@
       validate: api => validateMethods('cryptLord.nativeHistoryPolicy', api, ['status', 'createInjection', 'dispose']),
     },
     {
+      path: 'core/state-store.js',
+      key: 'cryptLord.stateStore',
+      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'writeAssistantData', 'dispose']),
+    },
+    {
       path: 'core/generation-bridge.js',
       key: 'cryptLord.nativeFloorBridge',
       validate: api => validateMethods('cryptLord.nativeFloorBridge', api, [

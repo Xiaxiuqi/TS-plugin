@@ -3,6 +3,7 @@
 
   const KEY = 'cryptLord.nativeFloorBridge';
   const HOST_API_KEY = 'cryptLord.hostApi';
+  const STATE_STORE_KEY = 'cryptLord.stateStore';
   const POLICY_KEY = 'cryptLord.nativeHistoryPolicy';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
@@ -27,21 +28,12 @@
   }
 
   async function dependencies() {
-    const [hostApi, policy] = await Promise.all([
+    const [hostApi, policy, stateStore] = await Promise.all([
       contract.waitGlobalInitialized(HOST_API_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(POLICY_KEY, { timeoutMs: 10000 }),
+      contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }),
     ]);
-    return { hostApi, policy };
-  }
-
-  async function findPreviousAssistantData(hostApi, userMessageId) {
-    const messages = await hostApi.getChatMessages('0-{{lastMessageId}}');
-    if (!Array.isArray(messages)) return {};
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      const message = messages[index];
-      if (message?.role === 'assistant' && message.message_id < userMessageId) return clone(message.data || {});
-    }
-    return {};
+    return { hostApi, policy, stateStore };
   }
 
   async function prepareTurn(rawText) {
@@ -74,8 +66,8 @@
   }
 
   async function completeNarrative(finalText, transaction) {
-    const { hostApi } = await dependencies();
-    const previousData = await findPreviousAssistantData(hostApi, transaction.userMessageId);
+    const { hostApi, stateStore } = await dependencies();
+    const previousData = await stateStore.readAssistantData(transaction.userMessageId);
     let assistantData = previousData;
 
     try {
@@ -86,10 +78,7 @@
       console.warn(`[${KEY}] MVU 变量解析未完成，将保留上一 assistant 楼层的数据`, error);
     }
 
-    await hostApi.setChatMessages(
-      [{ message_id: transaction.assistantMessageId, data: assistantData }],
-      { refresh: 'affected' },
-    );
+    await stateStore.writeAssistantData(transaction.assistantMessageId, assistantData);
   }
 
   const api = Object.freeze({
