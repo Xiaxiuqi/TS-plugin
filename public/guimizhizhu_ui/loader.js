@@ -119,6 +119,11 @@
       validate: api => validateMethods('cryptLord.responseNormalizer', api, ['status', 'normalize', 'extractActions', 'dispose']),
     },
     {
+      path: 'core/native-settlement.js',
+      key: 'cryptLord.nativeSettlement',
+      validate: api => validateMethods('cryptLord.nativeSettlement', api, ['status', 'apply', 'dispose']),
+    },
+    {
       path: 'prompts/game-context-providers.js',
       key: 'cryptLord.gameContextProviders',
       validate: api => validateMethods('cryptLord.gameContextProviders', api, ['status', 'dispose']),

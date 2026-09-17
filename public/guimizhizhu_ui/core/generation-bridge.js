@@ -6,6 +6,7 @@
   const STATE_STORE_KEY = 'cryptLord.stateStore';
   const CONTEXT_BUILDER_KEY = 'cryptLord.contextBuilder';
   const RESPONSE_NORMALIZER_KEY = 'cryptLord.responseNormalizer';
+  const SETTLEMENT_KEY = 'cryptLord.nativeSettlement';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);
@@ -29,13 +30,14 @@
   }
 
   async function dependencies() {
-    const [hostApi, contextBuilder, stateStore, responseNormalizer] = await Promise.all([
+    const [hostApi, contextBuilder, stateStore, responseNormalizer, settlement] = await Promise.all([
       contract.waitGlobalInitialized(HOST_API_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(CONTEXT_BUILDER_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(RESPONSE_NORMALIZER_KEY, { timeoutMs: 10000 }),
+      contract.waitGlobalInitialized(SETTLEMENT_KEY, { timeoutMs: 10000 }),
     ]);
-    return { hostApi, contextBuilder, stateStore, responseNormalizer };
+    return { hostApi, contextBuilder, stateStore, responseNormalizer, settlement };
   }
 
   async function prepareTurn(rawText) {
@@ -69,7 +71,7 @@
   }
 
   async function completeNarrative(finalText, transaction) {
-    const { hostApi, responseNormalizer, stateStore } = await dependencies();
+    const { hostApi, responseNormalizer, settlement, stateStore } = await dependencies();
     const previousData = await stateStore.readAssistantData(transaction.userMessageId);
     let assistantData = previousData;
 
@@ -82,6 +84,7 @@
     }
 
     if (!assistantData || typeof assistantData !== 'object' || Array.isArray(assistantData)) assistantData = {};
+    settlement.apply(assistantData, previousData);
     assistantData.cryptLord = {
       ...(assistantData.cryptLord && typeof assistantData.cryptLord === 'object' ? assistantData.cryptLord : {}),
       actions: Array.from(responseNormalizer.extractActions(finalText)),
