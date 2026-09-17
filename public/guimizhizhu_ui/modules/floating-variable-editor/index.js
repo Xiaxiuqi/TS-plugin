@@ -465,10 +465,13 @@
   modules[KEY] = api;
   try {
     contract.initializeGlobal(KEY, api);
-    debugEvent('lifecycle', 'registered', '状态卡资源已注册；监听器按需延迟绑定', 'info');
+    debugEvent('lifecycle', 'registered', '状态卡资源已注册；正在启动原生楼层监听', 'info');
   } catch (error) {
     debugEvent('failure', 'registration-failure', error?.message || error, 'error');
     if (modules[KEY] === api) delete modules[KEY];
     throw error;
   }
+  void mount().catch(error => {
+    debugEvent('failure', 'initial-mount-failure', error?.message || error, 'error');
+  });
 })();

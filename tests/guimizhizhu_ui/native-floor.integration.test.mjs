@@ -52,6 +52,27 @@ function moduleApi(runtime, key) {
   return runtime.cryptLord.__stage1Modules?.[key];
 }
 
+function eventBus() {
+  const listeners = new Map();
+  return {
+    events: {
+      CHARACTER_MESSAGE_RENDERED: 'character-message-rendered',
+      MESSAGE_UPDATED: 'message-updated',
+      MESSAGE_DELETED: 'message-deleted',
+      CHAT_CHANGED: 'chat-changed',
+    },
+    on(name, handler) {
+      const handlers = listeners.get(name) || new Set();
+      handlers.add(handler);
+      listeners.set(name, handlers);
+      return { stop() { handlers.delete(handler); } };
+    },
+    emit(name, ...args) {
+      Array.from(listeners.get(name) || []).forEach(handler => handler(...args));
+    },
+  };
+}
+
 function createFloorHost(runtime, generate) {
   const messages = [];
   const configs = [];
@@ -229,10 +250,13 @@ async function testActionFillDoesNotSubmit() {
     querySelector(selector) { return selector === '#send_textarea' ? input : null; },
     createElement() { return element(); },
   };
+  const bus = eventBus();
   const runtime = createRuntime({
     document,
     MutationObserver: class { observe() {} disconnect() {} },
     retrieveDisplayedMessage(messageId) { return messageId === 3 ? container : null; },
+    tavern_events: bus.events,
+    eventOn: bus.on,
   });
   await load(runtime, 'public/guimizhizhu_ui/shared/contract.js');
   register(runtime, 'cryptLord.lifecycle', {
@@ -269,6 +293,83 @@ async function testActionFillDoesNotSubmit() {
   assert.equal(input.value, '查看四周');
   assert.equal(input.inputEvents, 2);
   assert.equal(submitCount, 0);
+
+  bus.emit(bus.events.MESSAGE_DELETED, 3);
+  assert.equal(anchor.inserted.removed, true);
+  await moduleApi(runtime, 'cryptLord.actionOptions').refresh(3);
+  const refreshedSection = anchor.inserted;
+  bus.emit(bus.events.CHAT_CHANGED);
+  assert.equal(refreshedSection.removed, true);
+}
+
+async function testStateCardReadsAssistantDataAndCleansUpWithChatEvents() {
+  function element(document) {
+    return {
+      nodeType: 1,
+      ownerDocument: document,
+      children: [],
+      dataset: {},
+      appendChild(child) { this.children.push(child); child.parentNode = this; return child; },
+      setAttribute(name, value = '') { this[name] = value; },
+      remove() { this.removed = true; },
+      querySelector(selector) {
+        return this.children.find(child => child.className === selector.slice(1)) || null;
+      },
+    };
+  }
+
+  const document = {
+    URL: 'https://example.test/',
+    body: {},
+    documentElement: {},
+    createElement() { return element(document); },
+  };
+  const messageParent = element(document);
+  messageParent.insertBefore = (child, _nextSibling) => messageParent.appendChild(child);
+  const messageText = element(document);
+  messageText.className = 'mes_text';
+  messageText.parentNode = messageParent;
+  const messageContainer = element(document);
+  messageContainer.querySelector = selector => selector === '.mes_text' ? messageText : null;
+  const bus = eventBus();
+  const runtime = createRuntime({
+    document,
+    retrieveDisplayedMessage(messageId) { return messageId === 8 ? messageContainer : null; },
+    tavern_events: bus.events,
+    eventOn: bus.on,
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  await load(runtime, 'public/guimizhizhu_ui/shared/contract.js');
+  const statePayload = vm.runInContext("({ stat_data: { 生命: 9, 位阶: '序列九' } })", runtime);
+  register(runtime, 'cryptLord.stateStore', {
+    async readMessageData(messageId) {
+      assert.equal(messageId, 8);
+      return statePayload;
+    },
+  });
+  register(runtime, 'cryptLord.Mvu', { async getMvuData() { return {}; } });
+  await load(runtime, 'public/guimizhizhu_ui/modules/floating-variable-editor/index.js');
+  const cardModule = moduleApi(runtime, 'cryptLord.floatingVariableEditor');
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  bus.emit(bus.events.CHARACTER_MESSAGE_RENDERED, 8, 'assistant');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(cardModule.status().cards, 1);
+  assert.equal(messageParent.children.length, 1);
+  assert.equal(messageParent.children[0].children[1].children[0].textContent, '位阶');
+  assert.equal(messageParent.children[0].children[1].children[1].textContent, '序列九');
+
+  bus.emit(bus.events.MESSAGE_DELETED, 8);
+  assert.equal(cardModule.status().cards, 0);
+  assert.equal(messageParent.children[0].removed, true);
+
+  bus.emit(bus.events.CHARACTER_MESSAGE_RENDERED, 8, 'assistant');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const refreshedCard = messageParent.children[1];
+  bus.emit(bus.events.CHAT_CHANGED);
+  assert.equal(cardModule.status().cards, 0);
+  assert.equal(refreshedCard.removed, true);
 }
 
 async function testNativeEditorWritesOnlySelectedAssistantFloor() {
@@ -294,6 +395,7 @@ await testNativeFloorTransaction();
 await testFailedGenerationRemovesOnlyItsUserFloor();
 await testBridgeStoresReadableTextStateAndActionsOnOneAssistantFloor();
 await testActionFillDoesNotSubmit();
+await testStateCardReadsAssistantDataAndCleansUpWithChatEvents();
 await testNativeEditorWritesOnlySelectedAssistantFloor();
 
 console.info('guimizhizhu_ui native-floor integration tests passed');
