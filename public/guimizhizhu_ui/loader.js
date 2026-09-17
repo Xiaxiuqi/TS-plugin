@@ -50,6 +50,7 @@
     'modules/judgment-beautify/style.css',
     'modules/legacy-battle-launcher/style.css',
     'modules/legacy-tools-hub/style.css',
+    'modules/native-floor-editor/style.css',
   ];
   const managerStyleResource = {
     type: 'css',
@@ -149,6 +150,11 @@
       key: 'cryptLord.floatingVariableEditor',
       validate: api =>
         validateMethods('cryptLord.floatingVariableEditor', api, ['status', 'isReady', 'mount', 'unmount', 'dispose']),
+    },
+    {
+      path: 'modules/native-floor-editor/index.js',
+      key: 'cryptLord.nativeFloorEditorUi',
+      validate: api => validateMethods('cryptLord.nativeFloorEditorUi', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
     },
     {
       path: 'modules/judgment-beautify/index.js',
