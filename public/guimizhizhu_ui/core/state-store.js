@@ -44,6 +44,20 @@
     return clone(Array.isArray(list) ? list[0]?.data || {} : {});
   }
 
+  async function readMessage(messageId) {
+    if (!Number.isInteger(messageId)) throw new Error(`[${KEY}] 消息楼层 ID 无效`);
+    const { hostApi } = await messages();
+    const list = await hostApi.getChatMessages(String(messageId));
+    return Array.isArray(list) && list[0] ? clone(list[0]) : null;
+  }
+
+  async function writeAssistantMessage(messageId, message, data) {
+    const target = await readMessage(messageId);
+    if (target?.role !== 'assistant') throw new Error(`[${KEY}] 只能编辑真实 assistant 楼层`);
+    const { hostApi } = await messages();
+    await hostApi.setChatMessages([{ message_id: messageId, message: String(message), data: clone(data ?? target.data ?? {}) }], { refresh: 'affected' });
+  }
+
   async function writeAssistantData(messageId, data, refresh = 'affected') {
     if (!Number.isInteger(messageId)) throw new Error(`[${KEY}] assistant 楼层 ID 无效`);
     const { hostApi } = await messages();
@@ -55,7 +69,9 @@
     findLatestAssistant,
     readAssistantData,
     readMessageData,
+    readMessage,
     writeAssistantData,
+    writeAssistantMessage,
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];

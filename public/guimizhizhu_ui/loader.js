@@ -104,7 +104,12 @@
     {
       path: 'core/state-store.js',
       key: 'cryptLord.stateStore',
-      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'writeAssistantData', 'dispose']),
+      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'readMessage', 'writeAssistantData', 'writeAssistantMessage', 'dispose']),
+    },
+    {
+      path: 'core/native-editor.js',
+      key: 'cryptLord.nativeEditor',
+      validate: api => validateMethods('cryptLord.nativeEditor', api, ['status', 'open', 'save', 'dispose']),
     },
     {
       path: 'core/generation-bridge.js',
