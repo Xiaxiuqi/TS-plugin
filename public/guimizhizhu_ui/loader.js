@@ -48,8 +48,6 @@
     'shared/styles.css',
     'modules/floating-variable-editor/style.css',
     'modules/judgment-beautify/style.css',
-    'modules/legacy-battle-launcher/style.css',
-    'modules/legacy-tools-hub/style.css',
     'modules/native-floor-editor/style.css',
     'modules/action-options/style.css',
   ];
@@ -186,16 +184,6 @@
       path: 'modules/judgment-beautify/index.js',
       key: 'cryptLord.judgmentBeautify',
       validate: api => validateMethods('cryptLord.judgmentBeautify', api, ['status', 'isReady', 'decorate', 'dispose']),
-    },
-    {
-      path: 'modules/legacy-battle-launcher/index.js',
-      key: 'cryptLord.legacyBattleLauncher',
-      validate: api => validateMethods('cryptLord.legacyBattleLauncher', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
-    },
-    {
-      path: 'modules/legacy-tools-hub/index.js',
-      key: 'cryptLord.legacyToolsHub',
-      validate: api => validateMethods('cryptLord.legacyToolsHub', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
     },
   ];
   const cssPromises = new Map();
@@ -551,10 +539,10 @@
       debugEvent(
         'lifecycle',
         'resources-ready',
-        '诊断工具栏与阶段1资源已注册；不等于调试面板或业务功能当前已挂载。当前限制：无 nativeFloorBridge、无消息生命周期监听、浮动编辑器与判定美化未迁移',
+        '原生楼层核心、输入适配、状态编辑、行动选项与诊断资源已注册；仍需在真实 SillyTavern 页面完成端到端验证。',
         'warn',
       );
-      console.info(LOG_PREFIX, '契约、调试设施、诊断工具栏与四个阶段1模块已按顺序加载并通过注册验证；注册不代表调试面板或业务功能当前已挂载。');
+      console.info(LOG_PREFIX, '契约、诊断设施与原生楼层模块已按顺序加载并通过注册验证；注册不代表真实酒馆会话中的端到端验证已完成。');
       return state;
     } catch (error) {
       if (batch.disposed) return state;

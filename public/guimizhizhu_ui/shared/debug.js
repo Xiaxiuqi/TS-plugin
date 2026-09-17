@@ -226,8 +226,10 @@
       'cryptLord.inputAdapter',
       'cryptLord.floatingVariableEditor',
       'cryptLord.judgmentBeautify',
-      'cryptLord.legacyBattleLauncher',
-      'cryptLord.legacyToolsHub',
+      'cryptLord.actionOptions',
+      'cryptLord.nativeEditor',
+      'cryptLord.nativeFloorEditorUi',
+      'cryptLord.nativeSettlement',
     ];
     return known.map(key => {
       const module = root.__stage1Modules?.[key];
