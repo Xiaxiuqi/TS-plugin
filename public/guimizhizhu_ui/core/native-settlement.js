@@ -70,37 +70,70 @@
     return syncProjection(data, isLocked) || changed;
   }
 
-  function apply(data, previousData) {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) {
-      return Object.freeze({ data, changed: false, applied: Object.freeze([]) });
-    }
-    if (equal(previousData || {}, data)) {
-      return Object.freeze({ data, changed: false, applied: Object.freeze([]) });
-    }
+  function toNonNegativeInteger(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0;
+  }
 
+  function applyTurnRewards(data, previousData, context) {
+    const userLength = String(context?.userText ?? '').length;
+    const narrativeLength = String(context?.narrativeText ?? '').length;
+    const totalLength = userLength + narrativeLength;
+    const astralDust = Math.floor(totalLength / 250);
+    const theaterPoints = Math.floor(totalLength / 2000);
+    if (!astralDust && !theaterPoints) return Object.freeze({ astralDust: 0, theaterPoints: 0 });
+
+    const previousRewards = previousData?.cryptLord?.rewards;
+    const currentMeta = data.cryptLord && typeof data.cryptLord === 'object' && !Array.isArray(data.cryptLord)
+      ? data.cryptLord
+      : {};
+    const currentRewards = currentMeta.rewards && typeof currentMeta.rewards === 'object' && !Array.isArray(currentMeta.rewards)
+      ? currentMeta.rewards
+      : previousRewards || {};
+    data.cryptLord = {
+      ...currentMeta,
+      rewards: {
+        astralDust: toNonNegativeInteger(currentRewards.astralDust) + astralDust,
+      },
+    };
+    if (theaterPoints && data.stat_data && typeof data.stat_data === 'object' && !Array.isArray(data.stat_data)) {
+      data.stat_data['剧场点数'] = toNonNegativeInteger(data.stat_data['剧场点数']) + theaterPoints;
+    }
+    return Object.freeze({ astralDust, theaterPoints });
+  }
+
+  function apply(data, previousData, context = {}) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return Object.freeze({ data, changed: false, applied: Object.freeze([]), rewards: Object.freeze({ astralDust: 0, theaterPoints: 0 }) });
+    }
+    const changed = !equal(previousData || {}, data);
     const applied = [];
-    try {
-      if (typeof window.TimePassageEngine?.applyTimePassage === 'function') {
-        window.TimePassageEngine.applyTimePassage(data);
-        applied.push('time-passage');
+    if (changed) {
+      try {
+        if (typeof window.TimePassageEngine?.applyTimePassage === 'function') {
+          window.TimePassageEngine.applyTimePassage(data);
+          applied.push('time-passage');
+        }
+      } catch (error) {
+        console.warn(`[${KEY}] 时间流逝结算失败，已保留本回合状态`, error);
       }
-    } catch (error) {
-      console.warn(`[${KEY}] 时间流逝结算失败，已保留本回合状态`, error);
-    }
-    try {
-      if (typeof window.checkCollectionGrowth === 'function') {
-        window.checkCollectionGrowth(data);
-        applied.push('collection-growth');
+      try {
+        if (typeof window.checkCollectionGrowth === 'function') {
+          window.checkCollectionGrowth(data);
+          applied.push('collection-growth');
+        }
+      } catch (error) {
+        console.warn(`[${KEY}] 变量增殖提醒失败，已保留本回合状态`, error);
       }
-    } catch (error) {
-      console.warn(`[${KEY}] 变量增殖提醒失败，已保留本回合状态`, error);
+      try {
+        if (syncSequenceAbilities(data)) applied.push('sequence-abilities');
+      } catch (error) {
+        console.warn(`[${KEY}] 序列能力同步失败，已保留本回合状态`, error);
+      }
     }
-    try {
-      if (syncSequenceAbilities(data)) applied.push('sequence-abilities');
-    } catch (error) {
-      console.warn(`[${KEY}] 序列能力同步失败，已保留本回合状态`, error);
-    }
-    return Object.freeze({ data, changed: true, applied: Object.freeze(applied) });
+    const rewards = applyTurnRewards(data, previousData, context);
+    if (rewards.astralDust || rewards.theaterPoints) applied.push('turn-rewards');
+    return Object.freeze({ data, changed: changed || Boolean(rewards.astralDust || rewards.theaterPoints), applied: Object.freeze(applied), rewards });
   }
 
   const api = Object.freeze({

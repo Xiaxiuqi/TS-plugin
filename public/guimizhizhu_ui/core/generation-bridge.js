@@ -84,7 +84,10 @@
     }
 
     if (!assistantData || typeof assistantData !== 'object' || Array.isArray(assistantData)) assistantData = {};
-    settlement.apply(assistantData, previousData);
+    settlement.apply(assistantData, previousData, {
+      userText: transaction.userText,
+      narrativeText: transaction.narrativeText,
+    });
     assistantData.cryptLord = {
       ...(assistantData.cryptLord && typeof assistantData.cryptLord === 'object' ? assistantData.cryptLord : {}),
       actions: Array.from(responseNormalizer.extractActions(finalText)),

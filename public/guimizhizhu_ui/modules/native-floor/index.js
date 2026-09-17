@@ -500,6 +500,8 @@
           userMessageId: txn.userMessageId,
           assistantMessageId,
           generationId: txn.generationId,
+          userText: txn.rawText,
+          narrativeText: acceptedText,
         });
         if (!isTransactionValid(txn)) return false;
         debugEvent('assistant', 'assistant-complete-success', `messageId=${assistantMessageId}`);
