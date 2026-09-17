@@ -3,7 +3,7 @@
 
   const KEY = 'cryptLord.actionOptions';
   const STATE_STORE_KEY = 'cryptLord.stateStore';
-  const NATIVE_FLOOR_KEY = 'cryptLord.nativeFloor';
+  const INPUT_ADAPTER_KEY = 'cryptLord.inputAdapter';
   const ROOT_ATTR = 'data-crypt-lord-action-options';
   const INSTANCE_ATTR = 'data-crypt-lord-action-options-instance';
   const MESSAGE_ID_ATTR = 'data-crypt-lord-message-id';
@@ -45,17 +45,16 @@
     return true;
   }
 
-  async function sendAction(button, action) {
-    if (disposed || button.disabled) return;
-    const nativeFloor = await contract.waitGlobalInitialized(NATIVE_FLOOR_KEY, { timeoutMs: 10000 });
-    if (disposed || nativeFloor.hasActiveTurn?.()) return;
-    button.disabled = true;
+  async function fillAction(action) {
+    if (disposed) return false;
+    const inputAdapter = await contract.waitGlobalInitialized(INPUT_ADAPTER_KEY, { timeoutMs: 10000 });
+    if (disposed) return false;
     try {
-      await nativeFloor.submitNativeTurn(action, { source: 'action-option' });
+      return inputAdapter.setInputText(action, 'sillytavern-native');
     } catch (error) {
-      console.error(`[${KEY}] 行动选项发送失败`, error);
-      window.toastr?.error?.(`行动发送失败：${error?.message || error}`);
-      button.disabled = false;
+      console.error(`[${KEY}] 行动选项填入失败`, error);
+      window.toastr?.error?.(`无法填入行动：${error?.message || error}`);
+      return false;
     }
   }
 
@@ -77,7 +76,7 @@
       button.type = 'button';
       button.className = 'crypt-lord-action-options__button';
       button.textContent = `${index + 1}. ${action}`;
-      button.addEventListener('click', () => { void sendAction(button, action); });
+      button.addEventListener('click', () => { void fillAction(action); });
       list.appendChild(button);
     });
     section.appendChild(list);

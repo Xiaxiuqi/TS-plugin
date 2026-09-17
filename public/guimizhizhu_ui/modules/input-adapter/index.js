@@ -53,6 +53,17 @@
     return state.host.document.querySelector(source === 'game-shell' ? SELECTORS.gameTextarea : SELECTORS.nativeTextarea);
   }
 
+  function setInputText(rawText, source = 'sillytavern-native') {
+    if (state.disposed) throw new Error(`[${KEY}] 模块已释放`);
+    const input = inputFor(source);
+    if (!input) throw new Error(`未找到输入控件 ${source === 'game-shell' ? SELECTORS.gameTextarea : SELECTORS.nativeTextarea}`);
+    input.value = String(rawText ?? '');
+    input.dispatchEvent(new state.host.window.Event('input', { bubbles: true }));
+    input.focus?.();
+    debugEvent('action', 'input-filled', `source=${source}`);
+    return true;
+  }
+
   async function submit(rawText, source = 'external') {
     if (state.disposed) throw new Error(`[${KEY}] 模块已释放`);
     if (state.submitting) throw new Error(`[${KEY}] 上一条行动仍在处理中`);
@@ -165,6 +176,7 @@
     install,
     submit,
     submitTextarea,
+    setInputText,
     dispose,
   });
 

@@ -169,7 +169,7 @@
     {
       path: 'modules/input-adapter/index.js',
       key: 'cryptLord.inputAdapter',
-      validate: api => validateMethods('cryptLord.inputAdapter', api, ['status', 'submit', 'dispose']),
+      validate: api => validateMethods('cryptLord.inputAdapter', api, ['status', 'submit', 'setInputText', 'dispose']),
     },
     {
       path: 'modules/floating-variable-editor/index.js',
