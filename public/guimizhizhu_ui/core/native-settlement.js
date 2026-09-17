@@ -18,6 +18,58 @@
     return leftKeys.every((key, index) => key === rightKeys[index] && equal(left[key], right[key]));
   }
 
+  function clone(value) {
+    if (typeof window.structuredClone === 'function') return window.structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function syncProjection(data, isLocked) {
+    if (typeof window.PlayerProjectionSync?.syncAll === 'function') {
+      window.PlayerProjectionSync.syncAll(data, isLocked);
+      return true;
+    }
+    if (typeof window.AudienceImaginationCore?.syncPlayerProjections === 'function') {
+      window.AudienceImaginationCore.syncPlayerProjections(data, isLocked);
+      return true;
+    }
+    return false;
+  }
+
+  function syncSequenceAbilities(data) {
+    const statData = data?.stat_data;
+    if (!statData || typeof statData !== 'object' || Array.isArray(statData)) return false;
+    const isLocked = window.localStorage?.getItem('ST_LoM_AbilityLock') === 'true';
+    const sequence = String(statData['当前序列'] || '').trim();
+    if (!sequence || sequence.includes('普通人')) return syncProjection(data, isLocked);
+    if (typeof window.fetchAvailableAbilities !== 'function') return syncProjection(data, isLocked);
+
+    let required;
+    try { required = window.fetchAvailableAbilities(sequence, isLocked); } catch (error) {
+      console.warn(`[${KEY}] 查询序列能力失败，已跳过能力同步`, error);
+      return syncProjection(data, isLocked);
+    }
+    if (!required || typeof required !== 'object' || Array.isArray(required)) return syncProjection(data, isLocked);
+
+    const record = statData['序列能力列表'];
+    const abilities = record && typeof record === 'object' && !Array.isArray(record) ? record : {};
+    let changed = false;
+    Object.entries(required).forEach(([sequenceName, entries]) => {
+      if (!Array.isArray(entries)) return;
+      const existing = Array.isArray(abilities[sequenceName]) ? abilities[sequenceName] : [];
+      const existingNames = new Set(existing.map(item => String(item?.名称 || '').trim()).filter(Boolean));
+      entries.forEach(entry => {
+        const name = String(entry?.名称 || '').trim();
+        if (!name || existingNames.has(name)) return;
+        existing.push(clone(entry));
+        existingNames.add(name);
+        changed = true;
+      });
+      abilities[sequenceName] = existing;
+    });
+    if (changed) statData['序列能力列表'] = abilities;
+    return syncProjection(data, isLocked) || changed;
+  }
+
   function apply(data, previousData) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       return Object.freeze({ data, changed: false, applied: Object.freeze([]) });
@@ -43,11 +95,16 @@
     } catch (error) {
       console.warn(`[${KEY}] 变量增殖提醒失败，已保留本回合状态`, error);
     }
+    try {
+      if (syncSequenceAbilities(data)) applied.push('sequence-abilities');
+    } catch (error) {
+      console.warn(`[${KEY}] 序列能力同步失败，已保留本回合状态`, error);
+    }
     return Object.freeze({ data, changed: true, applied: Object.freeze(applied) });
   }
 
   const api = Object.freeze({
-    status() { return Object.freeze({ key: KEY, ready: true, handlers: Object.freeze(['time-passage', 'collection-growth']) }); },
+    status() { return Object.freeze({ key: KEY, ready: true, handlers: Object.freeze(['time-passage', 'collection-growth', 'sequence-abilities']) }); },
     apply,
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
