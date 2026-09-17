@@ -54,8 +54,13 @@ let body = null;
   function ownedCss() {
     try {
       const url = String(root.loader?.baseUrl || '').replace(/\/?$/, '/') + 'modules/manager-ui/style.css';
-      return Array.from(document.querySelectorAll?.('style[data-crypt-lord-css]') || [])
-        .find(node => String(node.dataset.cryptLordCss || '') === url && node.dataset.cryptLordInstance === root.loader?.instanceId) || null;
+      const documents = [host?.document, document].filter((doc, index, list) => doc && list.indexOf(doc) === index);
+      for (const targetDocument of documents) {
+        const style = Array.from(targetDocument.querySelectorAll?.('style[data-crypt-lord-css]') || [])
+          .find(node => String(node.dataset.cryptLordCss || '') === url && node.dataset.cryptLordInstance === root.loader?.instanceId);
+        if (style) return style;
+      }
+      return null;
     } catch { return null; }
   }
   function ensure() {
@@ -107,7 +112,7 @@ let body = null;
     const actions = card(body, '诊断操作'); const actionsRow = append(actions, 'div', undefined, 'crypt-lord-manager-actions');
     const action = (label, handler) => { const button = append(actionsRow, 'button', label, 'crypt-lord-manager-button'); button.type = 'button'; button.addEventListener('click', handler); };
     action('刷新快照', refresh); action('清空事件日志', () => { root.debug?.panel?.clear?.(); refresh(); }); action(snapshot?.enabled ? '停用调试' : '启用调试', () => { root.debug?.setEnabled?.(!root.debug?.isEnabled?.()); refresh(); });
-    const modules = card(body, '模块状态'); renderList(modules, (snapshot?.modules || []).map(item => `${safeText(item.key)} · ${item.registered ? '已注册' : '未注册'} · ${item.mounted ? '已挂载' : '未挂载'}`), '没有可观测模块状态。');
+    const modules = card(body, '模块状态'); renderList(modules, (snapshot?.modules || []).map(item => `${safeText(item.key)} · ${item.registered ? '已注册' : '未注册'} · ${item.mounted ? '界面已显示' : item.ready ? '服务已就绪' : '尚未就绪'}`), '没有可观测模块状态。');
     const limitations = card(body, '当前限制'); renderList(limitations, (snapshot?.limitations || []).map(safeText), '未报告限制。');
     const events = card(body, '事件日志'); events.parentNode.className += ' crypt-lord-manager-card-wide'; renderList(events, (snapshot?.events || []).slice().reverse().map(item => `${safeText(item.timestamp)} [${safeText(item.level)}] ${safeText(item.module)} · ${safeText(item.action)}${item.details ? ` — ${safeText(item.details)}` : ''}`), '事件日志为空。');
     if (!body.children.length) {

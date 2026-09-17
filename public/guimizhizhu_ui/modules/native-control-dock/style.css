@@ -1,0 +1,7 @@
+.crypt-lord-native-control-dock { position:fixed; right:16px; bottom:16px; z-index:10000; box-sizing:border-box; width:282px; border:1px solid rgba(178,146,82,.82); border-radius:6px; padding:11px 12px; color:#f3e4c7; background:#1d2028; box-shadow:0 8px 22px rgba(0,0,0,.34); font:13px/1.45 system-ui,-apple-system,"Microsoft YaHei",sans-serif; }
+.crypt-lord-native-control-dock__title { display:block; color:#f0c675; font-size:15px; font-weight:700; }
+.crypt-lord-native-control-dock__status { min-height:19px; margin:4px 0 10px; color:#c8c9c8; font-size:12px; }
+.crypt-lord-native-control-dock__actions { display:flex; gap:7px; }
+.crypt-lord-native-control-dock__button { flex:1; min-height:31px; border:1px solid rgba(198,169,103,.6); border-radius:4px; color:#f3e4c7; background:#30333a; cursor:pointer; font:inherit; }
+.crypt-lord-native-control-dock__button:hover { background:#45403a; }
+@media (max-width:560px) { .crypt-lord-native-control-dock { right:10px; bottom:10px; width:min(282px,calc(100vw - 20px)); } }

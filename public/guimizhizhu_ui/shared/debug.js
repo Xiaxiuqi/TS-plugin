@@ -230,6 +230,7 @@
       'cryptLord.nativeEditor',
       'cryptLord.nativeFloorEditorUi',
       'cryptLord.nativeSettlement',
+      'cryptLord.nativeControlDock',
     ];
     return known.map(key => {
       const module = root.__stage1Modules?.[key];
@@ -242,6 +243,7 @@
       return {
         key,
         registered: !!module,
+        ready: reported?.ready === true || reported?.available === true || reported?.installed === true,
         mounted: reported?.mounted === true,
         status: reported,
       };
@@ -308,7 +310,8 @@
     state.modules.forEach(item => {
       const registered = item.registered ? '资源已注册' : '资源未注册';
       const mounted = item.mounted ? '业务功能已挂载' : '业务功能未挂载/不可用';
-      append(summary, 'div', `${item.key}: ${registered}；${mounted}`, ROW_STYLE);
+      const phase = item.mounted ? '界面已显示' : item.ready ? '服务已就绪' : '尚未就绪';
+      append(summary, 'div', `${item.key}: ${registered}；${phase}`, ROW_STYLE);
     });
     state.limitations.forEach(text => append(summary, 'div', `限制：${text}`, `${ROW_STYLE};color:#f0c674`));
     state.events.slice().reverse().forEach(item => {

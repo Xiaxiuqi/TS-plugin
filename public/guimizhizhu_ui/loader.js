@@ -49,6 +49,7 @@
     'modules/floating-variable-editor/style.css',
     'modules/native-floor-editor/style.css',
     'modules/action-options/style.css',
+    'modules/native-control-dock/style.css',
   ];
   const managerStyleResource = {
     type: 'css',
@@ -179,6 +180,11 @@
       key: 'cryptLord.nativeFloorEditorUi',
       validate: api => validateMethods('cryptLord.nativeFloorEditorUi', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
     },
+    {
+      path: 'modules/native-control-dock/index.js',
+      key: 'cryptLord.nativeControlDock',
+      validate: api => validateMethods('cryptLord.nativeControlDock', api, ['status', 'mount', 'refresh', 'dispose']),
+    },
   ];
   const cssPromises = new Map();
   const scriptPromises = new Map();
@@ -216,6 +222,28 @@
 
   function validateResource(resource) {
     return resource.validate(getResourceApi(resource));
+  }
+
+  function styleTargetDocuments() {
+    const candidates = [window];
+    for (const name of ['parent', 'top']) {
+      try {
+        if (window[name] && !candidates.includes(window[name])) candidates.push(window[name]);
+      } catch {
+        // Cross-origin frames cannot receive host styles.
+      }
+    }
+    const host = candidates.reduce((best, candidate) => {
+      try {
+        const doc = candidate?.document;
+        if (!doc?.documentElement || !doc?.createElement) return best;
+        const score = (candidate.TavernHelper ? 6 : 0) + (candidate.SillyTavern ? 8 : 0) + (doc.querySelector?.('#send_textarea') ? 12 : 0);
+        return !best || score > best.score ? { document: doc, score } : best;
+      } catch {
+        return best;
+      }
+    }, null);
+    return [document, host?.document].filter((doc, index, list) => doc && list.indexOf(doc) === index);
   }
 
   function loadCss(path) {
@@ -275,10 +303,10 @@
         })
         .then(cssText => {
           if (batch.disposed) throw disposalError();
-          // The manager moves this exact loader-owned node to the selected host.  Do
-          // not pre-inject a second copy there: that leaves duplicate host CSS.
-          const documents = [document]
-            .filter((doc, index, list) => doc && list.indexOf(doc) === index);
+          // Script modules mount UI into the SillyTavern host document while the
+          // loader itself runs inside an iframe. Keep one owned stylesheet in each
+          // document so host-mounted controls are actually visible and positioned.
+          const documents = styleTargetDocuments();
           const injected = documents.map(targetDocument => {
             const style = targetDocument.createElement('style');
             style.dataset.cryptLordCss = url;

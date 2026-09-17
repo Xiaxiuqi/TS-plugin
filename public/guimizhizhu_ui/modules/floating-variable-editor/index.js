@@ -446,7 +446,8 @@
       return Object.freeze({
         key: KEY,
         phase: 'stage1-body-stat-card',
-        ready: mvuAvailable,
+        ready: !disposed && booted,
+        mvuReady: mvuAvailable,
         booted,
         mounted: cards.size > 0,
         cards: cards.size,

@@ -435,6 +435,58 @@ async function testStateCardReadsAssistantDataAndCleansUpWithChatEvents() {
   assert.equal(refreshedCard.removed, true);
 }
 
+async function testNativeControlDockMountsIntoTheHostDocument() {
+  function element(document) {
+    const listeners = new Map();
+    return {
+      nodeType: 1,
+      ownerDocument: document,
+      children: [],
+      dataset: {},
+      isConnected: false,
+      appendChild(child) { this.children.push(child); child.parentNode = this; child.isConnected = true; return child; },
+      append(...children) { children.forEach(child => this.appendChild(child)); },
+      setAttribute(name, value = '') { this[name] = value; },
+      addEventListener(type, handler) { listeners.set(type, handler); },
+      dispatch(type) { listeners.get(type)?.({ target: this }); },
+      remove() { this.removed = true; this.isConnected = false; },
+    };
+  }
+
+  const scriptDocument = { body: {}, documentElement: {}, querySelector() { return null; } };
+  const hostDocument = {
+    URL: 'http://127.0.0.1:8000/',
+    documentElement: {},
+    createElement() { return element(hostDocument); },
+    querySelector(selector) { return selector === '#send_textarea' ? { value: '' } : null; },
+  };
+  hostDocument.body = element(hostDocument);
+  const hostWindow = { document: hostDocument, TavernHelper: {}, SillyTavern: {} };
+  const runtime = createRuntime({ document: scriptDocument });
+  runtime.parent = hostWindow;
+  runtime.top = hostWindow;
+  await load(runtime, 'public/guimizhizhu_ui/shared/contract.js');
+  let openEditorCalls = 0;
+  let openDiagnosticsCalls = 0;
+  register(runtime, 'cryptLord.nativeFloorEditorUi', { async open() { openEditorCalls += 1; } });
+  register(runtime, 'cryptLord.nativeFloor', { status() { return { active: false }; } });
+  register(runtime, 'cryptLord.inputAdapter', { status() { return { ready: true }; } });
+  runtime.cryptLord.debugManager = { open() { openDiagnosticsCalls += 1; return true; } };
+  await load(runtime, 'public/guimizhizhu_ui/modules/native-control-dock/index.js');
+  const dock = moduleApi(runtime, 'cryptLord.nativeControlDock');
+
+  assert.equal(dock.status().mounted, true);
+  assert.equal(hostDocument.body.children.length, 1);
+  const panel = hostDocument.body.children[0];
+  assert.equal(panel.children[0].textContent, '诡秘之主');
+  assert.match(panel.children[1].textContent, /原生楼层就绪/);
+  panel.children[2].children[0].dispatch('click');
+  panel.children[2].children[1].dispatch('click');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(openEditorCalls, 1);
+  assert.equal(openDiagnosticsCalls, 1);
+}
+
 async function testNativeEditorWritesOnlySelectedAssistantFloor() {
   const runtime = createRuntime();
   await load(runtime, 'public/guimizhizhu_ui/shared/contract.js');
@@ -461,6 +513,7 @@ await testStreamedEndTextCommitsToTheSameTransaction();
 await testBridgeStoresReadableTextStateAndActionsOnOneAssistantFloor();
 await testActionFillDoesNotSubmit();
 await testStateCardReadsAssistantDataAndCleansUpWithChatEvents();
+await testNativeControlDockMountsIntoTheHostDocument();
 await testNativeEditorWritesOnlySelectedAssistantFloor();
 
 console.info('guimizhizhu_ui native-floor integration tests passed');
