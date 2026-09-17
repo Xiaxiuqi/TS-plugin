@@ -223,6 +223,7 @@
   function moduleStatuses() {
     const known = [
       'cryptLord.nativeFloor',
+      'cryptLord.nativeFloorBridge',
       'cryptLord.inputAdapter',
       'cryptLord.floatingVariableEditor',
       'cryptLord.actionOptions',
@@ -267,12 +268,10 @@
         }];
       })),
       limitations: Object.freeze([
-        '未注册 cryptLord.nativeFloorBridge，原生楼层业务链路不可用',
-        '已挂载只读助手消息体状态卡（cryptLord.floatingVariableEditor）；仅渲染 stat_data，不解析、不应用、不写入消息变量指令',
-        '浮动变量编辑器的编辑与变量写入能力尚未迁移',
-        '判定美化尚未迁移',
-        '⚔️ 战斗前端现为旧 BattleUI 的可见入口与页面容器；战斗引擎、判定和数据写入尚未迁移',
-        '🧰 工具栏已自动挂载：包含 14 个旧前端入口（战斗/浮动变量编辑器/判定/序列/路径/战争/营地/邻境/领地/神秘案件/快速中继/快速浪漫/AI 配置/评定）；点击任一入口即打开可见前端容器',
+        '原生楼层链路已注册；仍需在真实 SillyTavern 会话中验证生成、编辑、行动选项和状态卡的端到端行为',
+        '状态卡只读取真实 assistant 楼层 data.stat_data；完整 data 编辑通过原生楼层编辑器完成',
+        '战斗、判定美化、工具中心、抽卡与剧场前端尚未以可运行模块迁入，已删除其旧占位入口而非伪造可用功能',
+        '正文不提供私有历史、短期/核心记忆或 RAG；相关检索、快照和时间线功能不在生产脚本中',
         ...moduleStatuses().flatMap(entry => {
           const reasons = entry.status?.visibilityReasons || [];
           if (!entry.mounted || reasons.length === 0) return [];
