@@ -106,7 +106,15 @@ function createFloorHost(runtime, generate) {
       return generate(config);
     },
   };
-  return { configs, messages };
+  return {
+    configs,
+    messages,
+    append(role, message, data = {}) {
+      const floor = { message_id: nextMessageId++, role, message, data: structuredClone(data) };
+      messages.push(floor);
+      return floor;
+    },
+  };
 }
 
 async function testNativeFloorTransaction() {
@@ -158,6 +166,57 @@ async function testFailedGenerationRemovesOnlyItsUserFloor() {
   );
   assert.deepEqual(host.messages, []);
   assert.equal(failed, 1);
+}
+
+async function testExistingAssistantFloorIsClaimedInsteadOfDuplicated() {
+  const runtime = createRuntime();
+  await load(runtime, 'public/guimizhizhu_ui/shared/contract.js');
+  let host;
+  host = createFloorHost(runtime, async () => {
+    host.append('assistant', '宿主暂存正文');
+    return '规范后的正文';
+  });
+  register(runtime, 'cryptLord.nativeFloorBridge', {
+    async prepareTurn() { return { accepted: true, assistantData: { stat_data: { 生命: 9 } } }; },
+    async buildGenerationConfig(rawText) { return { config: { user_input: rawText }, retryLimit: 0, watchdogSeconds: 0 }; },
+    async inspectNarrative(rawText) { return { passed: true, text: rawText, parseText: rawText }; },
+    async completeNarrative() {},
+  });
+  await load(runtime, 'public/guimizhizhu_ui/modules/native-floor/index.js');
+
+  await moduleApi(runtime, 'cryptLord.nativeFloor').submitNativeTurn('宿主认领测试');
+
+  assert.deepEqual(host.messages.map(message => message.role), ['user', 'assistant']);
+  assert.equal(host.messages[1].message, '规范后的正文');
+  assert.deepEqual(host.messages[1].data, { stat_data: { 生命: 9 } });
+}
+
+async function testStreamedEndTextCommitsToTheSameTransaction() {
+  const runtime = createRuntime();
+  await load(runtime, 'public/guimizhizhu_ui/shared/contract.js');
+  let resolveGenerate;
+  const host = createFloorHost(runtime, () => new Promise(resolve => { resolveGenerate = resolve; }));
+  register(runtime, 'cryptLord.nativeFloorBridge', {
+    async prepareTurn() { return { accepted: true, assistantData: {} }; },
+    async buildGenerationConfig(rawText) { return { config: { user_input: rawText }, retryLimit: 0, watchdogSeconds: 0 }; },
+    async inspectNarrative(rawText) { return { passed: true, text: rawText, parseText: rawText }; },
+    async completeNarrative() {},
+  });
+  await load(runtime, 'public/guimizhizhu_ui/modules/native-floor/index.js');
+  const floor = moduleApi(runtime, 'cryptLord.nativeFloor');
+  const submission = floor.submitNativeTurn('流式回合');
+  while (host.configs.length === 0) await new Promise(resolve => setTimeout(resolve, 0));
+
+  const generationId = host.configs[0].generation_id;
+  assert.equal(await floor.onGenerationEnded('不应采纳', '过期生成ID'), false);
+  assert.equal(await floor.onGenerationEnded('流式最终正文', generationId), true);
+  resolveGenerate(undefined);
+  await submission;
+
+  assert.deepEqual(host.messages.map(message => [message.role, message.message]), [
+    ['user', '流式回合'],
+    ['assistant', '流式最终正文'],
+  ]);
 }
 
 async function testBridgeStoresReadableTextStateAndActionsOnOneAssistantFloor() {
@@ -294,6 +353,10 @@ async function testActionFillDoesNotSubmit() {
   assert.equal(input.inputEvents, 2);
   assert.equal(submitCount, 0);
 
+  await adapter.submitTextarea('sillytavern-native');
+  assert.equal(submitCount, 1);
+  assert.equal(input.value, '');
+
   bus.emit(bus.events.MESSAGE_DELETED, 3);
   assert.equal(anchor.inserted.removed, true);
   await moduleApi(runtime, 'cryptLord.actionOptions').refresh(3);
@@ -393,6 +456,8 @@ async function testNativeEditorWritesOnlySelectedAssistantFloor() {
 
 await testNativeFloorTransaction();
 await testFailedGenerationRemovesOnlyItsUserFloor();
+await testExistingAssistantFloorIsClaimedInsteadOfDuplicated();
+await testStreamedEndTextCommitsToTheSameTransaction();
 await testBridgeStoresReadableTextStateAndActionsOnOneAssistantFloor();
 await testActionFillDoesNotSubmit();
 await testStateCardReadsAssistantDataAndCleansUpWithChatEvents();
