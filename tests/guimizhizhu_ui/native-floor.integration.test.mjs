@@ -254,7 +254,7 @@ async function testActionFillDoesNotSubmit() {
   const runtime = createRuntime({
     document,
     MutationObserver: class { observe() {} disconnect() {} },
-    retrieveDisplayedMessage(messageId) { return messageId === 3 ? container : null; },
+    retrieveDisplayedMessage(messageId) { return messageId === 3 ? [container] : null; },
     tavern_events: bus.events,
     eventOn: bus.on,
   });
@@ -334,7 +334,7 @@ async function testStateCardReadsAssistantDataAndCleansUpWithChatEvents() {
   const bus = eventBus();
   const runtime = createRuntime({
     document,
-    retrieveDisplayedMessage(messageId) { return messageId === 8 ? messageContainer : null; },
+    retrieveDisplayedMessage(messageId) { return messageId === 8 ? [messageContainer] : null; },
     tavern_events: bus.events,
     eventOn: bus.on,
     addEventListener() {},

@@ -19,10 +19,16 @@
 
   function getOwnerWindow() { return window; }
 
+  function normalizeDisplayedMessage(value) {
+    const node = value?.nodeType === 1 ? value : value?.[0];
+    if (!node || node.nodeType !== 1) return null;
+    return typeof node.closest === 'function' ? node.closest('.mes[mesid]') || node : node;
+  }
+
   function getMessageContainer(messageId) {
     try {
-      const direct = getOwnerWindow().retrieveDisplayedMessage?.(messageId);
-      if (direct?.nodeType === 1) return direct;
+      const direct = normalizeDisplayedMessage(getOwnerWindow().retrieveDisplayedMessage?.(messageId));
+      if (direct) return direct;
     } catch { /* Fall through to the DOM lookup. */ }
     const safeId = String(messageId).replace(/(["\\])/g, '\\$1');
     return document.querySelector(`#chat > .mes[mesid="${safeId}"]`);

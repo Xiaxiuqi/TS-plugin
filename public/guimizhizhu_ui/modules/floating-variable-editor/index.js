@@ -88,8 +88,11 @@
     const ownerWindow = getOwnerWindow();
     if (ownerWindow && typeof ownerWindow.retrieveDisplayedMessage === 'function') {
       try {
-        const node = ownerWindow.retrieveDisplayedMessage(messageId);
-        if (node && typeof node === 'object' && (node.tagName || node.nodeType === 1)) return node;
+        const displayed = ownerWindow.retrieveDisplayedMessage(messageId);
+        const node = displayed?.nodeType === 1 ? displayed : displayed?.[0];
+        if (node && typeof node === 'object' && (node.tagName || node.nodeType === 1)) {
+          return typeof node.closest === 'function' ? node.closest('.mes[mesid]') || node : node;
+        }
       } catch { /* fall through to DOM fallback */ }
     }
     const doc = getOwnerDocument();
