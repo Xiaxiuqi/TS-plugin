@@ -5,6 +5,7 @@
   const HOST_API_KEY = 'cryptLord.hostApi';
   const STATE_STORE_KEY = 'cryptLord.stateStore';
   const CONTEXT_BUILDER_KEY = 'cryptLord.contextBuilder';
+  const RESPONSE_NORMALIZER_KEY = 'cryptLord.responseNormalizer';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);
@@ -28,12 +29,13 @@
   }
 
   async function dependencies() {
-    const [hostApi, contextBuilder, stateStore] = await Promise.all([
+    const [hostApi, contextBuilder, stateStore, responseNormalizer] = await Promise.all([
       contract.waitGlobalInitialized(HOST_API_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(CONTEXT_BUILDER_KEY, { timeoutMs: 10000 }),
       contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }),
+      contract.waitGlobalInitialized(RESPONSE_NORMALIZER_KEY, { timeoutMs: 10000 }),
     ]);
-    return { hostApi, contextBuilder, stateStore };
+    return { hostApi, contextBuilder, stateStore, responseNormalizer };
   }
 
   async function prepareTurn(rawText) {
@@ -60,9 +62,10 @@
   }
 
   async function inspectNarrative(finalText) {
-    const text = String(finalText ?? '').trim();
-    if (!text) return { passed: false, autoRetryable: false };
-    return { passed: true, text };
+    const { responseNormalizer } = await dependencies();
+    const normalized = responseNormalizer.normalize(finalText);
+    if (!normalized.raw || !normalized.message) return { passed: false, autoRetryable: false };
+    return { passed: true, text: normalized.message, parseText: normalized.raw };
   }
 
   async function completeNarrative(finalText, transaction) {

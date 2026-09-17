@@ -496,7 +496,7 @@
       if (!isTransactionValid(txn)) return false;
       txn.responseCommitted = true;
       try {
-        await bridge.completeNarrative(acceptedText, {
+        await bridge.completeNarrative(String(inspected.parseText ?? acceptedText), {
           userMessageId: txn.userMessageId,
           assistantMessageId,
           generationId: txn.generationId,

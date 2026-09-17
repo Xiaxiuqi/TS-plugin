@@ -113,6 +113,11 @@
       validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'readMessage', 'writeAssistantData', 'writeAssistantMessage', 'dispose']),
     },
     {
+      path: 'core/response-normalizer.js',
+      key: 'cryptLord.responseNormalizer',
+      validate: api => validateMethods('cryptLord.responseNormalizer', api, ['status', 'normalize', 'dispose']),
+    },
+    {
       path: 'prompts/game-context-providers.js',
       key: 'cryptLord.gameContextProviders',
       validate: api => validateMethods('cryptLord.gameContextProviders', api, ['status', 'dispose']),
