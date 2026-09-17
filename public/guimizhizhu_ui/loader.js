@@ -47,7 +47,6 @@
   const cssResources = [
     'shared/styles.css',
     'modules/floating-variable-editor/style.css',
-    'modules/judgment-beautify/style.css',
     'modules/native-floor-editor/style.css',
     'modules/action-options/style.css',
   ];
@@ -179,11 +178,6 @@
       path: 'modules/native-floor-editor/index.js',
       key: 'cryptLord.nativeFloorEditorUi',
       validate: api => validateMethods('cryptLord.nativeFloorEditorUi', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
-    },
-    {
-      path: 'modules/judgment-beautify/index.js',
-      key: 'cryptLord.judgmentBeautify',
-      validate: api => validateMethods('cryptLord.judgmentBeautify', api, ['status', 'isReady', 'decorate', 'dispose']),
     },
   ];
   const cssPromises = new Map();

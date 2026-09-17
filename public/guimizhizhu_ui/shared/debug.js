@@ -225,7 +225,6 @@
       'cryptLord.nativeFloor',
       'cryptLord.inputAdapter',
       'cryptLord.floatingVariableEditor',
-      'cryptLord.judgmentBeautify',
       'cryptLord.actionOptions',
       'cryptLord.nativeEditor',
       'cryptLord.nativeFloorEditorUi',
