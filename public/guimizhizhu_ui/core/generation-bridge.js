@@ -69,7 +69,7 @@
   }
 
   async function completeNarrative(finalText, transaction) {
-    const { hostApi, stateStore } = await dependencies();
+    const { hostApi, responseNormalizer, stateStore } = await dependencies();
     const previousData = await stateStore.readAssistantData(transaction.userMessageId);
     let assistantData = previousData;
 
@@ -80,6 +80,12 @@
     } catch (error) {
       console.warn(`[${KEY}] MVU 变量解析未完成，将保留上一 assistant 楼层的数据`, error);
     }
+
+    if (!assistantData || typeof assistantData !== 'object' || Array.isArray(assistantData)) assistantData = {};
+    assistantData.cryptLord = {
+      ...(assistantData.cryptLord && typeof assistantData.cryptLord === 'object' ? assistantData.cryptLord : {}),
+      actions: Array.from(responseNormalizer.extractActions(finalText)),
+    };
 
     await stateStore.writeAssistantData(transaction.assistantMessageId, assistantData);
   }

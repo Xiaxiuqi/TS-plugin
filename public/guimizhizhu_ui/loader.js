@@ -51,6 +51,7 @@
     'modules/legacy-battle-launcher/style.css',
     'modules/legacy-tools-hub/style.css',
     'modules/native-floor-editor/style.css',
+    'modules/action-options/style.css',
   ];
   const managerStyleResource = {
     type: 'css',
@@ -115,7 +116,7 @@
     {
       path: 'core/response-normalizer.js',
       key: 'cryptLord.responseNormalizer',
-      validate: api => validateMethods('cryptLord.responseNormalizer', api, ['status', 'normalize', 'dispose']),
+      validate: api => validateMethods('cryptLord.responseNormalizer', api, ['status', 'normalize', 'extractActions', 'dispose']),
     },
     {
       path: 'prompts/game-context-providers.js',
@@ -154,6 +155,11 @@
       path: 'modules/native-floor/index.js',
       key: 'cryptLord.nativeFloor',
       validate: api => validateMethods('cryptLord.nativeFloor', api, ['status', 'submitNativeTurn', 'dispose']),
+    },
+    {
+      path: 'modules/action-options/index.js',
+      key: 'cryptLord.actionOptions',
+      validate: api => validateMethods('cryptLord.actionOptions', api, ['status', 'mount', 'refresh', 'dispose']),
     },
     {
       path: 'modules/input-adapter/index.js',

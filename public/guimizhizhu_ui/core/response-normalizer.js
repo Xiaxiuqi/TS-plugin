@@ -18,6 +18,7 @@
     'safe',
     'EventCard',
     '事件卡片',
+    'action',
   ]);
 
   function escapeTagName(tagName) {
@@ -41,6 +42,20 @@
     return text.replace(/<[^>]*>/g, '');
   }
 
+  function extractActions(rawText) {
+    const actionText = getLastTagContent(String(rawText ?? ''), 'action');
+    const unique = new Set();
+    return Object.freeze(actionText.split('\n')
+      .map(line => line.trim().replace(/^(?:\d+[.)]|[-*•])\s*/, '').trim())
+      .filter(line => line && line.length <= 300)
+      .filter(line => {
+        if (unique.has(line)) return false;
+        unique.add(line);
+        return true;
+      })
+      .slice(0, 8));
+  }
+
   function normalize(rawText) {
     const raw = String(rawText ?? '').replace(/\r\n?/g, '\n').trim();
     if (!raw) return Object.freeze({ raw, message: '', usedGameText: false });
@@ -56,6 +71,7 @@
   const api = Object.freeze({
     status() { return Object.freeze({ key: KEY, ready: true, hiddenTags: HIDDEN_TAGS }); },
     normalize,
+    extractActions,
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];

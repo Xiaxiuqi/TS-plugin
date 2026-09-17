@@ -1,0 +1,32 @@
+.crypt-lord-action-options {
+  margin: 0.65rem 0 0;
+}
+
+.crypt-lord-action-options__list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.crypt-lord-action-options__button {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, #64748b) 70%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #111827) 88%, #2b9a8e);
+  color: var(--SmartThemeBodyColor, #f8fafc);
+  font: inherit;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crypt-lord-action-options__button:hover:not(:disabled) {
+  border-color: #4fd1c5;
+  background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #111827) 76%, #147d74);
+}
+
+.crypt-lord-action-options__button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
