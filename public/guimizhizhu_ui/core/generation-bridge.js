@@ -46,11 +46,11 @@
   }
 
   async function buildGenerationConfig(rawText) {
-    const { contextBuilder } = await dependencies();
+    const { contextBuilder, stateStore } = await dependencies();
     return {
       config: {
         user_input: String(rawText ?? '').trim(),
-        injects: await contextBuilder.build({ rawText: String(rawText ?? '').trim(), source: 'narrative' }),
+        injects: await contextBuilder.build({ rawText: String(rawText ?? '').trim(), source: 'narrative', state: await stateStore.readAssistantData() }),
         max_chat_history: 'all',
         should_stream: Boolean(root.settings?.narrativeStreamingEnabled),
       },

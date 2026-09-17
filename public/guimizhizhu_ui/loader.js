@@ -113,6 +113,11 @@
       validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'readMessage', 'writeAssistantData', 'writeAssistantMessage', 'dispose']),
     },
     {
+      path: 'prompts/game-context-providers.js',
+      key: 'cryptLord.gameContextProviders',
+      validate: api => validateMethods('cryptLord.gameContextProviders', api, ['status', 'dispose']),
+    },
+    {
       path: 'core/native-editor.js',
       key: 'cryptLord.nativeEditor',
       validate: api => validateMethods('cryptLord.nativeEditor', api, ['status', 'open', 'save', 'dispose']),
