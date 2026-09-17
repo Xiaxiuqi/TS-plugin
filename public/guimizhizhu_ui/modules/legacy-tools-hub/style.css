@@ -1,0 +1,99 @@
+/* 源文件 诡秘之主正则.js:8659-8743 原样 CSS；新增 CSS 变量 fallback 以确保宿主未注入变量时仍可见 */
+:root {
+  --rgb-primary: 199, 157, 106;
+  --rgb-secondary: 218, 181, 114;
+  --rgb-panel-dark: 24, 19, 14;
+  --color-primary: #c79d6a;
+  --color-secondary: #dab572;
+  --color-border-dark: rgba(218, 181, 114, .45);
+  --text-main: #e8dccd;
+  --text-muted: #b5a994;
+  --text-subtle: #c8b89d;
+  --text-xs: 12px;
+  --text-base: 14px;
+  --text-lg: 1.15em;
+  --overlay-base: rgba(0, 0, 0, .35);
+}
+#float-tools-hub-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(720px, 94vw);
+  height: auto;
+  max-height: 94vh;
+  overflow: hidden;
+  display: none;
+  z-index: 999998;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-dark);
+  border-top: 1px solid var(--color-secondary);
+  background: linear-gradient(to top, rgba(var(--rgb-panel-dark), 0.98), rgba(var(--rgb-panel-dark), 0.95));
+  box-shadow: 0 -4px 20px var(--overlay-base);
+  color: var(--text-subtle);
+  box-sizing: border-box;
+  flex-direction: column;
+}
+#float-tools-hub-panel .tools-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(var(--rgb-secondary), 0.3);
+  flex-shrink: 0;
+}
+#float-tools-hub-panel .tools-hub-title {
+  font-weight: bold;
+  color: var(--color-primary);
+  font-size: var(--text-lg, 1.15em);
+}
+#float-tools-hub-panel .tools-hub-list {
+  list-style: none;
+  margin: 0;
+  padding: 5px 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+#float-tools-hub-panel .tools-hub-item {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+#float-tools-hub-panel .tools-hub-item:hover {
+  background: rgba(var(--rgb-primary), 0.12);
+}
+#float-tools-hub-panel .tools-hub-item-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  flex-shrink: 0;
+}
+#float-tools-hub-panel .tools-hub-item-body {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+#float-tools-hub-panel .tools-hub-item-name {
+  font-weight: bold;
+  color: var(--text-main);
+  font-size: var(--text-base);
+}
+#float-tools-hub-panel .tools-hub-item-desc {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+#float-tools-hub-panel .tools-hub-item-arrow {
+  color: var(--text-muted);
+  font-size: 18px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}

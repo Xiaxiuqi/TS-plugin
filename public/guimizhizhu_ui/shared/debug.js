@@ -227,6 +227,7 @@
       'cryptLord.floatingVariableEditor',
       'cryptLord.judgmentBeautify',
       'cryptLord.legacyBattleLauncher',
+      'cryptLord.legacyToolsHub',
     ];
     return known.map(key => {
       const module = root.__stage1Modules?.[key];
@@ -270,6 +271,7 @@
         '浮动变量编辑器的编辑与变量写入能力尚未迁移',
         '判定美化尚未迁移',
         '⚔️ 战斗前端现为旧 BattleUI 的可见入口与页面容器；战斗引擎、判定和数据写入尚未迁移',
+        '🧰 工具栏已自动挂载：包含 14 个旧前端入口（战斗/浮动变量编辑器/判定/序列/路径/战争/营地/邻境/领地/神秘案件/快速中继/快速浪漫/AI 配置/评定）；点击任一入口即打开可见前端容器',
         ...moduleStatuses().flatMap(entry => {
           const reasons = entry.status?.visibilityReasons || [];
           if (!entry.mounted || reasons.length === 0) return [];

@@ -49,6 +49,7 @@
     'modules/floating-variable-editor/style.css',
     'modules/judgment-beautify/style.css',
     'modules/legacy-battle-launcher/style.css',
+    'modules/legacy-tools-hub/style.css',
   ];
   const managerStyleResource = {
     type: 'css',
@@ -74,6 +75,43 @@
         validateMethods('cryptLord.debug', api, ['isEnabled', 'setEnabled', 'event', 'status', 'snapshot', 'dispose']);
         return validateMethods('cryptLord.debug.panel', api.panel, ['mount', 'unmount', 'toggle', 'copy', 'clear']);
       },
+    },
+    {
+      path: 'shared/host-api.js',
+      key: 'cryptLord.hostApi',
+      validate: api => validateMethods('cryptLord.hostApi', api, [
+        'status',
+        'getChatMessages',
+        'getLatestAssistantMessage',
+        'createChatMessages',
+        'setChatMessages',
+        'deleteChatMessages',
+        'generate',
+        'waitForMvu',
+        'dispose',
+      ]),
+    },
+    {
+      path: 'shared/lifecycle.js',
+      key: 'cryptLord.lifecycle',
+      validate: api => validateMethods('cryptLord.lifecycle', api, ['status', 'createScope', 'dispose']),
+    },
+    {
+      path: 'prompts/native-history-policy.js',
+      key: 'cryptLord.nativeHistoryPolicy',
+      validate: api => validateMethods('cryptLord.nativeHistoryPolicy', api, ['status', 'createInjection', 'dispose']),
+    },
+    {
+      path: 'core/generation-bridge.js',
+      key: 'cryptLord.nativeFloorBridge',
+      validate: api => validateMethods('cryptLord.nativeFloorBridge', api, [
+        'status',
+        'prepareTurn',
+        'buildGenerationConfig',
+        'inspectNarrative',
+        'completeNarrative',
+        'dispose',
+      ]),
     },
     managerStyleResource,
     {
@@ -111,6 +149,11 @@
       path: 'modules/legacy-battle-launcher/index.js',
       key: 'cryptLord.legacyBattleLauncher',
       validate: api => validateMethods('cryptLord.legacyBattleLauncher', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
+    },
+    {
+      path: 'modules/legacy-tools-hub/index.js',
+      key: 'cryptLord.legacyToolsHub',
+      validate: api => validateMethods('cryptLord.legacyToolsHub', api, ['status', 'mount', 'open', 'close', 'unmount', 'dispose']),
     },
   ];
   const cssPromises = new Map();

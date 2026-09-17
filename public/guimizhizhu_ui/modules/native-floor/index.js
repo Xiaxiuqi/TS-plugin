@@ -388,6 +388,8 @@
       assistantMessageId: null,
       generationId: null,
       responseCommitted: false,
+      responseCommitPromise: null,
+      eventFinalText: null,
       pendingAssistantData: null,
       watchdogSeconds: 0,
       startedAt: Date.now(),
@@ -412,7 +414,9 @@
       const config = Object.assign({}, built.config, { generation_id: txn.generationId });
       txn.watchdogSeconds = Number(built.watchdogSeconds) || 0;
       state.retry = { count: 0, limit: Math.max(0, Number(built.retryLimit) || 0), config };
-      await invokeGenerate(txn, config);
+      const generatedText = await invokeGenerate(txn, config);
+      assertTransactionValid(txn);
+      await commitNarrative(txn, generatedText ?? txn.eventFinalText, txn.generationId);
       assertTransactionValid(txn);
       debugEvent('action', 'submit-dispatched', `generationId=${txn.generationId}`);
     } catch (error) {
@@ -456,51 +460,71 @@
     return true;
   }
 
-  async function onGenerationEnded(finalText, generationId = null) {
-    if (state.disposed) return false;
-    const txn = state.active;
-    if (!txn || !generationId || generationId !== txn?.generationId || isStaleGeneration(generationId)) {
+  async function commitNarrative(txn, finalText, generationId) {
+    if (!isTransactionValid(txn) || !generationId || generationId !== txn.generationId || isStaleGeneration(generationId)) {
       debugEvent('refusal', 'generation-end-ignored', `generationId=${generationId || '缺失'}; 无匹配活动事务`, 'warn');
       return false;
     }
     if (txn.responseCommitted) return true;
-    debugEvent('generation', 'generation-ended', `generationId=${generationId}`);
-    clearWatchdog();
+    if (txn.responseCommitPromise) return txn.responseCommitPromise;
 
-    const bridge = await getBridge();
-    if (!isTransactionValid(txn)) return false;
-    const inspected = await bridge.inspectNarrative(String(finalText ?? ''), {
-      generationId,
-      retryCount: state.retry?.count || 0,
-      retryLimit: state.retry?.limit || 0,
-    });
-    if (!isTransactionValid(txn)) return false;
-    if (!inspected?.passed) {
-      if (inspected?.autoRetryable && await retryNarrative(txn, '剧情生成质量异常')) return true;
-      if (!isTransactionValid(txn)) return false;
-      debugEvent('cancel', 'narrative-cancelled', '质量检查未通过且未继续修复', 'warn');
-      await abortTurn(txn, '剧情生成质量异常且玩家取消修复');
-      if (!isTransactionValid(txn)) return false;
-      await bridge.onNarrativeCancelled?.();
-      if (isTransactionValid(txn)) closeTurn();
-      return true;
-    }
+    txn.responseCommitPromise = (async () => {
+      debugEvent('generation', 'generation-ended', `generationId=${generationId}`);
+      clearWatchdog();
 
-    const acceptedText = String(inspected.text ?? finalText ?? '');
-    const assistantMessageId = await claimAssistantFloor(txn, acceptedText);
-    if (!isTransactionValid(txn)) return false;
-    txn.responseCommitted = true;
-    try {
-      await bridge.completeNarrative(acceptedText, {
-        userMessageId: txn.userMessageId,
-        assistantMessageId,
-        generationId: txn.generationId,
+      const bridge = await getBridge();
+      if (!isTransactionValid(txn)) return false;
+      const inspected = await bridge.inspectNarrative(String(finalText ?? ''), {
+        generationId,
+        retryCount: state.retry?.count || 0,
+        retryLimit: state.retry?.limit || 0,
       });
       if (!isTransactionValid(txn)) return false;
-      debugEvent('assistant', 'assistant-complete-success', `messageId=${assistantMessageId}`);
+      if (!inspected?.passed) {
+        if (inspected?.autoRetryable && await retryNarrative(txn, '剧情生成质量异常')) return true;
+        if (!isTransactionValid(txn)) return false;
+        debugEvent('cancel', 'narrative-cancelled', '质量检查未通过且未继续修复', 'warn');
+        await abortTurn(txn, '剧情生成质量异常且玩家取消修复');
+        if (!isTransactionValid(txn)) return false;
+        await bridge.onNarrativeCancelled?.();
+        if (isTransactionValid(txn)) closeTurn();
+        return true;
+      }
+
+      const acceptedText = String(inspected.text ?? finalText ?? '');
+      const assistantMessageId = await claimAssistantFloor(txn, acceptedText);
+      if (!isTransactionValid(txn)) return false;
+      txn.responseCommitted = true;
+      try {
+        await bridge.completeNarrative(acceptedText, {
+          userMessageId: txn.userMessageId,
+          assistantMessageId,
+          generationId: txn.generationId,
+        });
+        if (!isTransactionValid(txn)) return false;
+        debugEvent('assistant', 'assistant-complete-success', `messageId=${assistantMessageId}`);
+      } finally {
+        if (isTransactionValid(txn)) closeTurn();
+      }
+      return true;
+    })();
+
+    try {
+      return await txn.responseCommitPromise;
     } finally {
-      if (isTransactionValid(txn)) closeTurn();
+      txn.responseCommitPromise = null;
     }
+  }
+
+  async function onGenerationEnded(finalText, generationId = null) {
+    if (state.disposed) return false;
+    const txn = state.active;
+    if (!txn || !generationId || generationId !== txn.generationId || isStaleGeneration(generationId)) {
+      debugEvent('refusal', 'generation-end-ignored', `generationId=${generationId || '缺失'}; 无匹配活动事务`, 'warn');
+      return false;
+    }
+    txn.eventFinalText = String(finalText ?? '');
+    debugEvent('generation', 'generation-end-captured', `generationId=${generationId}`);
     return true;
   }
 
