@@ -133,7 +133,7 @@
 .acu-ws-summary .acu-ws-changed { align-self: flex-start; }
 .acu-ws-summary small { color: var(--ws-muted); font-size: 11px; }
 .acu-ws-summary strong { color: var(--ws-text); font-size: 22px; }
-.acu-ws-summary span { color: var(--ws-faint); font-size: 11px; }
+.acu-ws-summary span { color: var(--ws-faint); font-size: 11px; white-space: pre-line; }
 .acu-ws-section { margin: 0 0 18px; }
 .acu-ws-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--ws-text); font-size: 14px; }
 .acu-ws-section h3 span { color: var(--ws-faint); font-size: 11px; }
@@ -144,9 +144,9 @@
 .acu-ws-item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .acu-ws-item h4 { margin: 0; color: var(--ws-text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .acu-ws-item p { margin: 5px 0; color: var(--ws-muted); font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
-.acu-ws-item small { color: var(--ws-faint); font-size: 11px; overflow-wrap: anywhere; }
+.acu-ws-item small { color: var(--ws-faint); font-size: 11px; white-space: pre-line; overflow-wrap: anywhere; }
 .acu-ws-actor small { display: block; margin-top: 5px; color: var(--ws-muted); line-height: 1.65; }
-.acu-ws-timeline { margin: 8px 0 0; padding: 7px 0 0 18px; border-top: 1px solid var(--ws-line); color: var(--ws-muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.acu-ws-timeline { margin: 8px 0 0; padding: 7px 0 0 18px; border-top: 1px solid var(--ws-line); color: var(--ws-muted); font-size: 11px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
 .acu-ws-timeline li + li { margin-top: 4px; }
 .acu-ws-badge { flex: none; padding: 3px 6px; border-radius: 3px; background: var(--ws-tint); color: var(--ws-gold); font-size: 10px; }
 .acu-ws-empty, .acu-ws-empty-inline { color: var(--ws-faint); font-size: 12px; }

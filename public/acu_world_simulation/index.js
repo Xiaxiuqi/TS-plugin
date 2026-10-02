@@ -22,10 +22,13 @@ const PANEL_GEOMETRY_KEY = 'acu_ws_panel_geometry_v1';
 const THEME_KEY = 'acu_ws_theme_v1';
 const STATUS = {
   established: '已建立', incubating: '酝酿中', active: '活跃', converging: '汇聚中',
+  resolved: '已收束', retired: '已退役',
   latent: '潜伏', ripe: '待命', revealed: '已得知', dead: '已失效',
   encounter: '遭遇', rumor: '传闻', ambient: '环境',
   running: '进行中', completed: '已完成', blocked: '受阻',
   hidden: '幕后', limited: '有限可见', public: '公开',
+  rising: '上升', stable: '平稳', falling: '下降',
+  pressure: '压力', growth: '生长',
 };
 const label = value => STATUS[value] ?? value;
 const array = value => Array.isArray(value) ? value : [];
@@ -34,10 +37,10 @@ const actionText = action => action ? `${text(action.text)}（预计 ${text(acti
 const actorExperience = experience => {
   const day = (value, time) => value == null ? '起始不详（早于记录）' : `第 ${value} 日${time ? `（${time}）` : ''}`;
   const duration = experience.startedAtDay == null ? '' :
-    ` · 历时 ${Math.max(0, experience.endedAtDay - experience.startedAtDay)} 日`;
-  const outcome = experience.outcome ? ` · ${experience.status === 'done' ? '结果' : '中止原因'}：${experience.outcome}` :
-    experience.status === 'abandoned' ? ' · 已中止' : '';
-  return `${day(experience.startedAtDay, experience.startedAt)} → ${day(experience.endedAtDay, experience.endedAt)}${duration} · ${experience.text}${outcome}`;
+    `\n历时 ${Math.max(0, experience.endedAtDay - experience.startedAtDay)} 日`;
+  const outcome = experience.outcome ? `\n${experience.status === 'done' ? '结果' : '中止原因'}：${experience.outcome}` :
+    experience.status === 'abandoned' ? '\n已中止' : '';
+  return `${day(experience.startedAtDay, experience.startedAt)} → ${day(experience.endedAtDay, experience.endedAt)}${duration}\n${experience.text}${outcome}`;
 };
 const escapeHtml = value => text(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -128,31 +131,34 @@ function viewRows(data) {
   }));
   return {
     clock: [{ key: 'clock', title: `第 ${clock.day ?? '—'} 日`, detail: clock.storyTime || clock.slot }],
-    revision: [{ key: 'revision', title: `R${ledger.revision ?? 0}`, detail: `${array(ledger.seeds).length} 条伏线 · ${array(ledger.actors).length} 位人物` }],
+    revision: [{ key: 'revision', title: `R${ledger.revision ?? 0}`, detail: `${array(ledger.seeds).length} 条伏线\n${array(ledger.actors).length} 位人物` }],
     candidates: rows(data.candidates, value => ({
       title: value.title ?? label(value.kind ?? value.type),
       detail: value.detail ?? value.summary ?? value.reason,
       meta: label(value.agentName ?? value.status),
     })),
-    dimensions: rows(ledger.dimensions, value => ({ title: value.name, detail: value.rationale, meta: value.trend, badge: `${value.value ?? 0} / 100` })),
+    dimensions: rows(ledger.dimensions, value => ({
+      title: value.name, detail: value.rationale, meta: label(value.trend),
+      badge: `${label(value.kind) ? `${label(value.kind)} ` : ''}${value.value ?? 0} / 100`,
+    })),
     seeds: rows(array(ledger.seeds).filter(value => !['resolved', 'retired'].includes(value.status)),
-      value => ({ title: value.title, detail: value.catalyst, meta: value.visibility, badge: label(value.status) })),
+      value => ({ title: value.title, detail: value.catalyst, meta: label(value.visibility), badge: label(value.status) })),
     actors: rows(array(ledger.actors).filter(value => value.life !== 'dead'),
       value => ({
         title: value.name,
         badge: label(value.visibility),
-        detail: `在做：${actionText(value.currentAction)} · 长期：${actionText(value.longTermAction)} · 位置：${text(value.location) || '未知'}`,
-        meta: `打算：${array(value.goals).join('；') || '无'} · 关注：${array(value.interests).join('、') || '无'} · 认知：${array(value.knownFacts).join('、') || '无'}`,
+        detail: `在做：${actionText(value.currentAction)}\n长期：${actionText(value.longTermAction)}\n位置：${text(value.location) || '未知'}`,
+        meta: `打算：${array(value.goals).join('；') || '无'}\n关注：${array(value.interests).join('、') || '无'}\n认知：${array(value.knownFacts).join('、') || '无'}`,
         timeline: array(value.experiences).map(actorExperience),
       })),
     chronicle: rows(ledger.chronicle,
-      value => ({ title: value.at || `第 ${value.day ?? '—'} 日`, detail: value.summary, meta: array(value.relatedIds).join(' · ') })),
+      value => ({ title: value.at || `第 ${value.day ?? '—'} 日`, detail: value.summary, meta: array(value.relatedIds).join('、') })),
     missed: rows(array(ledger.chronicle).filter(value => text(value.missedNote)),
       value => ({ title: value.summary, detail: value.missedNote, meta: value.at })),
     rumors: rows(ledger.rumors,
-      value => ({ title: value.fact, detail: array(value.channels).join(' · '), meta: `最早第 ${value.earliestRevealDay ?? '—'} 日`, badge: label(value.status) })),
+      value => ({ title: value.fact, detail: array(value.channels).join('、'), meta: `最早第 ${value.earliestRevealDay ?? '—'} 日`, badge: label(value.status) })),
     signals: rows(ledger.guidance?.signals,
-      value => ({ title: value.title ?? label(value.voice) ?? value.id, detail: value.text ?? value.summary ?? value.fact, meta: array(value.evidenceRefs).join(' · ') })),
+      value => ({ title: value.title ?? label(value.voice) ?? value.id, detail: value.text ?? value.summary ?? value.fact, meta: array(value.evidenceRefs).join('、') })),
   };
 }
 
