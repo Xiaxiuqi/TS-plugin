@@ -160,7 +160,8 @@ function viewRows(data) {
     key: String(value.id ?? index), ...makeRow(value),
   }));
   return {
-    clock: [{ key: 'clock', title: `${clock.storyTime || '未知'} · 第 ${clock.day ?? '—'} 天${clock.slot ? ` · ${clock.slot}` : ''}`, detail: '' }],
+    clock: [{ key: 'clock', title: `第 ${clock.day ?? '—'} 日`, detail: clock.storyTime
+      ? `${clock.storyTime}${clock.slot ? `\n${clock.slot}` : ''}` : clock.slot }],
     revision: [{ key: 'revision', title: `R${ledger.revision ?? 0}`, detail: `${array(ledger.seeds).length} 条伏线\n${array(ledger.actors).length} 位人物` }],
     candidates: rows(data.candidates, value => ({
       title: value.title,
@@ -226,10 +227,10 @@ function renderTab(tab, data, changes = {}) {
   }
   if (!ledger) return empty();
   if (tab === 'overview') {
-    const summary = `<div class="acu-ws-summary">${[['clock', '故事时间'], ['revision', '账本版本']].map(([group, title]) => {
+    const summary = `<div class="acu-ws-summary">${[['clock', '世界时序'], ['revision', '账本版本']].map(([group, title]) => {
       const row = rows[group][0];
       const changed = changes[group]?.get(row.key) ?? new Set();
-      return `<div class="${group === 'clock' ? 'acu-ws-clock ' : ''}${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</strong>${row.detail ? `<span class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</span>` : ''}</div>`;
+      return `<div class="${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</strong><span class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</span></div>`;
     }).join('')}</div>`;
     return summary +
       section('场外信号', renderRows('signals')) +

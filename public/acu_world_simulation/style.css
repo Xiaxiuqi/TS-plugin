@@ -133,7 +133,6 @@
 .acu-ws-summary .acu-ws-changed { align-self: flex-start; }
 .acu-ws-summary small { color: var(--ws-muted); font-size: 11px; }
 .acu-ws-summary strong { color: var(--ws-text); font-size: 22px; }
-.acu-ws-summary .acu-ws-clock strong { font-size: 14px; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
 .acu-ws-summary span { color: var(--ws-faint); font-size: 11px; white-space: pre-line; }
 .acu-ws-section { margin: 0 0 18px; }
 .acu-ws-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--ws-text); font-size: 14px; }
