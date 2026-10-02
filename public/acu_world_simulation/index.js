@@ -18,6 +18,7 @@ const LEDGER_KEY = '_qrf_world_simulation_state';
 const MATERIAL_KEY = '_qrf_world_simulation_agent_materials';
 const ENVELOPE_KEY = '_qrf_world_simulation';
 const ORB_POSITION_KEY = 'acu_ws_orb_position_v1';
+const PANEL_GEOMETRY_KEY = 'acu_ws_panel_geometry_v1';
 const THEME_KEY = 'acu_ws_theme_v1';
 const STATUS = {
   established: '已建立', incubating: '酝酿中', active: '活跃', converging: '汇聚中',
@@ -32,10 +33,10 @@ const escapeHtml = value => text(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
 const display = value => escapeHtml(value || '未记录');
-const item = (title, detail, meta = '', badge = '') => `
-  <article class="acu-ws-item">
-    <div class="acu-ws-item-head"><h4>${display(title)}</h4>${badge ? `<span class="acu-ws-badge">${display(badge)}</span>` : ''}</div>
-    <p>${display(detail)}</p>${meta ? `<small>${display(meta)}</small>` : ''}
+const item = (row, changed = new Set()) => `
+  <article class="acu-ws-item${changed.size ? ' acu-ws-updated' : ''}">
+    <div class="acu-ws-item-head"><h4 class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</h4>${row.badge ? `<span class="acu-ws-badge${changed.has('badge') ? ' acu-ws-changed' : ''}">${display(row.badge)}</span>` : ''}</div>
+    <p class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</p>${row.meta ? `<small class="${changed.has('meta') ? 'acu-ws-changed' : ''}">${display(row.meta)}</small>` : ''}
   </article>`;
 const section = (title, entries) => `
   <section class="acu-ws-section"><h3>${escapeHtml(title)} <span>${entries.length}</span></h3>
@@ -105,34 +106,85 @@ async function readSimulation() {
     if (!ledger && material?.ledger) ledger = material.ledger;
   }
   if (!ledger && envelope?.ledger?.clock) ledger = envelope.ledger;
-  return { ledger, candidates, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
+  return { chatId, ledger, candidates, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
 }
 
-function renderTab(tab, data) {
+function viewRows(data) {
+  const ledger = data.ledger ?? {};
+  const clock = ledger.clock ?? {};
+  const rows = (entries, makeRow) => array(entries).map((value, index) => ({
+    key: String(value.id ?? index), ...makeRow(value),
+  }));
+  return {
+    clock: [{ key: 'clock', title: `第 ${clock.day ?? '—'} 日`, detail: clock.storyTime || clock.slot }],
+    revision: [{ key: 'revision', title: `R${ledger.revision ?? 0}`, detail: `${array(ledger.seeds).length} 条伏线 · ${array(ledger.actors).length} 位人物` }],
+    candidates: rows(data.candidates, value => ({
+      title: value.title ?? label(value.kind ?? value.type),
+      detail: value.detail ?? value.summary ?? value.reason,
+      meta: label(value.agentName ?? value.status),
+    })),
+    dimensions: rows(ledger.dimensions, value => ({ title: value.name, detail: value.rationale, meta: value.trend, badge: `${value.value ?? 0} / 100` })),
+    seeds: rows(array(ledger.seeds).filter(value => !['resolved', 'retired'].includes(value.status)),
+      value => ({ title: value.title, detail: value.catalyst, meta: value.visibility, badge: label(value.status) })),
+    actors: rows(array(ledger.actors).filter(value => value.life !== 'dead'),
+      value => ({ title: value.name, detail: value.location, meta: array(value.goals).join(' · '), badge: value.visibility })),
+    chronicle: rows(ledger.chronicle,
+      value => ({ title: value.at || `第 ${value.day ?? '—'} 日`, detail: value.summary, meta: array(value.relatedIds).join(' · ') })),
+    missed: rows(array(ledger.chronicle).filter(value => text(value.missedNote)),
+      value => ({ title: value.summary, detail: value.missedNote, meta: value.at })),
+    rumors: rows(ledger.rumors,
+      value => ({ title: value.fact, detail: array(value.channels).join(' · '), meta: `最早第 ${value.earliestRevealDay ?? '—'} 日`, badge: label(value.status) })),
+    signals: rows(ledger.guidance?.signals,
+      value => ({ title: value.title ?? label(value.voice) ?? value.id, detail: value.text ?? value.summary ?? value.fact, meta: array(value.evidenceRefs).join(' · ') })),
+  };
+}
+
+function diffRows(before, after) {
+  const changes = {};
+  for (const group of Object.keys(after)) {
+    const oldRows = new Map(before[group].map(row => [row.key, row]));
+    const updated = new Map();
+    for (const row of after[group]) {
+      const old = oldRows.get(row.key);
+      const fields = new Set(['title', 'detail', 'meta', 'badge'].filter(field =>
+        !old || JSON.stringify(old[field] ?? '') !== JSON.stringify(row[field] ?? '')));
+      if (fields.size) updated.set(row.key, fields);
+      oldRows.delete(row.key);
+    }
+    if (updated.size || oldRows.size) changes[group] = updated;
+  }
+  return changes;
+}
+
+function changedRows(previous, next) {
+  return diffRows(viewRows(previous), viewRows(next));
+}
+
+function renderTab(tab, data, changes = {}) {
   const ledger = data.ledger;
+  const rows = viewRows(data);
+  const renderRows = group => rows[group].map(row => item(row, changes[group]?.get(row.key)));
   if (!ledger && !data.candidates.length) return empty();
   if (tab === 'candidates') {
-    const entries = data.candidates.map(entry =>
-      item(entry.title ?? label(entry.kind ?? entry.type), entry.detail ?? entry.summary ?? entry.reason, label(entry.agentName ?? entry.status)));
+    const entries = renderRows('candidates');
     return entries.length ? section('候选与阶段记录', entries) : empty();
   }
   if (!ledger) return empty();
   if (tab === 'overview') {
-    const clock = ledger.clock ?? {};
-    const summary = `<div class="acu-ws-summary"><div><small>世界时序</small><strong>第 ${escapeHtml(clock.day ?? '—')} 日</strong><span>${display(clock.storyTime || clock.slot)}</span></div><div><small>账本版本</small><strong>R${escapeHtml(ledger.revision ?? 0)}</strong><span>${array(ledger.seeds).length} 条伏线 · ${array(ledger.actors).length} 位人物</span></div></div>`;
+    const summary = `<div class="acu-ws-summary">${[['clock', '世界时序'], ['revision', '账本版本']].map(([group, title]) => {
+      const row = rows[group][0];
+      const changed = changes[group]?.get(row.key) ?? new Set();
+      return `<div class="${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</strong><span class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</span></div>`;
+    }).join('')}</div>`;
     return summary +
-      section('局势刻度', array(ledger.dimensions).map(value => item(value.name, value.rationale, value.trend, `${value.value ?? 0} / 100`))) +
-      section('伏线', array(ledger.seeds).filter(value => !['resolved', 'retired'].includes(value.status)).map(value => item(value.title, value.catalyst, value.visibility, label(value.status)))) +
-      section('人物谱', array(ledger.actors).filter(value => value.life !== 'dead').map(value => item(value.name, value.location, array(value.goals).join(' · '), value.visibility)));
+      section('局势刻度', renderRows('dimensions')) +
+      section('伏线', renderRows('seeds')) +
+      section('人物谱', renderRows('actors'));
   }
-  if (tab === 'chronicle') return section('幕后纪要', array(ledger.chronicle).map(value =>
-    item(value.at || `第 ${value.day ?? '—'} 日`, value.summary, array(value.relatedIds).join(' · '))));
-  if (tab === 'missed') return section('错过清单', array(ledger.chronicle).filter(value => text(value.missedNote)).map(value =>
-    item(value.summary, value.missedNote, value.at)));
-  if (tab === 'rumors') return section('风声', array(ledger.rumors).map(value =>
-    item(value.fact, array(value.channels).join(' · '), `最早第 ${value.earliestRevealDay ?? '—'} 日`, label(value.status))));
-  return section('场外信号', array(ledger.guidance?.signals).map(value =>
-    item(value.title ?? label(value.voice) ?? value.id, value.text ?? value.summary ?? value.fact, array(value.evidenceRefs).join(' · '))));
+  if (tab === 'chronicle') return section('幕后纪要', renderRows('chronicle'));
+  if (tab === 'missed') return section('错过清单', renderRows('missed'));
+  if (tab === 'rumors') return section('风声', renderRows('rumors'));
+  return section('场外信号', renderRows('signals'));
 }
 
 export function mountWorldSimulation(hostWindow, doc) {
@@ -171,6 +223,11 @@ export function mountWorldSimulation(hostWindow, doc) {
   });
   let active = 'overview';
   let data = { ledger: null, candidates: [] };
+  let displayedRows = viewRows(data);
+  let changes = {};
+  let initialized = false;
+  let reading = false;
+  let pendingRefresh = false;
   let disposed = false;
   let request = 0;
   const clamp = (value, max) => Math.max(8, Math.min(value, max - 8));
@@ -189,6 +246,26 @@ export function mountWorldSimulation(hostWindow, doc) {
       orb.style.top = `${clamp(saved.top, hostWindow.innerHeight - 50)}px`;
     }
   } catch { /* Storage may be unavailable in a sandboxed host. */ }
+  try {
+    const saved = JSON.parse(hostWindow.localStorage.getItem(PANEL_GEOMETRY_KEY));
+    if ([saved?.left, saved?.top, saved?.width, saved?.height].every(Number.isFinite)) {
+      panel.style.width = `${Math.max(1, Math.min(saved.width, hostWindow.innerWidth - 16))}px`;
+      panel.style.height = `${Math.max(1, Math.min(saved.height, hostWindow.innerHeight - 16))}px`;
+      panel.style.left = `${Math.max(8, Math.min(saved.left, hostWindow.innerWidth - saved.width - 8))}px`;
+      panel.style.top = `${Math.max(8, Math.min(saved.top, hostWindow.innerHeight - saved.height - 8))}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    }
+  } catch { /* Storage may be unavailable in a sandboxed host. */ }
+  const savePanelGeometry = () => {
+    if (panel.hidden) return;
+    const rect = panel.getBoundingClientRect();
+    try {
+      hostWindow.localStorage.setItem(PANEL_GEOMETRY_KEY, JSON.stringify({
+        left: rect.left, top: rect.top, width: rect.width, height: rect.height,
+      }));
+    } catch { /* Dragging and resizing still work without storage. */ }
+  };
   const constrainPanelSize = () => {
     if (panel.hidden) return;
     const rect = panel.getBoundingClientRect();
@@ -208,25 +285,81 @@ export function mountWorldSimulation(hostWindow, doc) {
   resizeObserver.observe(panel);
   hostWindow.addEventListener('resize', keepInViewport);
   hostWindow.addEventListener('resize', keepOrbInViewport);
+  const hasUpdate = tab => (tab === 'overview'
+    ? ['clock', 'revision', 'dimensions', 'seeds', 'actors']
+    : [tab]).some(group => Object.hasOwn(changes, group));
   const render = () => {
+    const scrollTop = body.scrollTop;
+    const tabsScrollLeft = tabs.scrollLeft;
     tabs.innerHTML = TABS.map(([id, label, icon]) =>
-      `<button type="button" data-tab="${id}" class="${id === active ? 'active' : ''}" aria-selected="${id === active}" title="${label}"><i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span></button>`).join('');
-    body.innerHTML = renderTab(active, data);
+      `<button type="button" data-tab="${id}" class="${[id === active ? 'active' : '', hasUpdate(id) ? 'acu-ws-tab-updated' : ''].filter(Boolean).join(' ')}" aria-selected="${id === active}" title="${label}"><i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span>${hasUpdate(id) ? '<span class="acu-ws-update-dot" aria-label="有更新"></span>' : ''}</button>`).join('');
+    tabs.scrollLeft = tabsScrollLeft;
+    body.innerHTML = renderTab(active, data, changes);
+    body.scrollTop = scrollTop;
+    orb.classList.toggle('acu-ws-orb-updated', Object.keys(changes).length > 0);
     status.textContent = data.message || `账本 R${data.ledger?.revision ?? 0} · 只读资料`;
   };
   const refresh = async () => {
+    if (disposed) return;
+    if (reading) { pendingRefresh = true; return; }
+    reading = true;
     const current = ++request;
-    status.textContent = '读取推演资料中…';
+    if (!initialized) status.textContent = '读取推演资料中…';
     try {
       const next = await readSimulation();
-      if (!disposed && current === request) { data = next; render(); }
+      if (!disposed && current === request) {
+        const nextRows = viewRows(next);
+        if (!initialized || next.chatId !== data.chatId) changes = {};
+        else {
+          const delta = diffRows(displayedRows, nextRows);
+          if (Object.keys(delta).length) changes = delta;
+        }
+        displayedRows = nextRows;
+        data = next;
+        initialized = true;
+        render();
+      }
     } catch (error) {
       if (!disposed && current === request) {
-        data = { ledger: null, candidates: [], message: `读取失败：${error.message}` };
-        render();
+        status.textContent = `读取失败：${error.message}`;
+      }
+    } finally {
+      reading = false;
+      if (pendingRefresh && !disposed) {
+        pendingRefresh = false;
+        void refresh();
       }
     }
   };
+  const subscriptions = [];
+  const context = getSillyTavern()?.getContext?.();
+  const source = context?.eventSource ?? getSillyTavern()?.eventSource;
+  const events = context?.eventTypes ?? getSillyTavern()?.eventTypes;
+  const onCommit = () => { void refresh(); };
+  if (source?.on && events) {
+    for (const name of ['MESSAGE_UPDATED', 'CHARACTER_MESSAGE_RENDERED', 'CHAT_CHANGED', 'MESSAGE_SWIPED', 'MESSAGE_DELETED']) {
+      if (!events[name]) continue;
+      source.on(events[name], onCommit);
+      subscriptions.push(() => {
+        if (source.removeListener) source.removeListener(events[name], onCommit);
+        else source.off?.(events[name], onCommit);
+      });
+    }
+  }
+  // The database's final commit rerenders the message block; it may not emit MESSAGE_UPDATED.
+  const chatElement = doc.querySelector('#chat');
+  let mutationTimer = null;
+  const observer = chatElement && hostWindow.MutationObserver
+    ? new hostWindow.MutationObserver(mutations => {
+      if (mutations.some(mutation => mutation.type === 'childList' &&
+        (mutation.target.closest?.('.mes') || [...mutation.addedNodes].some(node =>
+          node.nodeType === 1 && (node.matches?.('.mes') || node.querySelector?.('.mes')))))) {
+        hostWindow.clearTimeout(mutationTimer);
+        mutationTimer = hostWindow.setTimeout(onCommit, 300);
+      }
+    })
+    : null;
+  observer?.observe(chatElement, { childList: true, subtree: true });
   const open = () => {
     panel.hidden = false;
     orb.hidden = true;
@@ -239,7 +372,7 @@ export function mountWorldSimulation(hostWindow, doc) {
       panel.style.bottom = 'auto';
     }
     keepInViewport();
-    refresh();
+    void refresh();
   };
   const minimize = () => {
     panel.hidden = true;
@@ -288,7 +421,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     open();
   });
   root.querySelector('.acu-ws-minimize').addEventListener('click', minimize);
-  root.querySelector('.acu-ws-refresh').addEventListener('click', refresh);
+  root.querySelector('.acu-ws-refresh').addEventListener('click', () => { void refresh(); });
   tabs.addEventListener('wheel', event => {
     if (tabs.scrollWidth <= tabs.clientWidth) return;
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -334,7 +467,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     panel.style.top = `${Math.max(8, Math.min(hostWindow.innerHeight - panel.offsetHeight - 8, drag.top + event.clientY - drag.y))}px`;
     constrainPanelSize();
   };
-  const stop = () => { drag = null; };
+  const stop = () => { if (drag) savePanelGeometry(); drag = null; };
   header.addEventListener('pointerdown', event => {
     if (event.target.closest('button')) return;
     const rect = panel.getBoundingClientRect();
@@ -346,14 +479,31 @@ export function mountWorldSimulation(hostWindow, doc) {
   header.addEventListener('pointermove', move);
   header.addEventListener('pointerup', stop);
   header.addEventListener('pointercancel', stop);
+  let resizing = false;
+  panel.addEventListener('pointerdown', event => {
+    const rect = panel.getBoundingClientRect();
+    resizing = event.clientX >= rect.right - 20 && event.clientY >= rect.bottom - 20;
+  });
+  const finishResize = () => {
+    if (resizing) savePanelGeometry();
+    resizing = false;
+  };
+  doc.addEventListener('pointerup', finishResize);
+  doc.addEventListener('pointercancel', finishResize);
   render();
+  void refresh();
   return () => {
     disposed = true;
     request++;
+    observer?.disconnect();
+    hostWindow.clearTimeout(mutationTimer);
+    subscriptions.forEach(unsubscribe => unsubscribe());
     resizeObserver.disconnect();
     hostWindow.removeEventListener('resize', keepInViewport);
     hostWindow.removeEventListener('resize', keepOrbInViewport);
     doc.removeEventListener('keydown', onKey);
+    doc.removeEventListener('pointerup', finishResize);
+    doc.removeEventListener('pointercancel', finishResize);
     root.remove();
   };
 }
