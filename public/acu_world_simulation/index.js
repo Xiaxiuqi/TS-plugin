@@ -25,18 +25,29 @@ const STATUS = {
   latent: '潜伏', ripe: '待命', revealed: '已得知', dead: '已失效',
   encounter: '遭遇', rumor: '传闻', ambient: '环境',
   running: '进行中', completed: '已完成', blocked: '受阻',
+  hidden: '幕后', limited: '有限可见', public: '公开',
 };
 const label = value => STATUS[value] ?? value;
 const array = value => Array.isArray(value) ? value : [];
 const text = value => String(value ?? '').trim();
+const actionText = action => action ? `${text(action.text)}（预计 ${text(action.expectedDuration) || '未定'}）` : '无';
+const actorExperience = experience => {
+  const day = (value, time) => value == null ? '起始不详（早于记录）' : `第 ${value} 日${time ? `（${time}）` : ''}`;
+  const duration = experience.startedAtDay == null ? '' :
+    ` · 历时 ${Math.max(0, experience.endedAtDay - experience.startedAtDay)} 日`;
+  const outcome = experience.outcome ? ` · ${experience.status === 'done' ? '结果' : '中止原因'}：${experience.outcome}` :
+    experience.status === 'abandoned' ? ' · 已中止' : '';
+  return `${day(experience.startedAtDay, experience.startedAt)} → ${day(experience.endedAtDay, experience.endedAt)}${duration} · ${experience.text}${outcome}`;
+};
 const escapeHtml = value => text(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
 const display = value => escapeHtml(value || '未记录');
 const item = (row, changed = new Set()) => `
-  <article class="acu-ws-item${changed.size ? ' acu-ws-updated' : ''}">
+  <article class="acu-ws-item${row.timeline ? ' acu-ws-actor' : ''}${changed.size ? ' acu-ws-updated' : ''}">
     <div class="acu-ws-item-head"><h4 class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</h4>${row.badge ? `<span class="acu-ws-badge${changed.has('badge') ? ' acu-ws-changed' : ''}">${display(row.badge)}</span>` : ''}</div>
     <p class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</p>${row.meta ? `<small class="${changed.has('meta') ? 'acu-ws-changed' : ''}">${display(row.meta)}</small>` : ''}
+    ${row.timeline?.length ? `<ul class="acu-ws-timeline${changed.has('timeline') ? ' acu-ws-changed' : ''}">${row.timeline.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : ''}
   </article>`;
 const section = (title, entries) => `
   <section class="acu-ws-section"><h3>${escapeHtml(title)} <span>${entries.length}</span></h3>
@@ -127,7 +138,13 @@ function viewRows(data) {
     seeds: rows(array(ledger.seeds).filter(value => !['resolved', 'retired'].includes(value.status)),
       value => ({ title: value.title, detail: value.catalyst, meta: value.visibility, badge: label(value.status) })),
     actors: rows(array(ledger.actors).filter(value => value.life !== 'dead'),
-      value => ({ title: value.name, detail: value.location, meta: array(value.goals).join(' · '), badge: value.visibility })),
+      value => ({
+        title: value.name,
+        badge: label(value.visibility),
+        detail: `在做：${actionText(value.currentAction)} · 长期：${actionText(value.longTermAction)} · 位置：${text(value.location) || '未知'}`,
+        meta: `打算：${array(value.goals).join('；') || '无'} · 关注：${array(value.interests).join('、') || '无'} · 认知：${array(value.knownFacts).join('、') || '无'}`,
+        timeline: array(value.experiences).map(actorExperience),
+      })),
     chronicle: rows(ledger.chronicle,
       value => ({ title: value.at || `第 ${value.day ?? '—'} 日`, detail: value.summary, meta: array(value.relatedIds).join(' · ') })),
     missed: rows(array(ledger.chronicle).filter(value => text(value.missedNote)),
@@ -146,8 +163,9 @@ function diffRows(before, after) {
     const updated = new Map();
     for (const row of after[group]) {
       const old = oldRows.get(row.key);
-      const fields = new Set(['title', 'detail', 'meta', 'badge'].filter(field =>
-        !old || JSON.stringify(old[field] ?? '') !== JSON.stringify(row[field] ?? '')));
+      const fields = new Set(['title', 'detail', 'meta', 'badge', 'timeline'].filter(field =>
+        (field !== 'timeline' || row.timeline !== undefined || old?.timeline !== undefined) &&
+        (!old || JSON.stringify(old[field] ?? '') !== JSON.stringify(row[field] ?? ''))));
       if (fields.size) updated.set(row.key, fields);
       oldRows.delete(row.key);
     }
