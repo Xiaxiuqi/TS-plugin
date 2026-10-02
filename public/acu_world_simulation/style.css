@@ -133,12 +133,14 @@
 .acu-ws-summary .acu-ws-changed { align-self: flex-start; }
 .acu-ws-summary small { color: var(--ws-muted); font-size: 11px; }
 .acu-ws-summary strong { color: var(--ws-text); font-size: 22px; }
+.acu-ws-summary .acu-ws-clock strong { font-size: 14px; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
 .acu-ws-summary span { color: var(--ws-faint); font-size: 11px; white-space: pre-line; }
 .acu-ws-section { margin: 0 0 18px; }
 .acu-ws-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--ws-text); font-size: 14px; }
 .acu-ws-section h3 span { color: var(--ws-faint); font-size: 11px; }
 .acu-ws-item { padding: 10px 0; border-top: 1px solid var(--ws-line); }
 .acu-ws-item.acu-ws-updated { margin: 0 -8px; padding: 10px 8px; border-left: 2px solid var(--ws-gold); background: var(--ws-tint); }
+.acu-ws-item.acu-ws-failed { border-left: 2px solid var(--ws-rose); padding-left: 8px; }
 .acu-ws-changed { color: var(--ws-text) !important; background: rgba(183, 154, 98, .19); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .acu-ws-night .acu-ws-changed { background: rgba(200, 168, 108, .23); }
 .acu-ws-item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }

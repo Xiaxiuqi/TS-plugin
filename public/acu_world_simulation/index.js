@@ -12,10 +12,10 @@ const TABS = [
   ['chronicle', '幕后纪要', 'fa-scroll'],
   ['missed', '错过清单', 'fa-hourglass-end'],
   ['rumors', '风声', 'fa-wind'],
-  ['signals', '场外信号', 'fa-satellite-dish'],
 ];
 const LEDGER_KEY = '_qrf_world_simulation_state';
 const MATERIAL_KEY = '_qrf_world_simulation_agent_materials';
+const AGENT_CHAT_KEY = '_qrf_world_simulation_agent_chat';
 const ENVELOPE_KEY = '_qrf_world_simulation';
 const ORB_POSITION_KEY = 'acu_ws_orb_position_v1';
 const PANEL_GEOMETRY_KEY = 'acu_ws_panel_geometry_v1';
@@ -31,6 +31,16 @@ const STATUS = {
   pressure: '压力', growth: '生长',
 };
 const label = value => STATUS[value] ?? value;
+const AGENT_LABELS = {
+  'world-director': '主 Agent', 'world-stage-planner': '阶段规划',
+  timekeeper: '旧角色：时计', 'undercurrent-analyst': '时序与伏线',
+  'dramatis-keeper': '人物谱', chronicler: '旧角色：纪要',
+  'causality-reviewer': '因果审核', 'guidance-composer': '纪要、风声与场外信号',
+  'lore-researcher': '设定研究', 'requirements-maintainer': '用户要求维护',
+  'world-analyst': '格林推演',
+};
+const CANDIDATE_KINDS = new Set(['delegation', 'finalize', 'block', 'stage_plan']);
+const agentLabel = name => name ? AGENT_LABELS[name] ?? name : '主 Agent';
 const array = value => Array.isArray(value) ? value : [];
 const text = value => String(value ?? '').trim();
 const actionText = action => action ? `${text(action.text)}（预计 ${text(action.expectedDuration) || '未定'}）` : '无';
@@ -47,7 +57,7 @@ const escapeHtml = value => text(value).replace(/[&<>"']/g, char => ({
 })[char]);
 const display = value => escapeHtml(value || '未记录');
 const item = (row, changed = new Set()) => `
-  <article class="acu-ws-item${row.timeline ? ' acu-ws-actor' : ''}${changed.size ? ' acu-ws-updated' : ''}">
+  <article class="acu-ws-item${row.timeline ? ' acu-ws-actor' : ''}${row.status === 'failed' ? ' acu-ws-failed' : ''}${changed.size ? ' acu-ws-updated' : ''}">
     <div class="acu-ws-item-head"><h4 class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</h4>${row.badge ? `<span class="acu-ws-badge${changed.has('badge') ? ' acu-ws-changed' : ''}">${display(row.badge)}</span>` : ''}</div>
     <p class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</p>${row.meta ? `<small class="${changed.has('meta') ? 'acu-ws-changed' : ''}">${display(row.meta)}</small>` : ''}
     ${row.timeline?.length ? `<ul class="acu-ws-timeline${changed.has('timeline') ? ' acu-ws-changed' : ''}">${row.timeline.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : ''}
@@ -90,7 +100,7 @@ async function readSimulation() {
   const chatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
   let ledger = null;
   const envelope = chat[0]?.[ENVELOPE_KEY];
-  let candidates = array(envelope?.timeline);
+  const candidates = [];
   for (let index = 0; index < chat.length; index++) {
     const message = chat[index];
     if (!message || message.is_user || message.is_system) continue;
@@ -118,8 +128,28 @@ async function readSimulation() {
     }
     const material = read(MATERIAL_KEY);
     if (!ledger && material?.ledger) ledger = material.ledger;
+    const conversation = read(AGENT_CHAT_KEY);
+    for (const segment of array(conversation?.segments)) {
+      for (const event of array(segment.messages)) {
+        if (!CANDIDATE_KINDS.has(event?.eventKind)) continue;
+        candidates.push({
+          id: `${segment.segmentId}:${event.id}`,
+          kind: event.eventKind,
+          title: event.title || event.digest,
+          detail: event.text,
+          agentName: event.agentName,
+          status: event.status,
+          at: event.at,
+        });
+      }
+    }
   }
   if (!ledger && envelope?.ledger?.clock) ledger = envelope.ledger;
+  if (!candidates.length) {
+    candidates.push(...array(envelope?.timeline).filter(entry =>
+      CANDIDATE_KINDS.has(entry?.kind) || CANDIDATE_KINDS.has(entry?.eventKind)));
+  }
+  candidates.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
   return { chatId, ledger, candidates, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
 }
 
@@ -130,12 +160,13 @@ function viewRows(data) {
     key: String(value.id ?? index), ...makeRow(value),
   }));
   return {
-    clock: [{ key: 'clock', title: `第 ${clock.day ?? '—'} 日`, detail: clock.storyTime || clock.slot }],
+    clock: [{ key: 'clock', title: `${clock.storyTime || '未知'} · 第 ${clock.day ?? '—'} 天${clock.slot ? ` · ${clock.slot}` : ''}`, detail: '' }],
     revision: [{ key: 'revision', title: `R${ledger.revision ?? 0}`, detail: `${array(ledger.seeds).length} 条伏线\n${array(ledger.actors).length} 位人物` }],
     candidates: rows(data.candidates, value => ({
-      title: value.title ?? label(value.kind ?? value.type),
-      detail: value.detail ?? value.summary ?? value.reason,
-      meta: label(value.agentName ?? value.status),
+      title: value.title,
+      detail: value.detail,
+      badge: agentLabel(value.agentName),
+      status: value.status,
     })),
     dimensions: rows(ledger.dimensions, value => ({
       title: value.name, detail: value.rationale, meta: label(value.trend),
@@ -169,7 +200,8 @@ function diffRows(before, after) {
     const updated = new Map();
     for (const row of after[group]) {
       const old = oldRows.get(row.key);
-      const fields = new Set(['title', 'detail', 'meta', 'badge', 'timeline'].filter(field =>
+      const fields = new Set(['title', 'detail', 'meta', 'badge', 'status', 'timeline'].filter(field =>
+        (field !== 'status' || row.status !== undefined || old?.status !== undefined) &&
         (field !== 'timeline' || row.timeline !== undefined || old?.timeline !== undefined) &&
         (!old || JSON.stringify(old[field] ?? '') !== JSON.stringify(row[field] ?? ''))));
       if (fields.size) updated.set(row.key, fields);
@@ -188,19 +220,19 @@ function renderTab(tab, data, changes = {}) {
   const ledger = data.ledger;
   const rows = viewRows(data);
   const renderRows = group => rows[group].map(row => item(row, changes[group]?.get(row.key)));
-  if (!ledger && !data.candidates.length) return empty();
   if (tab === 'candidates') {
     const entries = renderRows('candidates');
-    return entries.length ? section('候选与阶段记录', entries) : empty();
+    return entries.length ? section('候选轨迹', entries) : empty();
   }
   if (!ledger) return empty();
   if (tab === 'overview') {
-    const summary = `<div class="acu-ws-summary">${[['clock', '世界时序'], ['revision', '账本版本']].map(([group, title]) => {
+    const summary = `<div class="acu-ws-summary">${[['clock', '故事时间'], ['revision', '账本版本']].map(([group, title]) => {
       const row = rows[group][0];
       const changed = changes[group]?.get(row.key) ?? new Set();
-      return `<div class="${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</strong><span class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</span></div>`;
+      return `<div class="${group === 'clock' ? 'acu-ws-clock ' : ''}${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</strong>${row.detail ? `<span class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</span>` : ''}</div>`;
     }).join('')}</div>`;
     return summary +
+      section('场外信号', renderRows('signals')) +
       section('局势刻度', renderRows('dimensions')) +
       section('伏线', renderRows('seeds')) +
       section('人物谱', renderRows('actors'));
@@ -208,7 +240,7 @@ function renderTab(tab, data, changes = {}) {
   if (tab === 'chronicle') return section('幕后纪要', renderRows('chronicle'));
   if (tab === 'missed') return section('错过清单', renderRows('missed'));
   if (tab === 'rumors') return section('风声', renderRows('rumors'));
-  return section('场外信号', renderRows('signals'));
+  return empty();
 }
 
 export function mountWorldSimulation(hostWindow, doc) {
@@ -246,7 +278,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     try { hostWindow.localStorage.setItem(THEME_KEY, theme); } catch { /* Storage is optional. */ }
   });
   let active = 'overview';
-  let data = { ledger: null, candidates: [] };
+  let data = { ledger: null };
   let displayedRows = viewRows(data);
   let changes = {};
   let initialized = false;
@@ -310,7 +342,7 @@ export function mountWorldSimulation(hostWindow, doc) {
   hostWindow.addEventListener('resize', keepInViewport);
   hostWindow.addEventListener('resize', keepOrbInViewport);
   const hasUpdate = tab => (tab === 'overview'
-    ? ['clock', 'revision', 'dimensions', 'seeds', 'actors']
+    ? ['clock', 'revision', 'signals', 'dimensions', 'seeds', 'actors']
     : [tab]).some(group => Object.hasOwn(changes, group));
   const render = () => {
     const scrollTop = body.scrollTop;
