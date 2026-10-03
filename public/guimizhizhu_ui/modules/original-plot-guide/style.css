@@ -1,0 +1,18 @@
+.crypt-lord-original-plot, .crypt-lord-original-plot * { box-sizing: border-box; }
+.crypt-lord-original-plot { position: fixed; z-index: 2147482993; top: 10%; left: 50%; display: none; flex-direction: column; width: min(750px, calc(100vw - 20px)); max-height: min(720px, calc(100vh - 20px)); transform: translateX(-50%); border: 1px solid #927545; border-radius: 6px; background: #202725; color: #f0ece3; box-shadow: 0 18px 50px #000b; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
+.crypt-lord-original-plot[data-open="true"] { display: flex; }
+.crypt-lord-original-plot header { display: flex; justify-content: space-between; align-items: center; min-height: 45px; padding: 7px 12px; border-bottom: 1px solid #5c5846; color: #ecc978; cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-original-plot__tools { display: flex; gap: 6px; }
+.crypt-lord-original-plot button { min-width: 32px; min-height: 30px; border: 1px solid #827151; border-radius: 4px; background: #303934; color: #f1e7d4; cursor: pointer; font: 18px/1 sans-serif; }
+.crypt-lord-original-plot button:hover { background: #514c35; }
+.crypt-lord-original-plot__status { padding: 8px 14px; border-bottom: 1px solid #4a574e; color: #b9cdbd; overflow-wrap: anywhere; }
+.crypt-lord-original-plot__body { min-height: 100px; overflow: auto; padding: 4px 14px 12px; }
+.crypt-lord-original-plot__entry { padding: 13px 0; border-bottom: 1px solid #4d5a50; }
+.crypt-lord-original-plot__heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: #eed08a; overflow-wrap: anywhere; }
+.crypt-lord-original-plot__heading span { color: #a9c3ae; font-size: 11px; }
+.crypt-lord-original-plot__text { margin-top: 9px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.crypt-lord-original-plot__warning { color: #efb7a1; }
+.crypt-lord-original-plot__empty { color: #b9cdbd; text-align: center; padding: 28px 10px; }
+@media (max-width: 600px) {
+  .crypt-lord-original-plot { top: 8px; left: 8px; width: calc(100vw - 16px); max-height: calc(100vh - 16px); transform: none; }
+}

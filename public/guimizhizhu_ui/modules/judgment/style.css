@@ -1,0 +1,2120 @@
+/* ===== 判定美化系统样式 - 使用 .judgment- 前缀命名空间 ===== */
+
+    /* CSS变量定义 - 诡秘之主视觉升级版 */
+    :root {
+      /* 基础色调 */
+      --judgment-bg-primary: rgba(15, 10, 8, 0.95);
+      --judgment-bg-secondary: rgba(30, 20, 15, 0.92);
+      --judgment-border-color: rgba(139, 69, 19, 0.5);
+      --judgment-text-primary: #f5deb3;
+      --judgment-text-secondary: #a09c91;
+      --judgment-text-muted: #8b7d6b;
+      --judgment-accent-gold: #daa520;
+      --judgment-accent-bronze: #8b4513;
+
+      /* 命运的眷顾 (大成功) - 白金金色主题 */
+      --fate-blessing-primary: #ffd700;
+      --fate-blessing-secondary: #ffffff;
+      --fate-blessing-glow: rgba(255, 215, 0, 0.6);
+
+      /* 完美掌控 (完胜) - 琥珀黄主题 */
+      --perfect-control-primary: #ffbf00;
+      --perfect-control-secondary: #8b4513;
+      --perfect-control-glow: rgba(255, 191, 0, 0.5);
+
+      /* 勉力成功 (险胜) - 灰棕色主题 */
+      --narrow-success-primary: #8b7355;
+      --narrow-success-secondary: #5a4a3a;
+      --narrow-success-glow: rgba(139, 115, 85, 0.4);
+
+      /* 尝试失败 (失败) - 黑色边框主题 */
+      --attempt-failure-primary: #1a1a1a;
+      --attempt-failure-secondary: #2a2a2a;
+      --attempt-failure-glow: rgba(26, 26, 26, 0.5);
+
+      /* 失控预兆 (大失败) - 血月红主题 */
+      --loss-control-primary: #dc143c;
+      --loss-control-secondary: #8b008b;
+      --loss-control-glow: rgba(220, 20, 60, 0.7);
+
+      /* 旧版结果类型颜色（保持兼容） */
+      --judgment-critical-success: #ffd700;
+      --judgment-perfect: #f0e68c;
+      --judgment-success: #90ee90;
+      --judgment-failure: #a9a9a9;
+      --judgment-critical-failure: #dc143c;
+
+      /* 属性变动颜色 */
+      --judgment-positive: #90ee90;
+      --judgment-negative: #ff6b6b;
+
+      /* 间距和尺寸 - 移动端进一步优化 */
+      --judgment-spacing-sm: 4px;
+      /* 从 6px 进一步减小到 4px */
+      --judgment-spacing-md: 8px;
+      /* 从 12px 进一步减小到 8px */
+      --judgment-spacing-lg: 12px;
+      /* 从 16px 进一步减小到 12px */
+      --judgment-border-radius: 4px;
+      /* 从 5px 减小到 4px */
+
+      /* 动画时长 */
+      --judgment-transition: all 0.3s ease;
+      --judgment-reveal-duration: 0.5s;
+      --judgment-particle-duration: 1.2s;
+    }
+
+    /* 判定块基础样式 */
+    /* 判定块基础样式 */
+    .judgment-block {
+      background: var(--judgment-bg-primary);
+      border: 2px solid var(--judgment-border-color);
+      border-radius: var(--judgment-border-radius);
+      margin-bottom: var(--judgment-spacing-md);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      transition: var(--judgment-transition);
+      position: relative;
+      /* 移除模糊滤镜，保持清晰 */
+    }
+
+    .judgment-block:hover {
+      border-color: var(--judgment-accent-gold);
+      box-shadow: 0 4px 16px rgba(218, 165, 32, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transform: translateY(-1px);
+    }
+
+    /* ===== 核心新增：折叠状态统一为神秘灰色 ===== */
+
+    /* 折叠状态：所有判定块统一显示为神秘灰色，隐藏结果 */
+    .judgment-block[data-collapsed="true"] {
+      border: 2px solid rgba(128, 128, 128, 0.4) !important;
+      background: linear-gradient(135deg,
+        rgba(40, 40, 45, 0.85) 0%,
+        rgba(30, 30, 35, 0.9) 50%,
+        rgba(25, 25, 30, 0.95) 100%) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+        inset 0 0 20px rgba(0, 0, 0, 0.4) !important;
+      animation: none !important;
+      /* 禁用所有动画 */
+    }
+
+    /* 折叠状态悬停：轻微的神秘光芒 */
+    .judgment-block[data-collapsed="true"]:hover {
+      border-color: rgba(160, 160, 165, 0.6) !important;
+      box-shadow: 0 4px 12px rgba(128, 128, 128, 0.3),
+        inset 0 0 25px rgba(128, 128, 128, 0.15) !important;
+      transform: translateY(-1px);
+    }
+
+    /* 折叠状态：移除所有主题特效 */
+    .judgment-block[data-collapsed="true"]::before,
+    .judgment-block[data-collapsed="true"]::after {
+      display: none !important;
+    }
+
+    /* 折叠状态：文字颜色统一为灰色 */
+    .judgment-block[data-collapsed="true"] .judgment-type {
+      color: #b0b0b0 !important;
+      text-shadow: 0 0 5px rgba(128, 128, 128, 0.5) !important;
+    }
+
+    .judgment-block[data-collapsed="true"] .judgment-scenario {
+      color: #909090 !important;
+      text-shadow: none !important;
+    }
+
+    .judgment-block[data-collapsed="true"] .judgment-icon {
+      color: #a0a0a0 !important;
+      opacity: 0.7;
+    }
+
+    /* 揭示特效 - 仅用于大失败 */
+    /* 大成功的揭示特效已改为纯粹的粒子爆发（通过JS实现） */
+
+    /* 移除大成功的圆环特效 */
+
+    /* 粒子爆发动画 */
+    @keyframes particle-burst {
+      0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.8;
+      }
+
+      100% {
+        transform: translate(var(--tx), var(--ty)) scale(0.5);
+        opacity: 0;
+      }
+    }
+
+    /* 粒子爆发动画 - 闪烁版本 */
+    @keyframes particle-burst-twinkle {
+      0% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+        opacity: 1;
+      }
+
+      25% {
+        opacity: 0.3;
+      }
+
+      50% {
+        opacity: 1;
+        transform: translate(calc(var(--tx) * 0.5), calc(var(--ty) * 0.5)) scale(1.2) rotate(180deg);
+      }
+
+      75% {
+        opacity: 0.5;
+      }
+
+      100% {
+        transform: translate(var(--tx), var(--ty)) scale(0.3) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* 失控预兆特殊揭示效果 - 增强版红色震动 + 深渊脉冲 */
+    .judgment-block.theme-loss-control[data-collapsed="false"] {
+      animation: abyss-pulse 2s ease-in-out infinite, reveal-shake 0.3s ease-out;
+    }
+
+    /* 失控预兆 - 深渊爆发特效 */
+    .judgment-block.theme-loss-control[data-collapsed="false"]::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(139, 0, 0, 0.8) 0%, rgba(80, 0, 0, 0.5) 30%, transparent 70%);
+      box-shadow:
+        0 0 40px rgba(139, 0, 0, 0.9),
+        0 0 80px rgba(80, 0, 0, 0.6),
+        0 0 120px rgba(139, 0, 0, 0.4);
+      transform: translate(-50%, -50%) scale(0);
+      animation: abyss-burst 0.8s ease-out forwards;
+      pointer-events: none;
+      z-index: 100;
+      border-radius: 50%;
+    }
+
+    /* 深渊爆发动画 */
+    @keyframes abyss-burst {
+      0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.9;
+      }
+
+      100% {
+        transform: translate(-50%, -50%) scale(2.5);
+        opacity: 0;
+      }
+    }
+
+    @keyframes reveal-shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-5px);
+      }
+
+      75% {
+        transform: translateX(5px);
+      }
+    }
+
+    /* ===== 五种命运视觉主题系统（仅在展开状态下生效）===== */
+
+    /* 1. 命运的眷顾 (critical_success) - 神圣白金主题 */
+    .judgment-block[data-collapsed="false"].theme-fate-blessing {
+      border: 3px solid #ffffff;
+      background:
+        radial-gradient(circle at center,
+        rgba(255, 255, 255, 0.35) 0%,
+        rgba(255, 215, 0, 0.25) 40%,
+        rgba(139, 69, 19, 0.15) 70%,
+        var(--judgment-bg-primary) 100%);
+      box-shadow:
+        0 0 40px rgba(255, 255, 255, 0.6),
+        0 0 20px var(--fate-blessing-glow),
+        inset 0 0 30px rgba(255, 255, 255, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 移除divine-pulse动画，避免与大失败雷同 */
+
+    /* 新增：闪烁圣光背景 - 大成功专属动态效果 */
+    .judgment-block[data-collapsed="false"].theme-fate-blessing::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      background:
+        radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.15) 0%, transparent 20%),
+        radial-gradient(circle at 70% 60%, rgba(255, 215, 0, 0.12) 0%, transparent 22%),
+        radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 18%),
+        radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.08) 0%, transparent 15%),
+        radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.12) 0%, transparent 20%);
+      animation: divine-shimmer 6s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 闪烁圣光动画 - 柔和的光芒流动 */
+    @keyframes divine-shimmer {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.6;
+      }
+
+      25% {
+        transform: translate(-5%, 5%) scale(1.05);
+        opacity: 0.8;
+      }
+
+      50% {
+        transform: translate(5%, -5%) scale(0.95);
+        opacity: 0.7;
+      }
+
+      75% {
+        transform: translate(-3%, -3%) scale(1.02);
+        opacity: 0.9;
+      }
+    }
+
+    .judgment-block[data-collapsed="false"].theme-fate-blessing>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 命运的眷顾 - 文字颜色 */
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-type {
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.9), 0 0 5px rgba(255, 255, 255, 0.6);
+      font-weight: bold;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-scenario {
+      color: #fff8e7;
+      text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-section h4 {
+      color: #ffd700;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .request-info,
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .calculation-step,
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .result-summary,
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-details {
+      color: #f5e6d3;
+    }
+
+    /* 命运的眷顾 - 高亮文字 */
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .highlight {
+      color: #ffd700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .info-label {
+      color: #f5deb3;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-fate-blessing .info-value {
+      color: #ffffff;
+    }
+
+    /* 命运的眷顾 - 悬停效果（白金色）*/
+    .judgment-block[data-collapsed="false"].theme-fate-blessing:hover {
+      border-color: #ffffff;
+      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.5),
+        0 0 30px rgba(255, 215, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    /* 2. 完美掌控 (perfect) - 琥珀黄主题（移除烛光闪烁特效）*/
+    .judgment-block[data-collapsed="false"].theme-perfect-control {
+      border: 2px solid var(--perfect-control-primary);
+      background:
+        radial-gradient(ellipse at center,
+        rgba(255, 191, 0, 0.25) 0%,
+        rgba(255, 191, 0, 0.12) 40%,
+        var(--judgment-bg-primary) 80%);
+      box-shadow:
+        0 0 20px var(--perfect-control-glow),
+        inset 0 1px 0 rgba(255, 191, 0, 0.2);
+      position: relative;
+    }
+
+    /* 完美掌控 - 文字颜色（琥珀黄主题）*/
+    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-type {
+      color: #ffbf00;
+      text-shadow: 0 0 8px rgba(255, 191, 0, 0.8);
+      font-weight: bold;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-scenario {
+      color: #f5deb3;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-section h4 {
+      color: #ffd700;
+      text-shadow: 0 0 6px rgba(255, 191, 0, 0.6);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-perfect-control .request-info,
+    .judgment-block[data-collapsed="false"].theme-perfect-control .calculation-step,
+    .judgment-block[data-collapsed="false"].theme-perfect-control .result-summary,
+    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-details {
+      color: #e0d2b0;
+    }
+
+    /* 完美掌控 - 高亮文字 */
+    .judgment-block[data-collapsed="false"].theme-perfect-control .highlight {
+      color: #ffbf00;
+      text-shadow: 0 0 8px rgba(255, 191, 0, 0.7);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-perfect-control .info-label {
+      color: #d2b48c;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-perfect-control .info-value {
+      color: #ffd700;
+    }
+
+    /* 完美掌控 - 悬停效果（琥珀黄色）*/
+    .judgment-block[data-collapsed="false"].theme-perfect-control:hover {
+      border-color: #ffd700;
+      box-shadow: 0 4px 16px rgba(255, 191, 0, 0.4),
+        inset 0 1px 0 rgba(255, 191, 0, 0.15);
+    }
+
+    /* 3. 勉力成功 (success) - 灰棕色主题（移除网格扫描特效）*/
+    .judgment-block[data-collapsed="false"].theme-narrow-success {
+      border: 2px solid var(--narrow-success-primary);
+      background:
+        radial-gradient(ellipse at center,
+        rgba(139, 115, 85, 0.15) 0%,
+        rgba(139, 115, 85, 0.08) 50%,
+        var(--judgment-bg-primary) 100%);
+      box-shadow: 0 0 20px var(--narrow-success-glow);
+      position: relative;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-narrow-success>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 勉力成功 - 文字颜色（灰棕色主题）*/
+    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-type {
+      color: #c9a876;
+      text-shadow: 0 0 8px rgba(139, 115, 85, 0.8);
+      font-weight: bold;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-scenario {
+      color: #b8a488;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-section h4 {
+      color: #a89968;
+      text-shadow: 0 0 6px rgba(139, 115, 85, 0.6);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-narrow-success .request-info,
+    .judgment-block[data-collapsed="false"].theme-narrow-success .calculation-step,
+    .judgment-block[data-collapsed="false"].theme-narrow-success .result-summary,
+    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-details {
+      color: #d0c4b0;
+    }
+
+    /* 勉力成功 - 高亮文字 */
+    .judgment-block[data-collapsed="false"].theme-narrow-success .highlight {
+      color: #c9a876;
+      text-shadow: 0 0 8px rgba(139, 115, 85, 0.7);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-narrow-success .info-label {
+      color: #a89968;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-narrow-success .info-value {
+      color: #c9a876;
+    }
+
+    /* 勉力成功 - 悬停效果（灰棕色）*/
+    .judgment-block[data-collapsed="false"].theme-narrow-success:hover {
+      border-color: #a89968;
+      box-shadow: 0 4px 16px rgba(139, 115, 85, 0.4),
+        inset 0 1px 0 rgba(139, 115, 85, 0.15);
+    }
+
+    /* 特效已交换：完美掌控用烛光闪烁（琥珀黄），勉力成功用网格扫描（青色）*/
+
+    /* 4. 尝试失败 (failure) - 幽灵灰主题 */
+    .judgment-block[data-collapsed="false"].theme-attempt-failure-old {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 4. 尝试失败 (failure) - 黑色边框主题 */
+    .judgment-block[data-collapsed="false"].theme-attempt-failure {
+      border: 2px solid var(--attempt-failure-primary);
+      background: linear-gradient(135deg,
+        rgba(26, 26, 26, 0.25) 0%,
+        rgba(42, 42, 42, 0.18) 50%,
+        rgba(20, 20, 20, 0.12) 100%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(0, 0, 0, 0.5);
+      position: relative;
+      /* 黑色边框，深色背景 */
+    }
+
+    /* 断裂纹理效果 - 已移除（移交给大失败）*/
+    /* 尝试失败主题不再有断裂纹理特效 */
+
+    .judgment-block[data-collapsed="false"].theme-attempt-failure>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 尝试失败 - 文字颜色（黑色边框主题）*/
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-type {
+      color: #808080;
+      text-shadow: 0 0 5px rgba(128, 128, 128, 0.6);
+      font-weight: bold;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-scenario {
+      color: #707070;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-section h4 {
+      color: #909090;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .request-info,
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .calculation-step,
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .result-summary,
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-details {
+      color: #a0a0a0;
+    }
+
+    /* 尝试失败 - 高亮文字 */
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .highlight {
+      color: #909090;
+      text-shadow: 0 0 5px rgba(128, 128, 128, 0.5);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .info-label {
+      color: #707070;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-attempt-failure .info-value {
+      color: #909090;
+    }
+
+    /* 尝试失败 - 悬停效果（黑色边框）*/
+    .judgment-block[data-collapsed="false"].theme-attempt-failure:hover {
+      border-color: #000000;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    /* 悬停时无动画（动画已移交给大失败）*/
+    /* 尝试失败主题悬停时不再有故障抖动 */
+
+    @keyframes glitch-shake {
+
+      0%,
+      100% {
+        transform: translate(0, 0);
+      }
+
+      20% {
+        transform: translate(-2px, 1px);
+      }
+
+      40% {
+        transform: translate(2px, -1px);
+      }
+
+      60% {
+        transform: translate(-1px, 2px);
+      }
+
+      80% {
+        transform: translate(1px, -2px);
+      }
+    }
+
+    /* 5. 失控预兆 (critical_failure) - 血月红主题 */
+    .judgment-block[data-collapsed="false"].theme-loss-control-old::before {
+      background-size: 60px 60px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .theme-attempt-failure>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 5. 失控预兆 (critical_failure) - 黑红主题 */
+    .judgment-block[data-collapsed="false"].theme-loss-control {
+      border: 3px solid var(--loss-control-primary);
+      background:
+        radial-gradient(ellipse at 30% 40%,
+        rgba(220, 20, 60, 0.25) 0%,
+        rgba(139, 0, 139, 0.12) 30%,
+        rgba(0, 0, 0, 0.6) 60%,
+        rgba(0, 0, 0, 0.85) 100%);
+      box-shadow:
+        0 0 40px var(--loss-control-glow),
+        0 0 20px rgba(220, 20, 60, 0.5),
+        inset 0 0 30px rgba(0, 0, 0, 0.8);
+      animation: abyss-pulse 2s ease-in-out infinite;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @keyframes abyss-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 40px var(--loss-control-glow),
+          0 0 20px rgba(220, 20, 60, 0.5),
+          inset 0 0 30px rgba(220, 20, 60, 0.15);
+      }
+
+      50% {
+        box-shadow: 0 0 60px var(--loss-control-glow),
+          0 0 30px rgba(220, 20, 60, 0.7),
+          inset 0 0 40px rgba(220, 20, 60, 0.2);
+      }
+    }
+
+    /* 蠕动暗影 - 增强动画（保留）*/
+    .judgment-block[data-collapsed="false"].theme-loss-control::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(220, 20, 60, 0.3) 0%, transparent 25%),
+        radial-gradient(circle at 80% 70%, rgba(139, 0, 139, 0.3) 0%, transparent 25%),
+        radial-gradient(circle at 50% 50%, rgba(220, 20, 60, 0.25) 0%, transparent 35%);
+      animation: shadow-crawl 8s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 断裂纹理效果 - 已移除 */
+    /* 大失败主题不再有断裂纹理特效 */
+    @keyframes shadow-crawl {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      25% {
+        transform: translate(10%, -10%) scale(1.1);
+      }
+
+      50% {
+        transform: translate(-10%, 10%) scale(0.9);
+      }
+
+      75% {
+        transform: translate(10%, 10%) scale(1.05);
+      }
+    }
+
+    .judgment-block[data-collapsed="false"].theme-loss-control>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 失控预兆 - 文字颜色（黑红主题）*/
+    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-type {
+      color: #ff4444;
+      text-shadow: 0 0 12px rgba(220, 20, 60, 1.0), 0 0 6px rgba(0, 0, 0, 0.8);
+      font-weight: bold;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-scenario {
+      color: #d8a0a0;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-section h4 {
+      color: #ff6b6b;
+      text-shadow: 0 0 10px rgba(220, 20, 60, 0.9);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-loss-control .request-info,
+    .judgment-block[data-collapsed="false"].theme-loss-control .calculation-step,
+    .judgment-block[data-collapsed="false"].theme-loss-control .result-summary,
+    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-details {
+      color: #c8b0b0;
+    }
+
+    /* 失控预兆 - 高亮文字 */
+    .judgment-block[data-collapsed="false"].theme-loss-control .highlight {
+      color: #ff6b6b;
+      text-shadow: 0 0 12px rgba(220, 20, 60, 0.9);
+    }
+
+    .judgment-block[data-collapsed="false"].theme-loss-control .info-label {
+      color: #d8a0a0;
+    }
+
+    .judgment-block[data-collapsed="false"].theme-loss-control .info-value {
+      color: #ff4444;
+    }
+
+    /* 失控预兆 - 悬停效果（血红色）+ 故障抖动动画（从失败移交）*/
+    .judgment-block[data-collapsed="false"].theme-loss-control:hover {
+      border-color: #ff0000;
+      box-shadow: 0 4px 20px rgba(220, 20, 60, 0.6),
+        0 0 30px rgba(220, 20, 60, 0.4),
+        inset 0 0 30px rgba(220, 20, 60, 0.2);
+      animation: abyss-pulse 2s ease-in-out infinite, glitch-shake 0.3s ease-in-out;
+    }
+
+
+    /* ===== 简化模式 - 移动端性能优化 ===== */
+
+    /* 核心优化：禁用所有动画、过渡、滤镜和阴影 */
+    .simplified-mode .judgment-block,
+    .simplified-mode .judgment-block *,
+    .simplified-mode .judgment-block::before,
+    .simplified-mode .judgment-block::after {
+      animation: none !important;
+      transition: none !important;
+      filter: none !important;
+      box-shadow: none !important;
+    }
+
+    /* 移除伪元素（复杂背景效果） */
+    .simplified-mode .judgment-block::before,
+    .simplified-mode .judgment-block::after {
+      display: none !important;
+    }
+
+    /* 使用简单边框替代阴影来表示状态 */
+    .simplified-mode .judgment-block {
+      border-width: 2px !important;
+      background: #1a1a1a !important;
+      /* 纯色背景替代渐变 */
+    }
+
+    /* 保留关键信息的可视化区别 - 五种主题 */
+    .simplified-mode .theme-fate-blessing {
+      border-color: #ffffff !important;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(218, 165, 32, 0.15)) !important;
+    }
+
+    .simplified-mode .theme-perfect-control {
+      border-color: #ffbf00 !important;
+      background: linear-gradient(135deg, rgba(255, 191, 0, 0.15), rgba(139, 69, 19, 0.15)) !important;
+    }
+
+    .simplified-mode .theme-narrow-success {
+      border-color: #8b7355 !important;
+      background: linear-gradient(135deg, rgba(139, 115, 85, 0.15), rgba(90, 61, 43, 0.15)) !important;
+    }
+
+    .simplified-mode .theme-attempt-failure {
+      border-color: #1a1a1a !important;
+      background: linear-gradient(135deg, rgba(26, 26, 26, 0.25), rgba(0, 0, 0, 0.18)) !important;
+    }
+
+    .simplified-mode .theme-loss-control {
+      border-color: #8b0000 !important;
+      background: linear-gradient(135deg, rgba(139, 0, 0, 0.25), rgba(0, 0, 0, 0.6)) !important;
+    }
+
+    /* 只为可见区域的判定块启用动画（配合IntersectionObserver） */
+    .simplified-mode .judgment-block:not(.animate-active) {
+      animation: none !important;
+    }
+
+    .simplified-mode .judgment-block:not(.animate-active) * {
+      animation: none !important;
+    }
+
+    /* 移除SVG滤镜效果 */
+    .simplified-mode svg {
+      filter: none !important;
+    }
+
+    /* 简化模式下移除大失败的部分动画 */
+    .simplified-mode .theme-loss-control.revealed {
+      animation: abyss-pulse 2s ease-in-out infinite !important;
+      /* 只保留脉冲动画 */
+    }
+
+    /* 简化悬停效果 */
+    .simplified-mode .judgment-block:hover {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* 判定块标题栏 */
+    .judgment-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 15px;
+      background: var(--judgment-bg-secondary);
+      border-bottom: 1px solid var(--judgment-border-color);
+      cursor: pointer;
+      transition: var(--judgment-transition);
+    }
+
+    .judgment-header:hover {
+      background: rgba(139, 69, 19, 0.2);
+    }
+
+    .judgment-icon {
+      font-size: 18px;
+      /* 从 20px 减小到 18px */
+      flex-shrink: 0;
+    }
+
+    .judgment-title {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      /* 从 3px 减小到 2px */
+    }
+
+    .judgment-type {
+      font-size: 13px;
+      /* 从 14px 减小到 13px */
+      font-weight: bold;
+      color: var(--judgment-text-primary);
+    }
+
+    .judgment-scenario {
+      font-size: 11px;
+      /* 从 12px 减小到 11px */
+      color: var(--judgment-text-secondary);
+      line-height: 1.3;
+    }
+
+    /* 神秘符文 - 折叠状态下显示 */
+    .judgment-rune-seal {
+      width: 28px;
+      /* 从 32px 减小到 28px */
+      height: 28px;
+      /* 从 32px 减小到 28px */
+      flex-shrink: 0;
+      color: var(--judgment-accent-gold);
+      opacity: 0.8;
+      transition: all 0.3s ease;
+      animation: rune-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes rune-pulse {
+
+      0%,
+      100% {
+        opacity: 0.6;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+    }
+
+    .judgment-header:hover .judgment-rune-seal {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    /* 折叠状态下隐藏符文，展开后显示 */
+    .judgment-block[data-collapsed="true"] .judgment-rune-seal {
+      display: block;
+    }
+
+    .judgment-block[data-collapsed="false"] .judgment-rune-seal {
+      display: none;
+    }
+
+    /* 结果徽章 - 折叠和展开都显示 */
+    .judgment-result-badge {
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    /* 成功率徽章 - 折叠和展开都显示，金色风格 */
+    .judgment-threshold-badge {
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+      flex-shrink: 0;
+      display: block;
+      background: var(--judgment-accent-gold, #daa520);
+      color: #000;
+    }
+
+    .judgment-result-badge.critical-success {
+      background: var(--judgment-critical-success);
+      color: #000;
+    }
+
+    .judgment-result-badge.perfect {
+      background: var(--judgment-perfect);
+      color: #000;
+    }
+
+    .judgment-result-badge.success {
+      background: var(--judgment-success);
+      color: #000;
+    }
+
+    .judgment-result-badge.failure {
+      background: var(--judgment-failure);
+      color: #fff;
+    }
+
+    .judgment-result-badge.critical-failure {
+      background: var(--judgment-critical-failure);
+      color: #fff;
+    }
+
+    .judgment-toggle {
+      font-size: 14px;
+      /* 从 16px 减小到 14px */
+      color: var(--judgment-text-muted);
+      transition: transform 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .judgment-block[data-collapsed="false"] .judgment-toggle {
+      transform: rotate(180deg);
+    }
+
+    /* 判定详情区域 */
+    .judgment-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease-out, opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .judgment-block[data-collapsed="false"] .judgment-details {
+      max-height: 2000px;
+      opacity: 1;
+    }
+
+    .judgment-section {
+      padding: 10px 12px;
+      /* 从 12px 15px 减小到 10px 12px */
+      border-bottom: 1px dashed var(--judgment-border-color);
+    }
+
+    .judgment-section:last-child {
+      border-bottom: none;
+    }
+
+    .judgment-section h4 {
+      font-size: 12px;
+      /* 从 13px 减小到 12px */
+      color: var(--judgment-accent-gold);
+      margin-bottom: 6px;
+      /* 从 8px 减小到 6px */
+      font-weight: bold;
+    }
+
+    /* 判定请求样式 */
+    .judgment-request {
+      background: rgba(0, 0, 0, 0.3);
+      /* 从 0.2 增加到 0.3，减少透明度 */
+    }
+
+    /* 原始信息区域样式 */
+    .judgment-raw-info {
+      background: linear-gradient(135deg, rgba(139, 69, 19, 0.15) 0%, rgba(90, 61, 43, 0.2) 100%);
+      border: 1px solid rgba(139, 69, 19, 0.3);
+      border-radius: 4px;
+    }
+
+    .raw-info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .raw-info-line {
+      font-size: 12px;
+      color: var(--judgment-text-primary);
+      padding: 4px 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+      border-left: 2px solid rgba(139, 69, 19, 0.5);
+    }
+
+    /* 高亮先攻结果 */
+    .raw-info-line.highlight-initiative {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.15) 100%);
+      border-left-color: #ffd700;
+      color: #ffd700;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+
+    /* 高亮判定结果 */
+    .raw-info-line.highlight-result {
+      background: linear-gradient(135deg, rgba(30, 144, 255, 0.2) 0%, rgba(100, 149, 237, 0.15) 100%);
+      border-left-color: #1e90ff;
+      color: #87ceeb;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
+    }
+
+    .request-info {
+      display: flex;
+      gap: 6px;
+      /* 从 8px 减小到 6px */
+      margin-bottom: 4px;
+      /* 从 5px 减小到 4px */
+      font-size: 11px;
+      /* 从 12px 减小到 11px */
+    }
+
+    .info-label {
+      color: var(--judgment-text-muted);
+      font-weight: bold;
+    }
+
+    .info-value {
+      color: var(--judgment-text-primary);
+    }
+
+    /* 计算过程样式 */
+    .judgment-calculation {
+      background: rgba(0, 0, 0, 0.25);
+      /* 从 0.15 增加到 0.25 */
+    }
+
+    .calculation-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      /* 从 180px 减小到 160px */
+      gap: 6px;
+      /* 从 8px 减小到 6px */
+    }
+
+    .calc-step {
+      background: rgba(139, 69, 19, 0.3);
+      /* 从 0.2 增加到 0.3 */
+      padding: 5px;
+      /* 从 6px 减小到 5px */
+      border-radius: 3px;
+      /* 保持 3px */
+      border: 1px solid rgba(139, 69, 19, 0.4);
+      /* 从 0.3 增加到 0.4 */
+    }
+
+    /* 活力伤害 - 红色主题 */
+    .calc-step.damage-vitality {
+      background: linear-gradient(135deg, rgba(220, 20, 60, 0.25) 0%, rgba(139, 0, 0, 0.2) 100%);
+      border: 1px solid rgba(220, 20, 60, 0.5);
+      box-shadow: 0 0 8px rgba(220, 20, 60, 0.3);
+    }
+
+    .calc-step.damage-vitality .step-label {
+      color: #ff6b6b;
+    }
+
+    .calc-step.damage-vitality .step-value {
+      color: #ff4444;
+      text-shadow: 0 0 8px rgba(220, 20, 60, 0.6);
+    }
+
+    /* 污染伤害 - 紫色主题 */
+    .calc-step.damage-pollution {
+      background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(75, 0, 130, 0.2) 100%);
+      border: 1px solid rgba(138, 43, 226, 0.5);
+      box-shadow: 0 0 8px rgba(138, 43, 226, 0.3);
+    }
+
+    .calc-step.damage-pollution .step-label {
+      color: #ba68c8;
+    }
+
+    .calc-step.damage-pollution .step-value {
+      color: #ab47bc;
+      text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);
+    }
+
+    .step-label {
+      display: block;
+      font-size: 10px;
+      /* 从 11px 减小到 10px */
+      color: var(--judgment-text-muted);
+      margin-bottom: 2px;
+      /* 从 3px 减小到 2px */
+    }
+
+    .step-value {
+      display: block;
+      font-size: 13px;
+      /* 从 14px 减小到 13px */
+      font-weight: bold;
+      color: var(--judgment-text-primary);
+      margin-bottom: 2px;
+      /* 从 2px 保持不变 */
+    }
+
+    .step-formula {
+      display: block;
+
+      /* ===== 先攻判定特殊样式 ===== */
+
+      /* 先攻判定区域 */
+      .judgment-initiative {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(139, 69, 19, 0.15) 100%);
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 4px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* 先攻判定标题 */
+      .judgment-initiative h4 {
+        color: #ffd700;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+      }
+
+      /* 先攻值显示 - 攻方 */
+      .calc-step.initiative-attacker {
+        background: linear-gradient(135deg, rgba(255, 69, 0, 0.2) 0%, rgba(255, 140, 0, 0.15) 100%);
+        border-color: rgba(255, 69, 0, 0.5);
+        box-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+      }
+
+      /* 先攻值显示 - 防方 */
+      .calc-step.initiative-defender {
+        background: linear-gradient(135deg, rgba(30, 144, 255, 0.2) 0%, rgba(100, 149, 237, 0.15) 100%);
+        border-color: rgba(30, 144, 255, 0.5);
+        box-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
+      }
+
+      /* 先攻结果容器 */
+      .initiative-result-container {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 215, 0, 0.3);
+      }
+
+      /* 先攻结果横幅 - 基础样式 */
+      .initiative-result-banner {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 12px 20px;
+        border-radius: 6px;
+        position: relative;
+        overflow: hidden;
+        gap: 15px;
+      }
+
+      /* 抢占先机 - 金色闪电主题 */
+      .initiative-result-banner.seize-initiative {
+        background: linear-gradient(135deg,
+          rgba(255, 215, 0, 0.3) 0%,
+          rgba(255, 165, 0, 0.25) 50%,
+          rgba(255, 215, 0, 0.3) 100%);
+        border: 2px solid #ffd700;
+        box-shadow:
+          0 0 20px rgba(255, 215, 0, 0.6),
+          inset 0 0 20px rgba(255, 215, 0, 0.2);
+      }
+
+      /* 抢占先机 - 闪电动画背景 */
+      .initiative-result-banner.seize-initiative::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg,
+          transparent 30%,
+          rgba(255, 255, 255, 0.1) 50%,
+          transparent 70%);
+        animation: lightning-sweep 2s ease-in-out infinite;
+      }
+
+      /* 攻守逆转 - 蓝色旋转主题 */
+      .initiative-result-banner.reverse-initiative {
+        background: linear-gradient(135deg,
+          rgba(30, 144, 255, 0.3) 0%,
+          rgba(100, 149, 237, 0.25) 50%,
+          rgba(30, 144, 255, 0.3) 100%);
+        border: 2px solid #1e90ff;
+        box-shadow:
+          0 0 20px rgba(30, 144, 255, 0.6),
+          inset 0 0 20px rgba(30, 144, 255, 0.2);
+      }
+
+      /* 攻守逆转 - 旋转动画背景 */
+      .initiative-result-banner.reverse-initiative::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 150%;
+        height: 150%;
+        background: conic-gradient(from 0deg,
+          transparent 0deg,
+          rgba(255, 255, 255, 0.1) 30deg,
+          transparent 60deg,
+          rgba(255, 255, 255, 0.1) 210deg,
+          transparent 240deg);
+        transform: translate(-50%, -50%);
+        animation: reverse-spin 3s linear infinite;
+      }
+
+      /* 先攻结果文字 */
+      .initiative-result-text {
+        font-size: 16px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        flex: 1;
+      }
+
+      .seize-initiative .initiative-result-text {
+        color: #ffd700;
+        text-shadow:
+          0 0 10px rgba(255, 215, 0, 1),
+          0 0 20px rgba(255, 215, 0, 0.8),
+          0 0 30px rgba(255, 215, 0, 0.6);
+      }
+
+      .reverse-initiative .initiative-result-text {
+        color: #1e90ff;
+        text-shadow:
+          0 0 10px rgba(30, 144, 255, 1),
+          0 0 20px rgba(30, 144, 255, 0.8),
+          0 0 30px rgba(30, 144, 255, 0.6);
+      }
+
+      /* 装饰图标 - 左右两侧 */
+      .initiative-decor {
+        font-size: 28px;
+        position: relative;
+        z-index: 1;
+        flex-shrink: 0;
+        animation: decor-pulse 1.5s ease-in-out infinite;
+      }
+
+      .initiative-decor.left {
+        margin-right: 15px;
+      }
+
+      .initiative-decor.right {
+        margin-left: 15px;
+      }
+
+      .seize-initiative .initiative-decor {
+        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+      }
+
+      .reverse-initiative .initiative-decor {
+        filter: drop-shadow(0 0 8px rgba(30, 144, 255, 0.8));
+      }
+
+      /* 动画定义 */
+
+      /* 闪电扫过动画 */
+      @keyframes lightning-sweep {
+        0% {
+          transform: translate(-100%, -100%) rotate(45deg);
+        }
+
+        100% {
+          transform: translate(100%, 100%) rotate(45deg);
+        }
+      }
+
+      /* 旋转动画 */
+      @keyframes reverse-spin {
+        from {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        to {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+
+      /* 装饰脉冲动画 */
+      @keyframes decor-pulse {
+
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+
+        50% {
+          transform: scale(1.2);
+          opacity: 0.8;
+        }
+      }
+
+      /* 移动端优化 */
+      @media (max-width: 768px) {
+        .initiative-result-banner {
+          padding: 10px 15px;
+        }
+
+        .initiative-result-text {
+          font-size: 14px;
+          letter-spacing: 1px;
+        }
+
+        .initiative-decor {
+          font-size: 22px;
+        }
+
+        .initiative-decor.left {
+          margin-right: 10px;
+        }
+
+        .initiative-decor.right {
+          margin-left: 10px;
+        }
+      }
+
+      font-size: 10px;
+      /* 从 11px 减小到 10px */
+      color: var(--judgment-text-secondary);
+      font-style: italic;
+    }
+
+    /* 关键信息高亮 */
+    .highlight {
+      color: var(--judgment-accent-gold);
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(218, 165, 32, 0.5);
+      padding: 0 2px;
+      border-radius: 2px;
+      background: rgba(218, 165, 32, 0.1);
+    }
+
+    .highlight-number {
+      color: var(--fate-blessing-primary);
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+      padding: 0 3px;
+      border-radius: 3px;
+      background: rgba(255, 215, 0, 0.1);
+    }
+
+    .highlight-success {
+      color: var(--judgment-positive);
+      font-weight: bold;
+    }
+
+    .highlight-failure {
+      color: var(--judgment-negative);
+      font-weight: bold;
+    }
+
+    /* 判定结果样式 */
+    .judgment-result {
+      display: flex;
+      align-items: center;
+      gap: var(--judgment-spacing-md);
+      padding: var(--judgment-spacing-md);
+    }
+
+    .result-icon {
+      font-size: 24px;
+      /* 从 28px 进一步减小到 24px */
+      flex-shrink: 0;
+    }
+
+    .judgment-result.critical-success .result-icon {
+      color: var(--judgment-critical-success);
+    }
+
+    .judgment-result.perfect .result-icon {
+      color: var(--judgment-perfect);
+    }
+
+    .judgment-result.success .result-icon {
+      color: var(--judgment-success);
+    }
+
+    .judgment-result.failure .result-icon {
+      color: var(--judgment-failure);
+    }
+
+    .judgment-result.critical-failure .result-icon {
+      color: var(--judgment-critical-failure);
+    }
+
+    .result-text {
+      font-size: 14px;
+      /* 从 16px 减小到 14px */
+      font-weight: bold;
+      color: var(--judgment-text-primary);
+    }
+
+    .result-description {
+      font-size: 10px;
+      /* 从 11px 减小到 10px */
+      color: var(--judgment-text-secondary);
+      margin-top: 2px;
+      /* 从 3px 减小到 2px */
+    }
+
+    /* 状态更新样式 */
+    .judgment-status-updates {
+      background: rgba(0, 0, 0, 0.3);
+      /* 从 0.2 增加到 0.3 */
+    }
+
+    .status-update-container {
+      margin-bottom: var(--judgment-spacing-md);
+    }
+
+    .status-update-container:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-update-name {
+      font-size: 13px;
+      /* 从 14px 减小到 13px */
+      font-weight: bold;
+      color: var(--judgment-accent-gold);
+      margin-bottom: var(--judgment-spacing-sm);
+    }
+
+    .status-update-changes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--judgment-spacing-sm);
+    }
+
+    /* 状态胶囊组件优化 - 已在上方定义 */
+
+    /* 先攻判定样式 */
+    .judgment-initiative {
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    /* 对抗判定样式 - VS对称布局 */
+    .judgment-combat {
+      background: rgba(0, 0, 0, 0.25);
+      /* 从 0.15 增加到 0.25 */
+    }
+
+    .combat-vs-layout {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: var(--judgment-spacing-md);
+      align-items: center;
+      padding: var(--judgment-spacing-md);
+    }
+
+    .combat-side {
+      padding: var(--judgment-spacing-sm);
+      border-radius: var(--judgment-border-radius);
+      background: rgba(0, 0, 0, 0.3);
+      /* 从 0.2 增加到 0.3 */
+    }
+
+    .combat-side.attacker {
+      text-align: right;
+      border-left: 3px solid var(--judgment-accent-gold);
+    }
+
+    .combat-side.defender {
+      text-align: left;
+      border-right: 3px solid var(--judgment-accent-bronze);
+    }
+
+    .combat-clash-point {
+      font-size: 24px;
+      /* 从 28px 减小到 24px */
+      color: var(--judgment-accent-gold);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+    }
+
+    .combat-side-label {
+      font-size: 11px;
+      /* 从 12px 减小到 11px */
+      color: var(--judgment-text-muted);
+      margin-bottom: 3px;
+      /* 从 4px 减小到 3px */
+    }
+
+    .combat-side-value {
+      font-size: 14px;
+      /* 从 16px 减小到 14px */
+      font-weight: bold;
+      color: var(--judgment-text-primary);
+    }
+
+    .combat-side.winner .combat-side-value {
+      color: var(--judgment-accent-gold);
+      text-shadow: 0 0 10px rgba(218, 165, 32, 0.5);
+    }
+
+    /* 伤害标签 */
+    .damage-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      /* 从 4px 12px 减小到 3px 10px */
+      background: linear-gradient(135deg, rgba(220, 20, 60, 0.8) 0%, rgba(139, 0, 0, 0.8) 100%);
+      color: #fff;
+      font-size: 14px;
+      /* 从 16px 减小到 14px */
+      font-weight: bold;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(220, 20, 60, 0.4);
+      animation: damage-float 1s ease-in-out infinite;
+    }
+
+    @keyframes damage-float {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    /* 伤害计算样式 */
+
+    /* 状态胶囊样式 */
+    .status-changes-container {
+      margin-top: 10px;
+    }
+
+    .status-changes-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .status-change-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 正向变动 - 明亮绿色 */
+    .status-change-item.positive {
+      background: linear-gradient(135deg,
+        rgba(144, 238, 144, 0.25) 0%,
+        rgba(34, 139, 34, 0.25) 100%);
+      border: 1px solid rgba(144, 238, 144, 0.6);
+      color: #90ee90;
+      box-shadow: 0 2px 8px rgba(144, 238, 144, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .status-change-item.positive::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle,
+        rgba(144, 238, 144, 0.4) 0%,
+        transparent 60%);
+      animation: positive-glow 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes positive-glow {
+
+      0%,
+      100% {
+        opacity: 0.4;
+        transform: scale(0.8);
+      }
+
+      50% {
+        opacity: 0.8;
+        transform: scale(1.2);
+      }
+    }
+
+    /* 负向变动 - 锐利红色 */
+    .status-change-item.negative {
+      background: linear-gradient(135deg,
+        rgba(220, 20, 60, 0.35) 0%,
+        rgba(139, 0, 0, 0.35) 100%);
+      border: 1px solid rgba(220, 20, 60, 0.7);
+      color: #ff6b6b;
+      box-shadow: 0 2px 8px rgba(220, 20, 60, 0.4),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    .status-change-item.negative::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(0, 0, 0, 0.2) 100%);
+      animation: negative-drip 1.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes negative-drip {
+      0% {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+
+      50% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(0);
+        opacity: 0.5;
+      }
+    }
+
+    /* SVG图标样式 */
+    .status-change-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .status-change-item span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .status-change-item:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* 伤害计算样式 */
+    .judgment-damage {
+      background: rgba(139, 0, 0, 0.1);
+    }
+
+    /* 移除大成功的单个粒子特效，改用JS生成的多粒子爆发 */
+
+    /* 揭示状态标记 */
+    .judgment-block.revealed {
+      /* 标记判定块已揭示，用于触发特效 */
+    }
+
+    /* SVG图标样式 */
+    .svg-icon {
+      display: inline-block;
+      vertical-align: middle;
+      fill: currentColor;
+    }
+
+    .svg-icon.icon-small {
+      width: 16px;
+      height: 16px;
+    }
+
+    .svg-icon.icon-medium {
+      width: 24px;
+      height: 24px;
+    }
+
+    .svg-icon.icon-large {
+      width: 32px;
+      height: 32px;
+    }
+
+    /* 重复的highlight样式已删除，使用上面的定义 */
+
+
+    /* 淡入动画 - 替代打字机效果 */
+    .judgment-block {
+      animation: fadeIn 0.2s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 状态胶囊组件优化 */
+    .status-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      transition: var(--judgment-transition);
+    }
+
+    /* 通用正向/负向样式（作为后备） */
+    .status-change.positive {
+      background: linear-gradient(135deg, rgba(144, 238, 144, 0.3) 0%, rgba(144, 238, 144, 0.1) 100%);
+      color: var(--judgment-positive);
+      border: 2px solid var(--judgment-positive);
+      box-shadow: 0 2px 8px rgba(144, 238, 144, 0.2);
+    }
+
+    .status-change.negative {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.3) 0%, rgba(255, 107, 107, 0.1) 100%);
+      color: var(--judgment-negative);
+      border: 2px solid var(--judgment-negative);
+      box-shadow: 0 2px 8px rgba(255, 107, 107, 0.2);
+    }
+
+    /* === 活力主题 - 红橙色系（生命力）=== */
+    .status-change.attr-vitality {
+      background: linear-gradient(135deg, rgba(255, 99, 71, 0.25) 0%, rgba(255, 140, 0, 0.15) 100%);
+      border: 2px solid rgba(255, 99, 71, 0.6);
+      box-shadow: 0 2px 8px rgba(255, 99, 71, 0.3);
+    }
+
+    .status-change.attr-vitality.positive {
+      color: #ff6347;
+      /* 番茄红 */
+      border-color: #ff6347;
+    }
+
+    .status-change.attr-vitality.negative {
+      color: #dc143c;
+      /* 深红色 */
+      border-color: #dc143c;
+    }
+
+    /* === 灵性主题 - 紫色系（神秘力量）=== */
+    .status-change.attr-spirituality {
+      background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(147, 112, 219, 0.15) 100%);
+      border: 2px solid rgba(138, 43, 226, 0.6);
+      box-shadow: 0 2px 8px rgba(138, 43, 226, 0.3);
+    }
+
+    .status-change.attr-spirituality.positive {
+      color: #9370db;
+      /* 中紫色 */
+      border-color: #9370db;
+    }
+
+    .status-change.attr-spirituality.negative {
+      color: #8a2be2;
+      /* 蓝紫色 */
+      border-color: #8a2be2;
+    }
+
+    /* === 理智主题 - 蓝色系（冷静理性）=== */
+    .status-change.attr-sanity {
+      background: linear-gradient(135deg, rgba(70, 130, 180, 0.25) 0%, rgba(100, 149, 237, 0.15) 100%);
+      border: 2px solid rgba(70, 130, 180, 0.6);
+      box-shadow: 0 2px 8px rgba(70, 130, 180, 0.3);
+    }
+
+    .status-change.attr-sanity.positive {
+      color: #6495ed;
+      /* 矢车菊蓝 */
+      border-color: #6495ed;
+    }
+
+    .status-change.attr-sanity.negative {
+      color: #4682b4;
+      /* 钢青色 */
+      border-color: #4682b4;
+    }
+
+    /* === 人性主题 - 金色系（人性光辉）=== */
+    .status-change.attr-humanity {
+      background: linear-gradient(135deg, rgba(218, 165, 32, 0.25) 0%, rgba(255, 215, 0, 0.15) 100%);
+      border: 2px solid rgba(218, 165, 32, 0.6);
+      box-shadow: 0 2px 8px rgba(218, 165, 32, 0.3);
+    }
+
+    .status-change.attr-humanity.positive {
+      color: #daa520;
+      /* 金麒麟色 */
+      border-color: #daa520;
+    }
+
+    .status-change.attr-humanity.negative {
+      color: #b8860b;
+      /* 暗金色 */
+      border-color: #b8860b;
+    }
+
+    /* 悬停效果增强 */
+    .status-change:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .status-change.attr-vitality:hover {
+      box-shadow: 0 4px 16px rgba(255, 99, 71, 0.5);
+    }
+
+    .status-change.attr-spirituality:hover {
+      box-shadow: 0 4px 16px rgba(138, 43, 226, 0.5);
+    }
+
+    .status-change.attr-sanity:hover {
+      box-shadow: 0 4px 16px rgba(70, 130, 180, 0.5);
+    }
+
+    .status-change.attr-humanity:hover {
+      box-shadow: 0 4px 16px rgba(218, 165, 32, 0.5);
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      .judgment-header {
+        flex-wrap: wrap;
+        padding: 8px 10px;
+        /* 进一步减小内边距 */
+      }
+
+      .judgment-result-badge {
+        order: -1;
+        width: 100%;
+        text-align: center;
+        font-size: 11px;
+        /* 从 12px 减小到 11px */
+        padding: 3px 6px;
+        /* 从 4px 8px 减小 */
+      }
+
+      .calculation-steps {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        /* 从 6px 减小到 4px */
+      }
+
+      .judgment-block {
+        font-size: 13px;
+        /* 从 14px 减小到 13px */
+        margin-bottom: 8px;
+        /* 减小外边距 */
+      }
+
+      .judgment-section {
+        padding: 8px 10px;
+        /* 从 10px 12px 进一步减小 */
+      }
+
+      .judgment-section h4 {
+        font-size: 11px;
+        /* 从 12px 减小到 11px */
+        margin-bottom: 4px;
+        /* 从 6px 减小到 4px */
+      }
+
+      .judgment-icon {
+        font-size: 16px;
+        /* 从 18px 减小到 16px */
+      }
+
+      .judgment-type {
+        font-size: 12px;
+        /* 从 13px 减小到 12px */
+      }
+
+      .judgment-scenario {
+        font-size: 10px;
+        /* 从 11px 减小到 10px */
+      }
+
+      .judgment-rune-seal {
+        width: 24px;
+        /* 从 28px 减小到 24px */
+        height: 24px;
+      }
+
+      /* VS布局在移动端改为垂直布局 */
+      .combat-vs-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 4px;
+        /* 从 var(--judgment-spacing-sm) 改为固定 4px */
+        padding: 8px;
+        /* 减小内边距 */
+      }
+
+      .combat-side.attacker,
+      .combat-side.defender {
+        text-align: center;
+        border-left: none;
+        border-right: none;
+        padding: 6px;
+        /* 减小内边距 */
+      }
+
+      .combat-side.attacker {
+        border-top: 2px solid var(--judgment-accent-gold);
+        /* 从 3px 减小到 2px */
+        order: 1;
+        /* 攻击方在上 */
+      }
+
+      .combat-side.defender {
+        border-bottom: 2px solid var(--judgment-accent-bronze);
+        /* 从 3px 减小到 2px */
+        order: 3;
+        /* 防守方在下 */
+      }
+
+      .combat-clash-point {
+        font-size: 20px;
+        /* 从 22px 减小到 20px */
+        padding: 4px 0;
+        /* 减小内边距 */
+        order: 2;
+        /* 交锋点在中间 */
+        display: flex;
+        justify-content: center;
+        /* 水平居中 */
+        align-items: center;
+        /* 垂直居中 */
+      }
+
+      .combat-side-label {
+        font-size: 10px;
+        /* 从 11px 减小到 10px */
+        margin-bottom: 2px;
+      }
+
+      .combat-side-value {
+        font-size: 13px;
+        /* 从 14px 减小到 13px */
+      }
+
+      .result-icon {
+        font-size: 22px;
+        /* 从 24px 减小到 22px */
+      }
+
+      .result-text {
+        font-size: 13px;
+        /* 从 14px 减小到 13px */
+      }
+
+      .damage-tag {
+        font-size: 12px;
+        /* 从 14px 减小到 12px */
+        padding: 2px 8px;
+        /* 从 3px 10px 减小 */
+      }
+
+      .step-label {
+        font-size: 9px;
+        /* 从 10px 减小到 9px */
+      }
+
+      .step-value {
+        font-size: 12px;
+        /* 从 13px 减小到 12px */
+      }
+
+      .step-formula {
+        font-size: 9px;
+        /* 从 10px 减小到 9px */
+      }
+    }
+
+    /* 可访问性增强 */
+    .judgment-header:focus {
+      outline: 2px solid var(--judgment-accent-gold);
+      outline-offset: 2px;
+    }
+
+    /* 长文本截断 */
+    .judgment-text-truncated {
+      max-height: 150px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .judgment-text-truncated::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(to bottom, transparent, var(--judgment-bg-primary));
+    }
+
+    .judgment-expand-btn {
+      display: block;
+      width: 100%;
+      padding: var(--judgment-spacing-sm);
+      margin-top: var(--judgment-spacing-sm);
+      background: rgba(139, 69, 19, 0.3);
+      border: 1px solid var(--judgment-border-color);
+      border-radius: 4px;
+      color: var(--judgment-text-primary);
+      cursor: pointer;
+      text-align: center;
+      transition: var(--judgment-transition);
+    }
+
+    .judgment-expand-btn:hover {
+      background: rgba(139, 69, 19, 0.5);
+    }
+
+    /* 触摸设备优化 */
+    @media (hover: none) and (pointer: coarse) {
+
+      /* 增大移动端点击区域 */
+      .judgment-header {
+        padding: 10px;
+        /* 从 var(--judgment-spacing-md) 改为固定 10px */
+        min-height: 44px;
+        /* 从 52px 减小到 44px */
+      }
+
+      .judgment-toggle {
+        font-size: 18px;
+        /* 从 20px 减小到 18px */
+        padding: 4px;
+        /* 从 var(--judgment-spacing-sm) 改为固定 4px */
+      }
+
+      .judgment-result-badge {
+        padding: 8px 16px;
+        font-size: 15px;
+      }
+
+      /* 移除hover效果，使用active代替 */
+      .judgment-block:hover {
+        border-color: var(--judgment-border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .judgment-header:hover {
+        background: var(--judgment-bg-secondary);
+      }
+
+      /* 添加触摸反馈效果 */
+      .judgment-header:active {
+        background: rgba(139, 69, 19, 0.3);
+        transform: scale(0.98);
+      }
+
+      .judgment-block:active {
+        border-color: var(--judgment-accent-gold);
+        box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+      }
+
+      /* 禁用tap高亮 */
+      .judgment-header,
+      .judgment-expand-btn {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      /* 增大按钮点击区域 */
+      .judgment-expand-btn {
+        padding: 12px;
+        font-size: 15px;
+        min-height: 44px;
+        /* iOS推荐的最小触摸目标尺寸 */
+      }
+
+      /* 优化计算步骤卡片在触摸设备上的显示 */
+      .calc-step {
+        padding: 12px;
+        min-height: 60px;
+      }
+
+      /* 状态变动标签增大 */
+      .status-change {
+        padding: 6px 12px;
+        font-size: 14px;
+        min-height: 32px;
+      }
+    }

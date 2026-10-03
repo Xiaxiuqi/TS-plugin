@@ -1,0 +1,34 @@
+.crypt-lord-theater-console,
+.crypt-lord-theater-console * { box-sizing: border-box; }
+.crypt-lord-theater-console { position: fixed; z-index: 2147482990; inset: 0; display: none; background: rgba(0, 0, 0, .5); color: #f5deb3; font: 13px/1.45 "Noto Serif SC", "Microsoft YaHei", serif; }
+.crypt-lord-theater-console[data-open="true"] { display: block; }
+.crypt-lord-theater-console__dialog { position: absolute; top: 10vh; left: 50%; display: flex; width: min(860px, calc(100vw - 24px)); height: min(72vh, 700px); min-width: 390px; min-height: 360px; flex-direction: column; transform: translateX(-50%); resize: both; overflow: hidden; border: 1px solid #89612d; border-radius: 6px; background: #1d160f; box-shadow: 0 18px 52px rgba(0, 0, 0, .62); }
+.crypt-lord-theater-console header { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(218, 165, 32, .28); padding: 8px 10px 8px 14px; cursor: move; user-select: none; touch-action: none; background: #20170f; }
+.crypt-lord-theater-console header div { display: flex; min-width: 0; align-items: baseline; gap: 10px; }
+.crypt-lord-theater-console header strong { overflow: hidden; color: #e5bc54; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.crypt-lord-theater-console header span { flex: none; color: #bda98a; }
+.crypt-lord-theater-console button { border: 1px solid rgba(218, 165, 32, .43); border-radius: 3px; padding: 6px 9px; color: #f5deb3; background: #2a2015; cursor: pointer; font: inherit; }
+.crypt-lord-theater-console button:hover:not(:disabled) { border-color: #daa520; background: #382814; }
+.crypt-lord-theater-console button:disabled { cursor: default; opacity: .5; }
+.crypt-lord-theater-console header button { width: 28px; height: 28px; padding: 0; font-size: 18px; }
+.crypt-lord-theater-console__tabs { display: flex; flex: none; gap: 5px; border-bottom: 1px solid rgba(218, 165, 32, .18); padding: 8px 12px; background: #1d160f; }
+.crypt-lord-theater-console__tabs button { border-color: transparent; color: #bda98a; background: transparent; }
+.crypt-lord-theater-console__tabs button.is-active { border-color: #d7a33a; color: #24180c; background: #d7a33a; }
+.crypt-lord-theater-console__body { min-height: 0; overflow: auto; padding: 20px; background: #1a140e; }
+.crypt-lord-theater-console__prompt { max-width: 600px; margin: 16px auto 22px; color: #d6c09b; text-align: center; }
+.crypt-lord-theater-console__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; }
+.crypt-lord-theater-console__button.is-primary { border-color: #d7a33a; color: #24180c; background: #d7a33a; }
+.crypt-lord-theater-console__reforge { display: grid; min-height: 100%; grid-template-columns: minmax(220px, .85fr) minmax(300px, 1.15fr); gap: 18px; }
+.crypt-lord-theater-console__equipment-list, .crypt-lord-theater-console__altar { min-width: 0; border: 1px solid rgba(218, 165, 32, .24); border-radius: 5px; padding: 12px; background: #241a11; }
+.crypt-lord-theater-console__equipment-list { overflow: auto; }
+.crypt-lord-theater-console__equipment-list h3, .crypt-lord-theater-console__altar h3 { margin: 0 0 10px; color: #e4bb54; font-size: 14px; }
+.crypt-lord-theater-console__equipment { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; color: #f5deb3; text-align: left; }
+.crypt-lord-theater-console__equipment span { flex: none; color: #aa9677; font-size: 11px; }
+.crypt-lord-theater-console__equipment.is-selected { border-color: #d7a33a; background: rgba(215, 163, 58, .16); }
+.crypt-lord-theater-console__equipment.is-equipped { color: #a89881; text-decoration: line-through; }
+.crypt-lord-theater-console__item-meta { margin: 0 0 12px; color: #c9b18b; }
+.crypt-lord-theater-console__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 18px; }
+.crypt-lord-theater-console__stats span { border: 1px solid rgba(218, 165, 32, .16); border-radius: 3px; padding: 6px 7px; color: #d9c49d; background: #1b130d; }
+.crypt-lord-theater-console__warning { margin-bottom: 12px; border-left: 3px solid #c8874c; padding: 8px 10px; color: #e2bd8a; background: rgba(200, 135, 76, .08); }
+.crypt-lord-theater-console__empty { display: grid; min-height: 130px; place-items: center; border: 1px dashed rgba(218, 165, 32, .28); padding: 18px; color: #bda98a; text-align: center; }
+@media (max-width: 640px) { .crypt-lord-theater-console__dialog { top: 8px; left: 8px; width: calc(100vw - 16px); min-width: 0; height: calc(100vh - 16px); transform: none; resize: none; } .crypt-lord-theater-console__reforge { grid-template-columns: 1fr; } .crypt-lord-theater-console__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

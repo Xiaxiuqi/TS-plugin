@@ -3,6 +3,8 @@
 
   const KEY = 'cryptLord.floatingVariableEditor';
   const STATE_STORE_KEY = 'cryptLord.stateStore';
+  const HOST_KEY = 'cryptLord.afterNativeHost';
+  const MODULE_ID = 'status-card';
   const CARD_ATTR = 'data-crypt-lord-floating-variable-editor-card';
   const CARD_CLASS = 'crypt-lord-floating-variable-editor-card';
   const CARD_LIST_CLASS = 'crypt-lord-floating-variable-editor-card__list';
@@ -12,17 +14,27 @@
   const CARD_EMPTY_CLASS = 'crypt-lord-floating-variable-editor-card__empty';
   const INSTANCE_ATTR = 'data-crypt-lord-floating-variable-editor-instance';
   const MESSAGE_ID_ATTR = 'data-crypt-lord-message-id';
-  const CARD_TITLE_TEXT = 'Crypt Lord · 角色状态卡';
+  const CARD_TITLE_TEXT = '角色详情';
   const EMPTY_TEXT = '(stat_data 为空)';
   const FALLBACK_VALUE_TEXT = '—';
   const MAX_ENTRIES = 32;
   const MAX_VALUE_LENGTH = 200;
   const MAX_TOTAL_LENGTH = 4096;
   const MVU_WAIT_TIMEOUT_MS = 1500;
+  const ATTRIBUTE_DEFINITIONS = Object.freeze([
+    Object.freeze({ label: '活力', current: '当前活力', max: '活力' }),
+    Object.freeze({ label: '灵性', current: '当前灵性', max: '灵性' }),
+    Object.freeze({ label: '理智', current: '当前理智', max: '理智' }),
+    Object.freeze({ label: '人性', current: '当前人性', max: '人性' }),
+    Object.freeze({ label: '敏捷', current: '当前敏捷', max: '敏捷' }),
+    Object.freeze({ label: '运气', current: '当前运气', max: '运气' }),
+  ]);
 
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);
+  const afterNative = root.__stage1Modules?.[HOST_KEY];
+  if (!afterNative) throw new Error(`[${KEY}] shared/after-native-host.js 尚未加载`);
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   const existing = modules[KEY];
   if (existing) {
@@ -161,23 +173,140 @@
     }
   }
 
+  function createElement(tag, className, text) {
+    const element = afterNative.createElement(tag);
+    if (className) element.className = className;
+    if (text !== undefined) element.textContent = text;
+    return element;
+  }
+
+  function numericValue(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function attributeValue(statData, definition) {
+    const maximum = numericValue(statData[definition.max], 0);
+    const rawCurrent = statData[definition.current];
+    const current = rawCurrent === undefined ? maximum : numericValue(rawCurrent, maximum);
+    const percent = maximum > 0 ? Math.max(0, Math.min(100, current / maximum * 100)) : 0;
+    return { current, maximum, percent };
+  }
+
+  function appendAttributeRows(container, statData) {
+    ATTRIBUTE_DEFINITIONS.forEach(definition => {
+      const values = attributeValue(statData, definition);
+      const item = createElement('div', 'crypt-lord-floating-variable-editor-card__attribute');
+      const line = createElement('div', 'crypt-lord-floating-variable-editor-card__attribute-line');
+      line.append(
+        createElement('span', 'crypt-lord-floating-variable-editor-card__attribute-name', definition.label),
+        createElement(
+          'strong',
+          'crypt-lord-floating-variable-editor-card__attribute-value',
+          values.maximum > 0 && values.current !== values.maximum
+            ? `${values.current} / ${values.maximum}`
+            : String(values.maximum || values.current || '—'),
+        ),
+      );
+      const progress = createElement('span', 'crypt-lord-floating-variable-editor-card__progress');
+      const fill = createElement('span', 'crypt-lord-floating-variable-editor-card__progress-fill');
+      fill.style.width = `${values.percent}%`;
+      fill.dataset.level = values.percent <= 30 ? 'low' : values.percent <= 65 ? 'medium' : 'high';
+      progress.appendChild(fill);
+      item.append(line, progress);
+      container.appendChild(item);
+    });
+  }
+
+  function compactValue(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    if (Array.isArray(value)) {
+      const values = value.map(item => safeText(item?.名称 ?? item)).filter(Boolean).slice(0, 4);
+      return values.length ? values.join('、') : '—';
+    }
+    if (isPlainObject(value)) {
+      const names = Object.entries(value)
+        .filter(([key]) => key !== '$meta')
+        .map(([key, item]) => safeText(item?.名称 ?? key))
+        .filter(Boolean)
+        .slice(0, 4);
+      return names.length ? names.join('、') : '—';
+    }
+    return safeText(value);
+  }
+
+  function appendOverview(body, statData) {
+    const overview = createElement('div', 'crypt-lord-floating-variable-editor-card__overview');
+    const attributes = createElement('section', 'crypt-lord-floating-variable-editor-card__section');
+    attributes.appendChild(createElement('h4', 'crypt-lord-floating-variable-editor-card__section-title', '基础属性'));
+    const attributeList = createElement('div', 'crypt-lord-floating-variable-editor-card__attributes');
+    appendAttributeRows(attributeList, statData);
+    attributes.appendChild(attributeList);
+
+    const profile = createElement('section', 'crypt-lord-floating-variable-editor-card__section');
+    profile.appendChild(createElement('h4', 'crypt-lord-floating-variable-editor-card__section-title', '当前概况'));
+    const facts = createElement('dl', 'crypt-lord-floating-variable-editor-card__facts');
+    [
+      ['途径', statData.当前途径 ?? statData.途径],
+      ['地点', statData.当前地点 ?? statData.所在地],
+      ['状态', statData.当前状态],
+      ['任务', statData.当前任务 ?? statData.已接受任务],
+      ['装备', statData.装备 ?? statData.装备栏],
+    ].forEach(([label, value]) => {
+      facts.append(
+        createElement('dt', 'crypt-lord-floating-variable-editor-card__fact-key', label),
+        createElement('dd', 'crypt-lord-floating-variable-editor-card__fact-value', compactValue(value)),
+      );
+    });
+    profile.appendChild(facts);
+    overview.append(attributes, profile);
+    body.appendChild(overview);
+  }
+
+  function appendRawDetails(body, statData) {
+    const details = createElement('details', 'crypt-lord-floating-variable-editor-card__details');
+    const summary = createElement('summary', 'crypt-lord-floating-variable-editor-card__details-summary', '全部楼层变量');
+    const list = createElement('dl', CARD_LIST_CLASS);
+    appendListEntries(details.ownerDocument || afterNative.getHost()?.document, list, statData);
+    details.append(summary, list);
+    body.appendChild(details);
+  }
+
   function buildCardElement(messageId, statData) {
-    const doc = getOwnerDocument();
-    if (!doc) return null;
-    const card = doc.createElement('section');
+    const card = afterNative.createElement('section');
     card.setAttribute(CARD_ATTR, '');
     card.setAttribute(INSTANCE_ATTR, root.loader?.instanceId || '');
     card.setAttribute(MESSAGE_ID_ATTR, String(messageId));
     card.setAttribute('aria-label', CARD_TITLE_TEXT);
-    card.className = CARD_CLASS;
-    const title = doc.createElement('header');
+    card.className = `crypt-lord-original-ui ${CARD_CLASS}`;
+    try { card.dataset.theme = window.localStorage?.getItem('cryptLord.originalUi.theme') === 'light' ? 'light' : 'dark'; } catch { card.dataset.theme = 'dark'; }
+    const title = afterNative.createElement('header');
     title.className = CARD_TITLE_CLASS;
-    title.textContent = CARD_TITLE_TEXT;
+    const heading = createElement('div', 'crypt-lord-floating-variable-editor-card__heading');
+    heading.append(
+      createElement('strong', '', safeText(statData.名称 || '<User>')),
+      createElement('span', '', safeText(statData.当前序列 || statData.位阶 || '普通人')),
+    );
+    title.setAttribute('role', 'button');
+    title.setAttribute('tabindex', '0');
+    title.setAttribute('aria-expanded', 'true');
+    title.append(heading, createElement('span', 'crypt-lord-floating-variable-editor-card__collapse-mark', '◆'));
     card.appendChild(title);
-    const list = doc.createElement('dl');
-    list.className = CARD_LIST_CLASS;
-    appendListEntries(doc, list, statData);
-    card.appendChild(list);
+    const body = createElement('div', 'crypt-lord-floating-variable-editor-card__body');
+    appendOverview(body, statData);
+    appendRawDetails(body, statData);
+    const toggleCollapsed = () => {
+      const collapsed = card.dataset.collapsed === 'true';
+      card.dataset.collapsed = collapsed ? 'false' : 'true';
+      title.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+    };
+    title.addEventListener('click', toggleCollapsed);
+    title.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      toggleCollapsed();
+    });
+    card.appendChild(body);
     return card;
   }
 
@@ -192,42 +321,15 @@
   let booted = false;
   let disposed = false;
 
-  function refreshCardBody(doc, cardElement, statData) {
-    const list = cardElement.querySelector(`.${CARD_LIST_CLASS}`);
-    if (!list) return false;
-    list.textContent = '';
-    appendListEntries(doc, list, statData);
-    return true;
-  }
-
   function attachCard(messageId, statData) {
     if (disposed) return false;
-    const container = findMessageContainer(messageId);
-    if (!container) return false;
-    const doc = container.ownerDocument || getOwnerDocument();
-    if (!doc) return false;
-    // Resolve insertion point so the card lives inside .mes after .mes_text.
-    const containerIsMesText = typeof container.className === 'string'
-      && container.className.split(/\s+/).includes('mes_text');
-    const insertTarget = containerIsMesText
-      ? container
-      : (typeof container.querySelector === 'function' ? container.querySelector('.mes_text') : null) || container;
-    const parent = insertTarget.parentNode;
-    if (!parent) return false;
     const existing = cards.get(messageId);
     if (existing) {
-      // Refresh in place to guarantee no duplicate per message id.
-      existing.statData = statData;
-      return refreshCardBody(doc, existing.element, statData);
+      removeCard(messageId);
     }
     const fragment = buildCardElement(messageId, statData);
     if (!fragment) return false;
-    const nextSibling = insertTarget.nextSibling;
-    if (typeof parent.insertBefore === 'function') {
-      parent.insertBefore(fragment, nextSibling);
-    } else {
-      parent.appendChild(fragment);
-    }
+    if (!afterNative.mount(Number(messageId), MODULE_ID, fragment)) return false;
     cards.set(messageId, { element: fragment, statData });
     return true;
   }
@@ -235,7 +337,7 @@
   function removeCard(messageId) {
     const entry = cards.get(messageId);
     if (!entry) return false;
-    try { entry.element.remove(); } catch { /* already detached */ }
+    afterNative.unmount(Number(messageId), MODULE_ID);
     cards.delete(messageId);
     return true;
   }
@@ -297,52 +399,36 @@
   }
 
   function bindEvent(name, handler) {
-    const ownerWindow = getOwnerWindow();
-    if (!ownerWindow || typeof ownerWindow.eventOn !== 'function' || !name) return;
-    let handle = null;
-    try {
-      handle = ownerWindow.eventOn(name, handler);
-    } catch (error) {
-      debugEvent('failure', 'event-binding-failure', `${name}: ${error?.message || error}`, 'error');
-      return;
-    }
-    if (handle && typeof handle.stop === 'function') {
-      subscriptions.push(handle);
-      return;
-    }
-    // Best-effort stopper fallback to keep dispose idempotent even if host returns a non-fenced handle.
-    subscriptions.push({ stop() { /* noop */ } });
+    const handle = afterNative.bindEvent(name, handler);
+    if (handle?.stop) subscriptions.push(handle);
   }
 
   function ensureListeners() {
     if (listenersInstalled || disposed) return;
-    if (!isEventOnAvailable()) {
-      debugEvent('refusal', 'event-binding-missing', 'window.eventOn 不可用；卡片不会自动渲染', 'warn');
-      return;
-    }
-    const tavernEvents = resolveTavernEvents();
+    const tavernEvents = afterNative.tavernEvents() || resolveTavernEvents();
     if (!tavernEvents) {
-      debugEvent('refusal', 'tavern-events-missing', 'window.tavern_events 不可用；卡片不会自动渲染', 'warn');
-      return;
+      debugEvent('refusal', 'tavern-events-missing', 'window.tavern_events 不可用；将仅扫描当前已渲染楼层', 'warn');
+    } else {
+      listenersInstalled = true;
+      bindEvent(tavernEvents.CHARACTER_MESSAGE_RENDERED, (messageId, type) => {
+        if (messageId === undefined || messageId === null) return;
+        if (!isAssistantRenderType(type)) return;
+        void handleRender(messageId);
+      });
+      bindEvent(tavernEvents.MESSAGE_UPDATED, (messageId) => {
+        if (messageId === undefined || messageId === null) return;
+        void handleUpdate(messageId);
+      });
+      bindEvent(tavernEvents.MESSAGE_DELETED, (messageId) => {
+        if (messageId === undefined || messageId === null) return;
+        removeCard(messageId);
+      });
+      bindEvent(tavernEvents.CHAT_CHANGED, () => {
+        clearAllCards();
+        void scanExisting();
+      });
     }
-    listenersInstalled = true;
-    bindEvent(tavernEvents.CHARACTER_MESSAGE_RENDERED, (messageId, type) => {
-      if (messageId === undefined || messageId === null) return;
-      if (!isAssistantRenderType(type)) return;
-      void handleRender(messageId);
-    });
-    bindEvent(tavernEvents.MESSAGE_UPDATED, (messageId) => {
-      if (messageId === undefined || messageId === null) return;
-      void handleUpdate(messageId);
-    });
-    bindEvent(tavernEvents.MESSAGE_DELETED, (messageId) => {
-      if (messageId === undefined || messageId === null) return;
-      removeCard(messageId);
-    });
-    bindEvent(tavernEvents.CHAT_CHANGED, () => {
-      clearAllCards();
-    });
-    const ownerWindow = getOwnerWindow();
+    const ownerWindow = afterNative.getHost()?.window || getOwnerWindow();
     if (ownerWindow && typeof ownerWindow.addEventListener === 'function' && !pagehideHandler) {
       pagehideHandler = () => {
         const count = cards.size;
@@ -351,6 +437,13 @@
       };
       ownerWindow.addEventListener('pagehide', pagehideHandler, { once: true });
     }
+  }
+
+  async function scanExisting() {
+    if (disposed) return 0;
+    const messages = await afterNative.listAssistantMessages();
+    for (const message of messages) await handleUpdate(Number(message.message_id));
+    return cards.size;
   }
 
   async function handleRender(messageId) {
@@ -413,7 +506,11 @@
         return !disposed;
       });
     }
-    return stateStoreReady.then(() => !disposed);
+    return stateStoreReady.then(async () => {
+      if (disposed) return false;
+      await scanExisting();
+      return !disposed;
+    });
   }
 
   function unmount() {
@@ -430,7 +527,7 @@
     stops.forEach(handle => {
       try { handle.stop?.(); } catch { /* idempotent */ }
     });
-    const ownerWindow = getOwnerWindow();
+    const ownerWindow = afterNative.getHost()?.window || getOwnerWindow();
     if (pagehideHandler && ownerWindow && typeof ownerWindow.removeEventListener === 'function') {
       try { ownerWindow.removeEventListener('pagehide', pagehideHandler); } catch { /* idempotent */ }
       pagehideHandler = null;
@@ -454,8 +551,8 @@
         listenerHandles: subscriptions.length,
         pagehideBound: !!pagehideHandler,
         mvuResolved,
-        tavernEventsAvailable: !!resolveTavernEvents(),
-        eventOnAvailable: isEventOnAvailable(),
+        tavernEventsAvailable: !!afterNative.tavernEvents() || !!resolveTavernEvents(),
+        eventOnAvailable: isEventOnAvailable() || typeof afterNative.getHost()?.window?.eventOn === 'function',
       });
     },
     isReady() {

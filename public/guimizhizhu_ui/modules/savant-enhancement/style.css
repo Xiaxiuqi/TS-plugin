@@ -1,0 +1,24 @@
+.crypt-lord-savant-enhancement, .crypt-lord-savant-enhancement * { box-sizing: border-box; }
+.crypt-lord-savant-enhancement { position: fixed; z-index: 2147482995; top: 8%; left: 50%; width: min(690px, calc(100vw - 20px)); max-height: min(760px, calc(100vh - 20px)); display: none; flex-direction: column; transform: translateX(-50%); border: 1px solid #8b784f; border-radius: 6px; background: #202825; color: #eeeae1; box-shadow: 0 18px 50px #000b; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
+.crypt-lord-savant-enhancement[data-open="true"] { display: flex; }
+.crypt-lord-savant-enhancement header { display: flex; align-items: center; justify-content: space-between; min-height: 45px; padding: 7px 12px; color: #e9cb84; border-bottom: 1px solid #5d5845; cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-savant-enhancement__body { overflow: auto; min-height: 150px; padding: 14px; }
+.crypt-lord-savant-enhancement__body h3 { margin: 8px 0; color: #e7ca84; font-size: 14px; }
+.crypt-lord-savant-enhancement__section { margin: 14px 0; border-top: 1px solid #4b5a50; padding-top: 8px; }
+.crypt-lord-savant-enhancement__muted { color: #b3c6b8; overflow-wrap: anywhere; }
+.crypt-lord-savant-enhancement__warning { color: #ffb6a1; overflow-wrap: anywhere; }
+.crypt-lord-savant-enhancement__module { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid #44544a; overflow-wrap: anywhere; }
+.crypt-lord-savant-enhancement__module strong { min-width: 120px; }
+.crypt-lord-savant-enhancement__module span { flex: 1 1 230px; }
+.crypt-lord-savant-enhancement__field { display: flex; flex-direction: column; gap: 4px; margin: 9px 0; }
+.crypt-lord-savant-enhancement__actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.crypt-lord-savant-enhancement button, .crypt-lord-savant-enhancement select, .crypt-lord-savant-enhancement input[type="number"] { border: 1px solid #847352; border-radius: 4px; padding: 6px 9px; background: #303a35; color: #f2ede2; font: inherit; max-width: 100%; }
+.crypt-lord-savant-enhancement button { cursor: pointer; }
+.crypt-lord-savant-enhancement button:hover:not(:disabled) { background: #5b5038; }
+.crypt-lord-savant-enhancement button:disabled { opacity: .5; cursor: not-allowed; }
+.crypt-lord-savant-enhancement__notice { min-height: 31px; padding: 6px 14px; border-top: 1px solid #4c594d; color: #b8d6b8; overflow-wrap: anywhere; }
+.crypt-lord-savant-enhancement__notice[data-error="true"] { color: #ffb6a1; }
+@media (max-width: 600px) {
+  .crypt-lord-savant-enhancement { top: 8px; left: 8px; width: calc(100vw - 16px); max-height: calc(100vh - 16px); transform: none; }
+  .crypt-lord-savant-enhancement__field select { width: 100%; }
+}

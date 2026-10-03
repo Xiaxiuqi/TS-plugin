@@ -9,9 +9,13 @@
 
   const root = (window.cryptLord = window.cryptLord || {});
   const existingState = root[INDEX_STATE_KEY];
-  if (existingState?.status === 'loading' || existingState?.status === 'ready' || existingState?.status === 'disposing') {
+  const loaderIsReady = root.loader?.status === 'ready';
+  if (existingState?.status === 'loading' || existingState?.status === 'disposing' || (existingState?.status === 'ready' && loaderIsReady)) {
     console.info(LOG_PREFIX, '入口已加载，跳过重复启动。');
     return;
+  }
+  if (existingState?.status === 'ready' && !loaderIsReady) {
+    console.warn(LOG_PREFIX, '检测到已释放的loader，将重新启动入口。');
   }
 
   function getDebug() {
@@ -40,20 +44,32 @@
     return Array.from(document.scripts).find(script => /\/guimizhizhu_ui\/index\.js(?:[?#]|$)/.test(script.src)) || null;
   }
 
+  function scriptIdFromElement(element) {
+    const value = element?.dataset?.cryptLordScriptId || element?.dataset?.scriptId || element?.getAttribute?.('script_id') || '';
+    if (String(value).trim()) return String(value).trim();
+    const id = String(element?.id || '').trim();
+    return id.match(/^TH-script--.+--([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i)?.[1] || '';
+  }
+
   function toError(error, stage, url) {
     const detail = error instanceof Error ? error.message : String(error);
     return new Error(`[${stage}] ${url}; ${detail}`);
   }
 
   const selfScript = detectSelfScript();
+  const scriptId = scriptIdFromElement(selfScript) || String(root.__stage1ScriptId || '').trim();
   const baseUrl = selfScript?.src ? normalizeBaseUrl(selfScript.src) : PUBLIC_BASE_URL;
-  const loaderUrl = new URL('loader.js', baseUrl).href;
+  const loaderUrlObject = new URL('loader.js', baseUrl);
+  const cacheVersion = selfScript?.src ? new URL(selfScript.src).searchParams.get('v') : null;
+  if (cacheVersion) loaderUrlObject.searchParams.set('v', cacheVersion);
+  const loaderUrl = loaderUrlObject.href;
   const instanceId = `stage1_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const state = {
     version: VERSION,
     publicBaseUrl: PUBLIC_BASE_URL,
     baseUrl,
     instanceId,
+    scriptId,
     status: 'loading',
     error: '',
     ready: null,
@@ -164,6 +180,7 @@
       script.async = false;
       script.dataset.cryptLordLoader = loaderUrl;
       script.dataset.cryptLordInstance = instanceId;
+      if (scriptId) script.dataset.cryptLordScriptId = scriptId;
       script.dataset.cryptLordLoadState = 'loading';
       (document.head || document.documentElement).appendChild(script);
     });

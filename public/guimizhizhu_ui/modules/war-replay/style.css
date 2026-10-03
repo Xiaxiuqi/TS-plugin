@@ -1,0 +1,42 @@
+.crypt-lord-war-replay, .crypt-lord-war-replay * { box-sizing: border-box; }
+.crypt-lord-war-replay { position: fixed; inset: 0; z-index: 2147482996; display: none; pointer-events: none; font: 13px/1.5 "Noto Serif SC", "Microsoft YaHei", serif; }
+.crypt-lord-war-replay[data-open="true"] { display: block; }
+.crypt-lord-war-replay__dialog { position: absolute; top: 6vh; left: 50%; width: min(860px, calc(100vw - 20px)); max-height: min(88vh, 900px); display: flex; flex-direction: column; transform: translateX(-50%); overflow: hidden; pointer-events: auto; border: 1px solid #a27b43; border-radius: 6px; color: #e8e0cf; background: #1d1c19; box-shadow: 0 20px 60px #000b; }
+.crypt-lord-war-replay header { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 14px; border-bottom: 1px solid #594936; cursor: move; touch-action: none; user-select: none; }
+.crypt-lord-war-replay header strong { color: #e4c276; white-space: nowrap; }
+.crypt-lord-war-replay header span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #bdb3a2; }
+.crypt-lord-war-replay button, .crypt-lord-war-replay select { border: 1px solid #716249; border-radius: 3px; padding: 5px 9px; color: #eee5d4; background: #333029; font: inherit; cursor: pointer; }
+.crypt-lord-war-replay button:hover { background: #51452f; }
+.crypt-lord-war-replay header button { font-size: 20px; line-height: 20px; }
+.crypt-lord-war-replay__body { min-height: 0; overflow: auto; padding: 14px; }
+.crypt-lord-war-replay__viewport { width: min(100%, 640px); margin: 0 auto; overflow: hidden; border: 2px solid #786442; touch-action: none; cursor: grab; }
+.crypt-lord-war-replay__viewport:active { cursor: grabbing; }
+.crypt-lord-war-replay__board { position: relative; width: 100%; aspect-ratio: 8 / 6; overflow: hidden; transform-origin: center; background: repeating-linear-gradient(0deg, transparent 0 calc(100% / var(--war-rows) - 1px), #ffffff20 calc(100% / var(--war-rows) - 1px) calc(100% / var(--war-rows))), repeating-linear-gradient(90deg, #343e35 0 calc(100% / var(--war-cols) - 1px), #d2c29437 calc(100% / var(--war-cols) - 1px) calc(100% / var(--war-cols))); }
+.crypt-lord-war-replay__unit { position: absolute; width: calc(84% / var(--war-cols)); height: calc(82% / var(--war-rows)); display: flex; align-items: center; flex-direction: column; justify-content: center; transform: translate(-50%, -50%); border: 1px solid #b8b3a1; border-radius: 4px; background: #233d35; text-align: center; box-shadow: 0 2px 8px #0009; }
+.crypt-lord-war-replay__unit.is-enemy { background: #633b3a; }
+.crypt-lord-war-replay__unit span { line-height: 1; font-size: 20px; }
+.crypt-lord-war-replay__unit small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.crypt-lord-war-replay__unit i { position: absolute; bottom: 0; left: 0; height: 4px; background: #a5d382; }
+.crypt-lord-war-replay__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 4px; }
+.crypt-lord-war-replay__controls button { min-width: 32px; }
+.crypt-lord-war-replay__controls output { margin-left: auto; color: #d7bc8a; white-space: nowrap; }
+.crypt-lord-war-replay__seek { width: 100%; accent-color: #d9ae68; }
+.crypt-lord-war-replay__summary, .crypt-lord-war-replay__stats, .crypt-lord-war-replay__report { margin-top: 14px; border-top: 1px solid #594936; padding-top: 10px; }
+.crypt-lord-war-replay h3 { margin: 0 0 6px; color: #dfbc72; font-size: 14px; }
+.crypt-lord-war-replay__summary p { margin: 0; }
+.crypt-lord-war-replay__summary ol { margin: 8px 0; padding-left: 22px; }
+.crypt-lord-war-replay__summary li { padding: 3px 0; cursor: pointer; overflow-wrap: anywhere; }
+.crypt-lord-war-replay__summary li.is-current { color: #dbb66b; }
+.crypt-lord-war-replay__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; }
+.crypt-lord-war-replay__stats h3 { grid-column: 1 / -1; }
+.crypt-lord-war-replay__stats div { min-width: 0; overflow-wrap: anywhere; color: #c9c3b6; }
+.crypt-lord-war-replay__report summary { cursor: pointer; color: #dfbc72; }
+.crypt-lord-war-replay__report pre { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd1b8; font: inherit; }
+@media (max-width: 600px) {
+  .crypt-lord-war-replay__dialog { top: 8px; max-height: calc(100dvh - 16px); }
+  .crypt-lord-war-replay__body { padding: 9px; }
+  .crypt-lord-war-replay__controls output { flex-basis: 100%; margin-left: 0; text-align: center; }
+  .crypt-lord-war-replay__stats { grid-template-columns: 1fr; }
+  .crypt-lord-war-replay__unit span { font-size: 14px; }
+  .crypt-lord-war-replay__unit small { font-size: 8px; }
+}

@@ -1,0 +1,23 @@
+.crypt-lord-event-generator, .crypt-lord-event-generator * { box-sizing: border-box; }
+.crypt-lord-event-generator { position: fixed; z-index: 2147482988; top: 9%; left: 50%; display: none; flex-direction: column; width: min(680px, calc(100vw - 20px)); height: min(560px, calc(100vh - 50px)); transform: translateX(-50%); border: 1px solid #927a4d; border-radius: 6px; background: #1d2020; color: #f1eee4; box-shadow: 0 18px 48px #000a; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
+.crypt-lord-event-generator[data-open="true"] { display: flex; }
+.crypt-lord-event-generator header { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; border-bottom: 1px solid #554b3b; color: #e9c16e; cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-event-generator__body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.crypt-lord-event-generator__tabs { display: flex; gap: 8px; padding: 8px 14px 0; border-bottom: 1px solid #514b40; }
+.crypt-lord-event-generator__tabs button { border-bottom: 2px solid transparent; }
+.crypt-lord-event-generator__tabs button[data-selected="true"] { border-bottom-color: #e9c16e; color: #e9c16e; }
+.crypt-lord-event-generator__content { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; overflow: auto; padding: 14px; }
+.crypt-lord-event-generator__content h3, .crypt-lord-event-generator__content p { margin: 0; }
+.crypt-lord-event-generator__content h3 { color: #e9c16e; font-size: 15px; }
+.crypt-lord-event-generator__content p { color: #acb9ae; }
+.crypt-lord-event-generator__actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 5px 0; }
+.crypt-lord-event-generator button, .crypt-lord-event-generator textarea { border: 1px solid #806e4e; border-radius: 4px; padding: 7px 10px; background: #292c2b; color: #f1eee4; font: inherit; }
+.crypt-lord-event-generator button { cursor: pointer; }
+.crypt-lord-event-generator button:hover { background: #564833; }
+.crypt-lord-event-generator textarea { flex: 1; min-height: 150px; width: 100%; resize: vertical; line-height: 1.6; }
+.crypt-lord-event-generator__status { min-height: 32px; padding: 6px 14px; border-top: 1px solid #514b40; color: #b6d5ad; overflow-wrap: anywhere; }
+.crypt-lord-event-generator__status[data-error="true"] { color: #ffaaaa; }
+.crypt-lord-event-generator[aria-busy="true"] .crypt-lord-event-generator__body { pointer-events: none; opacity: .7; }
+@media (max-width: 600px) {
+  .crypt-lord-event-generator { top: 8px; left: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); transform: none; }
+}

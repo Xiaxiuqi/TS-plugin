@@ -56,6 +56,27 @@
       .slice(0, 8));
   }
 
+  function extractLegacyActions(rawText, messageElement = null) {
+    const text = String(rawText ?? '').split(/<本周目经历>/i)[0];
+    const values = [...extractActions(text)];
+    if (values.length) return values;
+    const numbered = /^\s*(?:\d{1,2}[.、)、]|[①②③④⑤⑥⑦⑧⑨⑩])\s*(.{2,300}?)\s*$/gm;
+    const visibleText = removeTagBlocks(text, 'action');
+    let match = numbered.exec(visibleText);
+    while (match) {
+      values.push(match[1].trim());
+      match = numbered.exec(visibleText);
+    }
+    if (values.length) return [...new Set(values)].slice(0, 8);
+    const lists = Array.from(messageElement?.querySelectorAll?.('ol, ul') || [])
+      .map(list => Array.from(list.querySelectorAll(':scope > li'))
+        .map(item => String(item.textContent || '').split(/<本周目经历>/i)[0].trim())
+        .filter(value => value.length >= 2 && value.length <= 300))
+      .filter(items => items.length >= 2 && items.length <= 8);
+    if (lists.length) values.push(...lists.sort((left, right) => right.length - left.length)[0]);
+    return [...new Set(values.filter(Boolean))].slice(0, 8);
+  }
+
   function normalize(rawText) {
     const raw = String(rawText ?? '').replace(/\r\n?/g, '\n').trim();
     if (!raw) return Object.freeze({ raw, message: '', usedGameText: false });
@@ -72,6 +93,7 @@
     status() { return Object.freeze({ key: KEY, ready: true, hiddenTags: HIDDEN_TAGS }); },
     normalize,
     extractActions,
+    extractLegacyActions,
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];

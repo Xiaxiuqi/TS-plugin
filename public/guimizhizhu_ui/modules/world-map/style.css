@@ -1,0 +1,17 @@
+.crypt-lord-world-map { position: fixed; inset: 0; width: 100vw; height: 100dvh; min-height: 100dvh; z-index: 2147483001; display: none; align-items: center; justify-content: center; padding: 18px; overflow: hidden; background: rgba(0, 0, 0, .64); color: #f5deb3; font: 14px/1.45 "Noto Serif SC", "Microsoft YaHei", serif; }
+.crypt-lord-world-map[data-open="true"] { display: flex; }
+.crypt-lord-world-map *, .crypt-lord-world-map *::before, .crypt-lord-world-map *::after { box-sizing: border-box; }
+.crypt-lord-world-map__dialog { display: flex; width: min(1020px, 100%); height: min(760px, 88vh); flex-direction: column; overflow: hidden; border: 1px solid #765226; border-radius: 6px; background: #1a1610; box-shadow: 0 20px 60px rgba(0, 0, 0, .62); }
+.crypt-lord-world-map__header { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 12px; border-bottom: 1px solid rgba(218, 165, 32, .3); cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-world-map__header strong { color: #daa520; }
+.crypt-lord-world-map__location { min-width: 0; overflow: hidden; color: #bda98a; text-overflow: ellipsis; white-space: nowrap; }
+.crypt-lord-world-map__tools { display: flex; margin-left: auto; gap: 6px; }
+.crypt-lord-world-map__tools button { width: 30px; height: 30px; border: 1px solid rgba(218, 165, 32, .5); border-radius: 4px; color: #f5deb3; background: #261f16; cursor: pointer; font: inherit; font-size: 18px; }
+.crypt-lord-world-map__viewport { position: relative; flex: 1; overflow: hidden; overscroll-behavior: contain; touch-action: none; cursor: grab; background: #100e0a; }
+.crypt-lord-world-map__viewport[data-dragging="true"] { cursor: grabbing; }
+.crypt-lord-world-map__canvas { position: absolute; inset: 0; transform-origin: 50% 50%; }
+.crypt-lord-world-map__canvas img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; pointer-events: none; }
+.crypt-lord-world-map__marker { position: absolute; display: none; width: 15px; height: 15px; transform: translate(-50%, -50%); border: 2px solid #fff1c1; border-radius: 50%; background: #c13f32; box-shadow: 0 0 0 5px rgba(193, 63, 50, .25); }
+.crypt-lord-world-map__marker i { position: absolute; inset: -10px; border: 1px solid rgba(255, 241, 193, .6); border-radius: 50%; animation: crypt-lord-map-pulse 1.7s infinite; }
+@keyframes crypt-lord-map-pulse { from { transform: scale(.45); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+@media (max-width: 640px) { .crypt-lord-world-map { padding: 8px; } .crypt-lord-world-map__dialog { height: min(620px, 92vh); } .crypt-lord-world-map__location { display: none; } }

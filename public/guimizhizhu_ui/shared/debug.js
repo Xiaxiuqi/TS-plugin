@@ -222,6 +222,7 @@
 
   function moduleStatuses() {
     const known = [
+      'cryptLord.afterNativeHost',
       'cryptLord.nativeFloor',
       'cryptLord.nativeFloorBridge',
       'cryptLord.inputAdapter',
@@ -230,7 +231,7 @@
       'cryptLord.nativeEditor',
       'cryptLord.nativeFloorEditorUi',
       'cryptLord.nativeSettlement',
-      'cryptLord.nativeControlDock',
+      'cryptLord.nativeFloorStatusBar',
     ];
     return known.map(key => {
       const module = root.__stage1Modules?.[key];
@@ -240,11 +241,12 @@
       } catch (error) {
         reported = { error: safeText(error) };
       }
+      const mountedCount = Number(reported?.mounted ?? reported?.bars ?? reported?.cards ?? reported?.stacks ?? 0);
       return {
         key,
         registered: !!module,
         ready: reported?.ready === true || reported?.available === true || reported?.installed === true,
-        mounted: reported?.mounted === true,
+        mounted: reported?.mounted === true || (Number.isFinite(mountedCount) && mountedCount > 0),
         status: reported,
       };
     });

@@ -10,3 +10,20 @@
   --crypt-lord-space-2: 8px;
   --crypt-lord-space-3: 12px;
 }
+
+.crypt-lord-after-native-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 6px;
+  min-width: 0;
+}
+
+.crypt-lord-before-native-stack {
+  min-width: 0;
+  margin: 6px 0 10px;
+}
+
+.crypt-lord-after-native-mount {
+  min-width: 0;
+}

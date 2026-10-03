@@ -3,6 +3,8 @@
 
   const KEY = 'cryptLord.nativeFloor';
   const BRIDGE_KEY = 'cryptLord.nativeFloorBridge';
+  const HOST_API_KEY = 'cryptLord.hostApi';
+  const AFTER_NATIVE_HOST_KEY = 'cryptLord.afterNativeHost';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);
@@ -40,6 +42,12 @@
     abortController: new AbortController(),
     disposed: false,
     epoch: 1,
+    nativeObserver: null,
+    nativeObserverHost: null,
+    nativeMessageReceivedHandle: null,
+    nativeScanQueued: false,
+    observedAssistantId: null,
+    processedNativeAssistantIds: new Set(),
   };
 
   function isTransactionValid(txn) {
@@ -50,16 +58,13 @@
     if (!isTransactionValid(txn)) throw new DOMException('事务已失效', 'AbortError');
   }
 
-  function requireHostFunction(name, owner = window) {
-    const fn = owner && owner[name];
-    if (typeof fn !== 'function') throw new Error(`[${KEY}] 宿主API不可用: ${name}`);
-    return fn.bind(owner);
-  }
-
-  function helper() {
-    const value = window.TavernHelper;
-    if (!value || typeof value !== 'object') throw new Error(`[${KEY}] 宿主API不可用: TavernHelper`);
-    return value;
+  async function getHostApi() {
+    const api = await contract.waitGlobalInitialized(HOST_API_KEY, {
+      timeoutMs: 10000,
+      signal: state.abortController.signal,
+    });
+    if (state.disposed) throw new DOMException('模块已释放', 'AbortError');
+    return api;
   }
 
   async function getBridge() {
@@ -76,6 +81,134 @@
       debugEvent('failure', 'bridge-timeout-or-failure', `${BRIDGE_KEY}: ${error?.message || error}`, 'error');
       throw error;
     }
+  }
+
+  function rememberProcessedNativeAssistant(messageId) {
+    const id = Number(messageId);
+    if (!Number.isInteger(id)) return;
+    state.processedNativeAssistantIds.add(id);
+    while (state.processedNativeAssistantIds.size > 32) {
+      state.processedNativeAssistantIds.delete(state.processedNativeAssistantIds.values().next().value);
+    }
+  }
+
+  function isVariableNarrative(message) {
+    const text = String(message?.message || '');
+    return /<(?:UpdateVariable|JSONPatch|gametxt|action)\b/i.test(text);
+  }
+
+  function nearestNativeUser(messages, assistantMessageId) {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (Number(message?.message_id) >= assistantMessageId) continue;
+      if (message?.role === 'user') return message;
+    }
+    return null;
+  }
+
+  function hasNativeState(message) {
+    const data = message?.data;
+    return Boolean(data && typeof data === 'object' && !Array.isArray(data) &&
+      ['stat_data', 'npc_data', 'world_data'].some(key =>
+        data[key] && typeof data[key] === 'object' && !Array.isArray(data[key])));
+  }
+
+  async function processNativeAssistantFloor(messageId, options = {}) {
+    const id = Number(messageId);
+    if (state.disposed || !Number.isInteger(id) || state.processedNativeAssistantIds.has(id)) return false;
+    const floors = await snapshotFloors();
+    const assistant = floors.find(message => Number(message?.message_id) === id && message?.role === 'assistant');
+    // A raw DOM mutation can occur before streaming has finished.  It may only
+    // settle an explicit variable payload; the final native receive event is
+    // allowed to inherit the prior state when the model returned no patch.
+    if (!assistant || (!options.allowInheritedState && !isVariableNarrative(assistant))) return false;
+    const user = nearestNativeUser(floors, id);
+    if (!user) {
+      debugEvent('refusal', 'native-assistant-without-user', `messageId=${id}`, 'warn');
+      return false;
+    }
+
+    // Mark before mutation: setChatMessages itself may cause a second DOM mutation.
+    rememberProcessedNativeAssistant(id);
+    try {
+      const bridge = await getBridge();
+      const inspected = await bridge.inspectNarrative(String(assistant.message || ''), {
+        source: 'sillytavern-native',
+        assistantMessageId: id,
+      });
+      if (!inspected?.passed) {
+        debugEvent('refusal', 'native-assistant-rejected', `messageId=${id}; 文本未通过处理`, 'warn');
+        return false;
+      }
+      await bridge.completeNarrative(String(inspected.parseText ?? assistant.message ?? ''), {
+        userMessageId: Number(user.message_id),
+        assistantMessageId: id,
+        generationId: `native-host-${id}`,
+        userText: String(user.message || ''),
+        narrativeText: String(inspected.text ?? assistant.message ?? ''),
+      });
+      debugEvent('assistant', 'native-assistant-settled', `messageId=${id}`);
+      return true;
+    } catch (error) {
+      state.processedNativeAssistantIds.delete(id);
+      throw error;
+    }
+  }
+
+  async function scanNativeAssistantFloors(options = {}) {
+    if (state.disposed) return 0;
+    const floors = await snapshotFloors();
+    const assistants = floors
+      .filter(message => message?.role === 'assistant' && Number.isInteger(Number(message.message_id)))
+      .sort((left, right) => Number(left.message_id) - Number(right.message_id));
+    const latestId = assistants.length ? Number(assistants[assistants.length - 1].message_id) : -1;
+    if (state.observedAssistantId === null) {
+      state.observedAssistantId = latestId;
+      debugEvent('lifecycle', 'native-observer-primed', `latestAssistantId=${latestId}`);
+      const latest = assistants[assistants.length - 1];
+      if (options.recoverLatest && latest && !hasNativeState(latest)) {
+        return (await processNativeAssistantFloor(latest.message_id, { allowInheritedState: true })) ? 1 : 0;
+      }
+      return 0;
+    }
+    const pending = assistants.filter(message => Number(message.message_id) > state.observedAssistantId);
+    state.observedAssistantId = Math.max(state.observedAssistantId, latestId);
+    let settled = 0;
+    for (const message of pending) {
+      if (await processNativeAssistantFloor(message.message_id, options)) settled += 1;
+    }
+    return settled;
+  }
+
+  function queueNativeAssistantScan() {
+    if (state.nativeScanQueued || state.disposed) return;
+    state.nativeScanQueued = true;
+    Promise.resolve().then(scanNativeAssistantFloors).catch(error => {
+      debugEvent('failure', 'native-observer-scan-failure', error?.message || error, 'error');
+    }).finally(() => { state.nativeScanQueued = false; });
+  }
+
+  async function installNativeObserver() {
+    const afterNative = modules[AFTER_NATIVE_HOST_KEY];
+    const host = afterNative?.getHost?.();
+    if (!host?.document || !host?.window?.MutationObserver || state.disposed || state.nativeObserver) return false;
+    await scanNativeAssistantFloors({ recoverLatest: true });
+    if (state.disposed) return false;
+    const target = host.document.querySelector?.('#chat') || host.document.body || host.document.documentElement;
+    if (!target) return false;
+    state.nativeObserver = new host.window.MutationObserver(queueNativeAssistantScan);
+    state.nativeObserver.observe(target, { childList: true, subtree: true });
+    state.nativeObserverHost = host;
+    const events = afterNative?.tavernEvents?.();
+    if (events?.MESSAGE_RECEIVED && !state.nativeMessageReceivedHandle) {
+      state.nativeMessageReceivedHandle = afterNative.bindEvent?.(events.MESSAGE_RECEIVED, messageId => {
+        void processNativeAssistantFloor(Number(messageId), { allowInheritedState: true }).catch(error => {
+          debugEvent('failure', 'native-message-received-settlement-failure', error?.message || error, 'error');
+        });
+      }) || null;
+    }
+    debugEvent('lifecycle', 'native-observer-installed', host.document.URL || 'unknown-host');
+    return true;
   }
 
   function normalizeOptions(sourceOrOptions, maybeOptions) {
@@ -110,8 +243,8 @@
   }
 
   async function snapshotFloors() {
-    const getChatMessages = requireHostFunction('getChatMessages');
-    const list = await Promise.resolve(getChatMessages('0-{{lastMessageId}}'));
+    const hostApi = await getHostApi();
+    const list = await hostApi.getChatMessages('0-{{lastMessageId}}');
     return Array.isArray(list) ? list : [];
   }
 
@@ -126,11 +259,10 @@
 
   async function createUserFloor(txn, rawText) {
     assertTransactionValid(txn);
-    const tavern = helper();
-    const create = requireHostFunction('createChatMessages', tavern);
+    const hostApi = await getHostApi();
     const before = await snapshotFloors();
     assertTransactionValid(txn);
-    await create([{ role: 'user', message: rawText }], { refresh: 'none' });
+    await hostApi.createChatMessages([{ role: 'user', message: rawText }], { refresh: 'none' });
     assertTransactionValid(txn);
     const after = await snapshotFloors();
     assertTransactionValid(txn);
@@ -143,22 +275,20 @@
     assertTransactionValid(txn);
     if (!Number.isInteger(messageId)) throw new Error(`[${KEY}] assistant 楼层ID无效`);
     debugEvent('assistant', 'assistant-write-start', `messageId=${messageId}`);
-    const tavern = helper();
-    const set = requireHostFunction('setChatMessages', tavern);
+    const hostApi = await getHostApi();
     const payload = { message_id: messageId };
     if (typeof patch.message === 'string') payload.message = patch.message;
     if (patch.data) {
       if (replaceData) {
         payload.data = structuredCloneSafe(patch.data);
       } else {
-        const getChatMessages = requireHostFunction('getChatMessages');
-        const list = await Promise.resolve(getChatMessages(String(messageId)));
+        const list = await hostApi.getChatMessages(String(messageId));
         assertTransactionValid(txn);
         payload.data = Object.assign({}, structuredCloneSafe(list?.[0]?.data || {}), structuredCloneSafe(patch.data));
       }
     }
     assertTransactionValid(txn);
-    await set([payload], { refresh: 'none' });
+    await hostApi.setChatMessages([payload], { refresh: 'none' });
     assertTransactionValid(txn);
     debugEvent('assistant', 'assistant-write-success', `messageId=${messageId}`);
   }
@@ -197,11 +327,10 @@
       return claimed.message_id;
     }
 
-    const tavern = helper();
-    const create = requireHostFunction('createChatMessages', tavern);
+    const hostApi = await getHostApi();
     const before = floors;
     assertTransactionValid(txn);
-    await create([{ role: 'assistant', message: finalText }], { refresh: 'none' });
+    await hostApi.createChatMessages([{ role: 'assistant', message: finalText }], { refresh: 'none' });
     assertTransactionValid(txn);
     const after = await snapshotFloors();
     assertTransactionValid(txn);
@@ -279,13 +408,12 @@
   async function deleteOrphanUser(txn, reason) {
     if (!isTransactionValid(txn) || !Number.isInteger(txn.userMessageId) || Number.isInteger(txn.assistantMessageId) || txn.responseCommitted) return;
     try {
-      const getChatMessages = requireHostFunction('getChatMessages');
-      const list = await Promise.resolve(getChatMessages(String(txn.userMessageId)));
+      const hostApi = await getHostApi();
+      const list = await hostApi.getChatMessages(String(txn.userMessageId));
       if (!isTransactionValid(txn)) return;
       const target = list?.[0];
       if (!target || target.role !== 'user' || String(target.message || '').trim() !== String(txn.rawText || '').trim()) return;
-      const remove = requireHostFunction('deleteChatMessages', helper());
-      await remove([txn.userMessageId], { refresh: 'none' });
+      await hostApi.deleteChatMessages([txn.userMessageId], { refresh: 'none' });
       if (!isTransactionValid(txn)) return;
       debugEvent('assistant', 'orphan-user-cleanup-success', `messageId=${txn.userMessageId}; ${reason}`, 'warn');
       console.warn(`[${KEY}] 已删除孤立 user 楼层 #${txn.userMessageId}: ${reason}`);
@@ -307,11 +435,11 @@
 
   async function invokeGenerate(txn, config) {
     assertTransactionValid(txn);
-    const generate = requireHostFunction('generate', helper());
+    const hostApi = await getHostApi();
     debugEvent('generation', 'generation-dispatch', `generationId=${config?.generation_id || '未知'}`);
     armWatchdog(txn);
     try {
-      const result = await generate(config);
+      const result = await hostApi.generate(config);
       assertTransactionValid(txn);
       debugEvent('generation', 'generation-dispatch-success', `generationId=${config?.generation_id || '未知'}`);
       return result;
@@ -552,6 +680,14 @@
     }
     closeTurn();
     state.retiredGenerationIds.clear();
+    state.nativeObserver?.disconnect?.();
+    state.nativeObserver = null;
+    state.nativeObserverHost = null;
+    state.nativeMessageReceivedHandle?.stop?.();
+    state.nativeMessageReceivedHandle = null;
+    state.nativeScanQueued = false;
+    state.observedAssistantId = null;
+    state.processedNativeAssistantIds.clear();
     state.watchdogAbortAt = 0;
     try { contract.releaseGlobal(KEY, api); } catch { /* loader releases exact ownership too */ }
     if (modules[KEY] === api) delete modules[KEY];
@@ -564,6 +700,8 @@
     },
     hasActiveTurn,
     submitNativeTurn,
+    processNativeAssistantFloor,
+    scanNativeAssistantFloors,
     onGenerationStarted,
     onGenerationEnded,
     dispose,
@@ -573,6 +711,9 @@
   try {
     contract.initializeGlobal(KEY, api);
     debugEvent('lifecycle', 'registered', '资源已注册；业务功能依赖 cryptLord.nativeFloorBridge 与宿主生成事件接入', 'warn');
+    void installNativeObserver().catch(error => {
+      debugEvent('failure', 'native-observer-install-failure', error?.message || error, 'error');
+    });
   } catch (error) {
     debugEvent('failure', 'registration-failure', error?.message || error, 'error');
     if (modules[KEY] === api) delete modules[KEY];

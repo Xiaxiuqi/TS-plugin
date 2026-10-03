@@ -1,0 +1,32 @@
+.crypt-lord-dual-books, .crypt-lord-dual-books * { box-sizing: border-box; }
+.crypt-lord-dual-books { position: fixed; z-index: 2147482988; top: 10%; left: 50%; display: none; flex-direction: column; width: min(760px, calc(100vw - 20px)); max-height: min(740px, calc(100vh - 20px)); transform: translateX(-50%); border: 1px solid #a37a38; border-radius: 6px; background: #1d1917; color: #f4e8d4; box-shadow: 0 18px 48px #000a; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
+.crypt-lord-dual-books[data-open="true"] { display: flex; }
+.crypt-lord-dual-books header { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 8px 12px; border-bottom: 1px solid #66523b; cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-dual-books header strong { flex: none; color: #e9c16e; }
+.crypt-lord-dual-books__stats { flex: 1; min-width: 0; overflow: hidden; color: #c2ae91; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.crypt-lord-dual-books button { border: 1px solid #806644; border-radius: 4px; padding: 5px 8px; background: #393027; color: #f4e8d4; cursor: pointer; font: inherit; }
+.crypt-lord-dual-books button:hover { background: #58442b; }
+.crypt-lord-dual-books__tabs { display: flex; gap: 5px; padding: 9px 12px; overflow-x: auto; border-bottom: 1px solid #514334; }
+.crypt-lord-dual-books__tabs button { flex: 1 0 auto; }
+.crypt-lord-dual-books__tabs button[aria-selected="true"] { border-color: #d7a550; color: #231a12; background: #d7a550; }
+.crypt-lord-dual-books__body { min-height: 0; overflow: auto; padding: 12px; }
+.crypt-lord-dual-books[aria-busy="true"] .crypt-lord-dual-books__body { pointer-events: none; opacity: .65; }
+.crypt-lord-dual-books__entry { padding: 10px 0; border-bottom: 1px solid #5d4b35; }
+.crypt-lord-dual-books__entry:first-child { padding-top: 0; }
+.crypt-lord-dual-books__entry-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; }
+.crypt-lord-dual-books__entry-title strong { font-size: 14px; color: #edce8a; overflow-wrap: anywhere; }
+.crypt-lord-dual-books__entry-title span { color: #b7cba8; font-size: 11px; }
+.crypt-lord-dual-books__detail { display: flex; gap: 8px; min-width: 0; margin-top: 4px; color: #baa995; }
+.crypt-lord-dual-books__detail b { flex: none; color: #cfb678; }
+.crypt-lord-dual-books__detail span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crypt-lord-dual-books__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 9px; }
+.crypt-lord-dual-books__toggle { display: flex; align-items: center; gap: 4px; margin-right: auto; }
+.crypt-lord-dual-books__danger { color: #ffb3a7 !important; border-color: #a05f55 !important; }
+.crypt-lord-dual-books__warning, .crypt-lord-dual-books__empty { color: #deb37c; overflow-wrap: anywhere; }
+.crypt-lord-dual-books__result { min-height: 32px; padding: 6px 12px; border-top: 1px solid #514334; color: #b6d5ad; overflow-wrap: anywhere; }
+.crypt-lord-dual-books__result[data-error="true"] { color: #ffaaaa; }
+@media (max-width: 600px) {
+  .crypt-lord-dual-books { top: 8px; left: 8px; width: calc(100vw - 16px); max-height: calc(100vh - 16px); transform: none; }
+  .crypt-lord-dual-books header { flex-wrap: wrap; }
+  .crypt-lord-dual-books__stats { order: 2; flex-basis: 100%; }
+}

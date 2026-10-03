@@ -2,7 +2,6 @@
   'use strict';
 
   const KEY = 'cryptLord.inputAdapter';
-  const NATIVE_FLOOR_KEY = 'cryptLord.nativeFloor';
   const LIFECYCLE_KEY = 'cryptLord.lifecycle';
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
@@ -18,10 +17,8 @@
     nativeTextarea: '#send_textarea',
     nativeSendButton: '#send_but',
     nativeForm: '#send_form',
-    gameTextarea: '#quick-send-input',
-    gameSendButton: '#btn-quick-send',
   });
-  const state = { scope: null, host: null, observer: null, installing: null, submitting: false, disposed: false, ready: false, lastFailure: '' };
+  const state = { scope: null, host: null, observer: null, installing: null, disposed: false, ready: false, lastFailure: '' };
 
   function debugEvent(category, action, details, level = 'info') {
     try { root.debug?.event?.(category, KEY, action, details, level); } catch { /* Diagnostics are optional. */ }
@@ -48,78 +45,40 @@
     }, null);
   }
 
-  function inputFor(source) {
+  function inputFor() {
     if (!state.host) return null;
-    return state.host.document.querySelector(source === 'game-shell' ? SELECTORS.gameTextarea : SELECTORS.nativeTextarea);
+    return state.host.document.querySelector(SELECTORS.nativeTextarea);
   }
 
-  function setInputText(rawText, source = 'sillytavern-native') {
+  function setInputText(rawText) {
     if (state.disposed) throw new Error(`[${KEY}] 模块已释放`);
-    const input = inputFor(source);
-    if (!input) throw new Error(`未找到输入控件 ${source === 'game-shell' ? SELECTORS.gameTextarea : SELECTORS.nativeTextarea}`);
+    const input = inputFor();
+    if (!input) throw new Error(`未找到输入控件 ${SELECTORS.nativeTextarea}`);
     input.value = String(rawText ?? '');
     input.dispatchEvent(new state.host.window.Event('input', { bubbles: true }));
     input.focus?.();
-    debugEvent('action', 'input-filled', `source=${source}`);
+    debugEvent('action', 'input-filled', 'source=sillytavern-native');
     return true;
   }
 
-  async function submit(rawText, source = 'external') {
+  function submit(rawText, source = 'external') {
     if (state.disposed) throw new Error(`[${KEY}] 模块已释放`);
-    if (state.submitting) throw new Error(`[${KEY}] 上一条行动仍在处理中`);
     const text = String(rawText ?? '').trim();
     if (!text) {
       notify('请输入行动后再发送。');
       return false;
     }
-    state.submitting = true;
-    try {
-      const nativeFloor = await contract.waitGlobalInitialized(NATIVE_FLOOR_KEY, { timeoutMs: 10000 });
-      const result = await nativeFloor.submitNativeTurn(text, { source });
-      debugEvent('action', 'submit-success', `source=${source}`);
-      return result ?? true;
-    } catch (error) {
-      state.lastFailure = error?.message || String(error);
-      debugEvent('failure', 'submit-failure', state.lastFailure, 'error');
-      notify(`无法提交原生楼层回合：${state.lastFailure}`, 'error');
-      throw error;
-    } finally {
-      state.submitting = false;
-    }
+    // Native clicking and Enter must remain owned by SillyTavern.  This adapter
+    // only prepares text for the user to submit through the original composer.
+    setInputText(text);
+    debugEvent('action', 'input-queued', `source=${source}; native-send=preserved`);
+    return true;
   }
 
-  async function submitTextarea(source) {
-    const input = inputFor(source);
-    if (!input) throw new Error(`未找到输入控件 ${source === 'game-shell' ? SELECTORS.gameTextarea : SELECTORS.nativeTextarea}`);
-    const result = await submit(input.value, source);
-    input.value = '';
-    input.dispatchEvent(new state.host.window.Event('input', { bubbles: true }));
-    return result;
-  }
-
-  function blockAndSubmit(event, source) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void submitTextarea(source).catch(() => {});
-  }
-
-  function onClick(event) {
-    const target = event.target && typeof event.target.closest === 'function' ? event.target : null;
-    if (target?.closest(SELECTORS.nativeSendButton)) return blockAndSubmit(event, 'sillytavern-native');
-    if (target?.closest(SELECTORS.gameSendButton)) blockAndSubmit(event, 'game-shell');
-  }
-
-  function onSubmit(event) {
-    if (event.target && typeof event.target.matches === 'function' && event.target.matches(SELECTORS.nativeForm)) {
-      blockAndSubmit(event, 'sillytavern-native');
-    }
-  }
-
-  function onKeyDown(event) {
-    if (event.key !== 'Enter' || event.isComposing || event.shiftKey || event.altKey) return;
-    const target = event.target && typeof event.target.matches === 'function' ? event.target : null;
-    if (target?.matches(SELECTORS.nativeTextarea)) return blockAndSubmit(event, 'sillytavern-native');
-    if (target?.matches(SELECTORS.gameTextarea)) blockAndSubmit(event, 'game-shell');
+  function submitTextarea(source = 'sillytavern-native') {
+    const input = inputFor();
+    if (!input) throw new Error(`未找到输入控件 ${SELECTORS.nativeTextarea}`);
+    return submit(input.value, source);
   }
 
   function refreshAvailability() {
@@ -145,9 +104,6 @@
       }
       state.host = host;
       state.scope = lifecycle.createScope(KEY);
-      state.scope.listen(host.document, 'click', onClick, true);
-      state.scope.listen(host.document, 'submit', onSubmit, true);
-      state.scope.listen(host.document, 'keydown', onKeyDown, true);
       state.observer = new host.window.MutationObserver(refreshAvailability);
       state.observer.observe(host.document.documentElement, { childList: true, subtree: true });
       state.scope.addCleanup(() => state.observer?.disconnect());
@@ -172,7 +128,7 @@
   }
 
   const api = Object.freeze({
-    status() { return Object.freeze({ key: KEY, phase: 'native-input-adapter', ready: state.ready, submitting: state.submitting, lastFailure: state.lastFailure, selectors: SELECTORS }); },
+    status() { return Object.freeze({ key: KEY, phase: 'native-input-pass-through', ready: state.ready, lastFailure: state.lastFailure, selectors: SELECTORS }); },
     install,
     submit,
     submitTextarea,

@@ -1,0 +1,66 @@
+.crypt-lord-domain-console,
+.crypt-lord-domain-console * { box-sizing: border-box; }
+.crypt-lord-domain-console { position: fixed; inset: 0; z-index: 2147482991; display: none; pointer-events: none; font: 13px/1.45 "Noto Serif SC", "Microsoft YaHei", serif; }
+.crypt-lord-domain-console[data-open="true"] { display: block; }
+.crypt-lord-domain-console__dialog { position: absolute; top: 8vh; left: 50%; display: flex; width: min(920px, calc(100vw - 24px)); height: min(82vh, 780px); flex-direction: column; transform: translateX(-50%); overflow: hidden; pointer-events: auto; border: 1px solid #89612d; border-radius: 6px; color: #f5deb3; background: #1d160f; box-shadow: 0 18px 52px rgba(0,0,0,.68); }
+.crypt-lord-domain-console header { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(218,165,32,.28); cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-domain-console header strong { color: #e4bb54; }
+.crypt-lord-domain-console header span { flex: 1; color: #bda98a; font-size: 11px; }
+.crypt-lord-domain-console header button { width: 28px; height: 28px; border: 1px solid rgba(218,165,32,.45); border-radius: 3px; color: #f5deb3; background: #2a2015; font: inherit; font-size: 18px; cursor: pointer; }
+.crypt-lord-domain-console__body { min-height: 0; overflow: auto; padding: 12px; }
+.crypt-lord-domain-console__summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.crypt-lord-domain-console__metric { min-width: 0; padding: 8px; border: 1px solid rgba(218,165,32,.22); border-radius: 4px; background: #261d13; }
+.crypt-lord-domain-console__metric span { display: block; color: #bda98a; font-size: 11px; }
+.crypt-lord-domain-console__metric strong { display: block; margin-top: 2px; overflow-wrap: anywhere; color: #ebc663; }
+.crypt-lord-domain-console__overview { margin: 10px 0; padding: 8px; border-left: 2px solid #d7a33a; color: #d8c29f; white-space: pre-wrap; overflow-wrap: anywhere; }
+.crypt-lord-domain-console__section { margin-top: 12px; border-top: 1px solid rgba(218,165,32,.22); padding-top: 9px; }
+.crypt-lord-domain-console__section h3 { margin: 0 0 8px; color: #daa520; font-size: 14px; }
+.crypt-lord-domain-console__row { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 7px; margin: 6px 0; padding: 7px; border: 1px solid rgba(218,165,32,.16); border-radius: 3px; background: #241b12; }
+.crypt-lord-domain-console__row > strong,
+.crypt-lord-domain-console__row > span { min-width: 120px; flex: 1; overflow-wrap: anywhere; }
+.crypt-lord-domain-console__row > .crypt-lord-domain-console__cost { flex: 0 0 100%; margin: 0; color: #d9bd87; overflow-wrap: anywhere; }
+.crypt-lord-domain-console__row > .crypt-lord-domain-console__row-actions { flex: 0 0 100%; }
+.crypt-lord-domain-console__room-name { display: flex; width: 100%; min-width: 0; align-items: center; gap: 6px; }
+.crypt-lord-domain-console__room-name .crypt-lord-domain-console__field { min-width: 0; }
+.crypt-lord-domain-console__room-name input { width: 100%; }
+.crypt-lord-domain-console__room .crypt-lord-domain-console__row-actions { justify-content: flex-end; }
+.crypt-lord-domain-console__row-actions,
+.crypt-lord-domain-console__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.crypt-lord-domain-console__field { display: inline-flex; min-width: 130px; flex: 1; align-items: center; gap: 6px; color: #bda98a; }
+.crypt-lord-domain-console__field input,
+.crypt-lord-domain-console__field select,
+.crypt-lord-domain-console select,
+.crypt-lord-domain-console input { min-width: 0; border: 1px solid rgba(218,165,32,.34); border-radius: 3px; padding: 5px 7px; color: #f5deb3; background: #17110b; font: inherit; }
+.crypt-lord-domain-console__field input,
+.crypt-lord-domain-console__field select { flex: 1; }
+.crypt-lord-domain-console__number { width: 80px; }
+.crypt-lord-domain-console__button { border: 1px solid rgba(218,165,32,.43); border-radius: 3px; padding: 5px 8px; color: #f5deb3; background: #2a2015; cursor: pointer; font: inherit; }
+.crypt-lord-domain-console__button:hover { border-color: #daa520; background: #352613; }
+.crypt-lord-domain-console__button:disabled { opacity: .55; cursor: wait; }
+.crypt-lord-domain-console__button.is-primary { border-color: #d7a33a; color: #23170c; background: #d7a33a; }
+.crypt-lord-domain-console__muted { color: #bda98a; }
+.crypt-lord-domain-console__promotion { max-width: 620px; margin: 12px auto; }
+.crypt-lord-domain-console__promotion h3 { margin: 0 0 8px; color: #e4bb54; font-size: 17px; }
+.crypt-lord-domain-console__promotion > .crypt-lord-domain-console__field { display: flex; width: 100%; margin: 10px 0; }
+.crypt-lord-domain-console__promotion > .crypt-lord-domain-console__field > span { flex: 0 0 105px; }
+.crypt-lord-domain-console__verdict { padding: 9px; border-left: 2px solid #c47762; color: #f2b8a5; background: #34201b; }
+.crypt-lord-domain-console__verdict.is-success { border-color: #73ae85; color: #c4e2c7; background: #1b2b22; }
+.crypt-lord-domain-console__promotion-field { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(180px, 2fr); align-items: center; gap: 8px; margin: 8px 0; }
+.crypt-lord-domain-console__promotion-field select { width: 100%; }
+.crypt-lord-domain-console__promotion-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.crypt-lord-domain-console__formation { display: grid; gap: 8px; margin: 10px 0; padding: 10px; border: 1px solid rgba(218,165,32,.32); border-radius: 4px; background: #261d13; }
+.crypt-lord-domain-console__formation h3 { margin: 0; }
+.crypt-lord-domain-console__formation > .crypt-lord-domain-console__field { width: 100%; }
+.crypt-lord-domain-console__formation-pick { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(218,165,32,.14); }
+.crypt-lord-domain-console__formation-pick span { min-width: 0; overflow-wrap: anywhere; }
+.crypt-lord-domain-console__formation-pick input { width: 90px; flex: 0 0 90px; }
+.crypt-lord-domain-console footer { display: flex; justify-content: flex-end; gap: 7px; border-top: 1px solid rgba(218,165,32,.28); padding: 9px 12px; }
+@media (max-width: 640px) {
+  .crypt-lord-domain-console__dialog { top: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); }
+  .crypt-lord-domain-console__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .crypt-lord-domain-console__field { min-width: 100%; }
+  .crypt-lord-domain-console__promotion-field { grid-template-columns: 1fr; gap: 3px; }
+  .crypt-lord-domain-console__promotion > .crypt-lord-domain-console__field { display: grid; }
+  .crypt-lord-domain-console__promotion > .crypt-lord-domain-console__field > span { flex: none; }
+  .crypt-lord-domain-console__formation-pick { flex-wrap: wrap; }
+}
