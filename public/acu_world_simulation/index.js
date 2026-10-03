@@ -27,6 +27,16 @@ const DEFAULT_SETTINGS = {
   simpleHighlight: false,
   refreshInjectedMessage: false,
 };
+const PROJECTION_PATTERN = /<!-- qrf-world-simulation-projection:v([12]):start -->([\s\S]*?)<!-- qrf-world-simulation-projection:v\1:end -->/;
+const projectionSignature = content => {
+  const projection = content.match(PROJECTION_PATTERN)?.[0];
+  if (!projection) return null;
+  let hash = 2166136261;
+  for (let index = 0; index < projection.length; index++) {
+    hash = Math.imul(hash ^ projection.charCodeAt(index), 16777619);
+  }
+  return `${projection.length}:${hash >>> 0}`;
+};
 const STATUS = {
   established: '已建立', incubating: '酝酿中', active: '活跃', converging: '汇聚中',
   resolved: '已收束', retired: '已退役',
@@ -138,19 +148,23 @@ function applyDelta(ledger, delta) {
 async function readSimulation() {
   const context = getSillyTavern()?.getContext?.();
   const chat = context?.chat;
-  if (!Array.isArray(chat)) return { ledger: null, candidates: [], message: '无法读取当前聊天楼层' };
+  if (!Array.isArray(chat)) return { ledger: null, candidates: [], projections: new Map(), message: '无法读取当前聊天楼层' };
   const chatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
   let ledger = null;
   const envelope = chat[0]?.[ENVELOPE_KEY];
   const candidates = [];
+  const projections = new Map();
   for (let index = 0; index < chat.length; index++) {
     const message = chat[index];
     if (!message || message.is_user || message.is_system) continue;
+    const content = typeof message.mes === 'string' ? message.mes : String(message.message ?? '');
+    const signature = projectionSignature(content);
+    if (signature) projections.set(index, signature);
     const messageId = message.message_id ?? index;
     const anchor = {
       messageKey: `${typeof messageId}:${messageId}`,
       swipeId: String(Number.isInteger(message.swipe_id) ? message.swipe_id : 0),
-      contentDigest: await digest(typeof message.mes === 'string' ? message.mes : String(message.message ?? '')),
+      contentDigest: await digest(content),
     };
     const read = key => {
       const bucket = message[key];
@@ -192,7 +206,17 @@ async function readSimulation() {
       CANDIDATE_KINDS.has(entry?.kind) || CANDIDATE_KINDS.has(entry?.eventKind)));
   }
   candidates.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-  return { chatId, ledger, candidates, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
+  return { chatId, ledger, candidates, projections, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
+}
+
+function changedProjectionTargets(previous, next) {
+  if (previous.chatId !== next.chatId ||
+    Number(next.ledger?.revision ?? 0) <= Number(previous.ledger?.revision ?? 0)) return [];
+  return [...next.projections].filter(([index, signature]) => previous.projections?.get(index) !== signature);
+}
+
+function isChatEditorOpen(doc) {
+  return Boolean(doc.querySelector('#chat .mes textarea, #chat .mes [contenteditable="true"]'));
 }
 
 function viewRows(data) {
@@ -366,43 +390,32 @@ export function mountWorldSimulation(hostWindow, doc) {
   let pendingRefresh = false;
   let disposed = false;
   let request = 0;
-  let displayRefreshTimer = null;
-  let suppressNextDisplayRefresh = false;
-  let displayRefreshCooldown = null;
-  const scheduleDisplayRefresh = () => {
-    if (!settings.refreshInjectedMessage || disposed || suppressNextDisplayRefresh) return;
-    hostWindow.clearTimeout(displayRefreshTimer);
-    displayRefreshTimer = hostWindow.setTimeout(async () => {
-      displayRefreshTimer = null;
-      if (suppressNextDisplayRefresh || disposed || !settings.refreshInjectedMessage) return;
-      const chat = getSillyTavern()?.getContext?.()?.chat;
-      if (!Array.isArray(chat)) return;
-      let messageId = -1;
-      for (let index = chat.length - 1; index >= 0; index--) {
-        const message = chat[index];
-        if (!message || message.is_user || message.is_system) continue;
-        messageId = index;
-        break;
-      }
-      if (messageId < 0) return;
+  const displayRefreshTimers = new Map();
+  const clearDisplayRefreshTimers = () => {
+    for (const timer of displayRefreshTimers.values()) hostWindow.clearTimeout(timer);
+    displayRefreshTimers.clear();
+  };
+  const scheduleDisplayRefresh = (messageId, signature, chatId) => {
+    if (!settings.refreshInjectedMessage || disposed) return;
+    hostWindow.clearTimeout(displayRefreshTimers.get(messageId));
+    const timer = hostWindow.setTimeout(async () => {
+      displayRefreshTimers.delete(messageId);
+      if (disposed || !settings.refreshInjectedMessage || isChatEditorOpen(doc)) return;
+      const context = getSillyTavern()?.getContext?.();
+      const currentChatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
+      const message = context?.chat?.[messageId];
+      if (currentChatId !== chatId || !message || message.is_user || message.is_system ||
+        projectionSignature(typeof message.mes === 'string' ? message.mes : String(message.message ?? '')) !== signature) return;
       const refreshMessage = hostWindow.TavernHelper?.refreshOneMessage ??
         window.TavernHelper?.refreshOneMessage ?? hostWindow.refreshOneMessage ?? window.refreshOneMessage;
       if (typeof refreshMessage !== 'function') return;
-      suppressNextDisplayRefresh = true;
       try {
         await refreshMessage(messageId);
       } catch (error) {
         console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
-      } finally {
-        if (!disposed) {
-          hostWindow.clearTimeout(displayRefreshCooldown);
-          displayRefreshCooldown = hostWindow.setTimeout(() => {
-            suppressNextDisplayRefresh = false;
-            displayRefreshCooldown = null;
-          }, 1000);
-        }
       }
     }, 400);
+    displayRefreshTimers.set(messageId, timer);
   };
   const clamp = (value, max) => Math.max(8, Math.min(value, Math.max(8, max - 8)));
   const keepOrbInViewport = () => {
@@ -507,10 +520,7 @@ export function mountWorldSimulation(hostWindow, doc) {
       settings[key] = event.target.checked;
       saveSettings();
       render();
-      if (key === 'refreshInjectedMessage') {
-        hostWindow.clearTimeout(displayRefreshTimer);
-        displayRefreshTimer = null;
-      }
+      if (key === 'refreshInjectedMessage' && !settings[key]) clearDisplayRefreshTimers();
     }
   });
   const refresh = async () => {
@@ -523,10 +533,16 @@ export function mountWorldSimulation(hostWindow, doc) {
       const next = await readSimulation();
       if (!disposed && current === request) {
         const nextRows = viewRows(next);
-        if (!initialized || next.chatId !== data.chatId) changes = {};
-        else {
+        const sameChat = initialized && next.chatId === data.chatId;
+        if (!sameChat) {
+          changes = {};
+          clearDisplayRefreshTimers();
+        } else {
           const delta = diffRows(displayedRows, nextRows);
           if (Object.keys(delta).length) changes = delta;
+          for (const [index, signature] of changedProjectionTargets(data, next)) {
+            scheduleDisplayRefresh(index, signature, next.chatId);
+          }
         }
         displayedRows = nextRows;
         data = next;
@@ -550,18 +566,13 @@ export function mountWorldSimulation(hostWindow, doc) {
   const source = context?.eventSource ?? getSillyTavern()?.eventSource;
   const events = context?.eventTypes ?? getSillyTavern()?.eventTypes;
   const onCommit = () => { void refresh(); };
-  const onMessageChanged = () => {
-    onCommit();
-    scheduleDisplayRefresh();
-  };
   if (source?.on && events) {
     for (const name of ['MESSAGE_UPDATED', 'CHARACTER_MESSAGE_RENDERED', 'CHAT_CHANGED', 'MESSAGE_SWIPED', 'MESSAGE_DELETED']) {
       if (!events[name]) continue;
-      const handler = name === 'MESSAGE_UPDATED' ? onMessageChanged : onCommit;
-      source.on(events[name], handler);
+      source.on(events[name], onCommit);
       subscriptions.push(() => {
-        if (source.removeListener) source.removeListener(events[name], handler);
-        else source.off?.(events[name], handler);
+        if (source.removeListener) source.removeListener(events[name], onCommit);
+        else source.off?.(events[name], onCommit);
       });
     }
   }
@@ -574,7 +585,7 @@ export function mountWorldSimulation(hostWindow, doc) {
         (mutation.target.closest?.('.mes') || [...mutation.addedNodes].some(node =>
           node.nodeType === 1 && (node.matches?.('.mes') || node.querySelector?.('.mes')))))) {
         hostWindow.clearTimeout(mutationTimer);
-        mutationTimer = hostWindow.setTimeout(onMessageChanged, 300);
+        mutationTimer = hostWindow.setTimeout(onCommit, 300);
       }
     })
     : null;
@@ -602,6 +613,7 @@ export function mountWorldSimulation(hostWindow, doc) {
   };
   let orbDrag = null;
   let suppressNextOrbClick = false;
+  let orbClickTimer = null;
   orb.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
     const rect = orb.getBoundingClientRect();
@@ -623,7 +635,11 @@ export function mountWorldSimulation(hostWindow, doc) {
   const stopOrbDrag = event => {
     if (!orbDrag || event.pointerId !== orbDrag.id) return;
     suppressNextOrbClick = orbDrag.moved && event.type === 'pointerup';
-    if (suppressNextOrbClick) hostWindow.setTimeout(() => { suppressNextOrbClick = false; }, 0);
+    hostWindow.clearTimeout(orbClickTimer);
+    if (suppressNextOrbClick) orbClickTimer = hostWindow.setTimeout(() => {
+      suppressNextOrbClick = false;
+      orbClickTimer = null;
+    }, 0);
     if (orbDrag.moved) {
       try {
         hostWindow.localStorage.setItem(ORB_POSITION_KEY, JSON.stringify({
@@ -712,12 +728,13 @@ export function mountWorldSimulation(hostWindow, doc) {
   render();
   void refresh();
   return () => {
+    if (disposed) return;
     disposed = true;
     request++;
     observer?.disconnect();
     hostWindow.clearTimeout(mutationTimer);
-    hostWindow.clearTimeout(displayRefreshTimer);
-    hostWindow.clearTimeout(displayRefreshCooldown);
+    clearDisplayRefreshTimers();
+    hostWindow.clearTimeout(orbClickTimer);
     subscriptions.forEach(unsubscribe => unsubscribe());
     resizeObserver.disconnect();
     hostWindow.removeEventListener('resize', keepInViewport);
@@ -733,18 +750,43 @@ async function bootstrapWorldSimulation() {
   const hostWindow = window.parent || window;
   const hostDocument = hostWindow.document || document;
   hostWindow.ACUWorldSimulation?.destroy?.();
-
-  const style = hostDocument.createElement('style');
-  style.id = 'acu-world-simulation-style';
-  const response = await fetch(new URL('./style.css', import.meta.url));
-  if (!response.ok) throw new Error(`格林推演样式加载失败: ${response.status}`);
-  style.textContent = await response.text();
-  hostDocument.getElementById(style.id)?.remove();
-  hostDocument.head.appendChild(style);
-  const unmount = mountWorldSimulation(hostWindow, hostDocument);
-  const api = { destroy: () => { unmount(); style.remove(); } };
+  let disposed = false;
+  let unmount = null;
+  let style = null;
+  const styleRequest = new AbortController();
+  const onPageHide = () => api.destroy();
+  const api = {
+    destroy: () => {
+      if (disposed) return;
+      disposed = true;
+      styleRequest.abort();
+      window.removeEventListener('pagehide', onPageHide);
+      try { unmount?.(); }
+      finally {
+        style?.remove();
+        if (hostWindow.ACUWorldSimulation === api) delete hostWindow.ACUWorldSimulation;
+        if (window.ACUWorldSimulation === api) delete window.ACUWorldSimulation;
+      }
+    },
+  };
   hostWindow.ACUWorldSimulation = api;
   window.ACUWorldSimulation = api;
+  window.addEventListener('pagehide', onPageHide);
+  try {
+    const response = await fetch(new URL('./style.css', import.meta.url), { signal: styleRequest.signal });
+    if (!response.ok) throw new Error(`格林推演样式加载失败: ${response.status}`);
+    const css = await response.text();
+    if (disposed) return;
+    hostDocument.getElementById('acu-world-simulation-style')?.remove();
+    style = hostDocument.createElement('style');
+    style.id = 'acu-world-simulation-style';
+    style.textContent = css;
+    hostDocument.head.appendChild(style);
+    unmount = mountWorldSimulation(hostWindow, hostDocument);
+  } catch (error) {
+    api.destroy();
+    if (error.name !== 'AbortError') throw error;
+  }
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {

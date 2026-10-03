@@ -169,11 +169,12 @@
 .acu-ws-settings { max-width: 480px; }
 .acu-ws-settings h3 { margin: 0 0 12px; color: var(--ws-text); font-size: 14px; }
 .acu-ws-setting { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 47px; padding: 9px 2px; border-top: 1px solid var(--ws-line); color: var(--ws-text); font-size: 12px; cursor: pointer; }
-.acu-ws-setting input { appearance: none; width: 32px; height: 19px; flex: none; margin: 0; border: 1px solid var(--ws-line); border-radius: 12px; background: var(--ws-faint); cursor: pointer; transition: background .15s; }
-.acu-ws-setting input::before { content: ''; display: block; width: 13px; height: 13px; margin: 2px; border-radius: 50%; background: var(--ws-surface); transition: transform .15s; }
-.acu-ws-setting input:checked { background: var(--ws-gold); }
-.acu-ws-setting input:checked::before { transform: translateX(13px); }
-.acu-ws-setting input:focus-visible { outline: 2px solid var(--ws-blue); outline-offset: 2px; }
+.acu-ws-root .acu-ws-setting input[type="checkbox"] { appearance: none !important; -webkit-appearance: none !important; display: block !important; position: relative !important; width: 32px !important; height: 19px !important; flex: none !important; margin: 0 !important; padding: 0 !important; border: 1px solid var(--ws-line) !important; border-radius: 12px !important; background: var(--ws-faint) !important; box-shadow: none !important; opacity: 1 !important; cursor: pointer; transition: background .15s; }
+.acu-ws-root .acu-ws-setting input[type="checkbox"]::before { content: '' !important; display: block !important; position: absolute !important; top: 2px !important; left: 2px !important; width: 13px !important; height: 13px !important; margin: 0 !important; border: 0 !important; border-radius: 50% !important; background: var(--ws-surface) !important; box-shadow: none !important; transform: none !important; transition: transform .15s; }
+.acu-ws-root .acu-ws-setting input[type="checkbox"]::after { content: none !important; display: none !important; }
+.acu-ws-root .acu-ws-setting input[type="checkbox"]:checked { background: var(--ws-gold) !important; }
+.acu-ws-root .acu-ws-setting input[type="checkbox"]:checked::before { transform: translateX(13px) !important; }
+.acu-ws-root .acu-ws-setting input[type="checkbox"]:focus-visible { outline: 2px solid var(--ws-blue) !important; outline-offset: 2px !important; }
 .acu-ws-empty, .acu-ws-empty-inline { color: var(--ws-faint); font-size: 12px; }
 .acu-ws-empty { min-height: 220px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; text-align: center; }
 .acu-ws-empty i { color: var(--ws-gold); font-size: 27px; }
