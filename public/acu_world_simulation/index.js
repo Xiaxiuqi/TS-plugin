@@ -28,8 +28,9 @@ const DEFAULT_SETTINGS = {
   refreshInjectedMessage: false,
 };
 const PROJECTION_PATTERN = /<!-- qrf-world-simulation-projection:v([12]):start -->([\s\S]*?)<!-- qrf-world-simulation-projection:v\1:end -->/;
+const SIMULTANEOUS_PATTERN = /<与此同时>([\s\S]*?)<\/与此同时>/;
 const projectionSignature = content => {
-  const projection = content.match(PROJECTION_PATTERN)?.[0];
+  const projection = content.match(SIMULTANEOUS_PATTERN)?.[0] ?? content.match(PROJECTION_PATTERN)?.[0];
   if (!projection) return null;
   let hash = 2166136261;
   for (let index = 0; index < projection.length; index++) {
@@ -210,8 +211,7 @@ async function readSimulation() {
 }
 
 function changedProjectionTargets(previous, next) {
-  if (previous.chatId !== next.chatId ||
-    Number(next.ledger?.revision ?? 0) <= Number(previous.ledger?.revision ?? 0)) return [];
+  if (previous.chatId !== next.chatId) return [];
   return [...next.projections].filter(([index, signature]) => previous.projections?.get(index) !== signature);
 }
 
