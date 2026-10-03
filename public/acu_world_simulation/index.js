@@ -27,17 +27,6 @@ const DEFAULT_SETTINGS = {
   simpleHighlight: false,
   refreshInjectedMessage: false,
 };
-const PROJECTION_PATTERN = /<!-- qrf-world-simulation-projection:v([12]):start -->([\s\S]*?)<!-- qrf-world-simulation-projection:v\1:end -->/;
-const SIMULTANEOUS_PATTERN = /<与此同时>([\s\S]*?)<\/与此同时>/;
-const projectionSignature = content => {
-  const projection = content.match(SIMULTANEOUS_PATTERN)?.[0] ?? content.match(PROJECTION_PATTERN)?.[0];
-  if (!projection) return null;
-  let hash = 2166136261;
-  for (let index = 0; index < projection.length; index++) {
-    hash = Math.imul(hash ^ projection.charCodeAt(index), 16777619);
-  }
-  return `${projection.length}:${hash >>> 0}`;
-};
 const STATUS = {
   established: '已建立', incubating: '酝酿中', active: '活跃', converging: '汇聚中',
   resolved: '已收束', retired: '已退役',
@@ -149,18 +138,18 @@ function applyDelta(ledger, delta) {
 async function readSimulation() {
   const context = getSillyTavern()?.getContext?.();
   const chat = context?.chat;
-  if (!Array.isArray(chat)) return { ledger: null, candidates: [], projections: new Map(), message: '无法读取当前聊天楼层' };
+  if (!Array.isArray(chat)) return { ledger: null, candidates: [], ledgerMessageIndex: null, message: '无法读取当前聊天楼层' };
   const chatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
   let ledger = null;
+  let ledgerMessageIndex = null;
+  let lastAssistantIndex = null;
   const envelope = chat[0]?.[ENVELOPE_KEY];
   const candidates = [];
-  const projections = new Map();
   for (let index = 0; index < chat.length; index++) {
     const message = chat[index];
     if (!message || message.is_user || message.is_system) continue;
+    lastAssistantIndex = index;
     const content = typeof message.mes === 'string' ? message.mes : String(message.message ?? '');
-    const signature = projectionSignature(content);
-    if (signature) projections.set(index, signature);
     const messageId = message.message_id ?? index;
     const anchor = {
       messageKey: `${typeof messageId}:${messageId}`,
@@ -178,13 +167,20 @@ async function readSimulation() {
       return entry?.value ?? null;
     };
     const frame = read(LEDGER_KEY);
-    if (frame?.clock && Array.isArray(frame.seeds)) ledger = frame;
+    if (frame?.clock && Array.isArray(frame.seeds)) {
+      ledger = frame;
+      ledgerMessageIndex = index;
+    }
     else if (frame?.schemaVersion === 2 && Array.isArray(frame.deltas)) {
       if (frame.checkpoint) ledger = frame.checkpoint;
       for (const delta of [...frame.deltas].sort((a, b) => a.seq - b.seq)) ledger = applyDelta(ledger, delta);
+      if (ledger) ledgerMessageIndex = index;
     }
     const material = read(MATERIAL_KEY);
-    if (!ledger && material?.ledger) ledger = material.ledger;
+    if (!ledger && material?.ledger) {
+      ledger = material.ledger;
+      ledgerMessageIndex = index;
+    }
     const conversation = read(AGENT_CHAT_KEY);
     for (const segment of array(conversation?.segments)) {
       for (const event of array(segment.messages)) {
@@ -201,22 +197,23 @@ async function readSimulation() {
       }
     }
   }
-  if (!ledger && envelope?.ledger?.clock) ledger = envelope.ledger;
+  if (!ledger && envelope?.ledger?.clock) {
+    ledger = envelope.ledger;
+    ledgerMessageIndex = lastAssistantIndex;
+  }
   if (!candidates.length) {
     candidates.push(...array(envelope?.timeline).filter(entry =>
       CANDIDATE_KINDS.has(entry?.kind) || CANDIDATE_KINDS.has(entry?.eventKind)));
   }
   candidates.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-  return { chatId, ledger, candidates, projections, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
+  return { chatId, ledger, candidates, ledgerMessageIndex, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
 }
 
-function changedProjectionTargets(previous, next) {
-  if (previous.chatId !== next.chatId) return [];
-  return [...next.projections].filter(([index, signature]) => previous.projections?.get(index) !== signature);
-}
-
-function isChatEditorOpen(doc) {
-  return Boolean(doc.querySelector('#chat .mes textarea, #chat .mes [contenteditable="true"]'));
+function changedLedgerTarget(previous, next) {
+  if (previous.chatId !== next.chatId || !next.ledger ||
+    !Number.isInteger(next.ledgerMessageIndex) ||
+    JSON.stringify(previous.ledger) === JSON.stringify(next.ledger)) return null;
+  return next.ledgerMessageIndex;
 }
 
 function viewRows(data) {
@@ -390,32 +387,22 @@ export function mountWorldSimulation(hostWindow, doc) {
   let pendingRefresh = false;
   let disposed = false;
   let request = 0;
-  const displayRefreshTimers = new Map();
-  const clearDisplayRefreshTimers = () => {
-    for (const timer of displayRefreshTimers.values()) hostWindow.clearTimeout(timer);
-    displayRefreshTimers.clear();
-  };
-  const scheduleDisplayRefresh = (messageId, signature, chatId) => {
+  const scheduleDisplayRefresh = (messageId, chatId) => {
     if (!settings.refreshInjectedMessage || disposed) return;
-    hostWindow.clearTimeout(displayRefreshTimers.get(messageId));
-    const timer = hostWindow.setTimeout(async () => {
-      displayRefreshTimers.delete(messageId);
-      if (disposed || !settings.refreshInjectedMessage || isChatEditorOpen(doc)) return;
-      const context = getSillyTavern()?.getContext?.();
-      const currentChatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
-      const message = context?.chat?.[messageId];
-      if (currentChatId !== chatId || !message || message.is_user || message.is_system ||
-        projectionSignature(typeof message.mes === 'string' ? message.mes : String(message.message ?? '')) !== signature) return;
-      const refreshMessage = hostWindow.TavernHelper?.refreshOneMessage ??
-        window.TavernHelper?.refreshOneMessage ?? hostWindow.refreshOneMessage ?? window.refreshOneMessage;
-      if (typeof refreshMessage !== 'function') return;
-      try {
-        await refreshMessage(messageId);
-      } catch (error) {
+    const context = getSillyTavern()?.getContext?.();
+    const currentChatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
+    const message = context?.chat?.[messageId];
+    if (currentChatId !== chatId || !message || message.is_user || message.is_system) return;
+    const refreshMessage = hostWindow.TavernHelper?.refreshOneMessage ??
+      window.TavernHelper?.refreshOneMessage ?? hostWindow.refreshOneMessage ?? window.refreshOneMessage;
+    if (typeof refreshMessage !== 'function') return;
+    try {
+      Promise.resolve(refreshMessage(messageId)).catch(error => {
         console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
-      }
-    }, 400);
-    displayRefreshTimers.set(messageId, timer);
+      });
+    } catch (error) {
+      console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
+    }
   };
   const clamp = (value, max) => Math.max(8, Math.min(value, Math.max(8, max - 8)));
   const keepOrbInViewport = () => {
@@ -520,7 +507,6 @@ export function mountWorldSimulation(hostWindow, doc) {
       settings[key] = event.target.checked;
       saveSettings();
       render();
-      if (key === 'refreshInjectedMessage' && !settings[key]) clearDisplayRefreshTimers();
     }
   });
   const refresh = async () => {
@@ -536,13 +522,11 @@ export function mountWorldSimulation(hostWindow, doc) {
         const sameChat = initialized && next.chatId === data.chatId;
         if (!sameChat) {
           changes = {};
-          clearDisplayRefreshTimers();
         } else {
           const delta = diffRows(displayedRows, nextRows);
           if (Object.keys(delta).length) changes = delta;
-          for (const [index, signature] of changedProjectionTargets(data, next)) {
-            scheduleDisplayRefresh(index, signature, next.chatId);
-          }
+          const ledgerTarget = changedLedgerTarget(data, next);
+          if (ledgerTarget !== null) scheduleDisplayRefresh(ledgerTarget, next.chatId);
         }
         displayedRows = nextRows;
         data = next;
@@ -585,7 +569,7 @@ export function mountWorldSimulation(hostWindow, doc) {
         (mutation.target.closest?.('.mes') || [...mutation.addedNodes].some(node =>
           node.nodeType === 1 && (node.matches?.('.mes') || node.querySelector?.('.mes')))))) {
         hostWindow.clearTimeout(mutationTimer);
-        mutationTimer = hostWindow.setTimeout(onCommit, 300);
+        mutationTimer = hostWindow.setTimeout(onCommit, 0);
       }
     })
     : null;
@@ -733,7 +717,6 @@ export function mountWorldSimulation(hostWindow, doc) {
     request++;
     observer?.disconnect();
     hostWindow.clearTimeout(mutationTimer);
-    clearDisplayRefreshTimers();
     hostWindow.clearTimeout(orbClickTimer);
     subscriptions.forEach(unsubscribe => unsubscribe());
     resizeObserver.disconnect();
