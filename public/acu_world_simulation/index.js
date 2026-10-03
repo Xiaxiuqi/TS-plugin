@@ -78,8 +78,8 @@ const item = (row, changed = new Set(), options = {}) => {
     ${row.timeline?.length ? `<ul class="acu-ws-timeline ${fieldChanged('timeline')}">${row.timeline.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : ''}
   </article>`;
 };
-const section = (title, entries) => `
-  <section class="acu-ws-section"><h3>${escapeHtml(title)} <span>${entries.length}</span></h3>
+const section = (title, entries, icon = '') => `
+  <section class="acu-ws-section"><h3>${icon ? `<i class="fas ${icon}" aria-hidden="true"></i>` : ''}<span class="acu-ws-section-title">${escapeHtml(title)}</span><span>${entries.length}</span></h3>
   ${entries.length ? entries.join('') : '<p class="acu-ws-empty-inline">暂无记录</p>'}</section>`;
 const empty = () => '<div class="acu-ws-empty"><i class="fas fa-layer-group" aria-hidden="true"></i><strong>暂无推演资料</strong><span>当前聊天分支尚未留下这一类记录。</span></div>';
 const localizeReference = (value, ledger) => {
@@ -225,7 +225,7 @@ function viewRows(data) {
   return {
     clock: [{ key: 'clock', title: `第 ${clock.day ?? '—'} 日`, detail: clock.storyTime
       ? `${clock.storyTime}${clock.slot ? `\n${clock.slot}` : ''}` : clock.slot }],
-    revision: [{ key: 'revision', title: `R${ledger.revision ?? 0}`, detail: `${array(ledger.seeds).length} 条伏线\n${array(ledger.actors).length} 位人物` }],
+    revision: [{ key: 'revision', title: `${array(ledger.seeds).length} 条伏线`, detail: `${array(ledger.actors).length} 位人物` }],
     candidates: rows(data.candidates, value => ({
       title: value.title,
       detail: value.detail,
@@ -296,17 +296,33 @@ function renderTab(tab, data, changes = {}, options = {}) {
   }
   if (!ledger) return empty();
   if (tab === 'overview') {
-    const summary = `<div class="acu-ws-summary">${[['clock', '世界时序'], ['revision', '账本版本']].map(([group, title]) => {
-      const row = rows[group][0];
-      const changed = changes[group]?.get(row.key) ?? new Set();
-      const changedClass = !options.simpleHighlight ? 'acu-ws-changed' : '';
-      return `<div class="${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? changedClass : ''}">${display(row.title)}</strong><span class="${changed.has('detail') ? changedClass : ''}">${display(row.detail)}</span></div>`;
-    }).join('')}</div>`;
+    const clock = rows.clock[0];
+    const counts = rows.revision[0];
+    const clockChanged = changes.clock?.get(clock.key) ?? new Set();
+    const countsChanged = changes.revision?.get(counts.key) ?? new Set();
+    const changedClass = field => !options.simpleHighlight && field ? 'acu-ws-changed' : '';
+    const [storyTime, slot] = text(clock.detail).split('\n');
+    const summary = `<div class="acu-ws-summary">
+      <div class="acu-ws-summary-time${clockChanged.size || countsChanged.size ? ' acu-ws-updated' : ''}">
+        <div class="acu-ws-summary-top">
+          <small>世界时序</small>
+          <time class="${changedClass(clockChanged.has('detail'))}">${display(storyTime)}</time>
+        </div>
+        <div class="acu-ws-summary-clock">
+          <strong class="${changedClass(clockChanged.has('title'))}">${display(clock.title)}</strong>
+          ${slot ? `<span class="acu-ws-summary-slot ${changedClass(clockChanged.has('detail'))}">· ${display(slot)}</span>` : ''}
+        </div>
+        <div class="acu-ws-summary-counts">
+          <span class="${changedClass(countsChanged.has('title'))}">${display(counts.title)}</span>
+          <span class="${changedClass(countsChanged.has('detail'))}">${display(counts.detail)}</span>
+        </div>
+      </div>
+    </div>`;
     return summary +
-      section('场外信号', renderRows('signals')) +
-      section('局势刻度', renderRows('dimensions')) +
-      section('伏线', renderRows('seeds')) +
-      section('人物谱', renderRows('actors'));
+      section('场外信号', renderRows('signals'), 'fa-satellite-dish') +
+      section('局势刻度', renderRows('dimensions'), 'fa-chart-line') +
+      section('伏线', renderRows('seeds'), 'fa-seedling') +
+      section('人物谱', renderRows('actors'), 'fa-users');
   }
   if (tab === 'chronicle') return section('幕后纪要', renderRows('chronicle'));
   if (tab === 'missed') return section('错过清单', renderRows('missed'));
@@ -332,7 +348,7 @@ export function mountWorldSimulation(hostWindow, doc) {
   root.innerHTML = `
     <button type="button" class="acu-ws-orb" title="格林推演" aria-label="打开格林推演" aria-expanded="false"><span aria-hidden="true">✦</span></button>
     <div class="acu-ws-panel" role="dialog" aria-label="格林推演" hidden>
-      <header class="acu-ws-header"><button type="button" class="acu-ws-mark" aria-label="切换夜间模式" title="切换夜间模式" aria-pressed="false"><span aria-hidden="true">✦</span></button><div class="acu-ws-heading"><small>格林 · 世界推演</small><h2>格林推演</h2></div>
+      <header class="acu-ws-header"><button type="button" class="acu-ws-mark" aria-label="切换夜间模式" title="切换夜间模式" aria-pressed="false"><span aria-hidden="true">✦</span></button><div class="acu-ws-heading"><small>Grimm · World Simulation</small><h2>格林推演</h2></div>
         <button type="button" class="acu-ws-icon acu-ws-settings-toggle" title="显示设置" aria-label="显示设置" aria-expanded="false" aria-controls="acu-ws-settings-panel"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
         <button type="button" class="acu-ws-icon acu-ws-minimize" title="缩小为悬浮球" aria-label="缩小为悬浮球">−</button></header>
       <nav class="acu-ws-tabs" aria-label="推演资料分类"></nav>
