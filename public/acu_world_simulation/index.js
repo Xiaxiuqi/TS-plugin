@@ -7,11 +7,11 @@ function getSillyTavern() {
 }
 
 const TABS = [
-  ['overview', '账本总览', 'fa-book-open'],
-  ['candidates', '候选轨迹', 'fa-code-branch'],
-  ['chronicle', '幕后纪要', 'fa-scroll'],
-  ['missed', '错过清单', 'fa-hourglass-end'],
-  ['rumors', '风声', 'fa-wind'],
+  ['overview', '账本总览', 'book'],
+  ['chronicle', '幕后纪要', 'scroll'],
+  ['rumors', '风声', 'wind'],
+  ['missed', '错过清单', 'hourglass'],
+  ['candidates', '候选轨迹', 'branch'],
 ];
 const LEDGER_KEY = '_qrf_world_simulation_state';
 const MATERIAL_KEY = '_qrf_world_simulation_agent_materials';
@@ -20,6 +20,19 @@ const ENVELOPE_KEY = '_qrf_world_simulation';
 const ORB_POSITION_KEY = 'acu_ws_orb_position_v1';
 const PANEL_GEOMETRY_KEY = 'acu_ws_panel_geometry_v1';
 const THEME_KEY = 'acu_ws_theme_v1';
+const SETTINGS_KEY = 'acu_ws_settings_v1';
+const DEFAULT_SETTINGS = {
+  highlightEnabled: true,
+  actorHighlightEnabled: true,
+  simpleHighlight: false,
+};
+const TAB_ICONS = {
+  book: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5c2.2-.8 4.3-.5 6.5.8v10.2c-2.2-1.3-4.3-1.6-6.5-.8zM16.5 4.5c-2.2-.8-4.3-.5-6.5.8v10.2c2.2-1.3 4.3-1.6 6.5-.8z"/></svg>',
+  scroll: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8.5a2 2 0 0 1 2 2v10.2H7.2A2.2 2.2 0 0 1 5 13.5V4.8a1.3 1.3 0 0 1 1-1.3z"/><path d="M5 5.2h9.5M8 8h5M8 11h5M8 14h3"/></svg>',
+  wind: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 6.5h10.2a2.2 2.2 0 1 0-2.1-2.9M2.5 10h13a2 2 0 1 1-1.9 2.7M2.5 13.5h8.2a2 2 0 1 1-1.8 2.6"/></svg>',
+  hourglass: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3.5h10M5 16.5h10M6 3.5c0 3 2.1 4.2 4 5 1.9-.8 4-2 4-5M6 16.5c0-3 2.1-4.2 4-5 1.9.8 4 2 4 5"/></svg>',
+  branch: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="1.7"/><circle cx="15" cy="5" r="1.7"/><circle cx="15" cy="15" r="1.7"/><path d="M6.7 5h4a3 3 0 0 1 3 3v5.3M6.7 5h1.1a5.9 5.9 0 0 1 5.9 5.9"/></svg>',
+};
 const STATUS = {
   established: '已建立', incubating: '酝酿中', active: '活跃', converging: '汇聚中',
   resolved: '已收束', retired: '已退役',
@@ -56,16 +69,51 @@ const escapeHtml = value => text(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
 const display = value => escapeHtml(value || '未记录');
-const item = (row, changed = new Set()) => `
+const taggedText = value => text(value).split(/(\[[^\]\n]{1,12}\])/g).map(part =>
+  /^\[[^\]\n]{1,12}\]$/.test(part)
+    ? `<span class="acu-ws-inline-tag">${escapeHtml(part.slice(1, -1))}</span>`
+    : escapeHtml(part)).join('') || '未记录';
+const item = (row, changed = new Set(), options = {}) => {
+  const fieldChanged = field => !options.simpleHighlight && changed.has(field) ? 'acu-ws-changed' : '';
+  const content = value => row.tagged ? taggedText(value) : display(value);
+  return `
   <article class="acu-ws-item${row.timeline ? ' acu-ws-actor' : ''}${row.status === 'failed' ? ' acu-ws-failed' : ''}${changed.size ? ' acu-ws-updated' : ''}">
-    <div class="acu-ws-item-head"><h4 class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</h4>${row.badge ? `<span class="acu-ws-badge${changed.has('badge') ? ' acu-ws-changed' : ''}">${display(row.badge)}</span>` : ''}</div>
-    <p class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</p>${row.meta ? `<small class="${changed.has('meta') ? 'acu-ws-changed' : ''}">${display(row.meta)}</small>` : ''}
-    ${row.timeline?.length ? `<ul class="acu-ws-timeline${changed.has('timeline') ? ' acu-ws-changed' : ''}">${row.timeline.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : ''}
+    <div class="acu-ws-item-head"><h4 class="${fieldChanged('title')}">${content(row.title)}</h4>${row.badge ? `<span class="acu-ws-badge ${fieldChanged('badge')}">${display(row.badge)}</span>` : ''}</div>
+    <p class="${fieldChanged('detail')}">${content(row.detail)}</p>${row.meta ? `<small class="${fieldChanged('meta')}">${content(row.meta)}</small>` : ''}
+    ${row.tags?.length ? `<div class="acu-ws-tags ${fieldChanged('tags')}">${row.tags.map(tag => `<span class="acu-ws-tag">${display(tag)}</span>`).join('')}</div>` : ''}
+    ${row.timeline?.length ? `<ul class="acu-ws-timeline ${fieldChanged('timeline')}">${row.timeline.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>` : ''}
   </article>`;
+};
 const section = (title, entries) => `
   <section class="acu-ws-section"><h3>${escapeHtml(title)} <span>${entries.length}</span></h3>
   ${entries.length ? entries.join('') : '<p class="acu-ws-empty-inline">暂无记录</p>'}</section>`;
 const empty = () => '<div class="acu-ws-empty"><i class="fas fa-layer-group" aria-hidden="true"></i><strong>暂无推演资料</strong><span>当前聊天分支尚未留下这一类记录。</span></div>';
+const localizeReference = (value, ledger) => {
+  const key = text(value);
+  if (!key) return '';
+  const groups = [
+    ['actors', 'name'], ['seeds', 'title'], ['dimensions', 'name'], ['rumors', 'fact'],
+  ];
+  for (const [group, field] of groups) {
+    const match = array(ledger?.[group]).find(entry => String(entry.id ?? '') === key);
+    if (match) return text(match[field]) || key;
+  }
+  const locations = [
+    ...array(ledger?.actors).flatMap(actor => [actor.location, actor.locationRef?.region, actor.locationRef?.place]),
+    ...array(ledger?.seeds).map(seed => seed.location),
+    ledger?.player?.location?.region, ledger?.player?.location?.place,
+  ].filter(Boolean);
+  const location = locations.find(place => place === key || text(place).endsWith(`·${key}`));
+  return location || (/[\u3400-\u9fff]/u.test(key) ? key : '关联资料');
+};
+const loadSettings = hostWindow => {
+  try {
+    const saved = JSON.parse(hostWindow.localStorage.getItem(SETTINGS_KEY));
+    return { ...DEFAULT_SETTINGS, ...(saved && typeof saved === 'object' ? saved : {}) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+};
 
 async function digest(value) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -184,9 +232,14 @@ function viewRows(data) {
         timeline: array(value.experiences).map(actorExperience),
       })),
     chronicle: rows(ledger.chronicle,
-      value => ({ title: value.at || `第 ${value.day ?? '—'} 日`, detail: value.summary, meta: array(value.relatedIds).join('、') })),
+      value => ({
+        title: value.at || `第 ${value.day ?? '—'} 日`,
+        detail: value.summary,
+        tagged: true,
+        tags: array(value.relatedIds).map(id => localizeReference(id, ledger)).filter(Boolean),
+      })),
     missed: rows(array(ledger.chronicle).filter(value => text(value.missedNote)),
-      value => ({ title: value.summary, detail: value.missedNote, meta: value.at })),
+      value => ({ title: value.summary, badge: '错过', detail: value.missedNote, meta: value.at, tagged: true })),
     rumors: rows(ledger.rumors,
       value => ({ title: value.fact, detail: array(value.channels).join('、'), meta: `最早第 ${value.earliestRevealDay ?? '—'} 日`, badge: label(value.status) })),
     signals: rows(ledger.guidance?.signals,
@@ -201,8 +254,9 @@ function diffRows(before, after) {
     const updated = new Map();
     for (const row of after[group]) {
       const old = oldRows.get(row.key);
-      const fields = new Set(['title', 'detail', 'meta', 'badge', 'status', 'timeline'].filter(field =>
+      const fields = new Set(['title', 'detail', 'meta', 'badge', 'status', 'tags', 'timeline'].filter(field =>
         (field !== 'status' || row.status !== undefined || old?.status !== undefined) &&
+        (field !== 'tags' || row.tags !== undefined || old?.tags !== undefined) &&
         (field !== 'timeline' || row.timeline !== undefined || old?.timeline !== undefined) &&
         (!old || JSON.stringify(old[field] ?? '') !== JSON.stringify(row[field] ?? ''))));
       if (fields.size) updated.set(row.key, fields);
@@ -217,10 +271,10 @@ function changedRows(previous, next) {
   return diffRows(viewRows(previous), viewRows(next));
 }
 
-function renderTab(tab, data, changes = {}) {
+function renderTab(tab, data, changes = {}, options = {}) {
   const ledger = data.ledger;
   const rows = viewRows(data);
-  const renderRows = group => rows[group].map(row => item(row, changes[group]?.get(row.key)));
+  const renderRows = group => rows[group].map(row => item(row, changes[group]?.get(row.key), options));
   if (tab === 'candidates') {
     const entries = renderRows('candidates');
     return entries.length ? section('候选轨迹', entries) : empty();
@@ -230,7 +284,8 @@ function renderTab(tab, data, changes = {}) {
     const summary = `<div class="acu-ws-summary">${[['clock', '世界时序'], ['revision', '账本版本']].map(([group, title]) => {
       const row = rows[group][0];
       const changed = changes[group]?.get(row.key) ?? new Set();
-      return `<div class="${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? 'acu-ws-changed' : ''}">${display(row.title)}</strong><span class="${changed.has('detail') ? 'acu-ws-changed' : ''}">${display(row.detail)}</span></div>`;
+      const changedClass = !options.simpleHighlight ? 'acu-ws-changed' : '';
+      return `<div class="${changed.size ? 'acu-ws-updated' : ''}"><small>${title}</small><strong class="${changed.has('title') ? changedClass : ''}">${display(row.title)}</strong><span class="${changed.has('detail') ? changedClass : ''}">${display(row.detail)}</span></div>`;
     }).join('')}</div>`;
     return summary +
       section('场外信号', renderRows('signals')) +
@@ -244,6 +299,17 @@ function renderTab(tab, data, changes = {}) {
   return empty();
 }
 
+function renderSettings(settings) {
+  const checked = value => value ? ' checked' : '';
+  return `<section class="acu-ws-settings">
+    <h3>显示设置</h3>
+    <label class="acu-ws-setting"><span>夜间模式</span><input type="checkbox" data-setting="nightTheme"></label>
+    <label class="acu-ws-setting"><span>显示更新高亮</span><input type="checkbox" data-setting="highlightEnabled"${checked(settings.highlightEnabled)}></label>
+    <label class="acu-ws-setting"><span>人物谱更新高亮</span><input type="checkbox" data-setting="actorHighlightEnabled"${checked(settings.actorHighlightEnabled)}></label>
+    <label class="acu-ws-setting"><span>简易更新高亮</span><input type="checkbox" data-setting="simpleHighlight"${checked(settings.simpleHighlight)}></label>
+  </section>`;
+}
+
 export function mountWorldSimulation(hostWindow, doc) {
   const root = doc.createElement('div');
   root.className = 'acu-ws-root';
@@ -251,9 +317,12 @@ export function mountWorldSimulation(hostWindow, doc) {
     <button type="button" class="acu-ws-orb" title="格林推演" aria-label="打开格林推演" aria-expanded="false"><span aria-hidden="true">✦</span></button>
     <div class="acu-ws-panel" role="dialog" aria-label="格林推演" hidden>
       <header class="acu-ws-header"><button type="button" class="acu-ws-mark" aria-label="切换夜间模式" title="切换夜间模式" aria-pressed="false"><span aria-hidden="true">✦</span></button><div class="acu-ws-heading"><small>格林 · 世界推演</small><h2>格林推演</h2></div>
-        <button type="button" class="acu-ws-icon acu-ws-refresh" title="刷新资料" aria-label="刷新资料">↻</button>
+        <button type="button" class="acu-ws-icon acu-ws-settings-toggle" title="显示设置" aria-label="显示设置" aria-expanded="false" aria-controls="acu-ws-settings-panel"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
         <button type="button" class="acu-ws-icon acu-ws-minimize" title="缩小为悬浮球" aria-label="缩小为悬浮球">−</button></header>
-      <nav class="acu-ws-tabs" aria-label="推演资料分类"></nav><div class="acu-ws-body"></div>
+      <nav class="acu-ws-tabs" aria-label="推演资料分类"></nav>
+      <nav class="acu-ws-settings-nav" aria-label="悬浮窗设置导航" hidden><button type="button" class="acu-ws-settings-back"><i class="fas fa-arrow-left" aria-hidden="true"></i><span>返回资料</span></button><strong>显示设置</strong></nav>
+      <div class="acu-ws-body"></div>
+      <div id="acu-ws-settings-panel" class="acu-ws-settings-panel" hidden></div>
       <footer class="acu-ws-footer"><span class="acu-ws-status">只读资料</span><span>当前聊天分支</span></footer>
     </div>`;
   doc.body.appendChild(root);
@@ -261,14 +330,28 @@ export function mountWorldSimulation(hostWindow, doc) {
   const panel = root.querySelector('.acu-ws-panel');
   const tabs = root.querySelector('.acu-ws-tabs');
   const body = root.querySelector('.acu-ws-body');
+  const settingsPanel = root.querySelector('.acu-ws-settings-panel');
+  const settingsNav = root.querySelector('.acu-ws-settings-nav');
+  const settingsToggle = root.querySelector('.acu-ws-settings-toggle');
+  const settingsBack = root.querySelector('.acu-ws-settings-back');
   const status = root.querySelector('.acu-ws-status');
   const themeToggle = root.querySelector('.acu-ws-mark');
+  const settings = loadSettings(hostWindow);
+  const saveSettings = () => {
+    try { hostWindow.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+    catch { /* Preferences work for this session without storage. */ }
+  };
+  const syncThemeSwitch = () => {
+    const input = settingsPanel.querySelector('[data-setting="nightTheme"]');
+    if (input) input.checked = root.classList.contains('acu-ws-night');
+  };
   const setTheme = theme => {
     const night = theme === 'night';
     root.classList.toggle('acu-ws-night', night);
     themeToggle.setAttribute('aria-pressed', String(night));
     themeToggle.setAttribute('aria-label', night ? '切换日间模式' : '切换夜间模式');
     themeToggle.title = night ? '切换日间模式' : '切换夜间模式';
+    syncThemeSwitch();
   };
   try {
     setTheme(hostWindow.localStorage.getItem(THEME_KEY));
@@ -279,6 +362,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     try { hostWindow.localStorage.setItem(THEME_KEY, theme); } catch { /* Storage is optional. */ }
   });
   let active = 'overview';
+  let showingSettings = false;
   let data = { ledger: null };
   let displayedRows = viewRows(data);
   let changes = {};
@@ -287,10 +371,11 @@ export function mountWorldSimulation(hostWindow, doc) {
   let pendingRefresh = false;
   let disposed = false;
   let request = 0;
-  const clamp = (value, max) => Math.max(8, Math.min(value, max - 8));
+  const clamp = (value, max) => Math.max(8, Math.min(value, Math.max(8, max - 8)));
   const keepOrbInViewport = () => {
-    if (!orb.style.left) return;
     const rect = orb.getBoundingClientRect();
+    orb.style.right = 'auto';
+    orb.style.bottom = 'auto';
     orb.style.left = `${clamp(rect.left, hostWindow.innerWidth - rect.width)}px`;
     orb.style.top = `${clamp(rect.top, hostWindow.innerHeight - rect.height)}px`;
   };
@@ -299,8 +384,8 @@ export function mountWorldSimulation(hostWindow, doc) {
     if (Number.isFinite(saved?.left) && Number.isFinite(saved?.top)) {
       orb.style.right = 'auto';
       orb.style.bottom = 'auto';
-      orb.style.left = `${clamp(saved.left, hostWindow.innerWidth - 50)}px`;
-      orb.style.top = `${clamp(saved.top, hostWindow.innerHeight - 50)}px`;
+      orb.style.left = `${saved.left}px`;
+      orb.style.top = `${saved.top}px`;
     }
   } catch { /* Storage may be unavailable in a sandboxed host. */ }
   try {
@@ -342,20 +427,55 @@ export function mountWorldSimulation(hostWindow, doc) {
   resizeObserver.observe(panel);
   hostWindow.addEventListener('resize', keepInViewport);
   hostWindow.addEventListener('resize', keepOrbInViewport);
-  const hasUpdate = tab => (tab === 'overview'
+  keepOrbInViewport();
+  const visibleChanges = () => {
+    if (!settings.highlightEnabled) return {};
+    if (settings.actorHighlightEnabled) return changes;
+    const { actors, ...others } = changes;
+    return others;
+  };
+  const hasUpdate = (tab, displayed) => (tab === 'overview'
     ? ['clock', 'revision', 'signals', 'dimensions', 'seeds', 'actors']
-    : [tab]).some(group => Object.hasOwn(changes, group));
+    : [tab]).some(group => Object.hasOwn(displayed, group));
   const render = () => {
+    const displayed = visibleChanges();
     const scrollTop = body.scrollTop;
     const tabsScrollLeft = tabs.scrollLeft;
     tabs.innerHTML = TABS.map(([id, label, icon]) =>
-      `<button type="button" data-tab="${id}" class="${[id === active ? 'active' : '', hasUpdate(id) ? 'acu-ws-tab-updated' : ''].filter(Boolean).join(' ')}" aria-selected="${id === active}" title="${label}"><i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span>${hasUpdate(id) ? '<span class="acu-ws-update-dot" aria-label="有更新"></span>' : ''}</button>`).join('');
+      `<button type="button" data-tab="${id}" class="${[id === active ? 'active' : '', hasUpdate(id, displayed) ? 'acu-ws-tab-updated' : ''].filter(Boolean).join(' ')}" aria-selected="${id === active}" title="${label}"><span class="acu-ws-tab-icon acu-ws-tab-icon-${icon}">${TAB_ICONS[icon] ?? ''}</span><span class="acu-ws-tab-label">${label}</span><span class="acu-ws-update-slot">${hasUpdate(id, displayed) ? '<span class="acu-ws-update-dot" aria-label="有更新"></span>' : ''}</span></button>`).join('');
     tabs.scrollLeft = tabsScrollLeft;
-    body.innerHTML = renderTab(active, data, changes);
+    body.innerHTML = renderTab(active, data, displayed, settings);
     body.scrollTop = scrollTop;
-    orb.classList.toggle('acu-ws-orb-updated', Object.keys(changes).length > 0);
+    orb.classList.toggle('acu-ws-orb-updated', Object.keys(displayed).length > 0);
     status.textContent = data.message || `账本 R${data.ledger?.revision ?? 0} · 只读资料`;
   };
+  const showSettings = show => {
+    showingSettings = show;
+    settingsToggle.setAttribute('aria-expanded', String(show));
+    settingsToggle.classList.toggle('active', show);
+    tabs.hidden = show;
+    settingsNav.hidden = !show;
+    body.hidden = show;
+    settingsPanel.hidden = !show;
+    if (show) {
+      settingsPanel.innerHTML = renderSettings(settings);
+      syncThemeSwitch();
+    } else render();
+  };
+  settingsToggle.addEventListener('click', () => showSettings(!showingSettings));
+  settingsBack.addEventListener('click', () => showSettings(false));
+  settingsPanel.addEventListener('change', event => {
+    const key = event.target.dataset.setting;
+    if (key === 'nightTheme') {
+      const theme = event.target.checked ? 'night' : 'day';
+      setTheme(theme);
+      try { hostWindow.localStorage.setItem(THEME_KEY, theme); } catch { /* Optional. */ }
+    } else if (Object.hasOwn(DEFAULT_SETTINGS, key)) {
+      settings[key] = event.target.checked;
+      saveSettings();
+      render();
+    }
+  });
   const refresh = async () => {
     if (disposed) return;
     if (reading) { pendingRefresh = true; return; }
@@ -419,8 +539,6 @@ export function mountWorldSimulation(hostWindow, doc) {
   observer?.observe(chatElement, { childList: true, subtree: true });
   const open = () => {
     panel.hidden = false;
-    orb.hidden = true;
-    orb.setAttribute('aria-expanded', 'true');
     if (!panel.style.left) {
       const rect = panel.getBoundingClientRect();
       panel.style.left = `${rect.left}px`;
@@ -429,6 +547,8 @@ export function mountWorldSimulation(hostWindow, doc) {
       panel.style.bottom = 'auto';
     }
     keepInViewport();
+    orb.hidden = true;
+    orb.setAttribute('aria-expanded', 'true');
     void refresh();
   };
   const minimize = () => {
@@ -439,7 +559,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     orb.focus();
   };
   let orbDrag = null;
-  let suppressOrbClickUntil = 0;
+  let suppressNextOrbClick = false;
   orb.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
     const rect = orb.getBoundingClientRect();
@@ -460,7 +580,8 @@ export function mountWorldSimulation(hostWindow, doc) {
   });
   const stopOrbDrag = event => {
     if (!orbDrag || event.pointerId !== orbDrag.id) return;
-    suppressOrbClickUntil = orbDrag.moved && event.type === 'pointerup' ? Date.now() + 350 : 0;
+    suppressNextOrbClick = orbDrag.moved && event.type === 'pointerup';
+    if (suppressNextOrbClick) hostWindow.setTimeout(() => { suppressNextOrbClick = false; }, 0);
     if (orbDrag.moved) {
       try {
         hostWindow.localStorage.setItem(ORB_POSITION_KEY, JSON.stringify({
@@ -474,11 +595,10 @@ export function mountWorldSimulation(hostWindow, doc) {
   orb.addEventListener('pointerup', stopOrbDrag);
   orb.addEventListener('pointercancel', stopOrbDrag);
   orb.addEventListener('click', event => {
-    if (event.detail && Date.now() < suppressOrbClickUntil) return;
+    if (event.detail && suppressNextOrbClick) { suppressNextOrbClick = false; return; }
     open();
   });
   root.querySelector('.acu-ws-minimize').addEventListener('click', minimize);
-  root.querySelector('.acu-ws-refresh').addEventListener('click', () => { void refresh(); });
   tabs.addEventListener('wheel', event => {
     if (tabs.scrollWidth <= tabs.clientWidth) return;
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
