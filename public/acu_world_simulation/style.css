@@ -128,15 +128,12 @@
 .acu-ws-settings-back { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border: 0; border-radius: 4px; background: transparent; color: var(--ws-muted); font: inherit; cursor: pointer; }
 .acu-ws-settings-back:hover { background: var(--ws-tint); color: var(--ws-text); }
 .acu-ws-tabs-dragging, .acu-ws-tabs-dragging button { cursor: grabbing !important; }
-.acu-ws-tabs button { min-width: max-content; display: inline-flex; align-items: center; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ws-muted); font: inherit; font-size: 12px; cursor: pointer; }
-.acu-ws-tab-icon { display: inline-grid; place-items: center; width: 17px; height: 16px; margin-right: 6px; color: var(--ws-faint); }
-.acu-ws-tab-icon svg { display: block; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
-.acu-ws-tab-icon-book svg path { fill: currentColor; stroke: none; }
-.acu-ws-tab-label { display: inline-block; }
+.acu-ws-tabs button { min-width: max-content; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ws-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.acu-ws-tabs button i { margin-right: 6px; color: var(--ws-faint); }
 .acu-ws-tabs button:hover { color: var(--ws-text); }
 .acu-ws-tabs button.active { color: var(--ws-rose); border-bottom-color: var(--ws-gold); font-weight: 700; }
 .acu-ws-tabs button.acu-ws-tab-updated { color: var(--ws-text); }
-.acu-ws-update-slot { display: inline-grid; place-items: center; width: 11px; height: 12px; margin-left: 5px; }
+.acu-ws-update-slot { display: inline-grid; place-items: center; width: 5px; height: 12px; margin-left: 6px; }
 .acu-ws-update-dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--ws-gold); box-shadow: 0 0 0 2px var(--ws-tint); }
 .acu-ws-body { flex: 1; min-height: 0; overflow: auto; padding: 16px; scrollbar-width: thin; scrollbar-color: rgba(117, 107, 96, .36) transparent; }
 .acu-ws-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }

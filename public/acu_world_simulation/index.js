@@ -7,11 +7,11 @@ function getSillyTavern() {
 }
 
 const TABS = [
-  ['overview', '账本总览', 'book'],
-  ['chronicle', '幕后纪要', 'scroll'],
-  ['rumors', '风声', 'wind'],
-  ['missed', '错过清单', 'hourglass'],
-  ['candidates', '候选轨迹', 'branch'],
+  ['overview', '账本总览', 'fa-book-open'],
+  ['chronicle', '幕后纪要', 'fa-scroll'],
+  ['rumors', '风声', 'fa-wind'],
+  ['missed', '错过清单', 'fa-hourglass-end'],
+  ['candidates', '候选轨迹', 'fa-code-branch'],
 ];
 const LEDGER_KEY = '_qrf_world_simulation_state';
 const MATERIAL_KEY = '_qrf_world_simulation_agent_materials';
@@ -25,13 +25,7 @@ const DEFAULT_SETTINGS = {
   highlightEnabled: true,
   actorHighlightEnabled: true,
   simpleHighlight: false,
-};
-const TAB_ICONS = {
-  book: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5c2.2-.8 4.3-.5 6.5.8v10.2c-2.2-1.3-4.3-1.6-6.5-.8zM16.5 4.5c-2.2-.8-4.3-.5-6.5.8v10.2c2.2-1.3 4.3-1.6 6.5-.8z"/></svg>',
-  scroll: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8.5a2 2 0 0 1 2 2v10.2H7.2A2.2 2.2 0 0 1 5 13.5V4.8a1.3 1.3 0 0 1 1-1.3z"/><path d="M5 5.2h9.5M8 8h5M8 11h5M8 14h3"/></svg>',
-  wind: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 6.5h10.2a2.2 2.2 0 1 0-2.1-2.9M2.5 10h13a2 2 0 1 1-1.9 2.7M2.5 13.5h8.2a2 2 0 1 1-1.8 2.6"/></svg>',
-  hourglass: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3.5h10M5 16.5h10M6 3.5c0 3 2.1 4.2 4 5 1.9-.8 4-2 4-5M6 16.5c0-3 2.1-4.2 4-5 1.9.8 4 2 4 5"/></svg>',
-  branch: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="1.7"/><circle cx="15" cy="5" r="1.7"/><circle cx="15" cy="15" r="1.7"/><path d="M6.7 5h4a3 3 0 0 1 3 3v5.3M6.7 5h1.1a5.9 5.9 0 0 1 5.9 5.9"/></svg>',
+  refreshInjectedMessage: false,
 };
 const STATUS = {
   established: '已建立', incubating: '酝酿中', active: '活跃', converging: '汇聚中',
@@ -307,6 +301,7 @@ function renderSettings(settings) {
     <label class="acu-ws-setting"><span>显示更新高亮</span><input type="checkbox" data-setting="highlightEnabled"${checked(settings.highlightEnabled)}></label>
     <label class="acu-ws-setting"><span>人物谱更新高亮</span><input type="checkbox" data-setting="actorHighlightEnabled"${checked(settings.actorHighlightEnabled)}></label>
     <label class="acu-ws-setting"><span>简易更新高亮</span><input type="checkbox" data-setting="simpleHighlight"${checked(settings.simpleHighlight)}></label>
+    <label class="acu-ws-setting"><span>注入后修复正文显示</span><input type="checkbox" data-setting="refreshInjectedMessage"${checked(settings.refreshInjectedMessage)}></label>
   </section>`;
 }
 
@@ -371,6 +366,44 @@ export function mountWorldSimulation(hostWindow, doc) {
   let pendingRefresh = false;
   let disposed = false;
   let request = 0;
+  let displayRefreshTimer = null;
+  let suppressNextDisplayRefresh = false;
+  let displayRefreshCooldown = null;
+  const scheduleDisplayRefresh = () => {
+    if (!settings.refreshInjectedMessage || disposed || suppressNextDisplayRefresh) return;
+    hostWindow.clearTimeout(displayRefreshTimer);
+    displayRefreshTimer = hostWindow.setTimeout(async () => {
+      displayRefreshTimer = null;
+      if (suppressNextDisplayRefresh || disposed || !settings.refreshInjectedMessage) return;
+      const chat = getSillyTavern()?.getContext?.()?.chat;
+      if (!Array.isArray(chat)) return;
+      let messageId = -1;
+      for (let index = chat.length - 1; index >= 0; index--) {
+        const message = chat[index];
+        if (!message || message.is_user || message.is_system) continue;
+        messageId = index;
+        break;
+      }
+      if (messageId < 0) return;
+      const refreshMessage = hostWindow.TavernHelper?.refreshOneMessage ??
+        window.TavernHelper?.refreshOneMessage ?? hostWindow.refreshOneMessage ?? window.refreshOneMessage;
+      if (typeof refreshMessage !== 'function') return;
+      suppressNextDisplayRefresh = true;
+      try {
+        await refreshMessage(messageId);
+      } catch (error) {
+        console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
+      } finally {
+        if (!disposed) {
+          hostWindow.clearTimeout(displayRefreshCooldown);
+          displayRefreshCooldown = hostWindow.setTimeout(() => {
+            suppressNextDisplayRefresh = false;
+            displayRefreshCooldown = null;
+          }, 1000);
+        }
+      }
+    }, 400);
+  };
   const clamp = (value, max) => Math.max(8, Math.min(value, Math.max(8, max - 8)));
   const keepOrbInViewport = () => {
     const rect = orb.getBoundingClientRect();
@@ -442,7 +475,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     const scrollTop = body.scrollTop;
     const tabsScrollLeft = tabs.scrollLeft;
     tabs.innerHTML = TABS.map(([id, label, icon]) =>
-      `<button type="button" data-tab="${id}" class="${[id === active ? 'active' : '', hasUpdate(id, displayed) ? 'acu-ws-tab-updated' : ''].filter(Boolean).join(' ')}" aria-selected="${id === active}" title="${label}"><span class="acu-ws-tab-icon acu-ws-tab-icon-${icon}">${TAB_ICONS[icon] ?? ''}</span><span class="acu-ws-tab-label">${label}</span><span class="acu-ws-update-slot">${hasUpdate(id, displayed) ? '<span class="acu-ws-update-dot" aria-label="有更新"></span>' : ''}</span></button>`).join('');
+      `<button type="button" data-tab="${id}" class="${[id === active ? 'active' : '', hasUpdate(id, displayed) ? 'acu-ws-tab-updated' : ''].filter(Boolean).join(' ')}" aria-selected="${id === active}" title="${label}"><i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span><span class="acu-ws-update-slot">${hasUpdate(id, displayed) ? '<span class="acu-ws-update-dot" aria-label="有更新"></span>' : ''}</span></button>`).join('');
     tabs.scrollLeft = tabsScrollLeft;
     body.innerHTML = renderTab(active, data, displayed, settings);
     body.scrollTop = scrollTop;
@@ -474,6 +507,10 @@ export function mountWorldSimulation(hostWindow, doc) {
       settings[key] = event.target.checked;
       saveSettings();
       render();
+      if (key === 'refreshInjectedMessage') {
+        hostWindow.clearTimeout(displayRefreshTimer);
+        displayRefreshTimer = null;
+      }
     }
   });
   const refresh = async () => {
@@ -513,13 +550,18 @@ export function mountWorldSimulation(hostWindow, doc) {
   const source = context?.eventSource ?? getSillyTavern()?.eventSource;
   const events = context?.eventTypes ?? getSillyTavern()?.eventTypes;
   const onCommit = () => { void refresh(); };
+  const onMessageChanged = () => {
+    onCommit();
+    scheduleDisplayRefresh();
+  };
   if (source?.on && events) {
     for (const name of ['MESSAGE_UPDATED', 'CHARACTER_MESSAGE_RENDERED', 'CHAT_CHANGED', 'MESSAGE_SWIPED', 'MESSAGE_DELETED']) {
       if (!events[name]) continue;
-      source.on(events[name], onCommit);
+      const handler = name === 'MESSAGE_UPDATED' ? onMessageChanged : onCommit;
+      source.on(events[name], handler);
       subscriptions.push(() => {
-        if (source.removeListener) source.removeListener(events[name], onCommit);
-        else source.off?.(events[name], onCommit);
+        if (source.removeListener) source.removeListener(events[name], handler);
+        else source.off?.(events[name], handler);
       });
     }
   }
@@ -532,7 +574,7 @@ export function mountWorldSimulation(hostWindow, doc) {
         (mutation.target.closest?.('.mes') || [...mutation.addedNodes].some(node =>
           node.nodeType === 1 && (node.matches?.('.mes') || node.querySelector?.('.mes')))))) {
         hostWindow.clearTimeout(mutationTimer);
-        mutationTimer = hostWindow.setTimeout(onCommit, 300);
+        mutationTimer = hostWindow.setTimeout(onMessageChanged, 300);
       }
     })
     : null;
@@ -674,6 +716,8 @@ export function mountWorldSimulation(hostWindow, doc) {
     request++;
     observer?.disconnect();
     hostWindow.clearTimeout(mutationTimer);
+    hostWindow.clearTimeout(displayRefreshTimer);
+    hostWindow.clearTimeout(displayRefreshCooldown);
     subscriptions.forEach(unsubscribe => unsubscribe());
     resizeObserver.disconnect();
     hostWindow.removeEventListener('resize', keepInViewport);
