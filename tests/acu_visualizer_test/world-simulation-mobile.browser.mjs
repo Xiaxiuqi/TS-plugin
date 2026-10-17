@@ -98,11 +98,44 @@ try {
     const after = await panel.boundingBox();
     assert.ok(Math.abs(after.x - before.x - 24) < 2, `drag x: ${JSON.stringify({ before, after })}`);
     assert.ok(Math.abs(after.y - before.y - 80) < 2, `drag y: ${JSON.stringify({ before, after })}`);
+    const resizeBy = async (dx, dy) => {
+      const handle = await page.locator('.acu-ws-resize').boundingBox();
+      const x = handle.x + handle.width / 2;
+      const y = handle.y + handle.height / 2;
+      if (mobile) {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx, y: y + dy }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await cdp.detach();
+      } else {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x + dx, y + dy);
+        await page.mouse.up();
+      }
+      const rect = await panel.boundingBox();
+      assert.ok(Math.abs(rect.x - after.x) < 2 && Math.abs(rect.y - after.y) < 2,
+        `resize must preserve top-left: ${JSON.stringify({ after, rect })}`);
+      return rect;
+    };
+    const grown = await resizeBy(20, 50);
+    assert.ok(Math.abs(grown.width - after.width - 20) < 2);
+    assert.ok(Math.abs(grown.height - after.height - 50) < 2);
+    const shrunk = await resizeBy(-500, -500);
+    assert.ok(shrunk.width >= (mobile ? 300 : 350) && shrunk.height >= 300);
+    const capped = await resizeBy(2000, 2000);
+    assert.ok(capped.x + capped.width <= (mobile ? 390 : 1280) - 7);
+    assert.ok(capped.y + capped.height <= 844 - 7);
+    const resized = await resizeBy(grown.width - capped.width, grown.height - capped.height);
+    assert.ok(Math.abs(resized.width - grown.width) < 2 && Math.abs(resized.height - grown.height) < 2);
     await page.reload();
     await page.locator('.acu-ws-orb').click();
     await page.locator('.acu-ws-body').getByText('手机读取成功', { exact: true }).waitFor();
     const restored = await panel.boundingBox();
     assert.ok(Math.abs(restored.y - after.y) < 2);
+    assert.ok(Math.abs(restored.x - after.x) < 2);
+    assert.ok(Math.abs(restored.width - resized.width) < 2 && Math.abs(restored.height - resized.height) < 2);
     await page.locator('.acu-ws-settings-toggle').click();
     await page.locator('[data-setting="nightTheme"]').check();
     assert.equal(await page.locator('.acu-ws-root.acu-ws-night').count(), 1);
@@ -125,6 +158,15 @@ try {
     await qr.click();
     assert.equal(await panel.isVisible(), true);
     assert.equal(await page.locator('.acu-ws-body').isVisible(), true);
+    for (let toggle = 0; toggle < 3; toggle++) {
+      assert.equal(await qr.getAttribute('aria-expanded'), 'true');
+      await qr.click();
+      assert.equal(await panel.isVisible(), false);
+      assert.equal(await qr.getAttribute('aria-expanded'), 'false');
+      assert.equal(await page.locator('.acu-ws-orb').isVisible(), false);
+      await qr.click();
+      assert.equal(await panel.isVisible(), true);
+    }
     for (let cycle = 0; cycle < 3; cycle++) {
       await page.locator('.acu-ws-settings-toggle').click();
       await qrSetting.uncheck();
@@ -171,7 +213,7 @@ try {
     assert.equal(await page.evaluate(() => window.testSends || 0), 0);
     if (mobile) await page.screenshot({ path: path.join(os.tmpdir(), 'acu-world-simulation-qr-mobile.png') });
     assert.deepEqual(errors, []);
-    console.log(`${mobile ? 'Mobile HTTP fallback + touch' : 'Desktop native crypto + mouse'}: read, drag, persistence, QR toggle/reload/rebuild/cleanup OK`);
+    console.log(`${mobile ? 'Mobile HTTP fallback + touch' : 'Desktop native crypto + mouse'}: read, drag, anchored resize, min/max, persistence, QR toggle/reload/rebuild/cleanup OK`);
     await page.close();
   }
 } finally {

@@ -65,7 +65,7 @@
   min-height: 300px;
   max-width: calc(100vw - 16px);
   max-height: calc(100vh - 16px);
-  resize: both;
+  resize: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -194,7 +194,10 @@
 .acu-ws-empty { min-height: 220px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; text-align: center; }
 .acu-ws-empty i { color: var(--ws-gold); font-size: 27px; }
 .acu-ws-empty strong { color: var(--ws-text); font-size: 15px; }
-.acu-ws-footer { display: flex; justify-content: space-between; gap: 12px; padding: 7px 14px; flex: none; border-top: 1px solid var(--ws-line); background: var(--ws-surface); color: var(--ws-faint); font-size: 10px; }
+.acu-ws-footer { display: flex; justify-content: space-between; gap: 12px; padding: 7px 28px 7px 14px; flex: none; border-top: 1px solid var(--ws-line); background: var(--ws-surface); color: var(--ws-faint); font-size: 10px; }
+.acu-ws-root .acu-ws-resize { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 26px; height: 26px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ws-faint); font-size: 11px; cursor: nwse-resize; touch-action: none !important; user-select: none !important; -webkit-user-select: none !important; }
+.acu-ws-resize i { pointer-events: none; }
+.acu-ws-resize:hover { color: var(--ws-gold); }
 @media (max-width: 600px) {
   .acu-ws-orb { right: 14px; bottom: 78px; width: 46px; height: 46px; }
   .acu-ws-panel { right: 8px; bottom: 72px; width: calc(100vw - 16px); height: min(580px, calc(100vh - 84px)); min-width: min(300px, calc(100vw - 16px)); }

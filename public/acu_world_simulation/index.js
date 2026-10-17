@@ -365,6 +365,7 @@ export function mountWorldSimulation(hostWindow, doc) {
       <div class="acu-ws-body"></div>
       <div id="acu-ws-settings-panel" class="acu-ws-settings-panel" hidden></div>
       <footer class="acu-ws-footer"><span class="acu-ws-status">只读资料</span><span>当前聊天分支</span></footer>
+      <button type="button" class="acu-ws-resize" title="拖动调整窗口大小" aria-label="调整窗口大小"><i class="fas fa-expand-alt" aria-hidden="true"></i></button>
     </div>`;
   doc.body.appendChild(root);
   const orb = root.querySelector('.acu-ws-orb');
@@ -624,6 +625,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     keepInViewport();
     orb.hidden = true;
     orb.setAttribute('aria-expanded', 'true');
+    syncLauncher();
     void refresh();
   };
   const minimize = () => {
@@ -642,8 +644,10 @@ export function mountWorldSimulation(hostWindow, doc) {
   qrButton.title = '打开格林推演';
   qrButton.setAttribute('aria-label', '打开格林推演');
   qrButton.addEventListener('click', () => {
-    showSettings(false);
-    open();
+    if (panel.hidden) {
+      showSettings(false);
+      open();
+    } else minimize();
   });
   const qrGroup = doc.createElement('div');
   qrGroup.className = 'qr--buttons acu-ws-qr-group';
@@ -652,6 +656,9 @@ export function mountWorldSimulation(hostWindow, doc) {
     const useQr = settings.qrButtonEnabled && qrButton.isConnected &&
       qrButton.getClientRects().length > 0;
     orb.hidden = !panel.hidden || useQr;
+    qrButton.setAttribute('aria-expanded', String(!panel.hidden));
+    qrButton.title = panel.hidden ? '打开格林推演' : '收起格林推演';
+    qrButton.setAttribute('aria-label', qrButton.title);
     const minimizeLabel = useQr ? '收起悬浮窗' : '缩小为悬浮球';
     minimizeButton.title = minimizeLabel;
     minimizeButton.setAttribute('aria-label', minimizeLabel);
@@ -815,17 +822,63 @@ export function mountWorldSimulation(hostWindow, doc) {
   };
   header.addEventListener('touchend', stopTouchDrag);
   header.addEventListener('touchcancel', stopTouchDrag);
-  let resizing = false;
-  panel.addEventListener('pointerdown', event => {
+  const resizeHandle = root.querySelector('.acu-ws-resize');
+  let resize = null;
+  const startResize = (id, x, y) => {
     const rect = panel.getBoundingClientRect();
-    resizing = event.clientX >= rect.right - 20 && event.clientY >= rect.bottom - 20;
-  });
-  const finishResize = () => {
-    if (resizing) savePanelGeometry();
-    resizing = false;
+    const style = hostWindow.getComputedStyle(panel);
+    resize = { id, x, y, left: rect.left, top: rect.top, width: rect.width, height: rect.height,
+      minWidth: parseFloat(style.minWidth) || 300, minHeight: parseFloat(style.minHeight) || 300 };
+    panel.style.left = `${rect.left}px`;
+    panel.style.top = `${rect.top}px`;
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
   };
-  doc.addEventListener('pointerup', finishResize);
-  doc.addEventListener('pointercancel', finishResize);
+  const moveResize = (id, x, y) => {
+    if (!resize || resize.id !== id) return;
+    const maxWidth = Math.max(1, hostWindow.innerWidth - resize.left - 8);
+    const maxHeight = Math.max(1, hostWindow.innerHeight - resize.top - 8);
+    panel.style.width = `${Math.min(maxWidth, Math.max(resize.minWidth, resize.width + x - resize.x))}px`;
+    panel.style.height = `${Math.min(maxHeight, Math.max(resize.minHeight, resize.height + y - resize.y))}px`;
+    constrainPanelSize();
+  };
+  const finishResize = id => {
+    if (!resize || resize.id !== id) return;
+    savePanelGeometry();
+    resize = null;
+  };
+  resizeHandle.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'touch' || event.button !== 0) return;
+    event.preventDefault();
+    startResize(event.pointerId, event.clientX, event.clientY);
+    resizeHandle.setPointerCapture(event.pointerId);
+  });
+  resizeHandle.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'touch') moveResize(event.pointerId, event.clientX, event.clientY);
+  });
+  const stopPointerResize = event => {
+    if (event.pointerType !== 'touch') finishResize(event.pointerId);
+  };
+  resizeHandle.addEventListener('pointerup', stopPointerResize);
+  resizeHandle.addEventListener('pointercancel', stopPointerResize);
+  resizeHandle.addEventListener('touchstart', event => {
+    if (event.touches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    startResize(touch.identifier, touch.clientX, touch.clientY);
+    event.preventDefault();
+  }, { passive: false });
+  resizeHandle.addEventListener('touchmove', event => {
+    if (!resize) return;
+    const touch = [...event.changedTouches].find(touch => touch.identifier === resize.id);
+    if (!touch) return;
+    event.preventDefault();
+    moveResize(touch.identifier, touch.clientX, touch.clientY);
+  }, { passive: false });
+  const stopTouchResize = event => {
+    for (const touch of event.changedTouches) finishResize(touch.identifier);
+  };
+  resizeHandle.addEventListener('touchend', stopTouchResize);
+  resizeHandle.addEventListener('touchcancel', stopTouchResize);
   render();
   void refresh();
   return () => {
@@ -845,8 +898,6 @@ export function mountWorldSimulation(hostWindow, doc) {
     hostWindow.removeEventListener('resize', keepOrbInViewport);
     hostWindow.removeEventListener('resize', placeQrButton);
     doc.removeEventListener('keydown', onKey);
-    doc.removeEventListener('pointerup', finishResize);
-    doc.removeEventListener('pointercancel', finishResize);
     root.remove();
   };
 }
