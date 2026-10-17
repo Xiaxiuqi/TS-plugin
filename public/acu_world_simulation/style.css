@@ -91,6 +91,12 @@
   user-select: none;
 }
 .acu-ws-header:active { cursor: grabbing; }
+.acu-ws-root .acu-ws-header, .acu-ws-root .acu-ws-header .acu-ws-heading,
+.acu-ws-root .acu-ws-header .acu-ws-heading * {
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
 .acu-ws-night .acu-ws-header { background: linear-gradient(90deg, rgba(160, 126, 116, .12), rgba(255, 255, 255, .025)); }
 .acu-ws-mark { width: 30px; height: 30px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: rgba(160, 126, 116, .13); color: var(--ws-rose); font: 400 15px/1 'Noto Serif SC', 'Songti SC', serif; cursor: pointer; }
 .acu-ws-mark span { transform: translateY(-1px); pointer-events: none; }

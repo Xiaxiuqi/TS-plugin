@@ -109,8 +109,13 @@ const loadSettings = hostWindow => {
   }
 };
 
+let fallbackSha256 = null;
 async function digest(value) {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  // LAN HTTP pages on phones may not expose Web Crypto.
+  const subtle = globalThis.crypto?.subtle;
+  const bytes = subtle
+    ? await subtle.digest('SHA-256', new TextEncoder().encode(value))
+    : (await (fallbackSha256 ??= import('./vendor/sha256.mjs'))).sha256(value);
   return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -206,13 +211,15 @@ async function readSimulation() {
       CANDIDATE_KINDS.has(entry?.kind) || CANDIDATE_KINDS.has(entry?.eventKind)));
   }
   candidates.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-  return { chatId, ledger, candidates, ledgerMessageIndex, message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
+  return { chatId, ledger, ledgerSignature: JSON.stringify(ledger), candidates, ledgerMessageIndex,
+    message: ledger ? '' : '当前分支尚无可读取的格林推演账本' };
 }
 
 function changedLedgerTarget(previous, next) {
   if (previous.chatId !== next.chatId || !next.ledger ||
     !Number.isInteger(next.ledgerMessageIndex) ||
-    JSON.stringify(previous.ledger) === JSON.stringify(next.ledger)) return null;
+    (previous.ledgerSignature ?? JSON.stringify(previous.ledger)) ===
+      (next.ledgerSignature ?? JSON.stringify(next.ledger))) return null;
   return next.ledgerMessageIndex;
 }
 
@@ -403,22 +410,32 @@ export function mountWorldSimulation(hostWindow, doc) {
   let pendingRefresh = false;
   let disposed = false;
   let request = 0;
+  let displayRefreshTimer = null;
+  const clearDisplayRefresh = () => {
+    hostWindow.clearTimeout(displayRefreshTimer);
+    displayRefreshTimer = null;
+  };
   const scheduleDisplayRefresh = (messageId, chatId) => {
     if (!settings.refreshInjectedMessage || disposed) return;
-    const context = getSillyTavern()?.getContext?.();
-    const currentChatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
-    const message = context?.chat?.[messageId];
-    if (currentChatId !== chatId || !message || message.is_user || message.is_system) return;
-    const refreshMessage = hostWindow.TavernHelper?.refreshOneMessage ??
-      window.TavernHelper?.refreshOneMessage ?? hostWindow.refreshOneMessage ?? window.refreshOneMessage;
-    if (typeof refreshMessage !== 'function') return;
-    try {
-      Promise.resolve(refreshMessage(messageId)).catch(error => {
+    clearDisplayRefresh();
+    displayRefreshTimer = hostWindow.setTimeout(() => {
+      displayRefreshTimer = null;
+      if (!settings.refreshInjectedMessage || disposed) return;
+      const context = getSillyTavern()?.getContext?.();
+      const currentChatId = text(getSillyTavern()?.getCurrentChatId?.() ?? context?.chatId) || '__host_without_chat_id__';
+      const message = context?.chat?.[messageId];
+      if (currentChatId !== chatId || !message || message.is_user || message.is_system) return;
+      const refreshMessage = hostWindow.TavernHelper?.refreshOneMessage ??
+        window.TavernHelper?.refreshOneMessage ?? hostWindow.refreshOneMessage ?? window.refreshOneMessage;
+      if (typeof refreshMessage !== 'function') return;
+      try {
+        Promise.resolve(refreshMessage(messageId)).catch(error => {
+          console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
+        });
+      } catch (error) {
         console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
-      });
-    } catch (error) {
-      console.warn('[ACU World Simulation] 单楼层显示刷新失败', error);
-    }
+      }
+    }, 1000);
   };
   const clamp = (value, max) => Math.max(8, Math.min(value, Math.max(8, max - 8)));
   const keepOrbInViewport = () => {
@@ -521,6 +538,7 @@ export function mountWorldSimulation(hostWindow, doc) {
       try { hostWindow.localStorage.setItem(THEME_KEY, theme); } catch { /* Optional. */ }
     } else if (Object.hasOwn(DEFAULT_SETTINGS, key)) {
       settings[key] = event.target.checked;
+      if (key === 'refreshInjectedMessage') clearDisplayRefresh();
       saveSettings();
       render();
     }
@@ -538,15 +556,16 @@ export function mountWorldSimulation(hostWindow, doc) {
         const sameChat = initialized && next.chatId === data.chatId;
         if (!sameChat) {
           changes = {};
+          clearDisplayRefresh();
         } else {
           const delta = diffRows(displayedRows, nextRows);
           if (Object.keys(delta).length) changes = delta;
-          const ledgerTarget = changedLedgerTarget(data, next);
-          if (ledgerTarget !== null) scheduleDisplayRefresh(ledgerTarget, next.chatId);
         }
+        const ledgerTarget = sameChat ? changedLedgerTarget(data, next) : null;
         displayedRows = nextRows;
         data = next;
         initialized = true;
+        if (ledgerTarget !== null) scheduleDisplayRefresh(ledgerTarget, next.chatId);
         render();
       }
     } catch (error) {
@@ -697,23 +716,50 @@ export function mountWorldSimulation(hostWindow, doc) {
   let drag = null;
   const header = root.querySelector('.acu-ws-header');
   const move = event => {
-    if (!drag || event.pointerId !== drag.id) return;
+    if (event.pointerType === 'touch' || !drag || event.pointerId !== drag.id) return;
     panel.style.left = `${Math.max(8, Math.min(hostWindow.innerWidth - panel.offsetWidth - 8, drag.left + event.clientX - drag.x))}px`;
     panel.style.top = `${Math.max(8, Math.min(hostWindow.innerHeight - panel.offsetHeight - 8, drag.top + event.clientY - drag.y))}px`;
     constrainPanelSize();
   };
   const stop = () => { if (drag) savePanelGeometry(); drag = null; };
-  header.addEventListener('pointerdown', event => {
-    if (event.target.closest('button')) return;
+  const startDrag = (id, x, y) => {
     const rect = panel.getBoundingClientRect();
-    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+    drag = { id, x, y, left: rect.left, top: rect.top };
     panel.style.right = 'auto';
     panel.style.bottom = 'auto';
+    panel.style.left = `${rect.left}px`;
+    panel.style.top = `${rect.top}px`;
+  };
+  header.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'touch' || event.button !== 0 || event.target.closest('button')) return;
+    startDrag(event.pointerId, event.clientX, event.clientY);
     header.setPointerCapture(event.pointerId);
   });
   header.addEventListener('pointermove', move);
-  header.addEventListener('pointerup', stop);
-  header.addEventListener('pointercancel', stop);
+  const stopPointerDrag = event => {
+    if (event.pointerType !== 'touch' && drag?.id === event.pointerId) stop();
+  };
+  header.addEventListener('pointerup', stopPointerDrag);
+  header.addEventListener('pointercancel', stopPointerDrag);
+  // Use native touch events as well: mobile hosts may intercept/cancel pointer gestures.
+  header.addEventListener('touchstart', event => {
+    if (event.touches.length !== 1 || event.target.closest('button')) return;
+    const touch = event.changedTouches[0];
+    startDrag(touch.identifier, touch.clientX, touch.clientY);
+    event.preventDefault();
+  }, { passive: false });
+  header.addEventListener('touchmove', event => {
+    if (!drag) return;
+    const touch = [...event.changedTouches].find(touch => touch.identifier === drag.id);
+    if (!touch) return;
+    event.preventDefault();
+    move({ pointerId: touch.identifier, clientX: touch.clientX, clientY: touch.clientY });
+  }, { passive: false });
+  const stopTouchDrag = event => {
+    if (drag && [...event.changedTouches].some(touch => touch.identifier === drag.id)) stop();
+  };
+  header.addEventListener('touchend', stopTouchDrag);
+  header.addEventListener('touchcancel', stopTouchDrag);
   let resizing = false;
   panel.addEventListener('pointerdown', event => {
     const rect = panel.getBoundingClientRect();
@@ -730,6 +776,7 @@ export function mountWorldSimulation(hostWindow, doc) {
   return () => {
     if (disposed) return;
     disposed = true;
+    clearDisplayRefresh();
     request++;
     observer?.disconnect();
     hostWindow.clearTimeout(mutationTimer);
