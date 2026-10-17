@@ -64,7 +64,13 @@ try {
     await page.route('**/mobile-fixture.html', route => route.fulfill({
       contentType: 'text/html',
       body: `<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>* { touch-action: pan-y !important; }</style><body>
+        <style>* { touch-action: pan-y !important; }
+          #send_form { position: fixed; bottom: 0; left: 0; right: 0; }
+          .qr--buttons { display: flex; gap: 5px; }
+          .qr--button { padding: 5px; }</style><body>
+        <form id="send_form" onsubmit="event.preventDefault(); window.testSends = (window.testSends || 0) + 1">
+          <div id="qr--bar"><div class="qr--buttons"><button type="button" id="original-qr">原有 QR</button></div></div>
+        </form>
         <script type="module" src="/public/acu_world_simulation/index.js"></script></body>`,
     }));
     const url = `http://127.0.0.1:${server.address().port}/mobile-fixture.html`;
@@ -107,9 +113,65 @@ try {
     if (mobile) {
       await page.locator('.acu-ws-settings-back').click();
       await page.screenshot({ path: path.join(os.tmpdir(), 'acu-world-simulation-mobile.png') });
+      await page.locator('.acu-ws-settings-toggle').click();
     }
+    const qr = page.locator('.acu-ws-qr-button');
+    const qrSetting = page.locator('[data-setting="qrButtonEnabled"]');
+    assert.equal(await qr.count(), 0);
+    await qrSetting.check();
+    await qr.waitFor();
+    await page.locator('.acu-ws-minimize').click();
+    assert.equal(await page.locator('.acu-ws-orb').isVisible(), false);
+    await qr.click();
+    assert.equal(await panel.isVisible(), true);
+    assert.equal(await page.locator('.acu-ws-body').isVisible(), true);
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await page.locator('.acu-ws-settings-toggle').click();
+      await qrSetting.uncheck();
+      assert.equal(await qr.count(), 0);
+      await page.locator('.acu-ws-minimize').click();
+      assert.equal(await page.locator('.acu-ws-orb').isVisible(), true);
+      await page.locator('.acu-ws-orb').click();
+      await qrSetting.check();
+      await page.locator('.acu-ws-minimize').click();
+      await qr.click();
+      assert.equal(await qr.count(), 1);
+    }
+    await page.reload();
+    await qr.waitFor();
+    assert.equal(await page.locator('.acu-ws-orb').isVisible(), false);
+    await page.evaluate(() => document.querySelector('#qr--bar').remove());
+    await page.locator('.acu-ws-orb').waitFor({ state: 'visible' });
+    await page.evaluate(() => {
+      const bar = document.createElement('div');
+      bar.id = 'qr--bar';
+      document.querySelector('#send_form').append(bar);
+    });
+    await qr.waitFor();
+    assert.equal(await page.locator('.acu-ws-orb').isVisible(), false);
+    await page.evaluate(() => {
+      document.querySelector('#qr--bar').remove();
+      const popout = document.createElement('div');
+      popout.id = 'qr--popout';
+      popout.innerHTML = '<div class="qr--body"><div class="qr--buttons"><button type="button" id="original-qr">原有 QR</button></div></div>';
+      document.querySelector('#send_form').append(popout);
+    });
+    await page.locator('#qr--popout .acu-ws-qr-button').waitFor();
+    for (let cycle = 0; cycle < 2; cycle++) {
+      await page.evaluate(() => window.ACUWorldSimulation.destroy());
+      assert.equal(await qr.count(), 0);
+      assert.equal(await page.locator('.acu-ws-root').count(), 0);
+      assert.equal(await page.locator('#original-qr').count(), 1);
+      await page.evaluate(cycle => import(`/public/acu_world_simulation/index.js?qr-reload=${cycle}`), cycle);
+      await qr.waitFor();
+      assert.equal(await qr.count(), 1);
+      await qr.click();
+      assert.equal(await panel.isVisible(), true);
+    }
+    assert.equal(await page.evaluate(() => window.testSends || 0), 0);
+    if (mobile) await page.screenshot({ path: path.join(os.tmpdir(), 'acu-world-simulation-qr-mobile.png') });
     assert.deepEqual(errors, []);
-    console.log(`${mobile ? 'Mobile HTTP fallback + touch' : 'Desktop native crypto + mouse'}: read, drag, persistence, controls OK`);
+    console.log(`${mobile ? 'Mobile HTTP fallback + touch' : 'Desktop native crypto + mouse'}: read, drag, persistence, QR toggle/reload/rebuild/cleanup OK`);
     await page.close();
   }
 } finally {

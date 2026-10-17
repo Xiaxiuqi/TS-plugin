@@ -22,6 +22,7 @@ const PANEL_GEOMETRY_KEY = 'acu_ws_panel_geometry_v1';
 const THEME_KEY = 'acu_ws_theme_v1';
 const SETTINGS_KEY = 'acu_ws_settings_v1';
 const DEFAULT_SETTINGS = {
+  qrButtonEnabled: false,
   highlightEnabled: true,
   actorHighlightEnabled: true,
   simpleHighlight: false,
@@ -341,6 +342,7 @@ function renderSettings(settings) {
   const checked = value => value ? ' checked' : '';
   return `<section class="acu-ws-settings">
     <h3>显示设置</h3>
+    <label class="acu-ws-setting"><span>酒馆 QR 按钮（隐藏悬浮球）</span><input type="checkbox" data-setting="qrButtonEnabled"${checked(settings.qrButtonEnabled)}></label>
     <label class="acu-ws-setting"><span>夜间模式</span><input type="checkbox" data-setting="nightTheme"></label>
     <label class="acu-ws-setting"><span>显示更新高亮</span><input type="checkbox" data-setting="highlightEnabled"${checked(settings.highlightEnabled)}></label>
     <label class="acu-ws-setting"><span>人物谱更新高亮</span><input type="checkbox" data-setting="actorHighlightEnabled"${checked(settings.actorHighlightEnabled)}></label>
@@ -539,6 +541,7 @@ export function mountWorldSimulation(hostWindow, doc) {
     } else if (Object.hasOwn(DEFAULT_SETTINGS, key)) {
       settings[key] = event.target.checked;
       if (key === 'refreshInjectedMessage') clearDisplayRefresh();
+      if (key === 'qrButtonEnabled') syncQrButton();
       saveSettings();
       render();
     }
@@ -625,11 +628,63 @@ export function mountWorldSimulation(hostWindow, doc) {
   };
   const minimize = () => {
     panel.hidden = true;
-    orb.hidden = false;
+    syncLauncher();
     orb.setAttribute('aria-expanded', 'false');
-    keepOrbInViewport();
-    orb.focus();
+    if (!orb.hidden) {
+      keepOrbInViewport();
+      orb.focus();
+    } else qrButton.focus();
   };
+  const qrButton = doc.createElement('button');
+  qrButton.type = 'button';
+  qrButton.className = 'menu_button qr--button acu-ws-qr-button';
+  qrButton.textContent = '格林推演';
+  qrButton.title = '打开格林推演';
+  qrButton.setAttribute('aria-label', '打开格林推演');
+  qrButton.addEventListener('click', () => {
+    showSettings(false);
+    open();
+  });
+  const qrGroup = doc.createElement('div');
+  qrGroup.className = 'qr--buttons acu-ws-qr-group';
+  const minimizeButton = root.querySelector('.acu-ws-minimize');
+  const syncLauncher = () => {
+    const useQr = settings.qrButtonEnabled && qrButton.isConnected &&
+      qrButton.getClientRects().length > 0;
+    orb.hidden = !panel.hidden || useQr;
+    const minimizeLabel = useQr ? '收起悬浮窗' : '缩小为悬浮球';
+    minimizeButton.title = minimizeLabel;
+    minimizeButton.setAttribute('aria-label', minimizeLabel);
+  };
+  const placeQrButton = () => {
+    if (disposed) return;
+    const qrHost = doc.querySelector('#qr--bar, #qr--popout > .qr--body');
+    if (settings.qrButtonEnabled && qrHost) {
+      const container = qrHost.querySelector('.qr--buttons:not(.acu-ws-qr-group)') ?? qrGroup;
+      if (container === qrGroup && qrGroup.parentElement !== qrHost) qrHost.appendChild(qrGroup);
+      if (qrButton.parentElement !== container) container.appendChild(qrButton);
+      if (container !== qrGroup) qrGroup.remove();
+    } else {
+      qrButton.remove();
+      qrGroup.remove();
+    }
+    syncLauncher();
+    if (!orb.hidden) keepOrbInViewport();
+  };
+  // QR rerenders replace their button containers; restore only our temporary entry.
+  const qrSelector = '#qr--bar, #qr--popout';
+  const qrObserver = new hostWindow.MutationObserver(mutations => {
+    if (mutations.some(mutation => mutation.target.closest?.(qrSelector) ||
+      [...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1 &&
+        (node.matches?.(qrSelector) || node.querySelector?.(qrSelector))))) placeQrButton();
+  });
+  const syncQrButton = () => {
+    qrObserver.disconnect();
+    if (settings.qrButtonEnabled) qrObserver.observe(doc.body, { childList: true, subtree: true });
+    placeQrButton();
+  };
+  hostWindow.addEventListener('resize', placeQrButton);
+  syncQrButton();
   let orbDrag = null;
   let suppressNextOrbClick = false;
   let orbClickTimer = null;
@@ -782,9 +837,13 @@ export function mountWorldSimulation(hostWindow, doc) {
     hostWindow.clearTimeout(mutationTimer);
     hostWindow.clearTimeout(orbClickTimer);
     subscriptions.forEach(unsubscribe => unsubscribe());
+    qrObserver.disconnect();
+    qrButton.remove();
+    qrGroup.remove();
     resizeObserver.disconnect();
     hostWindow.removeEventListener('resize', keepInViewport);
     hostWindow.removeEventListener('resize', keepOrbInViewport);
+    hostWindow.removeEventListener('resize', placeQrButton);
     doc.removeEventListener('keydown', onKey);
     doc.removeEventListener('pointerup', finishResize);
     doc.removeEventListener('pointercancel', finishResize);
