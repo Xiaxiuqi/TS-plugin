@@ -609,7 +609,7 @@
       {
         path: 'core/natural-environment.js',
         key: 'cryptLord.naturalEnvironment',
-        validate: api => validateMethods('cryptLord.naturalEnvironment', api, ['status', 'vocab', 'parse', 'sequenceRank', 'resolve', 'sync', 'dispose']),
+        validate: api => validateMethods('cryptLord.naturalEnvironment', api, ['status', 'parse', 'sequenceRank', 'resolve', 'sync', 'dispose']) && api.vocab && api,
       },
       {
         path: 'core/battlefield-painter.js',

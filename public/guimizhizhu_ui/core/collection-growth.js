@@ -299,7 +299,7 @@
     if (loaded.alerts.length) for (const callback of listeners) callback(loaded);
     return { loaded };
   }
-  const after = modules['cryptLord.afterNativeHost'], events = after.tavernEvents();
+  const after = modules['cryptLord.afterNativeHost'], events = after.tavernEvents() || {};
   const updated = () => { void observe().catch(error => {
     if (!disposed && error.name !== 'AbortError') console.warn(`[${KEY}] 变量提醒未更新，可重新读取`, error);
   }); };

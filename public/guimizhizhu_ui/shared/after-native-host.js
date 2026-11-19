@@ -310,6 +310,15 @@
         // Try the next same-origin owner.
       }
     }
+    // When injected into the main page, only SillyTavern's native event table exists.
+    for (const owner of owners()) {
+      try {
+        const types = owner?.SillyTavern?.getContext?.()?.eventTypes;
+        if (types && typeof types === 'object') return types;
+      } catch {
+        // Try the next same-origin owner.
+      }
+    }
     return null;
   }
 
