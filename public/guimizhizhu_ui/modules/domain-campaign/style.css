@@ -36,4 +36,6 @@
 .crypt-lord-campaign__cell.is-occupied { border-color: #ddbd7c; color: #e4bb74; }
 .crypt-lord-campaign__hint { color: #b4c5b4; }
 .crypt-lord-campaign__pending { border-left: 3px solid #ddbd7c; padding: 8px; color: #e2bc78; background: #38372b; }
+.crypt-lord-campaign__pending[hidden] { display: none; }
+.crypt-lord-campaign__pending, .crypt-lord-campaign button { overflow-wrap: anywhere; }
 @media (max-width: 600px) { .crypt-lord-campaign__dialog { top: 8px; max-height: calc(100dvh - 16px); } .crypt-lord-campaign__body { padding: 9px; } }

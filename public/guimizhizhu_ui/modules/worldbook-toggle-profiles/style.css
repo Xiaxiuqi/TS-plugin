@@ -1,12 +1,17 @@
 .wb-profiles, .wb-profiles * { box-sizing: border-box; }
-.wb-profiles { position: fixed; z-index: 2147482988; top: 12%; left: 50%; display: none; flex-direction: column; width: min(680px, calc(100vw - 20px)); max-height: min(740px, calc(100vh - 20px)); transform: translateX(-50%); border: 1px solid #a37a38; border-radius: 6px; background: #1d1917; color: #f4e8d4; box-shadow: 0 18px 48px #000a; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
+.wb-profiles { position: fixed; z-index: 2147482988; top: 8px; left: 50%; display: none; flex-direction: column; width: min(680px, calc(100vw - 20px)); max-height: min(740px, calc(100vh - 16px)); transform: translateX(-50%); border: 1px solid #736964; border-radius: 6px; background: #232725; color: #edf1ed; box-shadow: 0 18px 48px #000a; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
 .wb-profiles[data-open="true"] { display: flex; }
+.wb-profiles [hidden] { display: none !important; }
 .wb-profiles header { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; border-bottom: 1px solid #66523b; cursor: move; user-select: none; touch-action: none; }
 .wb-profiles header strong { color: #e9c16e; }
-.wb-profiles__body { min-height: 0; overflow: auto; padding: 14px; }
+.wb-profiles__header-tools { display: flex; flex: none; gap: 8px; }
+.wb-profiles__body { min-width: 0; min-height: 0; margin: 0; border: 0; overflow: auto; padding: 14px; }
 .wb-profiles button, .wb-profiles select, .wb-profiles input:not([type="checkbox"]), .wb-profiles textarea { min-width: 0; border: 1px solid #806644; border-radius: 4px; padding: 6px 9px; background: #292724; color: #f4e8d4; font: inherit; }
 .wb-profiles button { cursor: pointer; background: #393027; white-space: nowrap; }
 .wb-profiles button:hover { background: #58442b; }
+.wb-profiles button:disabled, .wb-profiles select:disabled { cursor: default; opacity: .5; }
+.wb-profiles :focus-visible { outline: 2px solid #86cbd5; outline-offset: 2px; }
+.wb-profiles header button { width: 32px; height: 32px; padding: 0; font-size: 14px; }
 .wb-profiles[aria-busy="true"] .wb-profiles__body { pointer-events: none; opacity: .7; }
 .wb-profiles__toolbar, .wb-profiles__add, .wb-profiles__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 12px; }
 .wb-profiles__toolbar select, .wb-profiles__add select { flex: 1 1 135px; }
@@ -25,6 +30,8 @@
 .wb-profiles__add { margin: 12px 0; }
 .wb-profiles__result { min-height: 31px; padding: 6px 14px; border-top: 1px solid #514334; color: #b6d5ad; overflow-wrap: anywhere; }
 .wb-profiles__result[data-error="true"] { color: #ffaaaa; }
+.wb-profiles__recovery { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-top: 1px solid #514334; }
+.wb-profiles__recovery button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   .wb-profiles { top: 8px; left: 8px; width: calc(100vw - 16px); max-height: calc(100vh - 16px); transform: none; }
   .wb-profiles__entry { grid-template-columns: minmax(0, 1fr) auto auto; }

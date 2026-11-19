@@ -9,8 +9,10 @@
   const afterNative = modules['cryptLord.afterNativeHost'];
   if (!contract || !service || !afterNative) throw new Error('源堡窗口依赖尚未加载');
   const state = { panel: null, tabs: null, body: null, notice: null, data: null,
-    tab: 'data', token: 0, subscription: null, disposed: false };
-  const doc = () => afterNative.getHost()?.document || document;
+    tab: 'data', token: 0, subscriptions: [], disposed: false, focus: null, generating: false,
+    downloads: new Map() };
+  const ownedDocument = afterNative.getHost()?.document || document;
+  const doc = () => ownedDocument;
   const el = (tag, className = '', text) => {
     const node = doc().createElement(tag);
     node.className = className;
@@ -24,14 +26,20 @@
     node.addEventListener('click', fn);
     return node;
   };
-  const active = token => !state.disposed && state.token === token && state.panel?.dataset.open === 'true';
+  const active = token => !state.disposed && state.token === token && state.panel?.dataset.open === 'true' &&
+    modules['cryptLord.afterNativeHost'] === afterNative && modules['cryptLord.sourceCastleState'] === service &&
+    (afterNative.getHost()?.document || document) === ownedDocument;
   function close() {
     state.token++;
     state.panel?.setAttribute('data-open', 'false');
+    state.panel?.setAttribute('aria-busy', 'false');
+    state.data = null;
+    if (state.focus?.isConnected) state.focus.focus();
   }
   function mount() {
     if (state.disposed || state.panel || !doc().body) return Boolean(state.panel);
     const panel = el('section', 'crypt-lord-source-castle');
+    panel.tabIndex = -1; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', '源堡系统');
     panel.dataset.open = 'false';
     const header = el('header');
     header.append(el('strong', '', '源堡系统'), button('×', close, '关闭'));
@@ -42,6 +50,19 @@
     panel.append(header, tabs, body, notice);
     doc().body.append(panel);
     Object.assign(state, { panel, tabs, body, notice });
+    panel.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+      if (event.key !== 'Tab') return;
+      const items = [...panel.querySelectorAll('button,[tabindex="0"]')]
+        .filter(item => !item.disabled && item.getClientRects().length && doc().defaultView.getComputedStyle(item).visibility !== 'hidden');
+      const first = items[0], last = items.at(-1);
+      if (!first) { event.preventDefault(); panel.focus(); }
+      else if (event.shiftKey && (doc().activeElement === first || doc().activeElement === panel)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (doc().activeElement === last || doc().activeElement === panel)) {
+        event.preventDefault(); first.focus();
+      }
+    });
     let drag = null;
     header.addEventListener('pointerdown', event => {
       if (event.button !== 0 || event.target.closest('button')) return;
@@ -59,24 +80,45 @@
     header.addEventListener('pointerup', () => { drag = null; });
     header.addEventListener('pointercancel', () => { drag = null; });
     const events = afterNative.tavernEvents();
-    if (events?.CHAT_CHANGED) state.subscription = afterNative.bindEvent(events.CHAT_CHANGED, close);
+    const bind = (name, handler) => { if (events?.[name]) state.subscriptions.push(afterNative.bindEvent(events[name], handler)); };
+    bind('CHAT_CHANGED', () => { state.generating = false; close(); });
+    bind('GENERATION_STARTED', (type, options = {}, dryRun) => {
+      if (['quiet', 'quiet_prompt'].includes(String(type || '').toLowerCase()) ||
+        options?.dryRun || options?.dry_run || dryRun === true) return;
+      state.generating = true; state.token++; state.data = null;
+      state.panel.setAttribute('aria-busy', 'false');
+      if (state.panel.dataset.open === 'true') {
+        state.notice.textContent = '正文生成中，结束后请重新读取'; render();
+      }
+    });
+    for (const name of ['GENERATION_ENDED', 'GENERATION_STOPPED']) bind(name, () => {
+      state.generating = false; render();
+    });
     return true;
   }
   function render() {
     if (!state.panel || state.panel.dataset.open !== 'true') return;
     state.tabs.replaceChildren();
     for (const [id, label] of [['data', '源堡数据'], ['logs', '历史日志'], ['actions', '操作面板']]) {
-      const tab = button(label, () => { state.tab = id; render(); });
+      const tab = button(label, () => {
+        state.tab = id; render(); state.tabs.querySelector('[aria-pressed="true"]')?.focus();
+      });
       tab.setAttribute('aria-pressed', String(state.tab === id));
       state.tabs.append(tab);
     }
     state.body.replaceChildren();
+    if (state.tab === 'actions') {
+      const refreshButton = button('重新读取状态与日志', () => void refresh());
+      refreshButton.disabled = state.generating;
+      state.body.append(refreshButton); return;
+    }
     if (!state.data) return;
     if (state.tab === 'data') {
       const rows = [
         ['真实 assistant 楼层', state.data.messageId === null ? '暂无' : `#${state.data.messageId}`],
         ...Object.entries(state.data.counts).map(([key, value]) => [key, `${value} 项`]),
-        ['已挂载世界书', state.data.books],
+        ['世界书目录', state.data.books],
+        ['已挂载世界书', state.data.mountedBooks],
         ['快捷指令', state.data.shortcuts],
         ['加载器', state.data.loader],
       ];
@@ -103,49 +145,56 @@
         const row = el('div', 'crypt-lord-source-castle__log');
         row.dataset.level = item.level || 'info';
         const date = new Date(item.timestamp);
-        row.append(el('time', '', Number.isNaN(date.getTime()) ? '' : date.toLocaleString()),
-          el('strong', '', [item.module, item.action].filter(Boolean).join(' · ')),
-          el('span', '', String(item.details || '')));
+        const text = String(item.details || '');
+        const content = text.length > 80 ? el('details') : el('span', '', text);
+        if (text.length > 80) content.append(el('summary', '', `${text.slice(0, 80)}...`), el('p', '', text));
+        row.append(el('time', '', Number.isNaN(date.getTime()) ? '时间未知' : date.toLocaleString()),
+          el('strong', '', [item.module, item.action].filter(Boolean).join(' · ')), content);
         state.body.append(row);
       }
-    } else {
-      state.body.append(button('重新读取状态与日志', () => void refresh()));
     }
   }
   function exportLogs() {
     if (!state.data?.events.length) return;
-    const view = doc().defaultView || window;
-    const url = view.URL.createObjectURL(new view.Blob([service.formatLogs(state.data.events)], { type: 'text/plain;charset=utf-8' }));
-    const anchor = el('a');
-    anchor.href = url;
-    anchor.download = 'crypt-lord-observation.txt';
-    doc().body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    view.setTimeout(() => view.URL.revokeObjectURL(url), 1000);
+    try {
+      service.assertCurrent(state.data, () => active(state.token));
+      const view = doc().defaultView || window;
+      const url = view.URL.createObjectURL(new view.Blob([service.formatLogs(state.data.events)], { type: 'text/plain;charset=utf-8' }));
+      const anchor = el('a');
+      anchor.href = url; anchor.download = 'crypt-lord-observation.txt';
+      doc().body.append(anchor); anchor.click(); anchor.remove();
+      const timer = view.setTimeout(() => { view.URL.revokeObjectURL(url); state.downloads.delete(url); }, 1000);
+      state.downloads.set(url, { view, timer });
+    } catch (error) { state.notice.textContent = `导出失败：${error.message}`; }
   }
   async function refresh() {
+    if (state.disposed || state.generating || state.panel?.dataset.open !== 'true') return false;
     const token = ++state.token;
+    state.data = null; render();
     state.notice.textContent = '正在读取…';
+    state.panel.setAttribute('aria-busy', 'true');
     try {
-      const data = await service.collect();
+      const data = await service.collect(() => active(token) && !state.generating);
       if (!active(token)) return;
       state.data = data;
       state.notice.textContent = '读取完成';
       render();
     } catch (error) {
       if (active(token)) state.notice.textContent = `读取失败：${error?.message || error}`;
-    }
+    } finally { if (active(token)) state.panel.setAttribute('aria-busy', 'false'); }
   }
   async function open() {
     if (!mount()) return false;
+    state.focus = doc().activeElement;
     state.panel.dataset.open = 'true';
+    state.panel.focus();
     state.panel.style.left = '';
     state.panel.style.top = '';
     state.panel.style.transform = '';
     state.tab = 'data';
     state.data = null;
     render();
+    if (state.generating) { state.notice.textContent = '正文生成中，结束后请重新读取'; return true; }
     await refresh();
     return true;
   }
@@ -155,7 +204,9 @@
     dispose() {
       state.disposed = true;
       close();
-      state.subscription?.stop();
+      state.subscriptions.splice(0).forEach(item => item?.stop());
+      for (const [url, { view, timer }] of state.downloads) { view.clearTimeout(timer); view.URL.revokeObjectURL(url); }
+      state.downloads.clear();
       state.panel?.remove();
       contract.releaseGlobal(KEY, api);
       if (modules[KEY] === api) delete modules[KEY];

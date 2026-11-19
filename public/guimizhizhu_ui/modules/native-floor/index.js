@@ -36,7 +36,6 @@
     retiredGenerationIds: new Set(),
     retry: null,
     watchdog: null,
-    watchdogAbortAt: 0,
     retryTimer: null,
     retryTimerResolve: null,
     abortController: new AbortController(),
@@ -48,14 +47,30 @@
     nativeScanQueued: false,
     observedAssistantId: null,
     processedNativeAssistantIds: new Set(),
+    subscriptions: [],
+    inspections: new Set(),
+    stoppingOwned: false,
   };
 
+  function hostIdentity() {
+    const host = modules[HOST_API_KEY], after = modules[AFTER_NATIVE_HOST_KEY], surface = after?.getHost?.();
+    return { host, after, document: surface?.document, window: surface?.window,
+      script: JSON.stringify(host?.scriptVariableOptions?.()), chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+  }
+
+  function sameHost(identity) {
+    try {
+      const current = hostIdentity();
+      return Object.keys(identity).every(key => identity[key] === current[key]);
+    } catch { return false; }
+  }
+
   function isTransactionValid(txn) {
-    return !!txn && !state.disposed && txn.epoch === state.epoch && state.active === txn;
+    return !!txn && !state.disposed && txn.epoch === state.epoch && state.active === txn && sameHost(txn.identity);
   }
 
   function assertTransactionValid(txn) {
-    if (!isTransactionValid(txn)) throw new DOMException('事务已失效', 'AbortError');
+    if (!isTransactionValid(txn) || txn.controller?.signal.aborted) throw new DOMException('事务已失效', 'AbortError');
   }
 
   async function getHostApi() {
@@ -115,43 +130,72 @@
 
   async function processNativeAssistantFloor(messageId, options = {}) {
     const id = Number(messageId);
-    if (state.disposed || !Number.isInteger(id) || state.processedNativeAssistantIds.has(id)) return false;
+    if (options.reprocess && !state.active && !state.inspections.size) state.processedNativeAssistantIds.delete(id);
+    if (state.disposed || state.active || !Number.isInteger(id) || state.processedNativeAssistantIds.has(id)) return false;
+    const epoch = state.epoch;
+    const controller = new AbortController();
+    const valid = () => !state.disposed && state.epoch === epoch && !controller.signal.aborted && !state.active;
     const floors = await snapshotFloors();
     const assistant = floors.find(message => Number(message?.message_id) === id && message?.role === 'assistant');
-    // A raw DOM mutation can occur before streaming has finished.  It may only
-    // settle an explicit variable payload; the final native receive event is
-    // allowed to inherit the prior state when the model returned no patch.
+    // Only the final native receive event may settle ordinary narrative text.
     if (!assistant || (!options.allowInheritedState && !isVariableNarrative(assistant))) return false;
     const user = nearestNativeUser(floors, id);
     if (!user) {
       debugEvent('refusal', 'native-assistant-without-user', `messageId=${id}`, 'warn');
       return false;
     }
+    if (!valid() || state.processedNativeAssistantIds.has(id) || Number(floors.at(-1)?.message_id) !== id) return false;
+    const source = JSON.stringify(floors);
+    const beforeWrite = async () => {
+      if (!valid() || JSON.stringify(await snapshotFloors()) !== source || !valid())
+        throw new DOMException('原生生成来源已变化', 'AbortError');
+    };
 
     // Mark before mutation: setChatMessages itself may cause a second DOM mutation.
     rememberProcessedNativeAssistant(id);
+    state.inspections.add(controller);
+    let completed = false;
     try {
       const bridge = await getBridge();
       const inspected = await bridge.inspectNarrative(String(assistant.message || ''), {
         source: 'sillytavern-native',
         assistantMessageId: id,
+        signal: controller.signal,
+        guard: valid,
+        isTrueNewGame: !floors.some(row => row.role === 'assistant' && Number(row.message_id) < Number(user.message_id)),
       });
+      if (!valid()) return false;
       if (!inspected?.passed) {
+        state.processedNativeAssistantIds.delete(id);
         debugEvent('refusal', 'native-assistant-rejected', `messageId=${id}; 文本未通过处理`, 'warn');
         return false;
       }
+      await beforeWrite();
       await bridge.completeNarrative(String(inspected.parseText ?? assistant.message ?? ''), {
         userMessageId: Number(user.message_id),
         assistantMessageId: id,
         generationId: `native-host-${id}`,
         userText: String(user.message || ''),
         narrativeText: String(inspected.text ?? assistant.message ?? ''),
+        guard: valid,
+        beforeWrite,
+        floorText: inspected.floorText,
       });
       debugEvent('assistant', 'native-assistant-settled', `messageId=${id}`);
+      completed = true;
       return true;
     } catch (error) {
-      state.processedNativeAssistantIds.delete(id);
+      if (epoch === state.epoch) state.processedNativeAssistantIds.delete(id);
+      if (error?.name === 'AbortError') {
+        if (epoch === state.epoch && !state.disposed && !controller.signal.aborted)
+          window.toastr?.warning?.('原生正文来源已变化，本次检修未覆盖外部修改。');
+        return false;
+      }
       throw error;
+    } finally {
+      if (!completed && epoch === state.epoch) state.processedNativeAssistantIds.delete(id);
+      if (!completed && valid()) modules['cryptLord.battlePromptMode']?.finishTurn();
+      state.inspections.delete(controller);
     }
   }
 
@@ -175,6 +219,7 @@
     state.observedAssistantId = Math.max(state.observedAssistantId, latestId);
     let settled = 0;
     for (const message of pending) {
+      if (!options.allowInheritedState) continue;
       if (await processNativeAssistantFloor(message.message_id, options)) settled += 1;
     }
     return settled;
@@ -201,8 +246,11 @@
     state.nativeObserverHost = host;
     const events = afterNative?.tavernEvents?.();
     if (events?.MESSAGE_RECEIVED && !state.nativeMessageReceivedHandle) {
-      state.nativeMessageReceivedHandle = afterNative.bindEvent?.(events.MESSAGE_RECEIVED, messageId => {
-        void processNativeAssistantFloor(Number(messageId), { allowInheritedState: true }).catch(error => {
+      state.nativeMessageReceivedHandle = afterNative.bindEvent?.(events.MESSAGE_RECEIVED, (messageId, type) => {
+        if (type && !['normal', 'regenerate', 'swipe', 'continue', 'append'].includes(type)) return;
+        void processNativeAssistantFloor(Number(messageId), {
+          allowInheritedState: true, reprocess: ['regenerate', 'swipe', 'continue', 'append'].includes(type),
+        }).catch(error => {
           debugEvent('failure', 'native-message-received-settlement-failure', error?.message || error, 'error');
         });
       }) || null;
@@ -315,8 +363,13 @@
     const floors = await snapshotFloors();
     assertTransactionValid(txn);
     const existing = floors.filter(item => item.role === 'assistant' && item.message_id > txn.userMessageId);
+    const user = floors.find(item => item.message_id === txn.userMessageId);
+    if (user?.role !== 'user' || user.message !== txn.rawText) throw new DOMException('用户楼层已变化', 'AbortError');
     if (existing.length) {
       const claimed = existing[existing.length - 1];
+      if (existing.length !== 1 || floors.at(-1)?.message_id !== claimed.message_id ||
+        ![txn.generatedRaw, finalText].includes(String(claimed.message || '')))
+        throw new DOMException('出现外部楼层，不能认领', 'AbortError');
       txn.assistantMessageId = claimed.message_id;
       const patch = { message: finalText };
       if (txn.pendingAssistantData) patch.data = txn.pendingAssistantData;
@@ -326,6 +379,7 @@
       debugEvent('assistant', 'assistant-claim-success', `认领 messageId=${claimed.message_id}`);
       return claimed.message_id;
     }
+    if (floors.at(-1)?.message_id !== txn.userMessageId) throw new DOMException('出现外部楼层，不能创建正文', 'AbortError');
 
     const hostApi = await getHostApi();
     const before = floors;
@@ -366,52 +420,40 @@
     if (!isTransactionValid(txn)) return;
     const seconds = Number(txn.watchdogSeconds);
     if (!Number.isFinite(seconds) || seconds <= 0) return;
-    const current = { timerId: null, seconds };
+    const current = { timerId: null, seconds, generationId: txn.generationId };
     state.watchdog = current;
     current.timerId = setTimeout(() => {
       if (state.watchdog !== current || !isTransactionValid(txn)) return;
       state.watchdog = null;
-      void onWatchdogFire(txn, seconds);
+      txn.timeoutGeneration?.(current.generationId, seconds);
     }, Math.min(seconds * 1000, 2147483647));
   }
 
-  async function onWatchdogFire(txn, seconds) {
-    if (!isTransactionValid(txn)) return;
-    state.watchdogAbortAt = Date.now();
+  function stopOwnedGeneration(id) {
+    const owner = modules[AFTER_NATIVE_HOST_KEY]?.getHost?.()?.window || window;
     try {
-      let stopped = false;
-      if (txn.generationId && typeof window.stopGenerationById === 'function') {
-        stopped = !!window.stopGenerationById(txn.generationId);
-      }
-      if (!stopped && typeof window.stopAllGeneration === 'function') window.stopAllGeneration();
-    } catch (error) {
-      debugEvent('failure', 'generation-stop-failure', error?.message || error, 'error');
-      console.warn(`[${KEY}] 中断超时生成失败，将继续重试流程`, error);
-    }
-    if (await retryNarrative(txn, `生成超时（${seconds}秒）`)) return;
-    if (!isTransactionValid(txn)) return;
-    await abortTurn(txn, `生成超时且重试用尽`);
-    if (!isTransactionValid(txn)) return;
-    const bridge = await getBridge().catch(() => null);
-    if (!isTransactionValid(txn)) return;
-    await bridge?.onTurnAborted?.(`生成超时（${seconds}秒）`);
-    if (!isTransactionValid(txn)) return;
-    closeTurn();
+      state.stoppingOwned = true;
+      if (typeof owner.stopGenerationById === 'function') owner.stopGenerationById(id);
+      else owner.TavernHelper?.stopGenerationById?.(id);
+    } catch { /* Do not stop unrelated native or secondary requests. */ }
+    finally { state.stoppingOwned = false; }
   }
 
-  function consumeWatchdogAbort() {
-    const at = state.watchdogAbortAt;
-    state.watchdogAbortAt = 0;
-    return !!at && Date.now() - at < 15000;
+  function onStreamToken(text, generationId) {
+    const txn = state.active;
+    if (!isTransactionValid(txn) || generationId !== txn.generationId || !txn.shouldStream || !text || !state.watchdog) return false;
+    armWatchdog(txn); return true;
   }
 
   async function deleteOrphanUser(txn, reason) {
     if (!isTransactionValid(txn) || !Number.isInteger(txn.userMessageId) || Number.isInteger(txn.assistantMessageId) || txn.responseCommitted) return;
     try {
       const hostApi = await getHostApi();
-      const list = await hostApi.getChatMessages(String(txn.userMessageId));
       if (!isTransactionValid(txn)) return;
-      const target = list?.[0];
+      const floors = await snapshotFloors();
+      if (!isTransactionValid(txn)) return;
+      const target = floors.at(-1);
+      if (target?.message_id !== txn.userMessageId) return;
       if (!target || target.role !== 'user' || String(target.message || '').trim() !== String(txn.rawText || '').trim()) return;
       await hostApi.deleteChatMessages([txn.userMessageId], { refresh: 'none' });
       if (!isTransactionValid(txn)) return;
@@ -425,6 +467,8 @@
 
   function closeTurn() {
     clearWatchdog();
+    modules['cryptLord.battlePromptMode']?.finishTurn(state.active?.battlePromptTurn);
+    state.active?.controller.abort();
     state.retry = null;
     state.active = null;
   }
@@ -436,23 +480,48 @@
   async function invokeGenerate(txn, config) {
     assertTransactionValid(txn);
     const hostApi = await getHostApi();
+    assertTransactionValid(txn);
+    await txn.assertQueues?.({
+      userMessageId: txn.userMessageId, userText: txn.rawText,
+      guard: () => isTransactionValid(txn) && !txn.controller.signal.aborted,
+    });
+    assertTransactionValid(txn);
     debugEvent('generation', 'generation-dispatch', `generationId=${config?.generation_id || '未知'}`);
+    const generationId = txn.generationId;
+    txn.eventFinalText = null;
+    txn.shouldStream = Boolean(config.should_stream);
+    let abort;
+    const interrupted = new Promise((_, reject) => {
+      abort = () => reject(new DOMException('生成已取消', 'AbortError'));
+      txn.controller.signal.addEventListener('abort', abort, { once: true });
+      txn.timeoutGeneration = (id, seconds) => {
+        if (id !== generationId || !isTransactionValid(txn)) return;
+        retireGenerationId(id);
+        reject(new Error(`正文生成超时（${seconds}秒）`));
+        stopOwnedGeneration(id);
+      };
+    });
     armWatchdog(txn);
     try {
-      const result = await hostApi.generate(config);
+      const result = await Promise.race([hostApi.generate({ ...config }), interrupted]);
       assertTransactionValid(txn);
+      if (txn.generationId !== generationId) throw new DOMException('旧请求已失效', 'AbortError');
       debugEvent('generation', 'generation-dispatch-success', `generationId=${config?.generation_id || '未知'}`);
-      return result;
+      return result ?? txn.eventFinalText;
     } catch (error) {
       debugEvent('failure', 'generation-dispatch-failure', error?.message || error, 'error');
       throw error;
+    } finally {
+      if (state.active === txn && txn.generationId === generationId) { clearWatchdog(); txn.timeoutGeneration = null; }
+      txn.controller.signal.removeEventListener('abort', abort);
     }
   }
 
-  async function retryNarrative(txn, reason) {
+  async function retryNarrative(txn, reason, commit = true) {
     if (!isTransactionValid(txn)) return false;
     const retry = state.retry;
-    if (!txn || !retry || retry.count >= retry.limit) return false;
+    if (!txn || !retry || txn.responseCommitted || Number.isInteger(txn.assistantMessageId) ||
+      retry.manualTakeover || retry.count >= retry.limit) return false;
     retry.count += 1;
     debugEvent('generation', 'generation-retry', `${reason}; ${retry.count}/${retry.limit}`, 'warn');
     const bridge = await getBridge();
@@ -474,12 +543,14 @@
     });
     if (!isTransactionValid(txn)) return false;
     try {
-      await invokeGenerate(txn, retry.config);
+      const text = await invokeGenerate(txn, retry.config);
+      if (!commit) return { text, generationId: txn.generationId };
+      await commitNarrative(txn, text, txn.generationId);
     } catch (error) {
+      if (!isTransactionValid(txn)) return false;
       clearWatchdog();
       const message = String(error?.message || '').toLowerCase();
       if (error?.name === 'AbortError' || message.includes('abort')) {
-        if (consumeWatchdogAbort()) return true;
         debugEvent('cancel', 'generation-retry-cancelled', '重试过程中被玩家中断', 'warn');
         await abortTurn(txn, '重试过程中被玩家中断');
         if (!isTransactionValid(txn)) return false;
@@ -487,7 +558,8 @@
         if (isTransactionValid(txn)) closeTurn();
         return true;
       }
-      if (await retryNarrative(txn, reason)) return true;
+      const next = await retryNarrative(txn, reason, commit);
+      if (next) return next;
       if (!isTransactionValid(txn)) return false;
       await abortTurn(txn, `重试用尽后仍失败: ${error?.message || error}`);
       if (!isTransactionValid(txn)) return false;
@@ -504,10 +576,14 @@
       throw new Error(`[${KEY}] 上一回合仍在处理中，拒绝并发叙事事务`);
     }
     const options = normalizeOptions(sourceOrOptions, maybeOptions);
+    const identity = hostIdentity();
     debugEvent('action', 'submit-native-turn', `source=${options.source}`);
     const bridge = await getBridge();
     if (state.disposed) return;
+    if (!sameHost(identity)) throw new DOMException('原生回合宿主、聊天或脚本已变化', 'AbortError');
+    if (state.active || state.inspections.size) throw new Error(`[${KEY}] 上一回合仍在处理中，拒绝并发叙事事务`);
     const txn = {
+      identity,
       epoch: state.epoch,
       rawText: String(rawText ?? ''),
       source: options.source,
@@ -519,6 +595,7 @@
       responseCommitPromise: null,
       eventFinalText: null,
       pendingAssistantData: null,
+      controller: new AbortController(),
       watchdogSeconds: 0,
       startedAt: Date.now(),
     };
@@ -536,6 +613,13 @@
       const built = await bridge.buildGenerationConfig(txn.rawText, options);
       assertTransactionValid(txn);
       if (!built || !built.config) throw new Error(`[${KEY}] bridge未返回生成配置`);
+      txn.shortcutTurn = built.shortcutTurn;
+      txn.clueTurn = structuredCloneSafe(built.clueTurn);
+      txn.characterTurn = structuredCloneSafe(built.characterTurn);
+      txn.archiveTurn = structuredCloneSafe(built.archiveTurn);
+      txn.battlePromptTurn = built.battlePromptTurn;
+      txn.randomTurn = built.randomTurn;
+      txn.assertQueues = built.assertQueues;
       txn.userMessageId = await createUserFloor(txn, txn.rawText);
       assertTransactionValid(txn);
       txn.generationId = newGenerationId();
@@ -545,16 +629,14 @@
       const generatedText = await invokeGenerate(txn, config);
       assertTransactionValid(txn);
       await commitNarrative(txn, generatedText ?? txn.eventFinalText, txn.generationId);
-      assertTransactionValid(txn);
       debugEvent('action', 'submit-dispatched', `generationId=${txn.generationId}`);
     } catch (error) {
-      if (state.disposed) {
+      if (!isTransactionValid(txn)) {
         return;
       }
       clearWatchdog();
       const message = String(error?.message || '').toLowerCase();
       if (error?.name === 'AbortError' || message.includes('abort')) {
-        if (consumeWatchdogAbort()) return;
         debugEvent('cancel', 'submit-cancelled', '玩家中断生成', 'warn');
         await abortTurn(txn, '玩家中断生成');
         if (!isTransactionValid(txn)) return;
@@ -562,7 +644,7 @@
         if (isTransactionValid(txn)) closeTurn();
         return;
       }
-      if (txn.userMessageId && await retryNarrative(txn, '生成请求失败')) return;
+      if (Number.isInteger(txn.userMessageId) && !txn.responseCommitted && await retryNarrative(txn, '生成请求失败')) return;
       if (!isTransactionValid(txn)) return;
       await abortTurn(txn, `生成请求最终失败: ${error?.message || error}`);
       if (!isTransactionValid(txn)) return;
@@ -570,6 +652,8 @@
       if (isTransactionValid(txn)) closeTurn();
       debugEvent('failure', 'submit-failure', error?.message || error, 'error');
       throw error;
+    } finally {
+      if (state.active === txn && !isTransactionValid(txn)) closeTurn();
     }
   }
 
@@ -602,14 +686,26 @@
 
       const bridge = await getBridge();
       if (!isTransactionValid(txn)) return false;
-      const inspected = await bridge.inspectNarrative(String(finalText ?? ''), {
-        generationId,
-        retryCount: state.retry?.count || 0,
-        retryLimit: state.retry?.limit || 0,
-      });
+      let inspected;
+      while (isTransactionValid(txn)) {
+        txn.generatedRaw = String(finalText ?? '');
+        inspected = await bridge.inspectNarrative(txn.generatedRaw, {
+          generationId,
+          retryCount: state.retry?.count || 0,
+          retryLimit: state.retry?.limit || 0,
+          signal: txn.controller.signal,
+          guard: () => isTransactionValid(txn) && !txn.controller.signal.aborted,
+          isTrueNewGame: !(await snapshotFloors()).some(row => row.role === 'assistant' && row.message_id < txn.userMessageId),
+        });
+        if (inspected?.manualTakeover && state.retry) state.retry.manualTakeover = true;
+        if (!isTransactionValid(txn)) return false;
+        if (!inspected?.autoRetryable) break;
+        const next = await retryNarrative(txn, '剧情生成质量异常', false);
+        if (!next || typeof next !== 'object') return false;
+        finalText = next.text; generationId = next.generationId;
+      }
       if (!isTransactionValid(txn)) return false;
       if (!inspected?.passed) {
-        if (inspected?.autoRetryable && await retryNarrative(txn, '剧情生成质量异常')) return true;
         if (!isTransactionValid(txn)) return false;
         debugEvent('cancel', 'narrative-cancelled', '质量检查未通过且未继续修复', 'warn');
         await abortTurn(txn, '剧情生成质量异常且玩家取消修复');
@@ -620,9 +716,15 @@
       }
 
       const acceptedText = String(inspected.text ?? finalText ?? '');
-      const assistantMessageId = await claimAssistantFloor(txn, acceptedText);
+      const assistantMessageId = await claimAssistantFloor(txn, String(inspected.floorText ?? acceptedText));
       if (!isTransactionValid(txn)) return false;
       txn.responseCommitted = true;
+      rememberProcessedNativeAssistant(assistantMessageId);
+      const committedSource = JSON.stringify(await snapshotFloors());
+      const beforeWrite = async () => {
+        if (!isTransactionValid(txn) || JSON.stringify(await snapshotFloors()) !== committedSource || !isTransactionValid(txn))
+          throw new DOMException('正文来源已变化，停止结算', 'AbortError');
+      };
       try {
         await bridge.completeNarrative(String(inspected.parseText ?? acceptedText), {
           userMessageId: txn.userMessageId,
@@ -630,6 +732,14 @@
           generationId: txn.generationId,
           userText: txn.rawText,
           narrativeText: acceptedText,
+          shortcutTurn: txn.shortcutTurn,
+          clueTurn: txn.clueTurn,
+          characterTurn: txn.characterTurn,
+          archiveTurn: txn.archiveTurn,
+          battlePromptTurn: txn.battlePromptTurn,
+          randomTurn: txn.randomTurn,
+          guard: () => isTransactionValid(txn) && !txn.controller.signal.aborted,
+          beforeWrite,
         });
         if (!isTransactionValid(txn)) return false;
         debugEvent('assistant', 'assistant-complete-success', `messageId=${assistantMessageId}`);
@@ -662,6 +772,9 @@
     if (state.disposed) return true;
     state.epoch += 1;
     state.disposed = true;
+    state.active?.controller.abort();
+    state.inspections.forEach(controller => controller.abort());
+    state.subscriptions.splice(0).forEach(handle => handle?.stop?.());
     state.abortController.abort();
     clearWatchdog();
     if (state.retryTimer !== null) clearTimeout(state.retryTimer);
@@ -671,13 +784,7 @@
     resolveRetry?.();
     const generationId = state.active?.generationId;
     if (generationId) retireGenerationId(generationId);
-    try {
-      if (generationId && typeof window.stopGenerationById === 'function') {
-        window.stopGenerationById(generationId);
-      }
-    } catch {
-      // Disposal must not fall through to chat mutation or retry logic.
-    }
+    if (generationId) stopOwnedGeneration(generationId);
     closeTurn();
     state.retiredGenerationIds.clear();
     state.nativeObserver?.disconnect?.();
@@ -688,7 +795,6 @@
     state.nativeScanQueued = false;
     state.observedAssistantId = null;
     state.processedNativeAssistantIds.clear();
-    state.watchdogAbortAt = 0;
     try { contract.releaseGlobal(KEY, api); } catch { /* loader releases exact ownership too */ }
     if (modules[KEY] === api) delete modules[KEY];
     return true;
@@ -704,6 +810,7 @@
     scanNativeAssistantFloors,
     onGenerationStarted,
     onGenerationEnded,
+    onStreamToken,
     dispose,
   });
 
@@ -714,6 +821,28 @@
     void installNativeObserver().catch(error => {
       debugEvent('failure', 'native-observer-install-failure', error?.message || error, 'error');
     });
+    const after = modules[AFTER_NATIVE_HOST_KEY], events = after?.tavernEvents?.();
+    const owner = after?.getHost?.()?.window || window, helperEvents = owner.iframe_events || window.iframe_events;
+    if (helperEvents?.STREAM_TOKEN_RECEIVED_FULLY) state.subscriptions.push(
+      after.bindEvent(helperEvents.STREAM_TOKEN_RECEIVED_FULLY, onStreamToken));
+    if (events?.CHAT_CHANGED) state.subscriptions.push(after.bindEvent(events.CHAT_CHANGED, () => {
+      state.epoch += 1;
+      const id = state.active?.generationId;
+      state.active?.controller.abort();
+      state.inspections.forEach(controller => controller.abort());
+      if (id) stopOwnedGeneration(id);
+      if (state.retryTimer) clearTimeout(state.retryTimer);
+      state.retryTimerResolve?.(); state.retryTimer = state.retryTimerResolve = null;
+      closeTurn(); state.observedAssistantId = null; state.processedNativeAssistantIds.clear();
+    }));
+    if (events?.GENERATION_STOPPED) state.subscriptions.push(after.bindEvent(events.GENERATION_STOPPED, () => {
+      if (state.stoppingOwned) return;
+      state.active?.controller.abort();
+      state.inspections.forEach(controller => controller.abort());
+      if (state.active?.generationId) stopOwnedGeneration(state.active.generationId);
+      if (state.retryTimer) clearTimeout(state.retryTimer);
+      state.retryTimerResolve?.(); state.retryTimer = state.retryTimerResolve = null;
+    }));
   } catch (error) {
     debugEvent('failure', 'registration-failure', error?.message || error, 'error');
     if (modules[KEY] === api) delete modules[KEY];

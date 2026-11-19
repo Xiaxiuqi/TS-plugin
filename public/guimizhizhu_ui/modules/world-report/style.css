@@ -1,0 +1,68 @@
+.crypt-lord-report-window {
+  position: fixed; z-index: 2147483100; left: 50%; top: 6%; transform: translateX(-50%);
+  width: min(780px, calc(100vw - 24px)); height: min(760px, 88vh);
+  min-width: min(300px, calc(100vw - 24px)); max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+  display: flex; flex-direction: column; overflow: hidden; resize: both;
+  background: var(--SmartThemeBlurTintColor, #272d2c); color: var(--SmartThemeBodyColor, #edf0ef);
+  border: 1px solid #7e9490; border-radius: 6px; box-shadow: 0 12px 36px #0006;
+  font: 14px/1.6 "Microsoft YaHei", sans-serif;
+}
+.crypt-lord-report-window[data-open="false"] { display: none; }
+.crypt-lord-report-window *, .crypt-lord-report *, .crypt-lord-report-mount * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-report-window > header {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px;
+  border-bottom: 1px solid #7e949080; cursor: move; flex: none;
+}
+.crypt-lord-report-window > header strong { font-size: 17px; overflow-wrap: anywhere; }
+.crypt-lord-report__tools, .crypt-lord-report__toolbar { display: flex; gap: 6px; flex: none; }
+.crypt-lord-report__toolbar { justify-content: end; }
+.crypt-lord-report-window button, .crypt-lord-report-mount button {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0;
+  border: 1px solid transparent; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; flex: none;
+}
+.crypt-lord-report-window button:hover, .crypt-lord-report-mount button:hover { background: #7e949030; border-color: #7e9490; }
+.crypt-lord-report-window button:disabled, .crypt-lord-report-window select:disabled { opacity: .5; cursor: default; }
+.crypt-lord-report-window :focus-visible, .crypt-lord-report-mount :focus-visible { outline: 2px solid #58b39b; outline-offset: 2px; }
+.crypt-lord-report-window__selector { display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex: none; }
+.crypt-lord-report-window select { min-width: 0; flex: 1; padding: 6px; color: inherit; background: inherit; border: 1px solid #7e949080; }
+.crypt-lord-report-window option { background: var(--SmartThemeBlurTintColor, #272d2c); }
+.crypt-lord-report-window > main { flex: 1; min-height: 0; overflow: auto; padding: 0 18px 18px; }
+.crypt-lord-report-window__status { flex: none; margin: 0; padding: 8px 16px; font-size: 12px; border-top: 1px solid #7e949060; overflow-wrap: anywhere; }
+.crypt-lord-report-mount { color: inherit; font: 14px/1.6 "Microsoft YaHei", sans-serif; }
+.crypt-lord-report { min-width: 0; --crypt-lord-report-text: var(--SmartThemeBodyColor, #edf0ef); }
+.crypt-lord-report details { min-width: 0; padding: 8px 0; }
+.crypt-lord-report summary { min-height: 32px; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.crypt-lord-report__group { padding: 14px 0; border-top: 1px solid #7e949060; }
+.crypt-lord-report h3 { font-size: 15px; margin: 0 0 10px; color: color-mix(in srgb, var(--crypt-lord-report-text) 65%, #58b39b); overflow-wrap: anywhere; }
+.crypt-lord-report__group--offscreen > h3 { color: color-mix(in srgb, var(--crypt-lord-report-text) 65%, #db889b); }
+.crypt-lord-report__npc { padding: 12px 0; border-top: 1px solid #7e949030; }
+.crypt-lord-report h4 { margin: 0 0 8px; font-size: 15px; overflow-wrap: anywhere; }
+.crypt-lord-report__identity { display: block; font-weight: 400; font-size: 12px; opacity: .75; }
+.crypt-lord-report h5 { font-size: 13px; margin: 12px 0 6px; }
+.crypt-lord-report dl { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 6px 10px; margin: 8px 0; }
+.crypt-lord-report dt { opacity: .75; overflow-wrap: anywhere; }
+.crypt-lord-report dd { margin: 0; }
+.crypt-lord-report dd, .crypt-lord-report p, .crypt-lord-report li, .crypt-lord-report small {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.crypt-lord-report p { margin: 6px 0; }
+.crypt-lord-report ul, .crypt-lord-report ol { padding-left: 20px; margin: 6px 0; }
+.crypt-lord-report li { padding: 3px 0; }
+.crypt-lord-report small { opacity: .75; }
+.crypt-lord-report__statuses { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; padding-left: 0 !important; color: color-mix(in srgb, var(--crypt-lord-report-text) 65%, #8bb9d0); }
+.crypt-lord-report__experience { display: grid; grid-template-columns: minmax(64px, auto) minmax(30px, 1fr) auto; gap: 10px; align-items: center; font-size: 12px; }
+.crypt-lord-report__experience progress { width: 100%; height: 6px; accent-color: #58b39b; }
+.crypt-lord-report__news { border-top: 1px solid #7e949060; }
+.crypt-lord-report__news > h3 { padding: 12px 0 6px; font: bold 20px Georgia, serif; color: inherit; }
+.crypt-lord-report__news article { padding: 12px 0; border-top: 1px solid #7e949030; }
+.crypt-lord-report__news article h4 { color: color-mix(in srgb, var(--crypt-lord-report-text) 65%, #bfac67); font-size: 12px; }
+.crypt-lord-report__time { color: color-mix(in srgb, var(--crypt-lord-report-text) 65%, #8bb9d0); font-size: 12px; }
+.crypt-lord-report__log { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.crypt-lord-report__warning { color: color-mix(in srgb, var(--crypt-lord-report-text) 65%, #d6ae64); font-size: 12px; }
+.crypt-lord-report__empty { opacity: .65; padding: 16px 0; }
+@media (max-width: 620px) {
+  .crypt-lord-report-window { top: 12px; height: calc(100vh - 24px); resize: none; }
+  .crypt-lord-report-window > header, .crypt-lord-report-window__selector { padding: 10px 12px; }
+  .crypt-lord-report-window > main { padding: 0 12px 12px; }
+  .crypt-lord-report dl { grid-template-columns: 68px minmax(0, 1fr); }
+}

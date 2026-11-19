@@ -8,20 +8,17 @@
   const service = modules['cryptLord.customContent'];
   const host = modules['cryptLord.afterNativeHost'];
   if (!service || !host) throw new Error('自建内容生成器依赖尚未加载');
-  const BUILTINS = [
-    ['魔药配方', '请生成一份《诡秘之主》原著风格的魔药配方：包含途径名称、对应序列等级、主材料、辅助材料与晋升仪式。'],
-    ['封印物', '请生成一件《诡秘之主》原著风格的封印物：包含代号、途径与序列、外观、非凡能力、负面代价与收容方式。'],
-    ['非凡者档案', '请生成一位非凡者档案：包含姓名、外貌、途径与序列、公开身份、隐秘立场、性格与核心能力。'],
-    ['隐秘传闻', '请生成一段隐秘传闻：包含地点、异常表象、牵涉派系、危险与可供调查的初始线索。'],
-  ];
   const state = {
-    panel: null, body: null, result: null, presets: [], revision: '', books: [], entries: [],
+    panel: null, body: null, form: null, result: null, presets: [], revision: null, books: [], entries: [],
     presetName: '', prompt: '', output: '', book: '', entryName: '', selectedUid: null,
-    mode: 'append', config: null, token: 0, busy: false, disposed: false, subscription: null,
+    mode: 'append', config: null, token: 0, busy: false, disposed: false, subscriptions: [], generating: service.status().generating,
+    request: 0, taskId: 0, targetReady: false, lastPrompt: '', reload: null, focusReturn: null, keydown: null,
   };
   const doc = () => host.getHost()?.document || document;
   const win = () => doc().defaultView || window;
-  const active = token => !state.disposed && state.panel?.dataset.open === 'true' && state.token === token;
+  const active = token => !state.disposed && state.panel?.dataset.open === 'true' && state.token === token &&
+    modules[KEY] === api && modules['cryptLord.customContent'] === service &&
+    modules['cryptLord.afterNativeHost'] === host && state.panel.ownerDocument === doc();
   function element(tag, cls, text) {
     const node = doc().createElement(tag);
     if (cls) node.className = cls;
@@ -50,18 +47,51 @@
     state.result.textContent = text;
     state.result.dataset.error = String(error);
   }
-  function close() { state.token++; if (state.panel) state.panel.dataset.open = 'false'; }
+  function close() {
+    if (state.form?.isConnected) gather();
+    state.token++;
+    state.request++;
+    state.taskId++;
+    state.busy = false;
+    if (state.form) state.form.disabled = state.generating;
+    if (state.reload) state.reload.disabled = state.generating;
+    if (state.panel) { state.panel.dataset.open = 'false'; state.panel.removeAttribute('aria-busy'); }
+    if (state.focusReturn?.isConnected) state.focusReturn.focus();
+  }
+  const guard = token => () => { if (!active(token)) throw Error('窗口或聊天已变化，操作已取消'); };
   function mount() {
-    if (state.disposed || state.panel || !doc().body) return Boolean(state.panel);
+    if (state.disposed) return false;
+    if (state.panel || !doc().body) return Boolean(state.panel);
     const panel = element('section', 'crypt-lord-custom');
     panel.dataset.open = 'false';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '自建内容生成器');
+    panel.tabIndex = -1;
     const header = element('header');
-    header.append(element('strong', '', '自建内容生成器'), button('×', close, '关闭'));
+    const reload = button('↻', () => void open(), '重新读取');
+    reload.setAttribute('aria-label', '重新读取');
+    header.append(element('strong', '', '自建内容生成器'), reload, button('×', close, '关闭'));
+    header.lastChild.setAttribute('aria-label', '关闭');
     const body = element('div', 'crypt-lord-custom__body');
     const result = element('div', 'crypt-lord-custom__result');
+    result.setAttribute('role', 'status');
     panel.append(header, body, result);
     doc().body.append(panel);
-    Object.assign(state, { panel, body, result });
+    Object.assign(state, { panel, body, result, reload });
+    state.keydown = event => {
+      if (event.key === 'Escape' && panel.dataset.open === 'true' && panel.contains(doc().activeElement)) {
+        event.preventDefault();
+        close();
+      }
+      if (event.key === 'Tab' && panel.dataset.open === 'true' && panel.contains(doc().activeElement)) {
+        const nodes = [...panel.querySelectorAll('button,input,select,textarea')]
+          .filter(node => !node.disabled && !node.closest('fieldset:disabled') && node.getClientRects().length);
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        if (event.shiftKey && (doc().activeElement === first || doc().activeElement === panel)) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && (doc().activeElement === last || doc().activeElement === panel)) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    doc().addEventListener('keydown', state.keydown);
     let drag = null;
     header.addEventListener('pointerdown', event => {
       if (event.button !== 0 || event.target.closest('button')) return;
@@ -78,14 +108,40 @@
     header.addEventListener('pointerup', () => { drag = null; });
     header.addEventListener('pointercancel', () => { drag = null; });
     const events = host.tavernEvents();
-    if (events?.CHAT_CHANGED) state.subscription = host.bindEvent(events.CHAT_CHANGED, close);
+    const bind = (name, fn) => { if (name) { const sub = host.bindEvent(name, fn); if (sub) state.subscriptions.push(sub); } };
+    bind(events?.CHAT_CHANGED, () => {
+      state.generating = false;
+      close();
+      state.prompt = ''; state.output = ''; state.lastPrompt = ''; state.presetName = '';
+      state.book = ''; state.entryName = ''; state.entries = []; state.revision = null; state.targetReady = false;
+    });
+    bind(events?.GENERATION_STARTED, (type, options, dryRun) => {
+      if (dryRun || options?.dryRun || ['quiet', 'dryRun'].includes(type) || options?.quiet_prompt) return;
+      if (state.form?.isConnected) gather();
+      state.token++; state.taskId++; state.request++;
+      state.generating = true; state.busy = false; state.targetReady = false; state.revision = null;
+      if (state.form) state.form.disabled = true;
+      state.reload.disabled = true;
+      state.panel.removeAttribute('aria-busy');
+      message('正文生成中，自建操作已暂停，草稿已保留。', true);
+    });
+    const ended = () => {
+      state.generating = false;
+      if (state.form) state.form.disabled = false;
+      state.reload.disabled = false;
+      if (state.panel.dataset.open === 'true') message('生成已结束，请重新读取后继续。', true);
+    };
+    bind(events?.GENERATION_ENDED, ended);
+    bind(events?.GENERATION_STOPPED, ended);
     return true;
   }
   function selectedPreset() { return state.presets.find(item => item.name === state.presetName); }
   function selectPreset(item) {
     state.presetName = item?.name || '';
     state.prompt = item?.prompt || '';
+    state.lastPrompt = '';
     const preset = item?.preset;
+    state.config = null;
     if (preset) {
       state.book = String(preset.targetBook || '');
       state.entryName = String(preset.entryName || '');
@@ -96,8 +152,8 @@
   }
   function gather() {
     const find = key => state.body.querySelector(`[data-field="${key}"]`);
-    state.prompt = find('prompt')?.value || state.prompt;
-    state.output = find('output')?.value || state.output;
+    if (find('prompt')) state.prompt = find('prompt').value;
+    if (find('output')) state.output = find('output').value;
     state.book = find('book')?.value || '';
     state.entryName = find('entry')?.value === '__new__' ? find('new-name')?.value.trim() || '' : find('entry')?.selectedOptions?.[0]?.textContent || '';
     state.selectedUid = find('entry')?.value === '__new__' ? null : state.entries.find(item => String(item.uid) === find('entry')?.value)?.uid ?? null;
@@ -110,40 +166,70 @@
     };
   }
   async function task(work) {
-    if (state.busy) return;
+    if (state.busy || state.generating) return;
     const token = state.token;
+    const id = ++state.taskId;
     state.busy = true;
+    if (state.form) state.form.disabled = true;
+    state.reload.disabled = true;
     state.panel?.setAttribute('aria-busy', 'true');
     try { await work(token); }
-    catch (error) { if (active(token)) message(error?.message || String(error), true); }
-    finally { state.busy = false; state.panel?.removeAttribute('aria-busy'); }
+    catch (error) {
+      if (active(token)) {
+        if (error.requiresReload) { state.targetReady = false; state.revision = null; }
+        message(error?.message || String(error), true);
+      }
+    }
+    finally {
+      if (state.taskId === id) {
+        state.busy = false;
+        if (state.form) state.form.disabled = state.generating;
+        state.reload.disabled = state.generating;
+        state.panel?.removeAttribute('aria-busy');
+      }
+    }
   }
   async function refreshEntries(token) {
     const book = state.book;
+    const request = ++state.request;
+    state.targetReady = false;
+    state.selectedUid = null;
     state.entries = [];
     const select = state.body.querySelector('[data-field="entry"]');
     if (select) { select.replaceChildren(); option(select, '__new__', '新建条目'); select.disabled = true; }
-    if (!book) return;
+    if (!book) return false;
     try {
-      const entries = await service.entriesFor(book);
-      if (!active(token) || state.book !== book) return;
-      state.entries = entries.filter(item => item.uid != null);
+      const entries = await service.entriesFor(book, () => active(token) && request === state.request);
+      if (!active(token) || state.book !== book || request !== state.request || !select.isConnected) return false;
+      state.entries = entries;
       const names = new Map();
+      const uids = new Map();
       state.entries.forEach(item => {
         const name = String(item.name || item.comment || '').trim();
         if (name) names.set(name, (names.get(name) || 0) + 1);
+        if (item.comment && item.comment !== name) names.set(item.comment, (names.get(item.comment) || 0) + 1);
+        uids.set(item.uid, (uids.get(item.uid) || 0) + 1);
       });
       select.replaceChildren();
       option(select, '__new__', '新建条目');
       state.entries.forEach(item => {
         const name = String(item.name || item.comment || '').trim();
-        if (name && names.get(name) === 1) option(select, String(item.uid), name);
+        if (name && names.get(name) === 1 && item.uid != null && uids.get(item.uid) === 1 &&
+          !(book === '【源堡】玩家自建内容' && ['[自建提示词]', '[生图提示词]', '[世界书开关方案]'].includes(name))) option(select, String(item.uid), name);
       });
-      const selected = state.entries.find(item => String(item.name || item.comment || '').trim() === state.entryName && names.get(state.entryName) === 1);
+      const selected = state.entries.find(item => String(item.name || item.comment || '').trim() === state.entryName &&
+        [...select.options].some(opt => opt.value === String(item.uid)));
+      const ambiguous = !selected && entries.some(item => String(item.name || item.comment || '').trim() === state.entryName || item.comment === state.entryName);
       select.value = selected ? String(selected.uid) : '__new__';
       select.disabled = Boolean(selectedPreset()?.locked);
+      state.targetReady = !ambiguous;
       syncEntryFields();
-    } catch (error) { if (active(token)) message(`读取目标世界书失败：${error?.message || error}`, true); }
+      if (ambiguous) message('预设目标条目不可安全选择，请检查重名、UID 或系统配置条目', true);
+      return !ambiguous;
+    } catch (error) {
+      if (active(token) && request === state.request) message(`读取目标世界书失败：${error?.message || error}`, true);
+      return false;
+    }
   }
   function syncEntryFields() {
     const isNew = state.body.querySelector('[data-field="entry"]')?.value === '__new__';
@@ -152,8 +238,10 @@
     if (input) input.closest('.crypt-lord-custom__field').hidden = !isNew;
   }
   function render() {
-    const body = state.body;
-    body.replaceChildren();
+    const body = element('fieldset', 'crypt-lord-custom__form');
+    body.disabled = state.busy || state.generating;
+    state.body.replaceChildren(body);
+    state.form = body;
     const locked = Boolean(selectedPreset()?.locked);
     const section = (title) => {
       const node = element('section', 'crypt-lord-custom__section');
@@ -169,29 +257,22 @@
     state.presets.forEach(item => option(preset, item.name, `${item.locked ? '锁定 · ' : ''}${item.name}`));
     preset.value = state.presetName;
     preset.addEventListener('change', () => { gather(); selectPreset(state.presets.find(item => item.name === preset.value)); });
-    presetRow.append(preset, button('删除预设', () => void task(async token => {
+    const remove = button('删除预设', () => void task(async token => {
       gather();
       const item = selectedPreset();
       if (!item || item.locked) throw new Error('请先选择可删除的预设');
       if (!win().confirm(`删除预设「${item.name}」？`)) return;
-      const saved = await service.savePresets(state.presets.filter(value => value !== item), state.revision);
+      const saved = await service.savePresets(state.presets.filter(value => value !== item), state.revision, guard(token));
       if (!active(token)) return;
       state.presets = saved.presets;
       state.revision = saved.revision;
       state.presetName = '';
       render();
-      message('预设已删除');
-    })));
+      message(saved.warning || '预设已删除', Boolean(saved.warning));
+    }));
+    remove.disabled = !selectedPreset() || locked || !state.revision;
+    presetRow.append(preset, remove);
     source.append(presetRow);
-    const builtins = element('div', 'crypt-lord-custom__row');
-    BUILTINS.forEach(([name, text]) => builtins.append(button(name, () => {
-      gather();
-      state.presetName = '';
-      state.prompt = text;
-      state.config = null;
-      render();
-    })));
-    source.append(builtins);
     const prompt = element('textarea');
     prompt.rows = 4;
     prompt.value = state.prompt;
@@ -200,9 +281,11 @@
     source.append(button('生成内容', () => void task(async token => {
       gather();
       message('正在生成…');
-      const output = await service.generate(state.prompt);
+      const sentPrompt = state.prompt;
+      const output = await service.generate(sentPrompt, guard(token));
       if (!active(token)) return;
       state.output = output;
+      state.lastPrompt = sentPrompt;
       body.querySelector('[data-field="output"]').value = output;
       message('生成完成');
     })));
@@ -211,12 +294,8 @@
     output.rows = 6;
     output.value = state.output;
     output.dataset.field = 'output';
-    outputSection.append(output, button('填入酒馆输入框', () => {
-      gather();
-      if (!state.output.trim()) return message('生成结果为空', true);
-      try { modules['cryptLord.inputAdapter'].setInputText(state.output); message('已填入原生输入框，发送仍由酒馆处理'); }
-      catch (error) { message(error?.message || String(error), true); }
-    }));
+    output.setAttribute('aria-label', '生成结果');
+    outputSection.append(output);
     const target = section('存入世界书');
     const book = element('select');
     book.dataset.field = 'book';
@@ -236,6 +315,7 @@
     newName.dataset.field = 'new-name';
     newName.placeholder = '新建条目名称';
     newName.value = state.entryName;
+    newName.disabled = locked;
     target.append(field('条目名称', newName));
     const mode = element('div', 'crypt-lord-custom__row');
     for (const [key, label] of [['append', '追加到末尾'], ['overwrite', '覆盖内容']]) {
@@ -301,72 +381,104 @@
       checkbox('rec-out', '不扫描其他条目', config.recursion.prevent_outgoing));
     target.append(newConfig);
     const actions = element('div', 'crypt-lord-custom__row');
-    actions.append(button('保存为预设', () => void task(async token => {
+    const savePreset = button('保存为预设', () => void task(async token => {
       gather();
+      if (!state.revision) throw Error('请先重新读取预设库');
+      if (!state.targetReady) throw Error('请先成功读取目标世界书');
       const name = win().prompt('预设名称', state.presetName || state.entryName || '');
       if (name === null) return;
       const trimmed = name.trim();
-      if (!trimmed || !state.prompt.trim()) throw new Error('预设名称和提示词不能为空');
+      if (!trimmed || !(state.lastPrompt || state.prompt).trim()) throw new Error('预设名称和提示词不能为空');
       const existing = state.presets.find(item => item.name === trimmed);
       if (existing?.locked) throw new Error('锁定预设不能覆盖');
       if (existing && !win().confirm(`覆盖预设「${trimmed}」？`)) return;
       const candidate = {
-        name: trimmed, prompt: state.prompt, locked: false,
+        name: trimmed, prompt: state.lastPrompt || state.prompt, locked,
         preset: {
           targetBook: state.book, entryName: state.entryName, saveMode: state.mode,
           ...service.configOf(state.config, state.entryName),
         },
       };
       const list = existing ? state.presets.map(item => item === existing ? candidate : item) : [...state.presets, candidate];
-      const saved = await service.savePresets(list, state.revision);
+      const saved = await service.savePresets(list, state.revision, guard(token));
       if (!active(token)) return;
       state.presets = saved.presets;
       state.revision = saved.revision;
       state.presetName = trimmed;
       render();
-      message(`预设「${trimmed}」已保存`);
-    })), button('写入世界书', () => void task(async token => {
+      message(saved.warning || `预设「${trimmed}」已保存`, Boolean(saved.warning));
+    }));
+    savePreset.disabled = !state.revision;
+    actions.append(savePreset, button('写入世界书', () => void task(async token => {
       gather();
+      if (!state.targetReady) throw Error('请先成功读取目标世界书');
       if (state.selectedUid != null && state.mode === 'overwrite' &&
         !win().confirm(`覆盖「${state.entryName}」的现有正文？此操作不可撤销。`)) return;
       const expectedUid = state.selectedUid;
       const result = await service.write({
-        book: state.book, name: state.entryName, content: state.output, mode: state.mode,
+        book: state.book, name: state.entryName, content: state.output, mode: state.mode, source: state.entries,
         config: state.config, expectedUid,
-        guard: () => { if (!active(token)) throw new Error('聊天已切换，写入中断'); },
+        expectedEntry: state.selectedUid == null ? null : state.entries.find(item => item.uid === state.selectedUid),
+        guard: guard(token),
       });
       if (!active(token)) return;
-      await refreshEntries(token);
-      if (active(token)) message(`已${result.created ? '新建' : '更新'}「${result.name}」`);
+      state.entryName = result.name;
+      const refreshed = await refreshEntries(token);
+      if (active(token)) message(result.warning || (refreshed ?
+        `已${result.created ? '新建' : '更新'}「${result.name}」` : '世界书已提交，但目标列表刷新失败，请重新读取'), Boolean(result.warning || !refreshed));
     })));
     target.append(actions);
     void refreshEntries(state.token);
   }
   async function open() {
     if (!mount()) return false;
+    if (state.generating) { state.panel.dataset.open = 'true'; message('正文生成中，自建操作已暂停。', true); return false; }
+    if (state.panel.dataset.open === 'true' && state.busy) return false;
+    if (state.panel.dataset.open !== 'true') state.focusReturn = doc().activeElement;
+    if (state.form?.isConnected) gather();
     state.panel.dataset.open = 'true';
     state.panel.style.left = '';
     state.panel.style.top = '';
     state.panel.style.transform = '';
     const token = ++state.token;
+    const id = ++state.taskId;
+    state.busy = true;
+    if (state.form) state.form.disabled = true;
+    state.reload.disabled = true;
+    state.panel.setAttribute('aria-busy', 'true');
     message('正在读取预设和世界书…');
     try {
-      const [saved, names] = await Promise.all([service.loadPresets(), service.books()]);
+      const [saved, names] = await Promise.all([service.loadPresets(guard(token)), service.books(guard(token))]);
       if (!active(token)) return false;
       state.presets = saved.presets;
       state.revision = saved.revision;
       state.books = names;
-      state.presetName = '';
-      state.prompt = '';
-      state.output = '';
-      state.book = names.includes('【源堡】玩家自建内容') ? '【源堡】玩家自建内容' : names[0] || '';
-      state.entryName = '';
-      state.mode = 'append';
-      state.config = null;
+      if (state.presetName && !selectedPreset()) state.presetName = '';
+      if (selectedPreset()?.locked) {
+        const preset = selectedPreset().preset;
+        if (preset) {
+          state.book = String(preset.targetBook || '');
+          state.entryName = String(preset.entryName || '');
+          state.mode = preset.saveMode === 'overwrite' ? 'overwrite' : 'append';
+          state.config = service.configOf(preset, state.entryName);
+        }
+      }
+      if (!state.book) state.book = names.includes('【源堡】玩家自建内容') ? '【源堡】玩家自建内容' : names[0] || '';
       render();
       message('');
       return true;
-    } catch (error) { if (active(token)) message(`读取失败：${error?.message || error}`, true); return false; }
+    } catch (error) {
+      if (active(token)) { state.targetReady = false; state.revision = null; message(`读取失败：${error?.message || error}`, true); }
+      return false;
+    } finally {
+      if (state.taskId === id) {
+        state.busy = false;
+        if (state.form) state.form.disabled = false;
+        state.reload.disabled = false;
+        state.panel?.removeAttribute('aria-busy');
+        if (active(token)) state.body.querySelector('[data-field="prompt"]')?.focus();
+      }
+    }
   }
   const api = Object.freeze({
     status() { return Object.freeze({ ready: Boolean(state.panel), open: state.panel?.dataset.open === 'true' }); },
@@ -374,7 +486,8 @@
     dispose() {
       state.disposed = true;
       close();
-      state.subscription?.stop();
+      state.subscriptions.forEach(sub => sub.stop());
+      doc().removeEventListener('keydown', state.keydown);
       state.panel?.remove();
       state.panel = null;
       contract.releaseGlobal(KEY, api);

@@ -1,7 +1,7 @@
 /* ===== 判定美化系统样式 - 使用 .judgment- 前缀命名空间 ===== */
 
     /* CSS变量定义 - 诡秘之主视觉升级版 */
-    :root {
+    .crypt-lord-judgment-mount {
       /* 基础色调 */
       --judgment-bg-primary: rgba(15, 10, 8, 0.95);
       --judgment-bg-secondary: rgba(30, 20, 15, 0.92);
@@ -66,7 +66,7 @@
 
     /* 判定块基础样式 */
     /* 判定块基础样式 */
-    .judgment-block {
+    :where(.crypt-lord-judgment-mount) .judgment-block {
       background: var(--judgment-bg-primary);
       border: 2px solid var(--judgment-border-color);
       border-radius: var(--judgment-border-radius);
@@ -79,7 +79,7 @@
       /* 移除模糊滤镜，保持清晰 */
     }
 
-    .judgment-block:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block:hover {
       border-color: var(--judgment-accent-gold);
       box-shadow: 0 4px 16px rgba(218, 165, 32, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -89,7 +89,7 @@
     /* ===== 核心新增：折叠状态统一为神秘灰色 ===== */
 
     /* 折叠状态：所有判定块统一显示为神秘灰色，隐藏结果 */
-    .judgment-block[data-collapsed="true"] {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"] {
       border: 2px solid rgba(128, 128, 128, 0.4) !important;
       background: linear-gradient(135deg,
         rgba(40, 40, 45, 0.85) 0%,
@@ -102,7 +102,7 @@
     }
 
     /* 折叠状态悬停：轻微的神秘光芒 */
-    .judgment-block[data-collapsed="true"]:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"]:hover {
       border-color: rgba(160, 160, 165, 0.6) !important;
       box-shadow: 0 4px 12px rgba(128, 128, 128, 0.3),
         inset 0 0 25px rgba(128, 128, 128, 0.15) !important;
@@ -110,23 +110,23 @@
     }
 
     /* 折叠状态：移除所有主题特效 */
-    .judgment-block[data-collapsed="true"]::before,
-    .judgment-block[data-collapsed="true"]::after {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"]::before,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"]::after {
       display: none !important;
     }
 
     /* 折叠状态：文字颜色统一为灰色 */
-    .judgment-block[data-collapsed="true"] .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"] .judgment-type {
       color: #b0b0b0 !important;
       text-shadow: 0 0 5px rgba(128, 128, 128, 0.5) !important;
     }
 
-    .judgment-block[data-collapsed="true"] .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"] .judgment-scenario {
       color: #909090 !important;
       text-shadow: none !important;
     }
 
-    .judgment-block[data-collapsed="true"] .judgment-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"] .judgment-icon {
       color: #a0a0a0 !important;
       opacity: 0.7;
     }
@@ -180,12 +180,12 @@
     }
 
     /* 失控预兆特殊揭示效果 - 增强版红色震动 + 深渊脉冲 */
-    .judgment-block.theme-loss-control[data-collapsed="false"] {
+    :where(.crypt-lord-judgment-mount) .judgment-block.theme-loss-control[data-collapsed="false"] {
       animation: abyss-pulse 2s ease-in-out infinite, reveal-shake 0.3s ease-out;
     }
 
     /* 失控预兆 - 深渊爆发特效 */
-    .judgment-block.theme-loss-control[data-collapsed="false"]::after {
+    :where(.crypt-lord-judgment-mount) .judgment-block.theme-loss-control[data-collapsed="false"]::after {
       content: '';
       position: absolute;
       top: 50%;
@@ -240,7 +240,7 @@
     /* ===== 五种命运视觉主题系统（仅在展开状态下生效）===== */
 
     /* 1. 命运的眷顾 (critical_success) - 神圣白金主题 */
-    .judgment-block[data-collapsed="false"].theme-fate-blessing {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing {
       border: 3px solid #ffffff;
       background:
         radial-gradient(circle at center,
@@ -259,7 +259,7 @@
     /* 移除divine-pulse动画，避免与大失败雷同 */
 
     /* 新增：闪烁圣光背景 - 大成功专属动态效果 */
-    .judgment-block[data-collapsed="false"].theme-fate-blessing::before {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing::before {
       content: '';
       position: absolute;
       inset: -50%;
@@ -299,51 +299,51 @@
       }
     }
 
-    .judgment-block[data-collapsed="false"].theme-fate-blessing>* {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing>* {
       position: relative;
       z-index: 1;
     }
 
     /* 命运的眷顾 - 文字颜色 */
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-type {
       color: #ffffff;
       text-shadow: 0 0 10px rgba(255, 215, 0, 0.9), 0 0 5px rgba(255, 255, 255, 0.6);
       font-weight: bold;
     }
 
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-scenario {
       color: #fff8e7;
       text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
     }
 
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-section h4 {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-section h4 {
       color: #ffd700;
       text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
     }
 
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .request-info,
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .calculation-step,
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .result-summary,
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .request-info,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .calculation-step,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .result-summary,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .judgment-details {
       color: #f5e6d3;
     }
 
     /* 命运的眷顾 - 高亮文字 */
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .highlight {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .highlight {
       color: #ffd700;
       text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
     }
 
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .info-label {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .info-label {
       color: #f5deb3;
     }
 
-    .judgment-block[data-collapsed="false"].theme-fate-blessing .info-value {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing .info-value {
       color: #ffffff;
     }
 
     /* 命运的眷顾 - 悬停效果（白金色）*/
-    .judgment-block[data-collapsed="false"].theme-fate-blessing:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-fate-blessing:hover {
       border-color: #ffffff;
       box-shadow: 0 4px 20px rgba(255, 255, 255, 0.5),
         0 0 30px rgba(255, 215, 0, 0.4),
@@ -351,7 +351,7 @@
     }
 
     /* 2. 完美掌控 (perfect) - 琥珀黄主题（移除烛光闪烁特效）*/
-    .judgment-block[data-collapsed="false"].theme-perfect-control {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control {
       border: 2px solid var(--perfect-control-primary);
       background:
         radial-gradient(ellipse at center,
@@ -365,51 +365,51 @@
     }
 
     /* 完美掌控 - 文字颜色（琥珀黄主题）*/
-    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-type {
       color: #ffbf00;
       text-shadow: 0 0 8px rgba(255, 191, 0, 0.8);
       font-weight: bold;
     }
 
-    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-scenario {
       color: #f5deb3;
     }
 
-    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-section h4 {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-section h4 {
       color: #ffd700;
       text-shadow: 0 0 6px rgba(255, 191, 0, 0.6);
     }
 
-    .judgment-block[data-collapsed="false"].theme-perfect-control .request-info,
-    .judgment-block[data-collapsed="false"].theme-perfect-control .calculation-step,
-    .judgment-block[data-collapsed="false"].theme-perfect-control .result-summary,
-    .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .request-info,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .calculation-step,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .result-summary,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .judgment-details {
       color: #e0d2b0;
     }
 
     /* 完美掌控 - 高亮文字 */
-    .judgment-block[data-collapsed="false"].theme-perfect-control .highlight {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .highlight {
       color: #ffbf00;
       text-shadow: 0 0 8px rgba(255, 191, 0, 0.7);
     }
 
-    .judgment-block[data-collapsed="false"].theme-perfect-control .info-label {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .info-label {
       color: #d2b48c;
     }
 
-    .judgment-block[data-collapsed="false"].theme-perfect-control .info-value {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control .info-value {
       color: #ffd700;
     }
 
     /* 完美掌控 - 悬停效果（琥珀黄色）*/
-    .judgment-block[data-collapsed="false"].theme-perfect-control:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-perfect-control:hover {
       border-color: #ffd700;
       box-shadow: 0 4px 16px rgba(255, 191, 0, 0.4),
         inset 0 1px 0 rgba(255, 191, 0, 0.15);
     }
 
     /* 3. 勉力成功 (success) - 灰棕色主题（移除网格扫描特效）*/
-    .judgment-block[data-collapsed="false"].theme-narrow-success {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success {
       border: 2px solid var(--narrow-success-primary);
       background:
         radial-gradient(ellipse at center,
@@ -420,50 +420,50 @@
       position: relative;
     }
 
-    .judgment-block[data-collapsed="false"].theme-narrow-success>* {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success>* {
       position: relative;
       z-index: 1;
     }
 
     /* 勉力成功 - 文字颜色（灰棕色主题）*/
-    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-type {
       color: #c9a876;
       text-shadow: 0 0 8px rgba(139, 115, 85, 0.8);
       font-weight: bold;
     }
 
-    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-scenario {
       color: #b8a488;
     }
 
-    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-section h4 {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-section h4 {
       color: #a89968;
       text-shadow: 0 0 6px rgba(139, 115, 85, 0.6);
     }
 
-    .judgment-block[data-collapsed="false"].theme-narrow-success .request-info,
-    .judgment-block[data-collapsed="false"].theme-narrow-success .calculation-step,
-    .judgment-block[data-collapsed="false"].theme-narrow-success .result-summary,
-    .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .request-info,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .calculation-step,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .result-summary,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .judgment-details {
       color: #d0c4b0;
     }
 
     /* 勉力成功 - 高亮文字 */
-    .judgment-block[data-collapsed="false"].theme-narrow-success .highlight {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .highlight {
       color: #c9a876;
       text-shadow: 0 0 8px rgba(139, 115, 85, 0.7);
     }
 
-    .judgment-block[data-collapsed="false"].theme-narrow-success .info-label {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .info-label {
       color: #a89968;
     }
 
-    .judgment-block[data-collapsed="false"].theme-narrow-success .info-value {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success .info-value {
       color: #c9a876;
     }
 
     /* 勉力成功 - 悬停效果（灰棕色）*/
-    .judgment-block[data-collapsed="false"].theme-narrow-success:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-narrow-success:hover {
       border-color: #a89968;
       box-shadow: 0 4px 16px rgba(139, 115, 85, 0.4),
         inset 0 1px 0 rgba(139, 115, 85, 0.15);
@@ -472,13 +472,13 @@
     /* 特效已交换：完美掌控用烛光闪烁（琥珀黄），勉力成功用网格扫描（青色）*/
 
     /* 4. 尝试失败 (failure) - 幽灵灰主题 */
-    .judgment-block[data-collapsed="false"].theme-attempt-failure-old {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure-old {
       position: relative;
       z-index: 1;
     }
 
     /* 4. 尝试失败 (failure) - 黑色边框主题 */
-    .judgment-block[data-collapsed="false"].theme-attempt-failure {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure {
       border: 2px solid var(--attempt-failure-primary);
       background: linear-gradient(135deg,
         rgba(26, 26, 26, 0.25) 0%,
@@ -493,49 +493,49 @@
     /* 断裂纹理效果 - 已移除（移交给大失败）*/
     /* 尝试失败主题不再有断裂纹理特效 */
 
-    .judgment-block[data-collapsed="false"].theme-attempt-failure>* {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure>* {
       position: relative;
       z-index: 1;
     }
 
     /* 尝试失败 - 文字颜色（黑色边框主题）*/
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-type {
       color: #808080;
       text-shadow: 0 0 5px rgba(128, 128, 128, 0.6);
       font-weight: bold;
     }
 
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-scenario {
       color: #707070;
     }
 
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-section h4 {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-section h4 {
       color: #909090;
     }
 
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .request-info,
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .calculation-step,
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .result-summary,
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .request-info,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .calculation-step,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .result-summary,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .judgment-details {
       color: #a0a0a0;
     }
 
     /* 尝试失败 - 高亮文字 */
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .highlight {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .highlight {
       color: #909090;
       text-shadow: 0 0 5px rgba(128, 128, 128, 0.5);
     }
 
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .info-label {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .info-label {
       color: #707070;
     }
 
-    .judgment-block[data-collapsed="false"].theme-attempt-failure .info-value {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure .info-value {
       color: #909090;
     }
 
     /* 尝试失败 - 悬停效果（黑色边框）*/
-    .judgment-block[data-collapsed="false"].theme-attempt-failure:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-attempt-failure:hover {
       border-color: #000000;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6),
         inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -569,20 +569,20 @@
     }
 
     /* 5. 失控预兆 (critical_failure) - 血月红主题 */
-    .judgment-block[data-collapsed="false"].theme-loss-control-old::before {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control-old::before {
       background-size: 60px 60px;
       opacity: 0.3;
       pointer-events: none;
       z-index: 0;
     }
 
-    .theme-attempt-failure>* {
+    :where(.crypt-lord-judgment-mount) .theme-attempt-failure>* {
       position: relative;
       z-index: 1;
     }
 
     /* 5. 失控预兆 (critical_failure) - 黑红主题 */
-    .judgment-block[data-collapsed="false"].theme-loss-control {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control {
       border: 3px solid var(--loss-control-primary);
       background:
         radial-gradient(ellipse at 30% 40%,
@@ -616,7 +616,7 @@
     }
 
     /* 蠕动暗影 - 增强动画（保留）*/
-    .judgment-block[data-collapsed="false"].theme-loss-control::before {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control::before {
       content: '';
       position: absolute;
       inset: -50%;
@@ -651,50 +651,50 @@
       }
     }
 
-    .judgment-block[data-collapsed="false"].theme-loss-control>* {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control>* {
       position: relative;
       z-index: 1;
     }
 
     /* 失控预兆 - 文字颜色（黑红主题）*/
-    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .judgment-type {
       color: #ff4444;
       text-shadow: 0 0 12px rgba(220, 20, 60, 1.0), 0 0 6px rgba(0, 0, 0, 0.8);
       font-weight: bold;
     }
 
-    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .judgment-scenario {
       color: #d8a0a0;
     }
 
-    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-section h4 {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .judgment-section h4 {
       color: #ff6b6b;
       text-shadow: 0 0 10px rgba(220, 20, 60, 0.9);
     }
 
-    .judgment-block[data-collapsed="false"].theme-loss-control .request-info,
-    .judgment-block[data-collapsed="false"].theme-loss-control .calculation-step,
-    .judgment-block[data-collapsed="false"].theme-loss-control .result-summary,
-    .judgment-block[data-collapsed="false"].theme-loss-control .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .request-info,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .calculation-step,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .result-summary,
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .judgment-details {
       color: #c8b0b0;
     }
 
     /* 失控预兆 - 高亮文字 */
-    .judgment-block[data-collapsed="false"].theme-loss-control .highlight {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .highlight {
       color: #ff6b6b;
       text-shadow: 0 0 12px rgba(220, 20, 60, 0.9);
     }
 
-    .judgment-block[data-collapsed="false"].theme-loss-control .info-label {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .info-label {
       color: #d8a0a0;
     }
 
-    .judgment-block[data-collapsed="false"].theme-loss-control .info-value {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control .info-value {
       color: #ff4444;
     }
 
     /* 失控预兆 - 悬停效果（血红色）+ 故障抖动动画（从失败移交）*/
-    .judgment-block[data-collapsed="false"].theme-loss-control:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"].theme-loss-control:hover {
       border-color: #ff0000;
       box-shadow: 0 4px 20px rgba(220, 20, 60, 0.6),
         0 0 30px rgba(220, 20, 60, 0.4),
@@ -706,10 +706,10 @@
     /* ===== 简化模式 - 移动端性能优化 ===== */
 
     /* 核心优化：禁用所有动画、过渡、滤镜和阴影 */
-    .simplified-mode .judgment-block,
-    .simplified-mode .judgment-block *,
-    .simplified-mode .judgment-block::before,
-    .simplified-mode .judgment-block::after {
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block,
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block *,
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block::before,
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block::after {
       animation: none !important;
       transition: none !important;
       filter: none !important;
@@ -717,72 +717,72 @@
     }
 
     /* 移除伪元素（复杂背景效果） */
-    .simplified-mode .judgment-block::before,
-    .simplified-mode .judgment-block::after {
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block::before,
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block::after {
       display: none !important;
     }
 
     /* 使用简单边框替代阴影来表示状态 */
-    .simplified-mode .judgment-block {
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block {
       border-width: 2px !important;
       background: #1a1a1a !important;
       /* 纯色背景替代渐变 */
     }
 
     /* 保留关键信息的可视化区别 - 五种主题 */
-    .simplified-mode .theme-fate-blessing {
+    .crypt-lord-judgment-mount.simplified-mode .theme-fate-blessing {
       border-color: #ffffff !important;
       background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(218, 165, 32, 0.15)) !important;
     }
 
-    .simplified-mode .theme-perfect-control {
+    .crypt-lord-judgment-mount.simplified-mode .theme-perfect-control {
       border-color: #ffbf00 !important;
       background: linear-gradient(135deg, rgba(255, 191, 0, 0.15), rgba(139, 69, 19, 0.15)) !important;
     }
 
-    .simplified-mode .theme-narrow-success {
+    .crypt-lord-judgment-mount.simplified-mode .theme-narrow-success {
       border-color: #8b7355 !important;
       background: linear-gradient(135deg, rgba(139, 115, 85, 0.15), rgba(90, 61, 43, 0.15)) !important;
     }
 
-    .simplified-mode .theme-attempt-failure {
+    .crypt-lord-judgment-mount.simplified-mode .theme-attempt-failure {
       border-color: #1a1a1a !important;
       background: linear-gradient(135deg, rgba(26, 26, 26, 0.25), rgba(0, 0, 0, 0.18)) !important;
     }
 
-    .simplified-mode .theme-loss-control {
+    .crypt-lord-judgment-mount.simplified-mode .theme-loss-control {
       border-color: #8b0000 !important;
       background: linear-gradient(135deg, rgba(139, 0, 0, 0.25), rgba(0, 0, 0, 0.6)) !important;
     }
 
     /* 只为可见区域的判定块启用动画（配合IntersectionObserver） */
-    .simplified-mode .judgment-block:not(.animate-active) {
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block:not(.animate-active) {
       animation: none !important;
     }
 
-    .simplified-mode .judgment-block:not(.animate-active) * {
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block:not(.animate-active) * {
       animation: none !important;
     }
 
     /* 移除SVG滤镜效果 */
-    .simplified-mode svg {
+    .crypt-lord-judgment-mount.simplified-mode svg {
       filter: none !important;
     }
 
     /* 简化模式下移除大失败的部分动画 */
-    .simplified-mode .theme-loss-control.revealed {
+    .crypt-lord-judgment-mount.simplified-mode .theme-loss-control.revealed {
       animation: abyss-pulse 2s ease-in-out infinite !important;
       /* 只保留脉冲动画 */
     }
 
     /* 简化悬停效果 */
-    .simplified-mode .judgment-block:hover {
+    .crypt-lord-judgment-mount.simplified-mode .judgment-block:hover {
       transform: none !important;
       box-shadow: none !important;
     }
 
     /* 判定块标题栏 */
-    .judgment-header {
+    :where(.crypt-lord-judgment-mount) .judgment-header {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -793,17 +793,17 @@
       transition: var(--judgment-transition);
     }
 
-    .judgment-header:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-header:hover {
       background: rgba(139, 69, 19, 0.2);
     }
 
-    .judgment-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-icon {
       font-size: 18px;
       /* 从 20px 减小到 18px */
       flex-shrink: 0;
     }
 
-    .judgment-title {
+    :where(.crypt-lord-judgment-mount) .judgment-title {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
@@ -811,14 +811,14 @@
       /* 从 3px 减小到 2px */
     }
 
-    .judgment-type {
+    :where(.crypt-lord-judgment-mount) .judgment-type {
       font-size: 13px;
       /* 从 14px 减小到 13px */
       font-weight: bold;
       color: var(--judgment-text-primary);
     }
 
-    .judgment-scenario {
+    :where(.crypt-lord-judgment-mount) .judgment-scenario {
       font-size: 11px;
       /* 从 12px 减小到 11px */
       color: var(--judgment-text-secondary);
@@ -826,7 +826,7 @@
     }
 
     /* 神秘符文 - 折叠状态下显示 */
-    .judgment-rune-seal {
+    :where(.crypt-lord-judgment-mount) .judgment-rune-seal {
       width: 28px;
       /* 从 32px 减小到 28px */
       height: 28px;
@@ -852,22 +852,22 @@
       }
     }
 
-    .judgment-header:hover .judgment-rune-seal {
+    :where(.crypt-lord-judgment-mount) .judgment-header:hover .judgment-rune-seal {
       opacity: 1;
       transform: scale(1.1);
     }
 
     /* 折叠状态下隐藏符文，展开后显示 */
-    .judgment-block[data-collapsed="true"] .judgment-rune-seal {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="true"] .judgment-rune-seal {
       display: block;
     }
 
-    .judgment-block[data-collapsed="false"] .judgment-rune-seal {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"] .judgment-rune-seal {
       display: none;
     }
 
     /* 结果徽章 - 折叠和展开都显示 */
-    .judgment-result-badge {
+    :where(.crypt-lord-judgment-mount) .judgment-result-badge {
       padding: 4px 8px;
       border-radius: 3px;
       font-size: 12px;
@@ -877,7 +877,7 @@
     }
 
     /* 成功率徽章 - 折叠和展开都显示，金色风格 */
-    .judgment-threshold-badge {
+    :where(.crypt-lord-judgment-mount) .judgment-threshold-badge {
       padding: 4px 8px;
       border-radius: 3px;
       font-size: 12px;
@@ -888,32 +888,32 @@
       color: #000;
     }
 
-    .judgment-result-badge.critical-success {
+    :where(.crypt-lord-judgment-mount) .judgment-result-badge.critical-success {
       background: var(--judgment-critical-success);
       color: #000;
     }
 
-    .judgment-result-badge.perfect {
+    :where(.crypt-lord-judgment-mount) .judgment-result-badge.perfect {
       background: var(--judgment-perfect);
       color: #000;
     }
 
-    .judgment-result-badge.success {
+    :where(.crypt-lord-judgment-mount) .judgment-result-badge.success {
       background: var(--judgment-success);
       color: #000;
     }
 
-    .judgment-result-badge.failure {
+    :where(.crypt-lord-judgment-mount) .judgment-result-badge.failure {
       background: var(--judgment-failure);
       color: #fff;
     }
 
-    .judgment-result-badge.critical-failure {
+    :where(.crypt-lord-judgment-mount) .judgment-result-badge.critical-failure {
       background: var(--judgment-critical-failure);
       color: #fff;
     }
 
-    .judgment-toggle {
+    :where(.crypt-lord-judgment-mount) .judgment-toggle {
       font-size: 14px;
       /* 从 16px 减小到 14px */
       color: var(--judgment-text-muted);
@@ -921,34 +921,34 @@
       flex-shrink: 0;
     }
 
-    .judgment-block[data-collapsed="false"] .judgment-toggle {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"] .judgment-toggle {
       transform: rotate(180deg);
     }
 
     /* 判定详情区域 */
-    .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-details {
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.4s ease-out, opacity 0.3s ease;
       opacity: 0;
     }
 
-    .judgment-block[data-collapsed="false"] .judgment-details {
+    :where(.crypt-lord-judgment-mount) .judgment-block[data-collapsed="false"] .judgment-details {
       max-height: 2000px;
       opacity: 1;
     }
 
-    .judgment-section {
+    :where(.crypt-lord-judgment-mount) .judgment-section {
       padding: 10px 12px;
       /* 从 12px 15px 减小到 10px 12px */
       border-bottom: 1px dashed var(--judgment-border-color);
     }
 
-    .judgment-section:last-child {
+    :where(.crypt-lord-judgment-mount) .judgment-section:last-child {
       border-bottom: none;
     }
 
-    .judgment-section h4 {
+    :where(.crypt-lord-judgment-mount) .judgment-section h4 {
       font-size: 12px;
       /* 从 13px 减小到 12px */
       color: var(--judgment-accent-gold);
@@ -958,25 +958,25 @@
     }
 
     /* 判定请求样式 */
-    .judgment-request {
+    :where(.crypt-lord-judgment-mount) .judgment-request {
       background: rgba(0, 0, 0, 0.3);
       /* 从 0.2 增加到 0.3，减少透明度 */
     }
 
     /* 原始信息区域样式 */
-    .judgment-raw-info {
+    :where(.crypt-lord-judgment-mount) .judgment-raw-info {
       background: linear-gradient(135deg, rgba(139, 69, 19, 0.15) 0%, rgba(90, 61, 43, 0.2) 100%);
       border: 1px solid rgba(139, 69, 19, 0.3);
       border-radius: 4px;
     }
 
-    .raw-info-list {
+    :where(.crypt-lord-judgment-mount) .raw-info-list {
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
 
-    .raw-info-line {
+    :where(.crypt-lord-judgment-mount) .raw-info-line {
       font-size: 12px;
       color: var(--judgment-text-primary);
       padding: 4px 8px;
@@ -986,7 +986,7 @@
     }
 
     /* 高亮先攻结果 */
-    .raw-info-line.highlight-initiative {
+    :where(.crypt-lord-judgment-mount) .raw-info-line.highlight-initiative {
       background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.15) 100%);
       border-left-color: #ffd700;
       color: #ffd700;
@@ -995,7 +995,7 @@
     }
 
     /* 高亮判定结果 */
-    .raw-info-line.highlight-result {
+    :where(.crypt-lord-judgment-mount) .raw-info-line.highlight-result {
       background: linear-gradient(135deg, rgba(30, 144, 255, 0.2) 0%, rgba(100, 149, 237, 0.15) 100%);
       border-left-color: #1e90ff;
       color: #87ceeb;
@@ -1003,7 +1003,7 @@
       box-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
     }
 
-    .request-info {
+    :where(.crypt-lord-judgment-mount) .request-info {
       display: flex;
       gap: 6px;
       /* 从 8px 减小到 6px */
@@ -1013,22 +1013,22 @@
       /* 从 12px 减小到 11px */
     }
 
-    .info-label {
+    :where(.crypt-lord-judgment-mount) .info-label {
       color: var(--judgment-text-muted);
       font-weight: bold;
     }
 
-    .info-value {
+    :where(.crypt-lord-judgment-mount) .info-value {
       color: var(--judgment-text-primary);
     }
 
     /* 计算过程样式 */
-    .judgment-calculation {
+    :where(.crypt-lord-judgment-mount) .judgment-calculation {
       background: rgba(0, 0, 0, 0.25);
       /* 从 0.15 增加到 0.25 */
     }
 
-    .calculation-steps {
+    :where(.crypt-lord-judgment-mount) .calculation-steps {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       /* 从 180px 减小到 160px */
@@ -1036,7 +1036,7 @@
       /* 从 8px 减小到 6px */
     }
 
-    .calc-step {
+    :where(.crypt-lord-judgment-mount) .calc-step {
       background: rgba(139, 69, 19, 0.3);
       /* 从 0.2 增加到 0.3 */
       padding: 5px;
@@ -1048,38 +1048,38 @@
     }
 
     /* 活力伤害 - 红色主题 */
-    .calc-step.damage-vitality {
+    :where(.crypt-lord-judgment-mount) .calc-step.damage-vitality {
       background: linear-gradient(135deg, rgba(220, 20, 60, 0.25) 0%, rgba(139, 0, 0, 0.2) 100%);
       border: 1px solid rgba(220, 20, 60, 0.5);
       box-shadow: 0 0 8px rgba(220, 20, 60, 0.3);
     }
 
-    .calc-step.damage-vitality .step-label {
+    :where(.crypt-lord-judgment-mount) .calc-step.damage-vitality .step-label {
       color: #ff6b6b;
     }
 
-    .calc-step.damage-vitality .step-value {
+    :where(.crypt-lord-judgment-mount) .calc-step.damage-vitality .step-value {
       color: #ff4444;
       text-shadow: 0 0 8px rgba(220, 20, 60, 0.6);
     }
 
     /* 污染伤害 - 紫色主题 */
-    .calc-step.damage-pollution {
+    :where(.crypt-lord-judgment-mount) .calc-step.damage-pollution {
       background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(75, 0, 130, 0.2) 100%);
       border: 1px solid rgba(138, 43, 226, 0.5);
       box-shadow: 0 0 8px rgba(138, 43, 226, 0.3);
     }
 
-    .calc-step.damage-pollution .step-label {
+    :where(.crypt-lord-judgment-mount) .calc-step.damage-pollution .step-label {
       color: #ba68c8;
     }
 
-    .calc-step.damage-pollution .step-value {
+    :where(.crypt-lord-judgment-mount) .calc-step.damage-pollution .step-value {
       color: #ab47bc;
       text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);
     }
 
-    .step-label {
+    :where(.crypt-lord-judgment-mount) .step-label {
       display: block;
       font-size: 10px;
       /* 从 11px 减小到 10px */
@@ -1088,7 +1088,7 @@
       /* 从 3px 减小到 2px */
     }
 
-    .step-value {
+    :where(.crypt-lord-judgment-mount) .step-value {
       display: block;
       font-size: 13px;
       /* 从 14px 减小到 13px */
@@ -1098,13 +1098,13 @@
       /* 从 2px 保持不变 */
     }
 
-    .step-formula {
+    :where(.crypt-lord-judgment-mount) .step-formula {
       display: block;
 
       /* ===== 先攻判定特殊样式 ===== */
 
       /* 先攻判定区域 */
-      .judgment-initiative {
+      :where(.crypt-lord-judgment-mount) .judgment-initiative {
         background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(139, 69, 19, 0.15) 100%);
         border: 1px solid rgba(255, 215, 0, 0.3);
         border-radius: 4px;
@@ -1113,34 +1113,34 @@
       }
 
       /* 先攻判定标题 */
-      .judgment-initiative h4 {
+      :where(.crypt-lord-judgment-mount) .judgment-initiative h4 {
         color: #ffd700;
         text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
       }
 
       /* 先攻值显示 - 攻方 */
-      .calc-step.initiative-attacker {
+      :where(.crypt-lord-judgment-mount) .calc-step.initiative-attacker {
         background: linear-gradient(135deg, rgba(255, 69, 0, 0.2) 0%, rgba(255, 140, 0, 0.15) 100%);
         border-color: rgba(255, 69, 0, 0.5);
         box-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
       }
 
       /* 先攻值显示 - 防方 */
-      .calc-step.initiative-defender {
+      :where(.crypt-lord-judgment-mount) .calc-step.initiative-defender {
         background: linear-gradient(135deg, rgba(30, 144, 255, 0.2) 0%, rgba(100, 149, 237, 0.15) 100%);
         border-color: rgba(30, 144, 255, 0.5);
         box-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
       }
 
       /* 先攻结果容器 */
-      .initiative-result-container {
+      :where(.crypt-lord-judgment-mount) .initiative-result-container {
         margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid rgba(255, 215, 0, 0.3);
       }
 
       /* 先攻结果横幅 - 基础样式 */
-      .initiative-result-banner {
+      :where(.crypt-lord-judgment-mount) .initiative-result-banner {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
@@ -1153,7 +1153,7 @@
       }
 
       /* 抢占先机 - 金色闪电主题 */
-      .initiative-result-banner.seize-initiative {
+      :where(.crypt-lord-judgment-mount) .initiative-result-banner.seize-initiative {
         background: linear-gradient(135deg,
           rgba(255, 215, 0, 0.3) 0%,
           rgba(255, 165, 0, 0.25) 50%,
@@ -1165,7 +1165,7 @@
       }
 
       /* 抢占先机 - 闪电动画背景 */
-      .initiative-result-banner.seize-initiative::before {
+      :where(.crypt-lord-judgment-mount) .initiative-result-banner.seize-initiative::before {
         content: '';
         position: absolute;
         top: -50%;
@@ -1180,7 +1180,7 @@
       }
 
       /* 攻守逆转 - 蓝色旋转主题 */
-      .initiative-result-banner.reverse-initiative {
+      :where(.crypt-lord-judgment-mount) .initiative-result-banner.reverse-initiative {
         background: linear-gradient(135deg,
           rgba(30, 144, 255, 0.3) 0%,
           rgba(100, 149, 237, 0.25) 50%,
@@ -1192,7 +1192,7 @@
       }
 
       /* 攻守逆转 - 旋转动画背景 */
-      .initiative-result-banner.reverse-initiative::before {
+      :where(.crypt-lord-judgment-mount) .initiative-result-banner.reverse-initiative::before {
         content: '';
         position: absolute;
         top: 50%;
@@ -1210,7 +1210,7 @@
       }
 
       /* 先攻结果文字 */
-      .initiative-result-text {
+      :where(.crypt-lord-judgment-mount) .initiative-result-text {
         font-size: 16px;
         font-weight: bold;
         letter-spacing: 2px;
@@ -1220,7 +1220,7 @@
         flex: 1;
       }
 
-      .seize-initiative .initiative-result-text {
+      :where(.crypt-lord-judgment-mount) .seize-initiative .initiative-result-text {
         color: #ffd700;
         text-shadow:
           0 0 10px rgba(255, 215, 0, 1),
@@ -1228,7 +1228,7 @@
           0 0 30px rgba(255, 215, 0, 0.6);
       }
 
-      .reverse-initiative .initiative-result-text {
+      :where(.crypt-lord-judgment-mount) .reverse-initiative .initiative-result-text {
         color: #1e90ff;
         text-shadow:
           0 0 10px rgba(30, 144, 255, 1),
@@ -1237,7 +1237,7 @@
       }
 
       /* 装饰图标 - 左右两侧 */
-      .initiative-decor {
+      :where(.crypt-lord-judgment-mount) .initiative-decor {
         font-size: 28px;
         position: relative;
         z-index: 1;
@@ -1245,19 +1245,19 @@
         animation: decor-pulse 1.5s ease-in-out infinite;
       }
 
-      .initiative-decor.left {
+      :where(.crypt-lord-judgment-mount) .initiative-decor.left {
         margin-right: 15px;
       }
 
-      .initiative-decor.right {
+      :where(.crypt-lord-judgment-mount) .initiative-decor.right {
         margin-left: 15px;
       }
 
-      .seize-initiative .initiative-decor {
+      :where(.crypt-lord-judgment-mount) .seize-initiative .initiative-decor {
         filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
       }
 
-      .reverse-initiative .initiative-decor {
+      :where(.crypt-lord-judgment-mount) .reverse-initiative .initiative-decor {
         filter: drop-shadow(0 0 8px rgba(30, 144, 255, 0.8));
       }
 
@@ -1302,24 +1302,24 @@
 
       /* 移动端优化 */
       @media (max-width: 768px) {
-        .initiative-result-banner {
+        :where(.crypt-lord-judgment-mount) .initiative-result-banner {
           padding: 10px 15px;
         }
 
-        .initiative-result-text {
+        :where(.crypt-lord-judgment-mount) .initiative-result-text {
           font-size: 14px;
           letter-spacing: 1px;
         }
 
-        .initiative-decor {
+        :where(.crypt-lord-judgment-mount) .initiative-decor {
           font-size: 22px;
         }
 
-        .initiative-decor.left {
+        :where(.crypt-lord-judgment-mount) .initiative-decor.left {
           margin-right: 10px;
         }
 
-        .initiative-decor.right {
+        :where(.crypt-lord-judgment-mount) .initiative-decor.right {
           margin-left: 10px;
         }
       }
@@ -1331,7 +1331,7 @@
     }
 
     /* 关键信息高亮 */
-    .highlight {
+    :where(.crypt-lord-judgment-mount) .highlight {
       color: var(--judgment-accent-gold);
       font-weight: bold;
       text-shadow: 0 0 8px rgba(218, 165, 32, 0.5);
@@ -1340,7 +1340,7 @@
       background: rgba(218, 165, 32, 0.1);
     }
 
-    .highlight-number {
+    :where(.crypt-lord-judgment-mount) .highlight-number {
       color: var(--fate-blessing-primary);
       font-weight: bold;
       font-family: 'Courier New', monospace;
@@ -1350,58 +1350,58 @@
       background: rgba(255, 215, 0, 0.1);
     }
 
-    .highlight-success {
+    :where(.crypt-lord-judgment-mount) .highlight-success {
       color: var(--judgment-positive);
       font-weight: bold;
     }
 
-    .highlight-failure {
+    :where(.crypt-lord-judgment-mount) .highlight-failure {
       color: var(--judgment-negative);
       font-weight: bold;
     }
 
     /* 判定结果样式 */
-    .judgment-result {
+    :where(.crypt-lord-judgment-mount) .judgment-result {
       display: flex;
       align-items: center;
       gap: var(--judgment-spacing-md);
       padding: var(--judgment-spacing-md);
     }
 
-    .result-icon {
+    :where(.crypt-lord-judgment-mount) .result-icon {
       font-size: 24px;
       /* 从 28px 进一步减小到 24px */
       flex-shrink: 0;
     }
 
-    .judgment-result.critical-success .result-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-result.critical-success .result-icon {
       color: var(--judgment-critical-success);
     }
 
-    .judgment-result.perfect .result-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-result.perfect .result-icon {
       color: var(--judgment-perfect);
     }
 
-    .judgment-result.success .result-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-result.success .result-icon {
       color: var(--judgment-success);
     }
 
-    .judgment-result.failure .result-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-result.failure .result-icon {
       color: var(--judgment-failure);
     }
 
-    .judgment-result.critical-failure .result-icon {
+    :where(.crypt-lord-judgment-mount) .judgment-result.critical-failure .result-icon {
       color: var(--judgment-critical-failure);
     }
 
-    .result-text {
+    :where(.crypt-lord-judgment-mount) .result-text {
       font-size: 14px;
       /* 从 16px 减小到 14px */
       font-weight: bold;
       color: var(--judgment-text-primary);
     }
 
-    .result-description {
+    :where(.crypt-lord-judgment-mount) .result-description {
       font-size: 10px;
       /* 从 11px 减小到 10px */
       color: var(--judgment-text-secondary);
@@ -1410,20 +1410,20 @@
     }
 
     /* 状态更新样式 */
-    .judgment-status-updates {
+    :where(.crypt-lord-judgment-mount) .judgment-status-updates {
       background: rgba(0, 0, 0, 0.3);
       /* 从 0.2 增加到 0.3 */
     }
 
-    .status-update-container {
+    :where(.crypt-lord-judgment-mount) .status-update-container {
       margin-bottom: var(--judgment-spacing-md);
     }
 
-    .status-update-container:last-child {
+    :where(.crypt-lord-judgment-mount) .status-update-container:last-child {
       margin-bottom: 0;
     }
 
-    .status-update-name {
+    :where(.crypt-lord-judgment-mount) .status-update-name {
       font-size: 13px;
       /* 从 14px 减小到 13px */
       font-weight: bold;
@@ -1431,7 +1431,7 @@
       margin-bottom: var(--judgment-spacing-sm);
     }
 
-    .status-update-changes {
+    :where(.crypt-lord-judgment-mount) .status-update-changes {
       display: flex;
       flex-wrap: wrap;
       gap: var(--judgment-spacing-sm);
@@ -1440,17 +1440,17 @@
     /* 状态胶囊组件优化 - 已在上方定义 */
 
     /* 先攻判定样式 */
-    .judgment-initiative {
+    :where(.crypt-lord-judgment-mount) .judgment-initiative {
       background: rgba(0, 0, 0, 0.15);
     }
 
     /* 对抗判定样式 - VS对称布局 */
-    .judgment-combat {
+    :where(.crypt-lord-judgment-mount) .judgment-combat {
       background: rgba(0, 0, 0, 0.25);
       /* 从 0.15 增加到 0.25 */
     }
 
-    .combat-vs-layout {
+    :where(.crypt-lord-judgment-mount) .combat-vs-layout {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       gap: var(--judgment-spacing-md);
@@ -1458,24 +1458,24 @@
       padding: var(--judgment-spacing-md);
     }
 
-    .combat-side {
+    :where(.crypt-lord-judgment-mount) .combat-side {
       padding: var(--judgment-spacing-sm);
       border-radius: var(--judgment-border-radius);
       background: rgba(0, 0, 0, 0.3);
       /* 从 0.2 增加到 0.3 */
     }
 
-    .combat-side.attacker {
+    :where(.crypt-lord-judgment-mount) .combat-side.attacker {
       text-align: right;
       border-left: 3px solid var(--judgment-accent-gold);
     }
 
-    .combat-side.defender {
+    :where(.crypt-lord-judgment-mount) .combat-side.defender {
       text-align: left;
       border-right: 3px solid var(--judgment-accent-bronze);
     }
 
-    .combat-clash-point {
+    :where(.crypt-lord-judgment-mount) .combat-clash-point {
       font-size: 24px;
       /* 从 28px 减小到 24px */
       color: var(--judgment-accent-gold);
@@ -1496,7 +1496,7 @@
       }
     }
 
-    .combat-side-label {
+    :where(.crypt-lord-judgment-mount) .combat-side-label {
       font-size: 11px;
       /* 从 12px 减小到 11px */
       color: var(--judgment-text-muted);
@@ -1504,20 +1504,20 @@
       /* 从 4px 减小到 3px */
     }
 
-    .combat-side-value {
+    :where(.crypt-lord-judgment-mount) .combat-side-value {
       font-size: 14px;
       /* 从 16px 减小到 14px */
       font-weight: bold;
       color: var(--judgment-text-primary);
     }
 
-    .combat-side.winner .combat-side-value {
+    :where(.crypt-lord-judgment-mount) .combat-side.winner .combat-side-value {
       color: var(--judgment-accent-gold);
       text-shadow: 0 0 10px rgba(218, 165, 32, 0.5);
     }
 
     /* 伤害标签 */
-    .damage-tag {
+    :where(.crypt-lord-judgment-mount) .damage-tag {
       display: inline-block;
       padding: 3px 10px;
       /* 从 4px 12px 减小到 3px 10px */
@@ -1546,17 +1546,17 @@
     /* 伤害计算样式 */
 
     /* 状态胶囊样式 */
-    .status-changes-container {
+    :where(.crypt-lord-judgment-mount) .status-changes-container {
       margin-top: 10px;
     }
 
-    .status-changes-list {
+    :where(.crypt-lord-judgment-mount) .status-changes-list {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
 
-    .status-change-item {
+    :where(.crypt-lord-judgment-mount) .status-change-item {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -1570,7 +1570,7 @@
     }
 
     /* 正向变动 - 明亮绿色 */
-    .status-change-item.positive {
+    :where(.crypt-lord-judgment-mount) .status-change-item.positive {
       background: linear-gradient(135deg,
         rgba(144, 238, 144, 0.25) 0%,
         rgba(34, 139, 34, 0.25) 100%);
@@ -1580,7 +1580,7 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
-    .status-change-item.positive::before {
+    :where(.crypt-lord-judgment-mount) .status-change-item.positive::before {
       content: '';
       position: absolute;
       top: -50%;
@@ -1609,7 +1609,7 @@
     }
 
     /* 负向变动 - 锐利红色 */
-    .status-change-item.negative {
+    :where(.crypt-lord-judgment-mount) .status-change-item.negative {
       background: linear-gradient(135deg,
         rgba(220, 20, 60, 0.35) 0%,
         rgba(139, 0, 0, 0.35) 100%);
@@ -1619,7 +1619,7 @@
         inset 0 -1px 0 rgba(0, 0, 0, 0.2);
     }
 
-    .status-change-item.negative::before {
+    :where(.crypt-lord-judgment-mount) .status-change-item.negative::before {
       content: '';
       position: absolute;
       top: 0;
@@ -1651,7 +1651,7 @@
     }
 
     /* SVG图标样式 */
-    .status-change-item svg {
+    :where(.crypt-lord-judgment-mount) .status-change-item svg {
       width: 16px;
       height: 16px;
       flex-shrink: 0;
@@ -1659,46 +1659,46 @@
       z-index: 1;
     }
 
-    .status-change-item span {
+    :where(.crypt-lord-judgment-mount) .status-change-item span {
       position: relative;
       z-index: 1;
     }
 
-    .status-change-item:hover {
+    :where(.crypt-lord-judgment-mount) .status-change-item:hover {
       transform: translateY(-2px) scale(1.05);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
 
     /* 伤害计算样式 */
-    .judgment-damage {
+    :where(.crypt-lord-judgment-mount) .judgment-damage {
       background: rgba(139, 0, 0, 0.1);
     }
 
     /* 移除大成功的单个粒子特效，改用JS生成的多粒子爆发 */
 
     /* 揭示状态标记 */
-    .judgment-block.revealed {
+    :where(.crypt-lord-judgment-mount) .judgment-block.revealed {
       /* 标记判定块已揭示，用于触发特效 */
     }
 
     /* SVG图标样式 */
-    .svg-icon {
+    :where(.crypt-lord-judgment-mount) .svg-icon {
       display: inline-block;
       vertical-align: middle;
       fill: currentColor;
     }
 
-    .svg-icon.icon-small {
+    :where(.crypt-lord-judgment-mount) .svg-icon.icon-small {
       width: 16px;
       height: 16px;
     }
 
-    .svg-icon.icon-medium {
+    :where(.crypt-lord-judgment-mount) .svg-icon.icon-medium {
       width: 24px;
       height: 24px;
     }
 
-    .svg-icon.icon-large {
+    :where(.crypt-lord-judgment-mount) .svg-icon.icon-large {
       width: 32px;
       height: 32px;
     }
@@ -1707,7 +1707,7 @@
 
 
     /* 淡入动画 - 替代打字机效果 */
-    .judgment-block {
+    :where(.crypt-lord-judgment-mount) .judgment-block {
       animation: fadeIn 0.2s ease-in;
     }
 
@@ -1724,7 +1724,7 @@
     }
 
     /* 状态胶囊组件优化 */
-    .status-change {
+    :where(.crypt-lord-judgment-mount) .status-change {
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -1736,14 +1736,14 @@
     }
 
     /* 通用正向/负向样式（作为后备） */
-    .status-change.positive {
+    :where(.crypt-lord-judgment-mount) .status-change.positive {
       background: linear-gradient(135deg, rgba(144, 238, 144, 0.3) 0%, rgba(144, 238, 144, 0.1) 100%);
       color: var(--judgment-positive);
       border: 2px solid var(--judgment-positive);
       box-shadow: 0 2px 8px rgba(144, 238, 144, 0.2);
     }
 
-    .status-change.negative {
+    :where(.crypt-lord-judgment-mount) .status-change.negative {
       background: linear-gradient(135deg, rgba(255, 107, 107, 0.3) 0%, rgba(255, 107, 107, 0.1) 100%);
       color: var(--judgment-negative);
       border: 2px solid var(--judgment-negative);
@@ -1751,112 +1751,112 @@
     }
 
     /* === 活力主题 - 红橙色系（生命力）=== */
-    .status-change.attr-vitality {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-vitality {
       background: linear-gradient(135deg, rgba(255, 99, 71, 0.25) 0%, rgba(255, 140, 0, 0.15) 100%);
       border: 2px solid rgba(255, 99, 71, 0.6);
       box-shadow: 0 2px 8px rgba(255, 99, 71, 0.3);
     }
 
-    .status-change.attr-vitality.positive {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-vitality.positive {
       color: #ff6347;
       /* 番茄红 */
       border-color: #ff6347;
     }
 
-    .status-change.attr-vitality.negative {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-vitality.negative {
       color: #dc143c;
       /* 深红色 */
       border-color: #dc143c;
     }
 
     /* === 灵性主题 - 紫色系（神秘力量）=== */
-    .status-change.attr-spirituality {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-spirituality {
       background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(147, 112, 219, 0.15) 100%);
       border: 2px solid rgba(138, 43, 226, 0.6);
       box-shadow: 0 2px 8px rgba(138, 43, 226, 0.3);
     }
 
-    .status-change.attr-spirituality.positive {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-spirituality.positive {
       color: #9370db;
       /* 中紫色 */
       border-color: #9370db;
     }
 
-    .status-change.attr-spirituality.negative {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-spirituality.negative {
       color: #8a2be2;
       /* 蓝紫色 */
       border-color: #8a2be2;
     }
 
     /* === 理智主题 - 蓝色系（冷静理性）=== */
-    .status-change.attr-sanity {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-sanity {
       background: linear-gradient(135deg, rgba(70, 130, 180, 0.25) 0%, rgba(100, 149, 237, 0.15) 100%);
       border: 2px solid rgba(70, 130, 180, 0.6);
       box-shadow: 0 2px 8px rgba(70, 130, 180, 0.3);
     }
 
-    .status-change.attr-sanity.positive {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-sanity.positive {
       color: #6495ed;
       /* 矢车菊蓝 */
       border-color: #6495ed;
     }
 
-    .status-change.attr-sanity.negative {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-sanity.negative {
       color: #4682b4;
       /* 钢青色 */
       border-color: #4682b4;
     }
 
     /* === 人性主题 - 金色系（人性光辉）=== */
-    .status-change.attr-humanity {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-humanity {
       background: linear-gradient(135deg, rgba(218, 165, 32, 0.25) 0%, rgba(255, 215, 0, 0.15) 100%);
       border: 2px solid rgba(218, 165, 32, 0.6);
       box-shadow: 0 2px 8px rgba(218, 165, 32, 0.3);
     }
 
-    .status-change.attr-humanity.positive {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-humanity.positive {
       color: #daa520;
       /* 金麒麟色 */
       border-color: #daa520;
     }
 
-    .status-change.attr-humanity.negative {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-humanity.negative {
       color: #b8860b;
       /* 暗金色 */
       border-color: #b8860b;
     }
 
     /* 悬停效果增强 */
-    .status-change:hover {
+    :where(.crypt-lord-judgment-mount) .status-change:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    .status-change.attr-vitality:hover {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-vitality:hover {
       box-shadow: 0 4px 16px rgba(255, 99, 71, 0.5);
     }
 
-    .status-change.attr-spirituality:hover {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-spirituality:hover {
       box-shadow: 0 4px 16px rgba(138, 43, 226, 0.5);
     }
 
-    .status-change.attr-sanity:hover {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-sanity:hover {
       box-shadow: 0 4px 16px rgba(70, 130, 180, 0.5);
     }
 
-    .status-change.attr-humanity:hover {
+    :where(.crypt-lord-judgment-mount) .status-change.attr-humanity:hover {
       box-shadow: 0 4px 16px rgba(218, 165, 32, 0.5);
     }
 
     /* 响应式设计 */
     @media (max-width: 768px) {
-      .judgment-header {
+      :where(.crypt-lord-judgment-mount) .judgment-header {
         flex-wrap: wrap;
         padding: 8px 10px;
         /* 进一步减小内边距 */
       }
 
-      .judgment-result-badge {
+      :where(.crypt-lord-judgment-mount) .judgment-result-badge {
         order: -1;
         width: 100%;
         text-align: center;
@@ -1866,54 +1866,54 @@
         /* 从 4px 8px 减小 */
       }
 
-      .calculation-steps {
+      :where(.crypt-lord-judgment-mount) .calculation-steps {
         grid-template-columns: 1fr;
         gap: 4px;
         /* 从 6px 减小到 4px */
       }
 
-      .judgment-block {
+      :where(.crypt-lord-judgment-mount) .judgment-block {
         font-size: 13px;
         /* 从 14px 减小到 13px */
         margin-bottom: 8px;
         /* 减小外边距 */
       }
 
-      .judgment-section {
+      :where(.crypt-lord-judgment-mount) .judgment-section {
         padding: 8px 10px;
         /* 从 10px 12px 进一步减小 */
       }
 
-      .judgment-section h4 {
+      :where(.crypt-lord-judgment-mount) .judgment-section h4 {
         font-size: 11px;
         /* 从 12px 减小到 11px */
         margin-bottom: 4px;
         /* 从 6px 减小到 4px */
       }
 
-      .judgment-icon {
+      :where(.crypt-lord-judgment-mount) .judgment-icon {
         font-size: 16px;
         /* 从 18px 减小到 16px */
       }
 
-      .judgment-type {
+      :where(.crypt-lord-judgment-mount) .judgment-type {
         font-size: 12px;
         /* 从 13px 减小到 12px */
       }
 
-      .judgment-scenario {
+      :where(.crypt-lord-judgment-mount) .judgment-scenario {
         font-size: 10px;
         /* 从 11px 减小到 10px */
       }
 
-      .judgment-rune-seal {
+      :where(.crypt-lord-judgment-mount) .judgment-rune-seal {
         width: 24px;
         /* 从 28px 减小到 24px */
         height: 24px;
       }
 
       /* VS布局在移动端改为垂直布局 */
-      .combat-vs-layout {
+      :where(.crypt-lord-judgment-mount) .combat-vs-layout {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
         gap: 4px;
@@ -1922,8 +1922,8 @@
         /* 减小内边距 */
       }
 
-      .combat-side.attacker,
-      .combat-side.defender {
+      :where(.crypt-lord-judgment-mount) .combat-side.attacker,
+    :where(.crypt-lord-judgment-mount) .combat-side.defender {
         text-align: center;
         border-left: none;
         border-right: none;
@@ -1931,21 +1931,21 @@
         /* 减小内边距 */
       }
 
-      .combat-side.attacker {
+      :where(.crypt-lord-judgment-mount) .combat-side.attacker {
         border-top: 2px solid var(--judgment-accent-gold);
         /* 从 3px 减小到 2px */
         order: 1;
         /* 攻击方在上 */
       }
 
-      .combat-side.defender {
+      :where(.crypt-lord-judgment-mount) .combat-side.defender {
         border-bottom: 2px solid var(--judgment-accent-bronze);
         /* 从 3px 减小到 2px */
         order: 3;
         /* 防守方在下 */
       }
 
-      .combat-clash-point {
+      :where(.crypt-lord-judgment-mount) .combat-clash-point {
         font-size: 20px;
         /* 从 22px 减小到 20px */
         padding: 4px 0;
@@ -1959,64 +1959,64 @@
         /* 垂直居中 */
       }
 
-      .combat-side-label {
+      :where(.crypt-lord-judgment-mount) .combat-side-label {
         font-size: 10px;
         /* 从 11px 减小到 10px */
         margin-bottom: 2px;
       }
 
-      .combat-side-value {
+      :where(.crypt-lord-judgment-mount) .combat-side-value {
         font-size: 13px;
         /* 从 14px 减小到 13px */
       }
 
-      .result-icon {
+      :where(.crypt-lord-judgment-mount) .result-icon {
         font-size: 22px;
         /* 从 24px 减小到 22px */
       }
 
-      .result-text {
+      :where(.crypt-lord-judgment-mount) .result-text {
         font-size: 13px;
         /* 从 14px 减小到 13px */
       }
 
-      .damage-tag {
+      :where(.crypt-lord-judgment-mount) .damage-tag {
         font-size: 12px;
         /* 从 14px 减小到 12px */
         padding: 2px 8px;
         /* 从 3px 10px 减小 */
       }
 
-      .step-label {
+      :where(.crypt-lord-judgment-mount) .step-label {
         font-size: 9px;
         /* 从 10px 减小到 9px */
       }
 
-      .step-value {
+      :where(.crypt-lord-judgment-mount) .step-value {
         font-size: 12px;
         /* 从 13px 减小到 12px */
       }
 
-      .step-formula {
+      :where(.crypt-lord-judgment-mount) .step-formula {
         font-size: 9px;
         /* 从 10px 减小到 9px */
       }
     }
 
     /* 可访问性增强 */
-    .judgment-header:focus {
+    :where(.crypt-lord-judgment-mount) .judgment-header:focus {
       outline: 2px solid var(--judgment-accent-gold);
       outline-offset: 2px;
     }
 
     /* 长文本截断 */
-    .judgment-text-truncated {
+    :where(.crypt-lord-judgment-mount) .judgment-text-truncated {
       max-height: 150px;
       overflow: hidden;
       position: relative;
     }
 
-    .judgment-text-truncated::after {
+    :where(.crypt-lord-judgment-mount) .judgment-text-truncated::after {
       content: '';
       position: absolute;
       bottom: 0;
@@ -2026,7 +2026,7 @@
       background: linear-gradient(to bottom, transparent, var(--judgment-bg-primary));
     }
 
-    .judgment-expand-btn {
+    :where(.crypt-lord-judgment-mount) .judgment-expand-btn {
       display: block;
       width: 100%;
       padding: var(--judgment-spacing-sm);
@@ -2040,7 +2040,7 @@
       transition: var(--judgment-transition);
     }
 
-    .judgment-expand-btn:hover {
+    :where(.crypt-lord-judgment-mount) .judgment-expand-btn:hover {
       background: rgba(139, 69, 19, 0.5);
     }
 
@@ -2048,49 +2048,49 @@
     @media (hover: none) and (pointer: coarse) {
 
       /* 增大移动端点击区域 */
-      .judgment-header {
+      :where(.crypt-lord-judgment-mount) .judgment-header {
         padding: 10px;
         /* 从 var(--judgment-spacing-md) 改为固定 10px */
         min-height: 44px;
         /* 从 52px 减小到 44px */
       }
 
-      .judgment-toggle {
+      :where(.crypt-lord-judgment-mount) .judgment-toggle {
         font-size: 18px;
         /* 从 20px 减小到 18px */
         padding: 4px;
         /* 从 var(--judgment-spacing-sm) 改为固定 4px */
       }
 
-      .judgment-result-badge {
+      :where(.crypt-lord-judgment-mount) .judgment-result-badge {
         padding: 8px 16px;
         font-size: 15px;
       }
 
       /* 移除hover效果，使用active代替 */
-      .judgment-block:hover {
+      :where(.crypt-lord-judgment-mount) .judgment-block:hover {
         border-color: var(--judgment-border-color);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
       }
 
-      .judgment-header:hover {
+      :where(.crypt-lord-judgment-mount) .judgment-header:hover {
         background: var(--judgment-bg-secondary);
       }
 
       /* 添加触摸反馈效果 */
-      .judgment-header:active {
+      :where(.crypt-lord-judgment-mount) .judgment-header:active {
         background: rgba(139, 69, 19, 0.3);
         transform: scale(0.98);
       }
 
-      .judgment-block:active {
+      :where(.crypt-lord-judgment-mount) .judgment-block:active {
         border-color: var(--judgment-accent-gold);
         box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
       }
 
       /* 禁用tap高亮 */
-      .judgment-header,
-      .judgment-expand-btn {
+      :where(.crypt-lord-judgment-mount) .judgment-header,
+    :where(.crypt-lord-judgment-mount) .judgment-expand-btn {
         -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
@@ -2098,7 +2098,7 @@
       }
 
       /* 增大按钮点击区域 */
-      .judgment-expand-btn {
+      :where(.crypt-lord-judgment-mount) .judgment-expand-btn {
         padding: 12px;
         font-size: 15px;
         min-height: 44px;
@@ -2106,15 +2106,36 @@
       }
 
       /* 优化计算步骤卡片在触摸设备上的显示 */
-      .calc-step {
+      :where(.crypt-lord-judgment-mount) .calc-step {
         padding: 12px;
         min-height: 60px;
       }
 
       /* 状态变动标签增大 */
-      .status-change {
+      :where(.crypt-lord-judgment-mount) .status-change {
         padding: 6px 12px;
         font-size: 14px;
         min-height: 32px;
       }
     }
+
+.crypt-lord-judgment-mount { min-width: 0; margin: 12px 0 8px; }
+[data-crypt-lord-judgment-source] { display: none !important; }
+:where(.crypt-lord-judgment-mount) .crypt-lord-judgment-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+:where(.crypt-lord-judgment-mount) .crypt-lord-judgment-controls button { border: 1px solid #6c756e; border-radius: 4px; padding: 5px 8px; color: #e9eee9; background: #303a35; cursor: pointer; }
+:where(.crypt-lord-judgment-mount) .crypt-lord-judgment-controls label { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+:where(.crypt-lord-judgment-mount) .crypt-lord-judgment-raw pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.crypt-lord-judgment-mount .judgment-header { min-width: 0; flex-wrap: wrap; height: auto; min-height: 44px; }
+.crypt-lord-judgment-mount .judgment-header [role="button"]:focus-visible,
+    .crypt-lord-judgment-mount .judgment-header:focus-visible { outline: 2px solid #99c6b0; outline-offset: 2px; }
+.crypt-lord-judgment-mount .judgment-title,
+    .crypt-lord-judgment-mount .judgment-scenario,
+    .crypt-lord-judgment-mount .info-value,
+    .crypt-lord-judgment-mount .calc-value { min-width: 0; overflow-wrap: anywhere; }
+.crypt-lord-judgment-mount * { letter-spacing: 0 !important; }
+.crypt-lord-judgment-mount .combat-side { min-width: 0; overflow-wrap: anywhere; }
+.crypt-lord-judgment-mount .judgment-details[aria-hidden="true"] { display: none; }
+@media (max-width: 600px) {
+  .crypt-lord-judgment-mount .combat-vs-layout { flex-wrap: wrap; }
+  .crypt-lord-judgment-mount .judgment-type { font-size: 14px; }
+}

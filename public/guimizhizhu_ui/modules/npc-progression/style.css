@@ -1,0 +1,43 @@
+.crypt-lord-npc-growth {
+  position: fixed; z-index: 2147483100; left: 50%; top: 6%; transform: translateX(-50%);
+  width: min(740px, calc(100vw - 24px)); height: min(730px, 88vh); max-height: calc(100vh - 24px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--SmartThemeBlurTintColor, #272d2c); color: var(--SmartThemeBodyColor, #edf0ef);
+  border: 1px solid #7e9490; border-radius: 6px; box-shadow: 0 12px 36px #0006;
+  font: 14px/1.6 "Microsoft YaHei", sans-serif;
+}
+.crypt-lord-npc-growth[data-open="false"] { display: none; }
+.crypt-lord-npc-growth * { box-sizing: border-box; letter-spacing: 0; min-width: 0; }
+.crypt-lord-npc-growth > header {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px;
+  border-bottom: 1px solid #7e949080; flex: none;
+}
+.crypt-lord-npc-growth > header strong { font-size: 17px; overflow-wrap: anywhere; }
+.crypt-lord-npc-growth__tools { display: flex; gap: 6px; flex: none; }
+.crypt-lord-npc-growth button {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0;
+  border: 1px solid transparent; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; flex: none;
+}
+.crypt-lord-npc-growth button:hover { background: #7e949030; border-color: #7e9490; }
+.crypt-lord-npc-growth button:disabled, .crypt-lord-npc-growth select:disabled { opacity: .5; cursor: default; }
+.crypt-lord-npc-growth :focus-visible { outline: 2px solid #58b39b; outline-offset: 2px; }
+.crypt-lord-npc-growth__selectors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 10px 16px; flex: none; }
+.crypt-lord-npc-growth label { display: flex; align-items: center; gap: 8px; }
+.crypt-lord-npc-growth select { width: 100%; flex: 1; padding: 6px; color: inherit; background: inherit; border: 1px solid #7e949080; }
+.crypt-lord-npc-growth option { background: var(--SmartThemeBlurTintColor, #272d2c); }
+.crypt-lord-npc-growth > main { flex: 1; min-height: 0; overflow: auto; padding: 0 18px 18px; }
+.crypt-lord-npc-growth__status { flex: none; margin: 0; padding: 8px 16px; font-size: 12px; border-top: 1px solid #7e949060; overflow-wrap: anywhere; }
+.crypt-lord-npc-growth__summary, .crypt-lord-npc-growth__abilities { padding: 12px 0; border-top: 1px solid #7e949060; }
+.crypt-lord-npc-growth__row { padding: 8px 0; display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; border-top: 1px solid #7e949060; }
+.crypt-lord-npc-growth h3 { font-size: 15px; margin: 0 0 8px; overflow-wrap: anywhere; }
+.crypt-lord-npc-growth h4 { font-size: 14px; margin: 0 0 6px; overflow-wrap: anywhere; }
+.crypt-lord-npc-growth article { padding: 10px 0; border-top: 1px solid #7e949030; }
+.crypt-lord-npc-growth p { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.crypt-lord-npc-growth small { display: block; opacity: .75; overflow-wrap: anywhere; }
+@media (max-width: 620px) {
+  .crypt-lord-npc-growth { top: 12px; height: calc(100vh - 24px); }
+  .crypt-lord-npc-growth > header, .crypt-lord-npc-growth__selectors { padding: 10px 12px; }
+  .crypt-lord-npc-growth__selectors { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .crypt-lord-npc-growth > main { padding: 0 12px 12px; }
+  .crypt-lord-npc-growth__row { grid-template-columns: 42px minmax(0, 1fr); gap: 8px; }
+}

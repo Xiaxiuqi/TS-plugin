@@ -1,0 +1,73 @@
+.crypt-lord-relationships {
+  position: fixed; z-index: 2147483100; left: 50%; top: 6%; transform: translateX(-50%);
+  width: min(820px, calc(100vw - 24px)); height: min(750px, 88vh); min-width: 300px;
+  max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+  display: flex; flex-direction: column; overflow: hidden; resize: both;
+  background: var(--SmartThemeBlurTintColor, #25292b); color: var(--SmartThemeBodyColor, #edeef0);
+  border: 1px solid #788982; border-radius: 6px; box-shadow: 0 12px 36px #0006;
+  font: 14px/1.6 "Microsoft YaHei", sans-serif; letter-spacing: 0;
+}
+.crypt-lord-relationships[data-open="false"] { display: none; }
+.crypt-lord-relationships * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-relationships header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #657772; cursor: move; }
+.crypt-lord-relationships header strong { font-size: 17px; }
+.crypt-lord-relationships button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px; background: #354841; color: inherit; border: 1px solid #7c8f86; border-radius: 4px; font: inherit; cursor: pointer; }
+.crypt-lord-relationships button:hover { background: #496354; }
+.crypt-lord-relationships button:disabled { opacity: .45; cursor: default; }
+.crypt-lord-relationships button:focus-visible, .crypt-lord-relationships summary:focus-visible { outline: 2px solid #91d3af; outline-offset: 2px; }
+.crypt-lord-relationships .is-danger { color: #e4a7b6; }
+.crypt-lord-relationships .is-danger:hover { background: #653d48; border-color: #bd8391; }
+.crypt-lord-relationships__tools { display: flex; gap: 6px; }
+.crypt-lord-relationships__tools button { width: 34px; padding: 0; }
+.crypt-lord-relationships__tools i { display: none; }
+.crypt-lord-relationships__tools button::after { content: attr(data-symbol); font-size: 20px; }
+.crypt-lord-relationships__status { margin: 0; padding: 8px 16px; max-height: 110px; overflow: auto; color: #edd49a; overflow-wrap: anywhere; }
+.crypt-lord-relationships__recovery { display: flex; flex: none; flex-wrap: wrap; gap: 8px; padding: 0 16px 8px; }
+.crypt-lord-relationships__recovery:empty { display: none; }
+.crypt-lord-relationships main { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; }
+.crypt-lord-relationships fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.crypt-lord-relationships__toolbar, .crypt-lord-relationships__batch { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 8px 0 14px; }
+.crypt-lord-relationships__count { margin-left: auto; font-size: 12px; color: #bbc8cb; }
+.crypt-lord-relationships__batch { border-top: 1px solid #53615d; color: #edd49a; }
+.crypt-lord-relationships__batch label { display: flex; align-items: center; gap: 8px; }
+.crypt-lord-relationships__batch button { margin-left: auto; }
+.crypt-lord-relationships input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: #91d3af; flex: none; }
+.crypt-lord-relationships__row { padding: 14px 0; border-top: 1px solid #53615d; }
+.crypt-lord-relationships__heading { display: flex; align-items: start; gap: 10px; }
+.crypt-lord-relationships__heading > input { margin-top: 9px; }
+.crypt-lord-relationships__detail { flex: 1; min-width: 0; }
+.crypt-lord-relationships summary { cursor: pointer; overflow-wrap: anywhere; }
+.crypt-lord-relationships__detail > summary { min-height: 38px; padding: 3px 0; }
+.crypt-lord-relationships__title { display: inline; }
+.crypt-lord-relationships__title strong { font-size: 15px; }
+.crypt-lord-relationships__title span { margin-left: 12px; color: #a1d1bb; font-size: 12px; }
+.crypt-lord-relationships__detail > summary > small { display: block; margin-left: 18px; color: #bbc8cb; }
+.crypt-lord-relationships__actions { display: flex; gap: 4px; flex: none; }
+.crypt-lord-relationships__actions button { width: 34px; height: 34px; padding: 0; border-color: transparent; background: transparent; color: #a8b5b8; }
+.crypt-lord-relationships__actions button[aria-pressed="true"], .crypt-lord-relationships .is-important .crypt-lord-relationships__title strong { color: #edd49a; }
+.crypt-lord-relationships__actions .is-danger { color: #e4a7b6; }
+.crypt-lord-relationships__actions button:hover { background: #496354; }
+.crypt-lord-relationships__actions .is-danger:hover { background: #653d48; }
+.crypt-lord-relationships__body { padding: 8px 0 0 18px; }
+.crypt-lord-relationships dl { display: grid; grid-template-columns: minmax(85px, 1fr) minmax(0, 3fr); gap: 6px 12px; margin: 10px 0; }
+.crypt-lord-relationships dt { color: #a1d1bb; overflow-wrap: anywhere; }
+.crypt-lord-relationships dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.crypt-lord-relationships__meter { height: 4px; background: #45514c; margin: 12px 0; overflow: hidden; }
+.crypt-lord-relationships__meter span { display: block; height: 100%; background: #91d3af; }
+.crypt-lord-relationships__truth { padding-top: 10px; margin-top: 10px; border-top: 1px dashed #657772; }
+.crypt-lord-relationships__truth > summary { color: #bbc8e0; }
+.crypt-lord-relationships__truth h3 { font-size: 14px; margin: 12px 0 4px; }
+.crypt-lord-relationships__truth ul { margin: 0; padding-left: 20px; }
+.crypt-lord-relationships__truth li { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 6px; }
+.crypt-lord-relationships .is-orphan .crypt-lord-relationships__title span { color: #bbc8e0; }
+.crypt-lord-relationships__empty { color: #bbc8cb; padding: 30px 0; text-align: center; }
+@media (max-width: 540px) {
+  .crypt-lord-relationships { top: 12px; height: calc(100vh - 24px); resize: none; }
+  .crypt-lord-relationships header { padding: 10px 12px; }
+  .crypt-lord-relationships main { padding: 0 12px 12px; }
+  .crypt-lord-relationships__count { width: 100%; margin: 0; }
+  .crypt-lord-relationships__actions { flex-direction: column; }
+  .crypt-lord-relationships__title span { display: block; margin-left: 18px; }
+  .crypt-lord-relationships__body { padding-left: 0; }
+  .crypt-lord-relationships dl { grid-template-columns: minmax(75px, 1fr) minmax(0, 2fr); }
+}

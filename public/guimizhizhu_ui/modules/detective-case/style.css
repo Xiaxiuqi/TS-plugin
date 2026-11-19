@@ -3,6 +3,12 @@
 .crypt-lord-detective-case[data-open="true"] { display: flex; }
 .crypt-lord-detective-case header { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid #5b563d; color: #edc778; cursor: move; user-select: none; touch-action: none; }
 .crypt-lord-detective-case header button { font-size: 20px; line-height: 1; }
+.crypt-lord-detective-case header strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.crypt-lord-detective-case header { gap: 8px; }
+.crypt-lord-detective-case header button:not([aria-label="关闭"]) { font-size: 13px; }
+.crypt-lord-detective-case button:focus-visible, .crypt-lord-detective-case summary:focus-visible { outline: 2px solid #8edcc8; outline-offset: 2px; }
+.crypt-lord-detective-case__pending { position: sticky; bottom: 0; padding: 10px 0; background: #202625; border-top: 1px solid #74a894; }
+.crypt-lord-detective-case__status { overflow-wrap: anywhere; }
 .crypt-lord-detective-case__content { flex: 1; min-height: 0; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .crypt-lord-detective-case__toolbar, .crypt-lord-detective-case__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .crypt-lord-detective-case__toolbar { justify-content: space-between; }
@@ -17,7 +23,7 @@
 .crypt-lord-detective-case__report { max-height: 150px; overflow: auto; border-left: 3px solid #74a894; padding: 8px; }
 .crypt-lord-detective-case__status { min-height: 32px; border-top: 1px solid #536053; padding: 6px 14px; color: #b9d7ad; }
 .crypt-lord-detective-case__status[data-error="true"] { color: #ffaaaa; }
-.crypt-lord-detective-case button, .crypt-lord-detective-case select, .crypt-lord-detective-case textarea { border: 1px solid #84744f; border-radius: 4px; background: #303734; color: #f2eee3; padding: 6px 10px; font: inherit; }
+.crypt-lord-detective-case button, .crypt-lord-detective-case input, .crypt-lord-detective-case select, .crypt-lord-detective-case textarea { border: 1px solid #84744f; border-radius: 4px; background: #303734; color: #f2eee3; padding: 6px 10px; font: inherit; max-width: 100%; }
 .crypt-lord-detective-case button { cursor: pointer; }
 .crypt-lord-detective-case button:hover:not(:disabled) { background: #5b4a30; }
 .crypt-lord-detective-case button:disabled { opacity: .45; cursor: not-allowed; }

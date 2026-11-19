@@ -1,0 +1,100 @@
+.crypt-lord-marionette, .crypt-lord-marionette * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-marionette { position: fixed; z-index: 2147482995; top: 28px; left: 50%; transform: translateX(-50%); width: min(760px, calc(100vw - 16px)); max-height: calc(100vh - 56px); display: none; flex-direction: column; border: 1px solid #777b71; border-radius: 6px; background: #202825; color: #eeeee9; box-shadow: 0 18px 50px #0009; font: 13px/1.6 "Microsoft YaHei", sans-serif; }
+.crypt-lord-marionette[data-open="true"] { display: flex; }
+.crypt-lord-marionette header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 14px; border-bottom: 1px solid #59655b; cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-marionette__tools, .crypt-lord-marionette .ppw-row, .crypt-lord-marionette .ppw-actions, .crypt-lord-marionette .ppw-clone-ops { display: flex; flex-wrap: wrap; gap: 7px; }
+.crypt-lord-marionette__body { padding: 14px; overflow: auto; min-height: 0; }
+.crypt-lord-marionette footer { padding: 7px 14px; min-height: 32px; border-top: 1px solid #59655b; color: #aad8ba; overflow-wrap: anywhere; }
+.crypt-lord-marionette footer[data-error="true"], .crypt-lord-marionette .ppw-warn, .crypt-lord-marionette .ppw-verdict.no { color: #ffb3ab; }
+.crypt-lord-marionette .ppw-hint, .crypt-lord-marionette .ppw-clone-sub { color: #b5c4bc; }
+.crypt-lord-marionette .ppw-hint { margin: 8px 0; font-size: 12px; }
+.crypt-lord-marionette .ppw-sect-label { margin: 18px 0 4px; color: #e7cc8c; font-weight: 600; }
+.crypt-lord-marionette .ppw-clone, .crypt-lord-marionette .ppw-verdict, .crypt-lord-marionette .ppw-mat { padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-marionette .ppw-clone-name { font-size: 14px; font-weight: 600; color: #e7cc8c; }
+.crypt-lord-marionette .ppw-clone-stats { margin: 5px 0; color: #c8dbd0; }
+.crypt-lord-marionette .ppw-clone-ops, .crypt-lord-marionette .ppw-actions { margin-top: 10px; }
+.crypt-lord-marionette .ppw-mat-hit { display: flex; gap: 9px; align-items: flex-start; cursor: pointer; }
+.crypt-lord-marionette .ppw-mat-main { min-width: 0; display: flex; flex-direction: column; }
+.crypt-lord-marionette .ppw-mat-meta { color: #b5c4bc; font-size: 12px; }
+.crypt-lord-marionette .ppw-group { margin-top: 12px; }
+.crypt-lord-marionette summary { cursor: pointer; }
+.crypt-lord-marionette .ppw-verdict.ok { color: #aad8ba; }
+.crypt-lord-marionette .ppw-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.crypt-lord-marionette .ppw-field { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.crypt-lord-marionette button, .crypt-lord-marionette select, .crypt-lord-marionette input:not([type="checkbox"]):not([type="radio"]), .crypt-lord-marionette textarea { max-width: 100%; min-width: 0; border: 1px solid #727d73; border-radius: 4px; padding: 6px 9px; background: #303b35; color: #eeeee9; font: inherit; }
+.crypt-lord-marionette select, .crypt-lord-marionette .ppw-field input, .crypt-lord-marionette textarea { width: 100%; }
+.crypt-lord-marionette textarea { resize: vertical; }
+.crypt-lord-marionette button { cursor: pointer; white-space: normal; }
+.crypt-lord-marionette button:hover:not(:disabled) { border-color: #dec58a; background: #465144; }
+.crypt-lord-marionette button.warn { color: #ffb3ab; }
+.crypt-lord-marionette button:disabled { opacity: .45; cursor: not-allowed; }
+.crypt-lord-marionette p { overflow-wrap: anywhere; }
+.crypt-lord-marionette .ppw-narrative { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; position: sticky; bottom: 0; background: #202825; padding: 12px 0; border-top: 1px solid #e7cc8c; }
+.crypt-lord-marionette .ppw-mat-qty { width: 70px; }
+.crypt-lord-grazing .ppw-clone-main { display: grid; gap: 4px; }
+.crypt-lord-grazing .ppw-clone-name { display: flex; align-items: center; gap: 7px; }
+.crypt-lord-grazing .ppw-mat-hit { padding: 10px 0; border-bottom: 1px solid #47564e; }
+.crypt-lord-workshop .ppw-mystic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+.crypt-lord-workshop .ppw-material-batch, .crypt-lord-workshop .ppw-material-candidate, .crypt-lord-workshop .ppw-mystic-effect { display: block; padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-workshop .ppw-material-risk { padding: 10px 0; color: #c8dbd0; }
+.crypt-lord-material-processing .ppw-material-operations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.crypt-lord-material-processing .ppw-mat-qty { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; width: auto; margin: 8px 0 0 24px; color: #b5c4bc; }
+.crypt-lord-material-processing .ppw-material-source-qty { width: 90px; }
+.crypt-lord-material-processing .ppw-material-source-title { margin-top: 12px; color: #e7cc8c; overflow-wrap: anywhere; }
+.crypt-lord-material-processing .ppw-material-match { margin: 6px 0; overflow-wrap: anywhere; }
+.crypt-lord-material-processing .ppw-material-match.exact { color: #aad8ba; }
+.crypt-lord-material-processing .ppw-material-match.misplaced { color: #e7cc8c; }
+.crypt-lord-material-processing .ppw-material-match.miss { color: #ffb3ab; }
+@media (max-width: 520px) {
+  .crypt-lord-material-processing .ppw-material-operations { grid-template-columns: minmax(0, 1fr); }
+}
+.crypt-lord-workshop .ppw-mystic-slot > summary { color: #e7cc8c; padding: 8px 0; }
+.crypt-lord-workshop [data-construct-repair] .ppw-mat-n { width: 100px; display: block; margin-top: 6px; }
+.crypt-lord-reader .ppw-mystic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
+.crypt-lord-reader .ppw-mystic-effect { padding: 10px 0; border-top: 1px solid #47564e; }
+.crypt-lord-reader .ppw-mystic-slot > summary { padding: 8px 0; color: #e7cc8c; }
+.crypt-lord-reader .ppw-group { border-top: 1px solid #47564e; padding-top: 8px; }
+.crypt-lord-reader .ppw-mat-hit { display: flex; }
+.crypt-lord-reader .ppw-mat-name { color: #c8dbd0; }
+.crypt-lord-mystery-roster .ppw-material-batch { padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-mystery-roster [data-reenact-knowledge-name] { margin-bottom: 10px; }
+.crypt-lord-scroll .ppw-mystic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.crypt-lord-scroll .ppw-form > div { grid-column: 1 / -1; }
+.crypt-lord-scroll .ppw-material-batch { padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-scroll .ppw-material-batch .ppw-row > div { min-width: 0; }
+.crypt-lord-scroll .ppw-material-risk { padding: 10px 0; overflow-wrap: anywhere; color: #e7cc8c; }
+.crypt-lord-scroll [data-scroll-allocation] { flex: 0 0 90px; width: 90px; }
+.crypt-lord-scroll .ppw-field [data-scroll-material-qty] { width: 100px; }
+.crypt-lord-picture .ppw-material-batch { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-picture .ppw-material-batch > span, .crypt-lord-picture .ppw-material-batch > div { min-width: 0; }
+.crypt-lord-picture [data-picture-material] { flex: 0 0 78px; width: 78px; }
+.crypt-lord-picture .ppw-field { margin: 12px 0 4px; }
+.crypt-lord-territory .ppw-material-batch { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-territory .ppw-material-batch > div { flex: 1 1 100%; min-width: 0; }
+.crypt-lord-territory .ppw-material-batch > span { flex: 1 1 180px; min-width: 0; }
+.crypt-lord-territory [data-shaman-material] { flex: 0 0 78px; width: 78px; }
+.crypt-lord-territory .ppw-field { margin: 12px 0; }
+.crypt-lord-jurisdiction .ppw-field { margin: 12px 0; }
+.crypt-lord-jurisdiction .ppw-material-batch { padding: 12px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-jurisdiction .ppw-material-batch > div { min-width: 0; }
+.crypt-lord-jurisdiction .ppw-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.crypt-lord-imagination .ppw-field { margin: 12px 0; }
+.crypt-lord-imagination .ppw-card { padding: 10px 0; border-bottom: 1px solid #47564e; }
+.crypt-lord-imagination .ppw-card .ppw-card { border-bottom: 0; }
+.crypt-lord-enhancement-native .ppw-card { padding: 12px 0; border-bottom: 1px solid #47564e; }
+.crypt-lord-enhancement-native .ppw-field { margin: 10px 0; }
+.crypt-lord-enhancement-native .ppw-material-batch { padding: 10px 0; border-bottom: 1px solid #47564e; overflow-wrap: anywhere; }
+.crypt-lord-enhancement-native .ppw-module-rarity-1 { color: #b4dcc6; }
+.crypt-lord-enhancement-native .ppw-module-rarity-2 { color: #a6d9ed; }
+.crypt-lord-enhancement-native .ppw-module-rarity-3 { color: #d9b7ee; }
+.crypt-lord-enhancement-native .ppw-module-rarity-4 { color: #efd18e; }
+.crypt-lord-enhancement-native .ppw-module-rarity-5 { color: #f5b5bd; }
+@media (max-width: 600px) {
+  .crypt-lord-workshop .ppw-mystic-grid { grid-template-columns: minmax(0, 1fr); }
+  .crypt-lord-reader .ppw-mystic-grid { grid-template-columns: minmax(0, 1fr); }
+  .crypt-lord-scroll .ppw-mystic-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .crypt-lord-marionette { top: 8px; left: 8px; transform: none; max-height: calc(100vh - 16px); }
+  .crypt-lord-marionette .ppw-form { grid-template-columns: minmax(0, 1fr); }
+}

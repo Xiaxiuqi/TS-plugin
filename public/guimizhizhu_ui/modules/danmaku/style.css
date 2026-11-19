@@ -1,0 +1,75 @@
+.crypt-lord-danmaku-layer {
+  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 10000;
+}
+.crypt-lord-danmaku-layer[hidden], .crypt-lord-danmaku-dialog[hidden] { display: none; }
+.crypt-lord-danmaku-layer .crypt-lord-danmaku-pill {
+  position: absolute; left: 100%; width: max-content; max-width: 1200px; white-space: nowrap;
+  padding: 6px 18px; border: 1px solid #71867d; border-radius: 24px;
+  background: #18231eef; color: #f3f6f4; font: 600 16px/1.5 sans-serif;
+  pointer-events: none; letter-spacing: 0; opacity: 0; will-change: transform;
+  box-shadow: 0 2px 8px #0004;
+}
+.crypt-lord-danmaku-layer .is-static {
+  left: 16px; max-width: calc(100% - 32px); box-sizing: border-box; white-space: normal;
+  overflow: hidden; max-height: 34px; padding: 4px 10px; font-size: 14px; opacity: 1; will-change: auto;
+}
+.crypt-lord-danmaku-layer .dm-theme-gold, .crypt-lord-danmaku-layer .dm-theme-amber { color: #f6d486; border-color: #b99b58; }
+.crypt-lord-danmaku-layer .dm-theme-cyan, .crypt-lord-danmaku-layer .dm-theme-blue { color: #9edcf3; border-color: #529bb5; }
+.crypt-lord-danmaku-layer .dm-theme-pink, .crypt-lord-danmaku-layer .dm-theme-red { color: #f2a8b0; border-color: #ad6876; }
+.crypt-lord-danmaku-layer .dm-theme-emerald, .crypt-lord-danmaku-layer .dm-theme-olive { color: #a4dfb1; border-color: #649a75; }
+.crypt-lord-danmaku-layer .dm-theme-purple { color: #d2b8ec; border-color: #9884b2; }
+.crypt-lord-danmaku-layer .dm-theme-silver, .crypt-lord-danmaku-layer .dm-theme-slate { color: #dae3e7; border-color: #8d9ea5; }
+.crypt-lord-danmaku-layer .dm-theme-copper, .crypt-lord-danmaku-layer .dm-theme-coffee { color: #ecc5a4; border-color: #b28f74; }
+.crypt-lord-danmaku-floor-tool {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; margin: 6px 0;
+  padding: 4px 8px; background: transparent; border: 0; border-radius: 4px;
+  color: inherit; font: inherit; cursor: pointer;
+}
+.crypt-lord-danmaku-floor-tool[aria-pressed="true"] { color: #28764e; background: #2d60442b; }
+.crypt-lord-danmaku-floor-tool[data-theme="dark"][aria-pressed="true"] { color: #91d6b2; }
+.crypt-lord-danmaku-dialog {
+  --dm-bg: #f5f7f6; --dm-fg: #25372e; --dm-border: #d6dfda; --dm-muted: #5f7267;
+  position: fixed; inset: 72px 24px auto auto; z-index: 10020;
+  display: flex; flex-direction: column; width: 580px; max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 96px); background: var(--dm-bg); color: var(--dm-fg);
+  border: 1px solid var(--dm-border); border-radius: 6px; box-shadow: 0 12px 40px #0003;
+  font: 14px/1.6 sans-serif; letter-spacing: 0; box-sizing: border-box;
+}
+.crypt-lord-danmaku-dialog[data-theme="dark"] {
+  --dm-bg: #232e28; --dm-fg: #edf2ef; --dm-border: #43574a; --dm-muted: #b2c2b8;
+}
+.crypt-lord-danmaku-dialog header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+.crypt-lord-danmaku-dialog header strong { font-size: 16px; }
+.crypt-lord-danmaku-dialog nav {
+  display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-block: 1px solid var(--dm-border); flex-wrap: wrap;
+}
+.crypt-lord-danmaku-dialog select {
+  min-width: 0; flex: 1; max-width: 180px; border: 1px solid var(--dm-border); border-radius: 4px;
+  background: transparent; color: inherit; padding: 6px; font: inherit;
+}
+.crypt-lord-danmaku-dialog label, .crypt-lord-danmaku-settings label {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0;
+}
+.crypt-lord-danmaku-dialog main { overflow: auto; min-height: 100px; padding: 0 16px; flex: 1; }
+.crypt-lord-danmaku-dialog ol { padding: 0; margin: 0; list-style: none; }
+.crypt-lord-danmaku-dialog li { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--dm-border); }
+.crypt-lord-danmaku-dialog li p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.crypt-lord-danmaku-index { color: var(--dm-muted); font-size: 12px; padding-top: 2px; }
+.crypt-lord-danmaku-dialog footer { padding: 8px 16px; color: var(--dm-muted); border-top: 1px solid var(--dm-border); overflow-wrap: anywhere; }
+.crypt-lord-danmaku-dialog button, .crypt-lord-danmaku-settings button {
+  display: inline-flex; justify-content: center; align-items: center; width: 32px; height: 32px;
+  border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer;
+}
+.crypt-lord-danmaku-dialog button:hover, .crypt-lord-danmaku-settings button:hover { background: #66877720; }
+.crypt-lord-danmaku-dialog button:disabled, .crypt-lord-danmaku-settings button:disabled { opacity: .45; cursor: default; }
+.crypt-lord-danmaku-settings { padding: 12px 16px; border-top: 1px solid var(--dm-border, #71827745); font: inherit; }
+.crypt-lord-danmaku-settings h3 { margin: 0 0 10px; font-size: 14px; }
+.crypt-lord-danmaku-settings > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.crypt-lord-danmaku-settings [role="status"] { min-width: 0; overflow-wrap: anywhere; font-size: 12px; color: var(--dm-muted, inherit); }
+.crypt-lord-danmaku-settings input, .crypt-lord-danmaku-dialog input { accent-color: #358265; width: 18px; height: 18px; flex-shrink: 0; }
+@media (max-width: 768px) {
+  .crypt-lord-danmaku-layer .crypt-lord-danmaku-pill { font-size: 14px; padding: 4px 14px; }
+  .crypt-lord-danmaku-dialog { inset: 32px 12px auto; max-height: calc(100dvh - 64px); width: auto; }
+  .crypt-lord-danmaku-dialog nav { gap: 8px; padding-inline: 12px; }
+  .crypt-lord-danmaku-dialog main { padding-inline: 12px; }
+}

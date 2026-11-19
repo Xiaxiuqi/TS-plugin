@@ -11,13 +11,20 @@
 .crypt-lord-event-generator__content h3 { color: #e9c16e; font-size: 15px; }
 .crypt-lord-event-generator__content p { color: #acb9ae; }
 .crypt-lord-event-generator__actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 5px 0; }
-.crypt-lord-event-generator button, .crypt-lord-event-generator textarea { border: 1px solid #806e4e; border-radius: 4px; padding: 7px 10px; background: #292c2b; color: #f1eee4; font: inherit; }
+.crypt-lord-event-generator button, .crypt-lord-event-generator textarea { min-width: 0; border: 1px solid #806e4e; border-radius: 4px; padding: 7px 10px; background: #292c2b; color: #f1eee4; font: inherit; }
 .crypt-lord-event-generator button { cursor: pointer; }
+.crypt-lord-event-generator button:focus-visible, .crypt-lord-event-generator textarea:focus-visible { outline: 2px solid #e9c16e; outline-offset: 2px; }
 .crypt-lord-event-generator button:hover { background: #564833; }
 .crypt-lord-event-generator textarea { flex: 1; min-height: 150px; width: 100%; resize: vertical; line-height: 1.6; }
 .crypt-lord-event-generator__status { min-height: 32px; padding: 6px 14px; border-top: 1px solid #514b40; color: #b6d5ad; overflow-wrap: anywhere; }
 .crypt-lord-event-generator__status[data-error="true"] { color: #ffaaaa; }
-.crypt-lord-event-generator[aria-busy="true"] .crypt-lord-event-generator__body { pointer-events: none; opacity: .7; }
+.crypt-lord-event-generator button:disabled, .crypt-lord-event-generator textarea:disabled { opacity: .55; cursor: default; }
+.crypt-lord-event-generator__details { flex: 0 0 auto; border-top: 1px solid #514b40; padding-top: 8px; overflow-wrap: anywhere; }
+.crypt-lord-event-generator__details summary { cursor: pointer; color: #d5bf8a; }
+.crypt-lord-event-generator__details pre { max-height: 140px; overflow: auto; white-space: pre-wrap; font: inherit; color: #c7d0cc; margin: 8px 0 0; }
+.crypt-lord-event-generator__details dl { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(0, 3fr); gap: 6px 12px; margin: 8px 0; }
+.crypt-lord-event-generator__details dt { color: #acb9ae; }
+.crypt-lord-event-generator__details dd { margin: 0; }
 @media (max-width: 600px) {
   .crypt-lord-event-generator { top: 8px; left: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); transform: none; }
 }

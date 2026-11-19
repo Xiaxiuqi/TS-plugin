@@ -33,6 +33,9 @@
 .crypt-lord-native-floor-status-bar *,
 .crypt-lord-native-floor-status-bar *::before,
 .crypt-lord-native-floor-status-bar *::after { box-sizing: border-box; }
+.crypt-lord-native-floor-status-bar__status-item[role="button"] { cursor: pointer; }
+.crypt-lord-native-floor-status-bar__status-item[role="button"]:hover { background: var(--cl-panel-soft); }
+.crypt-lord-native-floor-status-bar__status-item[role="button"]:focus-visible { outline: 2px solid var(--cl-gold); outline-offset: -2px; }
 
 .crypt-lord-native-floor-status-bar__header,
 .crypt-lord-native-floor-status-bar__footer {
@@ -82,13 +85,20 @@
 .crypt-lord-native-floor-status-bar__progress-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1a5f7a, #daa520, #a43838); transition: width .35s ease; }
 .crypt-lord-native-floor-status-bar__battle-exp { color: var(--cl-muted); font-size: 10px; }
 
-.crypt-lord-native-floor-status-bar__wallet { display: flex; align-items: flex-start; gap: 10px; padding: 7px 12px; border-top: 1px solid rgba(218, 165, 32, .14); border-bottom: 1px solid rgba(218, 165, 32, .14); background: rgba(0, 0, 0, .08); }
+.crypt-lord-native-floor-status-bar__wallet { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 7px 12px; border-top: 1px solid rgba(218, 165, 32, .14); border-bottom: 1px solid rgba(218, 165, 32, .14); background: rgba(0, 0, 0, .08); }
 .crypt-lord-native-floor-status-bar__wallet-label { flex: 0 0 auto; color: var(--cl-muted); font-size: 11px; }
 .crypt-lord-native-floor-status-bar__wallet-list { display: flex; min-width: 0; flex-wrap: wrap; gap: 3px 8px; }
 .crypt-lord-native-floor-status-bar__wallet-item { color: var(--cl-text); }
 .crypt-lord-native-floor-status-bar__wallet-item::after { content: " ·"; color: var(--cl-muted); }
 .crypt-lord-native-floor-status-bar__wallet-item:last-child::after { content: ""; }
 .crypt-lord-native-floor-status-bar__wallet-empty { color: var(--cl-muted); }
+.crypt-lord-native-floor-status-bar__wallet-item { overflow-wrap: anywhere; }
+.crypt-lord-native-floor-status-bar__cashflow { display: flex; flex-wrap: wrap; gap: 8px 16px; width: 100%; align-items: center; }
+.crypt-lord-native-floor-status-bar__cashflow > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.crypt-lord-native-floor-status-bar__cashflow span { overflow-wrap: anywhere; white-space: pre-wrap; }
+.crypt-lord-native-floor-status-bar__cashflow button { flex: none; }
+.crypt-lord-native-floor-status-bar__gain { color: color-mix(in srgb, var(--cl-text) 55%, #28b89b); }
+.crypt-lord-native-floor-status-bar__loss { color: color-mix(in srgb, var(--cl-text) 55%, #db6683); }
 .crypt-lord-native-floor-status-bar__footer { padding-block: 7px; color: var(--cl-muted); font-size: 11px; }
 .crypt-lord-native-floor-status-bar__native-note { flex: 0 0 auto; color: var(--cl-gold); }
 .crypt-lord-native-floor-status-bar__image { position: relative; margin: 0; padding: 8px 12px 12px; border-top: 1px solid rgba(218, 165, 32, .2); text-align: center; }

@@ -1,157 +1,70 @@
-.crypt-lord-variable-workbench,
-.crypt-lord-variable-workbench * { box-sizing: border-box; }
-
-.crypt-lord-variable-workbench__ball {
-  position: fixed;
-  z-index: 2147482991;
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border: 1px solid #d9ac4a;
-  border-radius: 50%;
-  color: #f9e7bd;
-  background: #21180e;
-  box-shadow: 0 7px 18px rgba(0, 0, 0, .46);
-  cursor: grab;
-  font: 12px/1 "Microsoft YaHei", sans-serif;
-  user-select: none;
-  touch-action: none;
-}
-
-.crypt-lord-variable-workbench__ball:active { cursor: grabbing; }
-.crypt-lord-variable-workbench__ball--updated { animation: crypt-lord-variable-pulse 1.1s ease-in-out infinite alternate; }
-.crypt-lord-variable-workbench__ball b {
-  position: absolute;
-  top: -5px;
-  right: -7px;
-  min-width: 18px;
-  border: 1px solid #f7d782;
-  border-radius: 9px;
-  padding: 1px 4px;
-  color: #24180d;
-  background: #f0c65c;
-  font: 10px/1.2 ui-monospace, Consolas, monospace;
-}
-
-.crypt-lord-variable-workbench__retry-ball {
-  position: fixed;
-  z-index: 2147482992;
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid #d9ac4a;
-  border-radius: 50%;
-  color: #f9e7bd;
-  background: #30220f;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, .44);
-  cursor: pointer;
-}
-.crypt-lord-variable-workbench__retry-ball:hover { border-color: #f0c65c; background: #483315; }
-.crypt-lord-variable-workbench__retry-ball:focus-visible { outline: 2px solid #f0c65c; outline-offset: 2px; }
-.crypt-lord-variable-workbench__retry-ball:disabled { cursor: wait; opacity: .7; }
-.crypt-lord-variable-workbench__retry-ball svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-.crypt-lord-variable-workbench__retry-ball--busy svg { animation: crypt-lord-variable-retry-spin .85s linear infinite; }
-
 .crypt-lord-variable-workbench {
-  position: fixed;
-  z-index: 2147482990;
-  display: none;
-  min-width: 340px;
-  min-height: 420px;
-  overflow: hidden;
-  border: 1px solid #8a622e;
-  border-radius: 6px;
-  color: #f5deb3;
-  background: #1d160f;
-  box-shadow: 0 18px 52px rgba(0, 0, 0, .58);
-  font: 13px/1.45 "Noto Serif SC", "Microsoft YaHei", serif;
+  position: fixed; z-index: 2147482984; display: flex; flex-direction: column;
+  min-width: min(320px, calc(100vw - 16px)); min-height: min(360px, calc(100vh - 16px));
+  max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); resize: both; overflow: hidden;
+  border: 1px solid #82938c; border-radius: 6px; box-shadow: 0 12px 36px #0006;
+  color: var(--SmartThemeBodyColor, #edf1ef); background: var(--SmartThemeBlurTintColor, #282c2d);
+  font: 13px/1.5 "Microsoft YaHei", sans-serif; letter-spacing: 0;
 }
-
-.crypt-lord-variable-workbench[data-open="true"] { display: flex; flex-direction: column; }
-.crypt-lord-variable-workbench button,
-.crypt-lord-variable-workbench input,
-.crypt-lord-variable-workbench textarea { font: inherit; }
-.crypt-lord-variable-workbench button {
-  border: 1px solid rgba(218, 165, 32, .46);
-  border-radius: 3px;
-  color: #f5deb3;
-  background: #2a2015;
-  cursor: pointer;
-}
-.crypt-lord-variable-workbench button:hover { border-color: #daa520; background: #342615; }
-.crypt-lord-variable-workbench button:disabled { opacity: .62; cursor: wait; }
-.crypt-lord-variable-workbench__header {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  gap: 8px;
-  border-bottom: 1px solid rgba(218, 165, 32, .28);
-  padding: 7px 9px 7px 12px;
-  cursor: move;
-  user-select: none;
-  touch-action: none;
-}
-.crypt-lord-variable-workbench__header strong { color: #daa520; }
-.crypt-lord-variable-workbench__header > span { min-width: 0; flex: 1; overflow: hidden; color: #bda98a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.crypt-lord-variable-workbench__header > div { display: flex; gap: 4px; }
-.crypt-lord-variable-workbench__header button { width: 27px; height: 27px; padding: 0; }
-.crypt-lord-variable-workbench__header [data-variable-zoom] { width: 43px; font-size: 10px; }
-.crypt-lord-variable-workbench__tabs { display: flex; gap: 5px; border-bottom: 1px solid rgba(218, 165, 32, .18); padding: 7px 9px 0; }
-.crypt-lord-variable-workbench__tabs button { border-bottom-color: transparent; border-radius: 3px 3px 0 0; padding: 6px 10px; color: #bda98a; }
-.crypt-lord-variable-workbench__tabs button.is-active { border-color: #c99838; border-bottom-color: #1d160f; color: #f5deb3; background: #2a2015; }
-.crypt-lord-variable-workbench__notice { border-bottom: 1px solid rgba(218, 165, 32, .15); padding: 7px 12px; color: #bda98a; background: #261d13; font-size: 11px; }
-.crypt-lord-variable-workbench__notice strong { color: #dec480; }
-.crypt-lord-variable-workbench__body { min-height: 0; flex: 1; overflow: auto; padding: 9px; }
-.crypt-lord-variable-workbench__tools,
-.crypt-lord-variable-workbench__raw-actions,
-.crypt-lord-variable-workbench footer,
-.crypt-lord-variable-workbench footer > div { display: flex; align-items: center; gap: 6px; }
-.crypt-lord-variable-workbench__tools { margin-bottom: 8px; }
-.crypt-lord-variable-workbench__tools input { min-width: 0; flex: 1; }
-.crypt-lord-variable-workbench input[type="search"],
-.crypt-lord-variable-workbench textarea,
-.crypt-lord-variable-workbench__tree-input {
-  border: 1px solid rgba(218, 165, 32, .4);
-  border-radius: 3px;
-  color: #f5deb3;
-  background: #17110b;
-}
-.crypt-lord-variable-workbench input[type="search"] { padding: 5px 7px; }
-.crypt-lord-variable-workbench textarea { display: block; width: 100%; min-height: 130px; resize: vertical; padding: 7px; font: 12px/1.45 ui-monospace, Consolas, monospace; }
-.crypt-lord-variable-workbench textarea + .crypt-lord-variable-workbench__raw-actions { margin: 7px 0 10px; }
-.crypt-lord-variable-workbench [data-variable-instruction] { min-height: 74px; font-family: inherit; }
-.crypt-lord-variable-workbench__tree { overflow: auto; border: 1px solid rgba(218, 165, 32, .22); background: #17110b; }
-.crypt-lord-variable-workbench__tree-scale { min-width: max-content; font-size: 100%; }
-.crypt-lord-variable-workbench__tree-node { display: flex; min-height: 30px; align-items: center; gap: 5px; border-bottom: 1px solid rgba(218, 165, 32, .11); padding: 3px 5px; }
-.crypt-lord-variable-workbench__tree-node:hover { background: rgba(218, 165, 32, .08); }
-.crypt-lord-variable-workbench__tree-node.is-updated { animation: crypt-lord-variable-row 1.35s ease-out 2; background: rgba(240, 198, 92, .26); }
-.crypt-lord-variable-workbench__tree-children { margin-left: 17px; border-left: 1px solid rgba(218, 165, 32, .25); }
-.crypt-lord-variable-workbench__icon,
-.crypt-lord-variable-workbench__spacer { width: 23px; height: 23px; flex: 0 0 23px; }
-.crypt-lord-variable-workbench__spacer { display: inline-block; }
-.crypt-lord-variable-workbench__delete { margin-left: auto; color: #e8867a !important; }
-.crypt-lord-variable-workbench__tree-key { min-width: 82px; color: #e0b755; font: 12px/1.35 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
-.crypt-lord-variable-workbench__tree-summary { min-width: 78px; color: #bda98a; font-size: 11px; }
-.crypt-lord-variable-workbench__tree-input { min-width: 145px; flex: 1; padding: 4px 6px; font: 12px/1.35 ui-monospace, Consolas, monospace; }
-.crypt-lord-variable-workbench__tree-input[type="checkbox"] { min-width: 18px; flex: 0 0 18px; width: 18px; height: 18px; accent-color: #daa520; }
-.crypt-lord-variable-workbench__tree-input.is-dirty { border-color: #e1bd54; background: #352710; }
-.crypt-lord-variable-workbench__empty { padding: 14px; color: #bda98a; }
-.crypt-lord-variable-workbench footer { min-height: 47px; justify-content: space-between; gap: 10px; border-top: 1px solid rgba(218, 165, 32, .23); padding: 7px 10px; background: #21180f; }
-.crypt-lord-variable-workbench footer > span { min-width: 0; overflow: hidden; color: #bda98a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.crypt-lord-variable-workbench footer button,
-.crypt-lord-variable-workbench__raw-actions button,
-.crypt-lord-variable-workbench__tools button { min-height: 27px; padding: 4px 7px; }
-.crypt-lord-variable-workbench .is-primary { border-color: #d8a337; color: #26190d; background: #d5a33e; }
-.crypt-lord-variable-workbench__resize { position: absolute; right: 1px; bottom: 1px; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; }
-.crypt-lord-variable-workbench__resize::before { position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 2px solid #d1a64d; border-bottom: 2px solid #d1a64d; content: ""; }
-@keyframes crypt-lord-variable-pulse { from { box-shadow: 0 0 0 0 rgba(240, 198, 92, .15), 0 7px 18px rgba(0, 0, 0, .46); } to { box-shadow: 0 0 0 8px rgba(240, 198, 92, 0), 0 7px 18px rgba(0, 0, 0, .46); } }
-@keyframes crypt-lord-variable-row { 0%, 100% { background: rgba(240, 198, 92, .08); } 45% { background: rgba(240, 198, 92, .42); } }
-@keyframes crypt-lord-variable-retry-spin { to { transform: rotate(360deg); } }
-@media (max-width: 640px) {
-  .crypt-lord-variable-workbench { min-width: min(340px, calc(100vw - 16px)); }
-  .crypt-lord-variable-workbench__notice { font-size: 10px; }
-  .crypt-lord-variable-workbench__tree-key { min-width: 68px; }
-  .crypt-lord-variable-workbench footer > span { display: none; }
+.crypt-lord-variable-workbench[data-open="false"] { display: none; }
+.crypt-lord-variable-workbench [hidden] { display: none !important; }
+.crypt-lord-variable-workbench * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-variable-workbench header { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #82938c70; padding: 10px 14px; cursor: move; touch-action: none; }
+.crypt-lord-variable-workbench header strong { font-size: 16px; }
+.crypt-lord-variable-workbench header > span { flex: 1; color: #73b59c; font-size: 12px; }
+.crypt-lord-variable-workbench header > div, .crypt-lord-variable-workbench footer > div,
+.crypt-lord-variable-workbench [data-variable-patch-tools], .crypt-lord-variable-workbench [data-variable-ai-tools] { display: flex; gap: 6px; align-items: center; }
+.crypt-lord-variable-workbench button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none; min-width: 30px; height: 32px; padding: 0 7px; border: 1px solid transparent; border-radius: 4px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.crypt-lord-variable-workbench button:hover { border-color: #82938c; background: #82938c25; }
+.crypt-lord-variable-workbench button:disabled { opacity: .4; cursor: default; }
+.crypt-lord-variable-workbench button:focus-visible, .crypt-lord-variable-workbench input:focus-visible,
+.crypt-lord-variable-workbench textarea:focus-visible, .crypt-lord-variable-workbench summary:focus-visible { outline: 2px solid #73b59c; outline-offset: 1px; }
+.crypt-lord-variable-workbench .is-danger { color: #d57888; }
+.crypt-lord-variable-workbench .is-primary { background: #307658; color: #fff; }
+.crypt-lord-variable-workbench__tabs { display: flex; border-bottom: 1px solid #82938c70; padding: 6px 12px; gap: 8px; }
+.crypt-lord-variable-workbench__tabs button[aria-selected="true"] { background: #73b59c25; color: #73b59c; border-color: #73b59c70; }
+.crypt-lord-variable-workbench main { min-height: 0; flex: 1; display: flex; overflow: hidden; }
+.crypt-lord-variable-workbench main > section { min-width: 0; flex: 1; overflow: auto; padding: 12px; }
+.crypt-lord-variable-workbench__tools { display: flex; gap: 10px; margin-bottom: 10px; }
+.crypt-lord-variable-workbench__tools input[type="search"] { min-width: 0; flex: 1; }
+.crypt-lord-variable-workbench__tools label { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.crypt-lord-variable-workbench__tools input[type="range"] { width: 80px; }
+.crypt-lord-variable-workbench input:not([type="checkbox"]):not([type="range"]),
+.crypt-lord-variable-workbench select, .crypt-lord-variable-workbench textarea { min-width: 0; border: 1px solid #82938c70; border-radius: 4px; background: #727f7915; color: inherit; padding: 5px 7px; font: inherit; }
+.crypt-lord-variable-workbench textarea { width: 100%; min-height: 210px; margin: 8px 0; resize: vertical; font: 12px/1.6 ui-monospace, Consolas, monospace; }
+.crypt-lord-variable-workbench [data-variable-instruction] { min-height: 90px; font-family: inherit; }
+.crypt-lord-variable-workbench [data-variable-raw] > label { display: block; margin-bottom: 12px; }
+.crypt-lord-variable-workbench__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) 30px; align-items: center; gap: 7px; padding: 6px 0; border-bottom: 1px solid #82938c35; min-height: 37px; }
+.crypt-lord-variable-workbench__row strong { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.crypt-lord-variable-workbench__row .crypt-lord-variable-workbench__input { width: 100%; }
+.crypt-lord-variable-workbench__row input[type="checkbox"] { width: 16px; height: 16px; justify-self: start; accent-color: #398769; }
+.crypt-lord-variable-workbench__row:has(.is-danger) .is-danger { grid-column: 3; }
+.crypt-lord-variable-workbench summary.crypt-lord-variable-workbench__row { grid-template-columns: minmax(0, 1fr) auto 30px 30px; cursor: pointer; }
+.crypt-lord-variable-workbench summary.crypt-lord-variable-workbench__row:not(:has(.is-danger)) { grid-template-columns: minmax(0, 1fr) auto 30px; }
+.crypt-lord-variable-workbench summary::-webkit-details-marker { display: none; }
+.crypt-lord-variable-workbench summary strong > i { display: inline-block; width: 14px; font-size: 10px; }
+.crypt-lord-variable-workbench details[open] > summary strong > i { transform: rotate(90deg); }
+.crypt-lord-variable-workbench summary .is-danger { grid-column: 4 !important; }
+.crypt-lord-variable-workbench__kind { color: #73b59c; font-size: 11px; }
+.crypt-lord-variable-workbench__node > .crypt-lord-variable-workbench__node { margin-left: min(12px, 2%); border-left: 1px solid #82938c50; padding-left: min(8px, 2%); }
+.crypt-lord-variable-workbench__row.is-dirty { background: #b69a541a; }
+.crypt-lord-variable-workbench__row.is-updated { background: #73b59c25; }
+.crypt-lord-variable-workbench [data-variable-addition] { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0; border-bottom: 1px solid #82938c; }
+.crypt-lord-variable-workbench [data-variable-addition] input { flex: 1; width: 100px; }
+.crypt-lord-variable-workbench footer { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid #82938c70; }
+.crypt-lord-variable-workbench [role="status"] { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.crypt-lord-variable-workbench [data-variable-dirty] { color: #ceac60; font-size: 11px; white-space: nowrap; }
+.crypt-lord-variable-workbench__ball, .crypt-lord-variable-workbench__retry-ball { position: fixed; z-index: 2147482982; width: 48px; height: 48px; border-radius: 50%; border: 1px solid #82938c; color: #edf1ef; background: #303835; cursor: pointer; touch-action: none; }
+.crypt-lord-variable-workbench__retry-ball { width: 30px; height: 30px; }
+.crypt-lord-variable-workbench__ball b { position: absolute; top: -5px; right: -5px; padding: 2px 4px; border-radius: 8px; font-size: 10px; background: #ceac60; color: #242c28; }
+.crypt-lord-variable-workbench__ball b[hidden] { display: none; }
+.crypt-lord-variable-workbench__retry-ball--busy i { animation: crypt-lord-variable-spin 1s linear infinite; }
+@keyframes crypt-lord-variable-spin { to { transform: rotate(360deg); } }
+@media (max-width: 620px) {
+  .crypt-lord-variable-workbench { resize: none; }
+  .crypt-lord-variable-workbench header { padding: 8px 10px; }
+  .crypt-lord-variable-workbench__tools { flex-wrap: wrap; }
+  .crypt-lord-variable-workbench__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px; gap: 4px; }
+  .crypt-lord-variable-workbench__node > .crypt-lord-variable-workbench__node { margin-left: min(5px, 1%); padding-left: min(5px, 1%); }
+  .crypt-lord-variable-workbench [data-variable-dirty] { display: none; }
 }

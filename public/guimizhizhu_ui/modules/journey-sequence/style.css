@@ -1,0 +1,46 @@
+.crypt-lord-sequence, .crypt-lord-sequence * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-sequence { position: fixed; z-index: 2147482992; left: 50%; top: 6vh; transform: translateX(-50%); width: min(960px, calc(100vw - 24px)); height: min(86vh, 860px); display: none; flex-direction: column; overflow: hidden; border: 1px solid #78858a; border-radius: 6px; color: #eef0ef; background: #25282b; font: 13px/1.55 "Microsoft YaHei", sans-serif; box-shadow: 0 15px 50px #0007; }
+.crypt-lord-sequence[data-open="true"] { display: flex; }
+.crypt-lord-sequence header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #515c60; cursor: move; touch-action: none; }
+.crypt-lord-sequence header strong { flex: 1; font-size: 16px; color: #efcf83; }
+.crypt-lord-sequence__tools { display: flex; gap: 6px; }
+.crypt-lord-sequence button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 5px 9px; background: #353d40; color: #eef0ef; border: 1px solid #73848a; border-radius: 4px; cursor: pointer; font: inherit; }
+.crypt-lord-sequence button:hover { background: #465154; }
+.crypt-lord-sequence button:disabled { opacity: .45; cursor: default; }
+.crypt-lord-sequence__tools button { width: 34px; padding: 0; }
+.crypt-lord-sequence input { min-width: 0; width: 100%; height: 34px; padding: 4px 8px; background: #191e20 !important; color: #f2f4f3 !important; border: 1px solid #73848a; border-radius: 4px; font: inherit; }
+.crypt-lord-sequence :is(button,input,summary):focus-visible { outline: 2px solid #9edbc5; outline-offset: 2px; }
+.crypt-lord-sequence__status { margin: 0; padding: 8px 14px; min-height: 38px; border-bottom: 1px solid #515c60; color: #b9d6d0; overflow-wrap: anywhere; }
+.crypt-lord-sequence main { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; }
+.crypt-lord-sequence [hidden] { display: none !important; }
+.crypt-lord-sequence__recovery { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
+.crypt-lord-sequence fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.crypt-lord-sequence label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.crypt-lord-sequence label span { flex-shrink: 0; }
+.crypt-lord-sequence__range { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 8px; padding-bottom: 12px; }
+.crypt-lord-sequence__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid #515c60; }
+.crypt-lord-sequence__actions label { width: 155px; }
+.crypt-lord-sequence__floor { padding: 12px 0; border-bottom: 1px solid #515c60; }
+.crypt-lord-sequence summary { cursor: pointer; color: #d6dedc; overflow-wrap: anywhere; }
+.crypt-lord-sequence__event { display: grid; grid-template-columns: minmax(0,1fr) 285px; gap: 12px; padding: 14px 0; border-bottom: 1px solid #414a4d; }
+.crypt-lord-sequence__info { min-width: 0; overflow-wrap: anywhere; }
+.crypt-lord-sequence__info strong { color: #efcf83; font-size: 14px; }
+.crypt-lord-sequence__info small { display: block; color: #adbcbf; }
+.crypt-lord-sequence__info p { margin: 4px 0; }
+.crypt-lord-sequence pre { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.crypt-lord-sequence__edit { display: flex; align-items: start; justify-content: end; flex-wrap: wrap; gap: 7px; }
+.crypt-lord-sequence__edit label { width: 80px; }
+.crypt-lord-sequence__edit label span { display: none; }
+.crypt-lord-sequence .is-critical, .crypt-lord-sequence .is-error { color: #f2a69b; }
+.crypt-lord-sequence .is-high { color: #f2d082; }
+.crypt-lord-sequence .is-low { color: #9ecbdc; }
+@media (max-width: 640px) {
+  .crypt-lord-sequence { top: 8px; width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100vh - 16px); }
+  .crypt-lord-sequence__range { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .crypt-lord-sequence__range label { flex-direction: column; align-items: start; gap: 3px; }
+  .crypt-lord-sequence__range button { grid-column: 1 / -1; }
+  .crypt-lord-sequence__actions label { width: 100%; }
+  .crypt-lord-sequence__actions label input { max-width: 90px; }
+  .crypt-lord-sequence__event { grid-template-columns: minmax(0,1fr); }
+  .crypt-lord-sequence__edit { justify-content: start; }
+}

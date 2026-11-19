@@ -5,16 +5,21 @@
 .crypt-lord-affairs header { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 12px; border-bottom: 1px solid #555c51; cursor: move; user-select: none; touch-action: none; }
 .crypt-lord-affairs header strong { color: #e4bb74; white-space: nowrap; }
 .crypt-lord-affairs header span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b4c5b4; font-size: 11px; }
-.crypt-lord-affairs__body { min-height: 0; overflow: auto; padding: 12px 16px 16px; }
+.crypt-lord-affairs__body { min-height: 0; overflow: auto; padding: 12px 16px 16px; flex: 1 1 auto; }
+.crypt-lord-affairs__footer { flex: 0 0 auto; padding: 0 16px 12px; }
+.crypt-lord-affairs__footer:empty { display: none; }
 .crypt-lord-affairs button, .crypt-lord-affairs input, .crypt-lord-affairs select, .crypt-lord-affairs textarea { font: inherit; }
 .crypt-lord-affairs button { border: 1px solid #7f8b73; border-radius: 3px; padding: 6px 10px; color: #e7e3d8; background: #313c34; cursor: pointer; }
 .crypt-lord-affairs button:hover:not(:disabled) { background: #465548; }
 .crypt-lord-affairs button:disabled { opacity: .5; cursor: not-allowed; }
 .crypt-lord-affairs button.is-primary { border-color: #ddbd7c; color: #242923; background: #ddbd7c; }
+.crypt-lord-affairs button.is-primary:hover:not(:disabled) { background: #ecd09a; }
 .crypt-lord-affairs__close { font-size: 19px !important; line-height: 20px; }
 .crypt-lord-affairs input:not([type="checkbox"]), .crypt-lord-affairs select, .crypt-lord-affairs textarea { min-width: 0; max-width: 100%; border: 1px solid #687a6d; border-radius: 3px; padding: 7px; color: #e7e3d8; background: #171d19; }
 .crypt-lord-affairs input:not([type="checkbox"]) { width: 100%; }
-.crypt-lord-affairs__toolbar { display: flex; justify-content: flex-end; }
+.crypt-lord-affairs__toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.crypt-lord-affairs__error { border-left: 3px solid #da7777; padding: 8px; color: #efaaaa; overflow-wrap: anywhere; }
+.crypt-lord-affairs__export { white-space: pre-wrap; overflow-wrap: anywhere; }
 .crypt-lord-affairs__section { margin-top: 12px; border-top: 1px solid #48564b; padding-top: 10px; }
 .crypt-lord-affairs__section h3 { margin: 0 0 8px; color: #e2bc78; font-size: 15px; }
 .crypt-lord-affairs__note { margin: 4px 0 10px; color: #b4c5b4; overflow-wrap: anywhere; }
@@ -35,11 +40,12 @@
 .crypt-lord-affairs__record { border-left: 2px solid #8da890; padding: 3px 10px; margin: 9px 0; }
 .crypt-lord-affairs__record small { color: #a9bda7; }
 .crypt-lord-affairs__record p { margin: 3px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.crypt-lord-affairs__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 14px; border-top: 1px solid #48564b; padding-top: 12px; }
+.crypt-lord-affairs__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 0; border-top: 1px solid #48564b; padding-top: 12px; }
 .crypt-lord-affairs__actions textarea { flex-basis: 100%; width: 100%; resize: vertical; }
 .crypt-lord-affairs__pending { border-left: 3px solid #ddbd7c; padding: 8px; color: #e2bc78; background: #38372b; }
 @media (max-width: 600px) {
   .crypt-lord-affairs__dialog { top: 8px; max-height: calc(100dvh - 16px); }
   .crypt-lord-affairs__body { padding: 9px; }
+  .crypt-lord-affairs__footer { padding: 0 9px 9px; }
   .crypt-lord-affairs__row strong { min-width: 0; }
 }

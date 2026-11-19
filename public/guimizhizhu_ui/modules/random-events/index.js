@@ -9,41 +9,52 @@
   const host = modules['cryptLord.afterNativeHost'];
   if (!service || !host) throw new Error('随机事件依赖尚未加载');
   const state = {
-    panel: null, body: null, status: null, entries: [], revision: [], selected: 0,
-    busy: false, token: 0, disposed: false, subscription: null,
+    panel: null, body: null, status: null, entries: [], revision: null, selected: 0, cleanData: '', recovery: false,
+    busy: false, token: 0, disposed: false, subscriptions: [], view: null, focus: null, loading: false,
   };
   const doc = () => host.getHost()?.document || document;
   const win = () => doc().defaultView || window;
-  const active = token => !state.disposed && state.panel?.dataset.open === 'true' && state.token === token;
+  const active = token => !state.disposed && state.panel?.dataset.open === 'true' && state.token === token &&
+    modules['cryptLord.randomEvents'] === service && modules['cryptLord.afterNativeHost'] === host && host.getHost()?.window === state.view;
+  const dirty = () => state.cleanData !== '' && JSON.stringify(state.entries) !== state.cleanData;
+  function controls() {
+    state.panel?.querySelectorAll('.crypt-lord-random__body input, .crypt-lord-random__body textarea, .crypt-lord-random__body button')
+      .forEach(node => { node.disabled = state.busy || state.loading || node.dataset.needsRevision === 'true' &&
+        (!state.revision || state.recovery || service.status().recovery); });
+  }
+  function accept(loaded) {
+    if (!loaded.entries || !loaded.revision) {
+      state.revision = null;
+      controls();
+      message(loaded.warning || '提交已完成，请重新读取', true);
+      return;
+    }
+    state.entries = loaded.entries;
+    state.revision = loaded.revision;
+    state.recovery = loaded.recovery || false;
+    state.cleanData = JSON.stringify(state.entries);
+    state.selected = Math.max(0, Math.min(state.selected, state.entries.length - 1));
+    render();
+    if (loaded.warning) message(loaded.warning);
+  }
   function el(tag, className = '', text) {
     const node = doc().createElement(tag);
     node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
   }
-  function button(label, fn, title = label) {
+  function button(label, fn, title = label, writes = false) {
     const node = el('button', '', label);
     node.type = 'button';
     node.title = title;
-    node.addEventListener('click', fn);
+    if (writes) node.dataset.needsRevision = 'true';
+    node.addEventListener('click', event => { if (!node.disabled && (label === '×' || !state.busy && !state.loading)) fn(event); });
     return node;
   }
   function trashIcon() {
-    const svg = doc().createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('width', '16');
-    svg.setAttribute('height', '16');
-    svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', 'currentColor');
-    svg.setAttribute('stroke-width', '1.8');
-    svg.setAttribute('stroke-linecap', 'round');
-    svg.setAttribute('stroke-linejoin', 'round');
-    for (const d of ['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6', 'M10 10v7', 'M14 10v7']) {
-      const path = doc().createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', d);
-      svg.append(path);
-    }
-    return svg;
+    const icon = el('i', 'fa-solid fa-trash');
+    icon.setAttribute('aria-hidden', 'true');
+    return icon;
   }
   function field(label, control) {
     const row = el('label', 'crypt-lord-random__field');
@@ -62,18 +73,37 @@
     state.status.textContent = text;
     state.status.dataset.error = String(error);
   }
-  function close() { ++state.token; if (state.panel) state.panel.dataset.open = 'false'; }
+  function close() {
+    ++state.token;
+    state.busy = false;
+    state.loading = false;
+    if (state.panel) { state.panel.dataset.open = 'false'; state.panel.removeAttribute('aria-busy'); }
+    if (state.focus?.isConnected) state.focus.focus();
+  }
   function mount() {
     if (state.disposed || state.panel || !doc().body) return Boolean(state.panel);
     const panel = el('section', 'crypt-lord-random');
     panel.dataset.open = 'false';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', '随机事件库');
     const header = el('header');
     header.append(el('strong', '', '随机事件库'), button('×', close, '关闭'));
     const body = el('div', 'crypt-lord-random__body');
     const status = el('div', 'crypt-lord-random__status');
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
     panel.append(header, body, status);
     doc().body.append(panel);
     Object.assign(state, { panel, body, status });
+    panel.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+      if (event.key !== 'Tab') return;
+      const nodes = [...panel.querySelectorAll('button, input, textarea')].filter(node => !node.disabled && node.getClientRects().length);
+      const first = nodes[0], last = nodes.at(-1);
+      if (event.shiftKey && doc().activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && doc().activeElement === last) { event.preventDefault(); first?.focus(); }
+    });
     let drag = null;
     header.addEventListener('pointerdown', event => {
       if (event.button !== 0 || event.target.closest('button')) return;
@@ -90,26 +120,42 @@
     header.addEventListener('pointerup', () => { drag = null; });
     header.addEventListener('pointercancel', () => { drag = null; });
     const events = host.tavernEvents();
-    if (events?.CHAT_CHANGED) state.subscription = host.bindEvent(events.CHAT_CHANGED, close);
+    const bind = (event, fn) => { if (event) { const sub = host.bindEvent(event, fn); if (sub) state.subscriptions.push(sub); } };
+    bind(events?.CHAT_CHANGED, () => {
+      close(); state.entries = []; state.revision = null; state.cleanData = ''; state.body.replaceChildren();
+    });
+    bind(events?.GENERATION_STARTED, (type, options, dryRun) => {
+      if (dryRun || options?.dryRun || ['quiet', 'dryRun'].includes(type) || options?.quiet_prompt) return;
+      close(); state.revision = null;
+    });
     return true;
   }
   async function task(work) {
     if (state.busy) return;
     const token = state.token;
+    const guard = () => active(token);
     state.busy = true;
     state.panel.setAttribute('aria-busy', 'true');
-    try { await work(token); }
-    catch (error) { if (active(token)) message(error?.message || String(error), true); }
-    finally { state.busy = false; state.panel?.removeAttribute('aria-busy'); }
+    controls();
+    try { await work(token, guard); }
+    catch (error) {
+      if (active(token)) {
+        if (service.status().recovery !== state.recovery) { state.recovery = service.status().recovery; render(); }
+        message(error?.message || String(error), true);
+      }
+    }
+    finally { if (state.token === token) { state.busy = false; state.panel?.removeAttribute('aria-busy'); controls(); } }
   }
   function render() {
     state.body.replaceChildren();
     const nav = el('nav', 'crypt-lord-random__nav');
     const navActions = el('div', 'crypt-lord-random__nav-actions');
     navActions.append(button('新建条目', () => {
+      let name = '新随机事件', suffix = 2;
+      while (state.entries.some(source => source.entry.name === name)) name = `新随机事件 ${suffix++}`;
       state.entries.push({
         comment: '', entry: {
-          name: '新随机事件', isEnabled: false, order: 10, 触发率: 0, 抽取数量: 1,
+          name, isEnabled: false, order: 10, 触发率: 0, 抽取数量: 1,
           输出指令: '需要触发的剧情：${type}-${name}，描述：${description}', 事件列表: [],
         },
       });
@@ -117,14 +163,22 @@
       render();
     }), button('恢复默认', () => {
       if (!win().confirm('恢复默认随机事件？本脚本的新建、编辑和隐藏记录将清除；原版世界书正文保持不变，启用状态恢复。')) return;
-      void task(async token => {
-        const loaded = await service.restore(state.revision);
+      void task(async (token, guard) => {
+        const loaded = await service.restore(state.revision, guard);
         if (!active(token)) return;
-        state.entries = loaded.entries;
-        state.revision = loaded.revision;
         state.selected = 0;
-        render();
-        message('已恢复默认随机事件和原版条目的启用状态');
+        accept(loaded);
+        if (!loaded.warning) message('已恢复默认随机事件和原版条目的启用状态');
+      });
+    }, '恢复默认', true), button('重新读取', () => {
+      if (dirty() && !win().confirm('重新读取将丢弃当前草稿，继续吗？')) return;
+      void open(true);
+    }));
+    if (state.recovery || service.status().recovery) navActions.append(button('恢复未完成提交', () => {
+      if (!win().confirm('继续上次未完成的随机事件提交？只有原聊天、世界书绑定及未被外部修改的内容仍匹配时才会恢复。')) return;
+      void task(async (token, guard) => {
+        const loaded = await service.recover(guard);
+        if (active(token)) { accept(loaded); message(loaded.warning || '已恢复未完成提交'); }
       });
     }));
     nav.append(navActions);
@@ -138,30 +192,21 @@
       });
       label.className = 'crypt-lord-random__nav-select';
       label.append(el('span', 'crypt-lord-random__nav-name', entry.name || '未命名'),
-        el('small', '', `${book === '2历史孔隙' ? '历史孔隙' : book ? '源堡' : '本地'} · ${entry.isEnabled ? '已启用' : '已关闭'}`));
+        el('small', '', `${book || '本地'} · ${entry.isEnabled ? '已启用' : '已关闭'}`));
       label.dataset.entryIndex = String(index);
       const controls = el('div', 'crypt-lord-random__nav-controls');
       const toggle = el('label', 'crypt-lord-random__switch');
       const check = input('checkbox', entry.isEnabled, () => {});
+      check.dataset.needsRevision = 'true';
       check.setAttribute('aria-label', `${entry.isEnabled ? '关闭' : '开启'}「${entry.name || '未命名'}」`);
       check.title = `切换「${entry.name || '未命名'}」并保存全部当前编辑`;
       check.addEventListener('change', () => {
-        const previous = state.entries[index].entry.isEnabled;
         state.entries[index].entry.isEnabled = check.checked;
-        void task(async token => {
-          try {
-            const saved = await service.save(state.entries, state.revision);
-            if (!active(token)) return;
-            state.entries = saved.entries;
-            state.revision = saved.revision;
-            state.selected = Math.min(state.selected, state.entries.length - 1);
-            render();
-            message(`「${entry.name}」已${check.checked ? '启用' : '关闭'}，原版世界书正文未改`);
-          } catch (error) {
-            state.entries[index].entry.isEnabled = previous;
-            if (active(token)) render();
-            throw error;
-          }
+        void task(async (token, guard) => {
+          const saved = await service.save(state.entries, state.revision, guard);
+          if (!active(token)) return;
+          accept(saved);
+          if (!saved.warning) message(`「${entry.name}」已${check.checked ? '启用' : '关闭'}，原版世界书正文未改`);
         });
       });
       toggle.append(check, el('span', 'crypt-lord-random__switch-track'));
@@ -176,16 +221,14 @@
           message('草稿已移除');
           return;
         }
-        void task(async token => {
-          const loaded = await service.remove(source, state.revision);
+        void task(async (token, guard) => {
+          const loaded = await service.remove(source, state.revision, guard);
           if (!active(token)) return;
-          state.entries = loaded.entries;
-          state.revision = loaded.revision;
           state.selected = Math.max(0, Math.min(state.selected > index ? state.selected - 1 : state.selected, state.entries.length - 1));
-          render();
-          message(`已移除「${source.entry.name}」，原版正文保留且停用`);
+          accept(loaded);
+          if (!loaded.warning) message(`已移除「${source.entry.name}」，原版正文保留且停用`);
         });
-      }, `移除「${entry.name || '未命名'}」（保留原版正文，可恢复）`);
+      }, `移除「${entry.name || '未命名'}」（保留原版正文，可恢复）`, true);
       remove.className = 'crypt-lord-random__trash';
       remove.setAttribute('aria-label', `移除「${entry.name || '未命名'}」`);
       remove.append(trashIcon());
@@ -197,6 +240,7 @@
     const source = state.entries[state.selected];
     if (!source) {
       state.body.append(el('p', 'crypt-lord-random__empty', '暂无随机事件条目'));
+      controls();
       return;
     }
     const entry = source.entry;
@@ -204,22 +248,19 @@
     const title = el('h3', '', '基础设置');
     const actions = el('div', 'crypt-lord-random__row');
     actions.append(
-      button('手动触发', () => void task(async token => {
+      button('手动触发', () => void task(async (token, guard) => {
         const normalized = service.normalize(entry);
         const results = service.draw(normalized);
         if (!results.length) throw new Error('没有可抽取的有效事件');
-        const pending = await service.queueManual(results);
+        const pending = await service.queueManual(results, guard);
         if (active(token)) message(`已排队：${results.map(item => item.eventName).join('、')}（待执行 ${pending.length} 项）`);
-      })),
-      button('保存全部', () => void task(async token => {
-        const saved = await service.save(state.entries, state.revision);
+      }), '手动触发', true),
+      button('保存全部', () => void task(async (token, guard) => {
+        const saved = await service.save(state.entries, state.revision, guard);
         if (!active(token)) return;
-        state.entries = saved.entries;
-        state.revision = saved.revision;
-        state.selected = Math.min(state.selected, state.entries.length - 1);
-        render();
-        message('随机事件已保存；修改项已同步为世界书覆盖条目');
-      })),
+        accept(saved);
+        if (!saved.warning) message('随机事件已保存；修改项已同步为世界书覆盖条目');
+      }), '保存全部', true),
     );
     editor.append(title, actions);
     const settings = el('div', 'crypt-lord-random__grid');
@@ -266,25 +307,45 @@
       editor.append(card);
     });
     state.body.append(editor);
+    controls();
   }
-  async function open() {
+  async function open(force = false) {
     if (!mount()) return false;
+    if (!force && state.panel.dataset.open === 'true') return true;
+    if (state.panel.dataset.open !== 'true' && !state.panel.contains(doc().activeElement)) state.focus = doc().activeElement;
+    state.view = host.getHost()?.window;
     state.panel.dataset.open = 'true';
     state.panel.style.left = '';
     state.panel.style.top = '';
     state.panel.style.transform = '';
     const token = ++state.token;
+    state.busy = false;
+    if (!force && dirty()) {
+      render();
+      message(state.revision ? '已保留未保存草稿' : '已保留未保存草稿；生成已变化，请重新读取', !state.revision);
+      state.panel.querySelector('header button').focus();
+      return true;
+    }
+    state.loading = true;
+    state.body.replaceChildren();
     message('正在读取随机事件…');
     try {
-      const loaded = await service.load();
+      const loaded = await service.load({ guard: () => active(token) });
       if (!active(token)) return false;
-      state.entries = loaded.entries;
-      state.revision = loaded.revision;
       state.selected = 0;
-      render();
-      message('');
+      state.loading = false;
+      accept(loaded);
+      message(loaded.recovery ? '上次提交未完成，请确认恢复未完成提交' : loaded.legacy ? '旧版本地配置尚未同步；保存全部后完成迁移' : '');
+      state.panel.querySelector('header button').focus();
       return true;
-    } catch (error) { if (active(token)) message(error?.message || String(error), true); return false; }
+    } catch (error) {
+      if (active(token)) {
+        state.loading = false; state.revision = null;
+        state.body.append(button('重新读取', () => void open(true)));
+        message(error?.message || String(error), true);
+      }
+      return false;
+    }
   }
   const api = Object.freeze({
     status: () => Object.freeze({ ready: Boolean(state.panel), open: state.panel?.dataset.open === 'true' }),
@@ -292,7 +353,7 @@
     dispose() {
       state.disposed = true;
       close();
-      state.subscription?.stop();
+      state.subscriptions.forEach(sub => sub.stop());
       state.panel?.remove();
       contract.releaseGlobal(KEY, api);
       if (modules[KEY] === api) delete modules[KEY];

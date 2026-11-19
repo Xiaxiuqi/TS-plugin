@@ -1,0 +1,43 @@
+.crypt-lord-war-sandbox, .crypt-lord-war-sandbox * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-war-sandbox { position: fixed; inset: 0; z-index: 2147482995; display: none; pointer-events: none; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
+.crypt-lord-war-sandbox[data-open="true"] { display: block; }
+.crypt-lord-war-sandbox__dialog { margin: 16px auto; width: min(820px, calc(100% - 20px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; overflow: hidden; pointer-events: auto; border: 1px solid #777e78; border-radius: 6px; color: #e4e8e5; background: #262b28; box-shadow: 0 16px 48px #0009; }
+.crypt-lord-war-sandbox header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #525c56; }
+.crypt-lord-war-sandbox header strong { font-size: 16px; }
+.crypt-lord-war-sandbox header output { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #b4c7bd; }
+.crypt-lord-war-sandbox__body { padding: 12px; overflow: auto; min-height: 0; }
+.crypt-lord-war-sandbox button, .crypt-lord-war-sandbox input, .crypt-lord-war-sandbox select { min-width: 0; max-width: 100%; border: 1px solid #79877d; border-radius: 3px; color: #f0f3f1; background: #343c37; padding: 5px 8px; font: inherit; }
+.crypt-lord-war-sandbox button { cursor: pointer; overflow-wrap: anywhere; }
+.crypt-lord-war-sandbox button:hover { background: #48584f; }
+.crypt-lord-war-sandbox button:disabled, .crypt-lord-war-sandbox input:disabled, .crypt-lord-war-sandbox select:disabled { opacity: .55; cursor: default; }
+.crypt-lord-war-sandbox button:focus-visible { outline: 2px solid #e4ce85; outline-offset: -2px; }
+.crypt-lord-war-sandbox__toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+.crypt-lord-war-sandbox label { min-width: 0; display: flex; flex-direction: column; gap: 3px; color: #c8d0cb; }
+.crypt-lord-war-sandbox__toolbar input { width: 128px; }
+.crypt-lord-war-sandbox__toolbar select { max-width: 220px; }
+.crypt-lord-war-sandbox__toolbar strong { flex: 1; min-width: 80px; overflow-wrap: anywhere; }
+.crypt-lord-war-sandbox__toolbar small { color: #b1bcb6; overflow-wrap: anywhere; }
+.crypt-lord-war-sandbox__sides { display: flex; gap: 8px; margin-bottom: 10px; }
+.crypt-lord-war-sandbox__sides button { flex: 1; }
+.crypt-lord-war-sandbox__sides button[aria-pressed="true"] { background: #426153; border-color: #9dceb5; }
+.crypt-lord-war-sandbox__board { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 2px; width: min(100%, 480px); margin: 0 auto 12px; background: #151b18; }
+.crypt-lord-war-sandbox button.crypt-lord-war-sandbox__cell { display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 2px; border: 1px solid #576b61; border-radius: 0; background: #2d4940; }
+.crypt-lord-war-sandbox button.crypt-lord-war-sandbox__cell.is-enemy { border-color: #906964; background: #624441; }
+.crypt-lord-war-sandbox button.crypt-lord-war-sandbox__cell.is-selected { border: 2px solid #ecd88e; }
+.crypt-lord-war-sandbox__cell strong { font-size: 11px; line-height: 1.3; font-weight: 500; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; }
+.crypt-lord-war-sandbox__cell small { font-size: 10px; max-width: 100%; overflow: hidden; white-space: nowrap; color: #ddd6b2; }
+.crypt-lord-war-sandbox__unit { padding: 10px 0; border-top: 1px solid #5d6861; }
+.crypt-lord-war-sandbox__unit.is-selected { border-top-color: #ecd88e; }
+.crypt-lord-war-sandbox__fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.crypt-lord-war-sandbox__fields input, .crypt-lord-war-sandbox__fields select { width: 100%; }
+.crypt-lord-war-sandbox__unit p { margin: 8px 0 0; color: #c2cdc6; overflow-wrap: anywhere; }
+.crypt-lord-war-sandbox__error { color: #ffb4a5 !important; overflow-wrap: anywhere; }
+.crypt-lord-war-sandbox__report { border-top: 1px solid #66746b; padding-top: 10px; }
+.crypt-lord-war-sandbox__report summary { cursor: pointer; color: #e3d390; }
+.crypt-lord-war-sandbox__report pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+@media (max-width: 600px) {
+  .crypt-lord-war-sandbox__dialog { margin: 8px auto; max-height: calc(100dvh - 16px); }
+  .crypt-lord-war-sandbox__body { padding: 8px; }
+  .crypt-lord-war-sandbox__fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .crypt-lord-war-sandbox header { gap: 8px; padding: 8px; }
+}

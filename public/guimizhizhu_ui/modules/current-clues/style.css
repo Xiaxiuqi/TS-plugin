@@ -1,0 +1,39 @@
+.crypt-lord-current-clues {
+  position: fixed; z-index: 2147483100; left: 50%; top: 8%;
+  transform: translateX(-50%); width: min(740px, calc(100vw - 24px));
+  height: min(680px, 82vh); min-width: 300px; max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px); background: var(--SmartThemeBlurTintColor, #242729);
+  color: var(--SmartThemeBodyColor, #e8e9eb); border: 1px solid #647270;
+  border-radius: 6px; box-shadow: 0 12px 36px #0006; overflow: hidden;
+  display: flex; flex-direction: column; font: 14px/1.6 "Microsoft YaHei", sans-serif;
+  resize: both; letter-spacing: 0;
+}
+.crypt-lord-current-clues[data-open="false"] { display: none; }
+.crypt-lord-current-clues * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-current-clues header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #657171; cursor: move; }
+.crypt-lord-current-clues header strong { font-size: 17px; white-space: nowrap; }
+.crypt-lord-current-clues button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; min-height: 34px; font: inherit; color: inherit; background: #36423f; border: 1px solid #71817a; border-radius: 4px; cursor: pointer; }
+.crypt-lord-current-clues button:hover { background: #465851; }
+.crypt-lord-current-clues button:disabled { opacity: .5; cursor: default; }
+.crypt-lord-current-clues button[hidden] { display: none; }
+.crypt-lord-current-clues > button { align-self: flex-start; margin: 0 16px 8px; max-width: calc(100% - 32px); }
+.crypt-lord-current-clues__tools { display: flex; gap: 6px; }
+.crypt-lord-current-clues__status { margin: 0; padding: 8px 16px; color: #e9cf8e; overflow-wrap: anywhere; }
+.crypt-lord-current-clues main { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; }
+.crypt-lord-current-clues fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.crypt-lord-current-clues__settings { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid #657171; padding: 8px 0 14px; }
+.crypt-lord-current-clues label { display: flex; align-items: center; gap: 6px; }
+.crypt-lord-current-clues input[type="checkbox"] { width: 18px; height: 18px; accent-color: #8dd3bb; }
+.crypt-lord-current-clues input[type="number"] { width: 70px; min-height: 34px; background: #191e20; color: inherit; border: 1px solid #73817a; border-radius: 4px; padding: 4px 8px; font: inherit; }
+.crypt-lord-current-clues__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.crypt-lord-current-clues__heading strong { overflow-wrap: anywhere; }
+.crypt-lord-current-clues pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 10px 0 0; padding: 12px 0; border-top: 1px solid #657171; }
+@media (max-width: 540px) {
+  .crypt-lord-current-clues { top: 12px; height: calc(100vh - 24px); resize: none; }
+  .crypt-lord-current-clues header { padding: 10px 12px; }
+  .crypt-lord-current-clues__tools button span { display: none; }
+  .crypt-lord-current-clues__tools button { width: 34px; padding: 0; }
+  .crypt-lord-current-clues__tools button[aria-label="关闭"]::after { content: "\00d7"; }
+  .crypt-lord-current-clues__tools button[aria-label="重新读取"]::after { content: "\21bb"; }
+  .crypt-lord-current-clues__tools i { display: none; }
+}

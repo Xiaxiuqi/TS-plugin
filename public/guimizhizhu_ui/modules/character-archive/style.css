@@ -1,0 +1,63 @@
+.crypt-lord-archive {
+  position: fixed; z-index: 2147483100; left: 50%; top: 6%; transform: translateX(-50%);
+  width: min(860px, calc(100vw - 24px)); height: min(750px, 88vh); min-width: 300px;
+  max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+  display: flex; flex-direction: column; overflow: hidden; resize: both;
+  background: var(--SmartThemeBlurTintColor, #292c2e); color: var(--SmartThemeBodyColor, #edf0f1);
+  border: 1px solid #82938c; border-radius: 6px; box-shadow: 0 12px 36px #0006;
+  font: 14px/1.6 "Microsoft YaHei", sans-serif; letter-spacing: 0;
+}
+.crypt-lord-archive[data-open="false"] { display: none; }
+.crypt-lord-archive * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-archive header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #82938c; cursor: move; }
+.crypt-lord-archive header strong { font-size: 17px; }
+.crypt-lord-archive button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; flex: none; border: 1px solid transparent; border-radius: 4px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.crypt-lord-archive button:hover { background: #82938c40; border-color: #82938c; }
+.crypt-lord-archive button:disabled { opacity: .4; cursor: default; }
+.crypt-lord-archive button:focus-visible, .crypt-lord-archive summary:focus-visible { outline: 2px solid #58a686; outline-offset: 2px; }
+.crypt-lord-archive .is-danger { color: #d57888; }
+.crypt-lord-archive .is-danger:hover { background: #d5788820; border-color: #d57888; }
+.crypt-lord-archive__tools { display: flex; gap: 6px; }
+.crypt-lord-archive__tools i { display: none; }
+.crypt-lord-archive__tools button::after { content: attr(data-symbol); font-size: 20px; }
+.crypt-lord-archive__status { margin: 0; padding: 8px 16px; font-size: 12px; overflow-wrap: anywhere; }
+.crypt-lord-archive__recovery { display: flex; flex-wrap: wrap; flex: none; gap: 8px; padding: 0 16px 8px; }
+.crypt-lord-archive__recovery:empty { display: none; }
+.crypt-lord-archive__recovery button { width: auto; min-width: 104px; max-width: 100%; gap: 8px; padding: 0 10px; border-color: #82938c; white-space: nowrap; }
+.crypt-lord-archive main { flex: 1; min-height: 0; overflow: auto; padding: 0 18px 18px; }
+.crypt-lord-archive fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.crypt-lord-archive__section { min-width: 0; padding: 16px 0; border-top: 1px solid #82938c70; }
+.crypt-lord-archive__section h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 15px; margin: 0 0 12px; color: inherit; overflow-wrap: anywhere; }
+.crypt-lord-archive__identity { margin: 0 0 14px; color: #58a686; overflow-wrap: anywhere; }
+.crypt-lord-archive__overview { display: grid; grid-template-columns: minmax(0, 1fr) 264px; align-items: center; gap: 28px; }
+.crypt-lord-archive__radar { width: 264px; height: 240px; max-width: 100%; justify-self: center; }
+.crypt-lord-archive__attribute { display: flex; justify-content: space-between; gap: 12px; margin: 7px 0 3px; }
+.crypt-lord-archive__attribute strong { overflow-wrap: anywhere; text-align: right; }
+.crypt-lord-archive__track { height: 4px; background: #82938c40; overflow: hidden; }
+.crypt-lord-archive__track span { display: block; height: 100%; background: #58a686; }
+.crypt-lord-archive__track[data-kind="low"] span { background: #d57888; }
+.crypt-lord-archive__track[data-kind="medium"] span { background: #ceac60; }
+.crypt-lord-archive__track[data-kind="digestion"] span { background: #ceac60; }
+.crypt-lord-archive dl { display: grid; grid-template-columns: 85px minmax(0, 1fr); gap: 6px 12px; margin: 12px 0; }
+.crypt-lord-archive dt { opacity: .75; overflow-wrap: anywhere; }
+.crypt-lord-archive dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.crypt-lord-archive__quest { border-top: 1px solid #82938c40; padding: 12px 0; }
+.crypt-lord-archive__heading { display: flex; align-items: start; gap: 12px; }
+.crypt-lord-archive details { flex: 1; min-width: 0; }
+.crypt-lord-archive summary { min-height: 34px; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.crypt-lord-archive details p { margin: 6px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.crypt-lord-archive__traits > details { padding: 10px 0; }
+.crypt-lord-archive__count, .crypt-lord-archive__flags { font-size: 12px; opacity: .75; }
+.crypt-lord-archive__warning { color: #ceac60; font-size: 12px; }
+.crypt-lord-archive__equipment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr); gap: 16px; padding: 8px 0; }
+.crypt-lord-archive__equipment-row strong, .crypt-lord-archive__equipment-row span { overflow-wrap: anywhere; white-space: pre-wrap; }
+.crypt-lord-archive__equipment-row span { font-size: 12px; text-align: right; opacity: .75; }
+.crypt-lord-archive__empty { opacity: .65; padding: 12px 0; }
+@media (max-width: 620px) {
+  .crypt-lord-archive { top: 12px; height: calc(100vh - 24px); resize: none; }
+  .crypt-lord-archive header { padding: 10px 12px; }
+  .crypt-lord-archive main { padding: 0 12px 12px; }
+  .crypt-lord-archive__overview { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .crypt-lord-archive__equipment-row { grid-template-columns: minmax(0, 1fr) 105px; gap: 10px; }
+  .crypt-lord-archive dl { grid-template-columns: 68px minmax(0, 1fr); gap: 6px 10px; }
+}

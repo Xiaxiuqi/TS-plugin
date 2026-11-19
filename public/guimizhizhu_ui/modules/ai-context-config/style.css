@@ -1,12 +1,45 @@
-.crypt-lord-ai-context, .crypt-lord-ai-context * { box-sizing: border-box; }
-.crypt-lord-ai-context__ball { position: fixed; z-index: 2147482984; display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid #8d6d31; border-radius: 50%; color: #f4dfa9; background: #21180f; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); cursor: grab; font-size: 19px; touch-action: none; }
-.crypt-lord-ai-context__ball:active { cursor: grabbing; }
-.crypt-lord-ai-context { position: fixed; z-index: 2147482985; display: none; min-width: 340px; min-height: 420px; flex-direction: column; overflow: hidden; border: 1px solid #89612d; border-radius: 6px; color: #f5deb3; background: #1b1712; box-shadow: 0 18px 52px rgba(0, 0, 0, .62); font: 13px/1.45 "Noto Serif SC", "Microsoft YaHei", serif; }
+.crypt-lord-ai-context, .crypt-lord-ai-context * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-ai-context__ball { position: fixed; z-index: 2147482984; display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid #839b8c; border-radius: 50%; color: #dcece1; background: #273c30; box-shadow: 0 6px 20px #0006; cursor: grab; font-size: 19px; touch-action: none; }
+.crypt-lord-ai-context__ball[hidden] { display: none; }
+.crypt-lord-ai-context { position: fixed; z-index: 2147482985; display: none; flex-direction: column; overflow: hidden; border: 1px solid #647c6e; border-radius: 6px; color: #e3ebe5; background: #202b24; box-shadow: 0 18px 52px #0008; font: 13px/1.5 "Microsoft YaHei", sans-serif; }
 .crypt-lord-ai-context[data-open="true"] { display: flex; }
-.crypt-lord-ai-context header { display: flex; min-height: 42px; align-items: center; gap: 9px; border-bottom: 1px solid rgba(218, 165, 32, .26); padding: 8px 10px 8px 13px; cursor: move; user-select: none; touch-action: none; }
-.crypt-lord-ai-context header strong { color: #e4bb54; }.crypt-lord-ai-context header > span { min-width: 0; flex: 1; overflow: hidden; color: #bda98a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }.crypt-lord-ai-context button { border: 1px solid rgba(218, 165, 32, .42); border-radius: 3px; padding: 5px 8px; color: #f5deb3; background: #2a2118; cursor: pointer; font: inherit; }.crypt-lord-ai-context button:hover { border-color: #daa520; background: #382714; }.crypt-lord-ai-context header button { width: 28px; height: 28px; padding: 0; font-size: 17px; }
-.crypt-lord-ai-context__toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; border-bottom: 1px solid rgba(218, 165, 32, .16); padding: 8px; }.crypt-lord-ai-context__toolbar input { min-width: 0; border: 1px solid #5c482d; border-radius: 3px; padding: 6px 8px; color: #f5deb3; background: #110f0c; font: inherit; }
-.crypt-lord-ai-context__legend { display: flex; gap: 14px; padding: 5px 10px; color: #bda98a; font-size: 11px; }.crypt-lord-ai-context__legend i, .crypt-lord-ai-context__legend b { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border: 1px solid #c7ad76; vertical-align: -1px; }.crypt-lord-ai-context__legend b { border-radius: 50%; background: #bc7837; }
-.crypt-lord-ai-context main { min-width: 0; min-height: 0; flex: 1; overflow: auto; padding: 6px 8px 16px; }.crypt-lord-ai-context__node { min-width: 0; }.crypt-lord-ai-context__node > summary { list-style: none; }.crypt-lord-ai-context__node > summary::-webkit-details-marker { display: none; }.crypt-lord-ai-context__row { display: flex; min-width: 0; min-height: 29px; align-items: center; gap: 7px; border-bottom: 1px solid rgba(255, 255, 255, .045); padding: 4px 3px; }.crypt-lord-ai-context__node.is-branch > summary .crypt-lord-ai-context__name::before { display: inline-block; width: 12px; content: '▸'; color: #d7a33a; }.crypt-lord-ai-context__node.is-branch[open] > summary .crypt-lord-ai-context__name::before { content: '▾'; }.crypt-lord-ai-context__name { min-width: 0; flex: 1; overflow: hidden; color: #e9d9b5; text-overflow: ellipsis; white-space: nowrap; }.crypt-lord-ai-context__kind, .crypt-lord-ai-context__value { max-width: 36%; overflow: hidden; color: #95866d; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }.crypt-lord-ai-context__controls { display: inline-flex; flex: none; gap: 7px; }.crypt-lord-ai-context__controls input { width: 14px; height: 14px; accent-color: #d7a33a; cursor: pointer; }.crypt-lord-ai-context__node.is-hidden > .crypt-lord-ai-context__row .crypt-lord-ai-context__name { color: #806d53; text-decoration: line-through; }.crypt-lord-ai-context__node.is-locked > .crypt-lord-ai-context__row { border-left: 2px solid #bc7837; padding-left: 5px; }.crypt-lord-ai-context__children { margin-left: 14px; border-left: 1px solid rgba(218, 165, 32, .15); padding-left: 7px; }.crypt-lord-ai-context__empty { padding: 30px 10px; color: #a89473; text-align: center; }
-.crypt-lord-ai-context footer { display: flex; min-height: 45px; align-items: center; gap: 8px; border-top: 1px solid rgba(218, 165, 32, .2); padding: 8px 10px; }.crypt-lord-ai-context footer span { min-width: 0; flex: 1; overflow: hidden; color: #bda98a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }.crypt-lord-ai-context footer .is-primary { border-color: #d7a33a; color: #23170c; background: #d7a33a; }.crypt-lord-ai-context__resize { position: absolute; right: 0; bottom: 0; width: 19px; height: 19px; cursor: nwse-resize; touch-action: none; }.crypt-lord-ai-context__resize::before { position: absolute; right: 4px; bottom: 4px; width: 9px; height: 9px; border-right: 2px solid #b99452; border-bottom: 2px solid #b99452; content: ''; }
-@media (max-width: 640px) { .crypt-lord-ai-context { min-width: 0; }.crypt-lord-ai-context__toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }.crypt-lord-ai-context__toolbar button:last-child { grid-column: 1 / -1; }.crypt-lord-ai-context__value { display: none; } }
+.crypt-lord-ai-context header { display: flex; min-height: 48px; align-items: center; gap: 9px; border-bottom: 1px solid #4c6052; padding: 8px 12px; cursor: move; user-select: none; touch-action: none; }
+.crypt-lord-ai-context header strong { color: #e5cd84; font-size: 15px; flex: 1; }
+.crypt-lord-ai-context header > span { display: none; }
+.crypt-lord-ai-context header > div { display: flex; gap: 6px; }
+.crypt-lord-ai-context button { border: 1px solid #6d8474; border-radius: 4px; padding: 5px 8px; color: #e3ebe5; background: #334439; cursor: pointer; font: inherit; }
+.crypt-lord-ai-context button:hover { border-color: #e5cd84; }
+.crypt-lord-ai-context button:disabled { opacity: .5; cursor: default; }
+.crypt-lord-ai-context :focus-visible { outline: 2px solid #e5cd84; outline-offset: 2px; }
+.crypt-lord-ai-context header button { width: 30px; height: 30px; padding: 0; font-size: 18px; }
+.crypt-lord-ai-context__scroll { min-height: 0; min-width: 0; flex: 1; overflow: auto; }
+.crypt-lord-ai-context fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.crypt-lord-ai-context__toolbar { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #4c6052; padding: 10px; }
+.crypt-lord-ai-context__toolbar input { flex-basis: 100%; min-width: 0; border: 1px solid #6d8474; border-radius: 4px; padding: 7px 8px; color: #e3ebe5; background: #17251b; font: inherit; }
+.crypt-lord-ai-context__legend { display: flex; align-items: center; gap: 12px; padding: 8px 12px; color: #b4c6b9; font-size: 12px; }
+.crypt-lord-ai-context__legend label { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.crypt-lord-ai-context__legend input { width: 96px; accent-color: #79ad8b; }
+.crypt-lord-ai-context main { min-width: 0; padding: 4px 12px 16px; }
+.crypt-lord-ai-context__node { min-width: 0; }
+.crypt-lord-ai-context__node > summary { list-style: none; cursor: pointer; }
+.crypt-lord-ai-context__node > summary::-webkit-details-marker { display: none; }
+.crypt-lord-ai-context__row { display: flex; min-width: 0; min-height: 32px; align-items: center; gap: 7px; border-bottom: 1px solid #d3e5d90d; padding: 4px 3px; }
+.crypt-lord-ai-context__node.is-branch > summary .crypt-lord-ai-context__name::before { display: inline-block; width: 12px; content: '▸'; color: #e5cd84; }
+.crypt-lord-ai-context__node.is-branch[open] > summary .crypt-lord-ai-context__name::before { content: '▾'; }
+.crypt-lord-ai-context__name { min-width: 0; flex: 1; overflow-wrap: anywhere; color: #dce9df; }
+.crypt-lord-ai-context__kind, .crypt-lord-ai-context__value { max-width: 30%; overflow: hidden; color: #a6bbae; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.crypt-lord-ai-context__controls { display: inline-flex; align-items: center; flex: none; gap: 5px; font-size: 11px; color: #e5cd84; }
+.crypt-lord-ai-context__controls input { width: 16px; height: 16px; margin: 0; accent-color: #79ad8b; cursor: pointer; }
+.crypt-lord-ai-context__node.is-hidden > .crypt-lord-ai-context__row .crypt-lord-ai-context__name { color: #91a396; text-decoration: line-through; }
+.crypt-lord-ai-context__node.is-locked > .crypt-lord-ai-context__row { border-left: 2px solid #e5cd84; padding-left: 5px; }
+.crypt-lord-ai-context__children { margin-left: 7px; border-left: 1px solid #4c6052; padding-left: 5px; }
+.crypt-lord-ai-context__empty { padding: 30px 10px; color: #b4c6b9; text-align: center; }
+.crypt-lord-ai-context [data-context-invalid]:not(:empty) { margin: 0 12px 8px; padding: 12px 0; border-bottom: 1px solid #ac8959; color: #e5cd84; }
+.crypt-lord-ai-context__invalid-row { display: flex; align-items: center; gap: 6px; padding: 5px 0; }
+.crypt-lord-ai-context__invalid-row span { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12px; }
+.crypt-lord-ai-context__invalid-row button { flex: none; }
+.crypt-lord-ai-context footer { display: flex; min-height: 52px; max-height: 130px; align-items: center; gap: 8px; border-top: 1px solid #4c6052; padding: 8px 12px; }
+.crypt-lord-ai-context footer span { min-width: 0; flex: 1; max-height: 110px; overflow: auto; overflow-wrap: anywhere; color: #b4c6b9; font-size: 12px; }
+.crypt-lord-ai-context footer .is-primary { border-color: #91bd9e; color: #14231a; background: #91bd9e; }
+.crypt-lord-ai-context__resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: nwse-resize; touch-action: none; border-right: 2px solid #e5cd84; border-bottom: 2px solid #e5cd84; }
+@media (max-width: 640px) { .crypt-lord-ai-context__value { display: none; } }

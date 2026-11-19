@@ -7,7 +7,6 @@
   const INPUT_KEY = 'cryptLord.inputAdapter';
   const MAP_KEY = 'cryptLord.worldMap';
   const STATE_STORE_KEY = 'cryptLord.stateStore';
-  const VARIABLE_PATCH_KEY = 'cryptLord.variablePatch';
   const VARIABLE_SETTLEMENT_API_KEY = 'cryptLord.variableSettlementApi';
   const VARIABLE_WORKBENCH_KEY = 'cryptLord.variableWorkbench';
   const AI_CONTEXT_CONFIG_UI_KEY = 'cryptLord.aiContextConfigUi';
@@ -22,17 +21,14 @@
   const READER_MYSTIC_KEY = 'cryptLord.readerMystic';
   const REENACTMENT_KEY = 'cryptLord.mysteryReenactment';
   const ARBITER_JURISDICTION_KEY = 'cryptLord.arbiterJurisdiction';
-  const RELATIONSHIP_STATE_KEY = 'cryptLord.relationshipState';
   const INVENTORY_STATE_KEY = 'cryptLord.inventoryState';
   const ABILITY_STATE_KEY = 'cryptLord.abilityState';
   const PERSONAL_BATTLE_STATE_KEY = 'cryptLord.personalBattleState';
   const TEAM_BATTLE_STATE_KEY = 'cryptLord.teamBattleState';
   const BATTLE_LIFE_SAVE_KEY = 'cryptLord.battleLifeSave';
-  const BATTLEFIELD_PAINTER_KEY = 'cryptLord.battlefieldPainter';
   const GAME_AUDIO_KEY = 'cryptLord.gameAudio';
   const GAME_AUDIO_CONTROL_KEY = 'cryptLord.gameAudioControl';
   const NORMALIZER_KEY = 'cryptLord.responseNormalizer';
-  const ABILITY_LOCK_KEY = 'ST_LoM_AbilityLock';
   const QUICK_SHORTCUTS_KEY = 'cryptLord.quickShortcuts';
   const ORGANIZATION_CONSOLE_KEY = 'cryptLord.organizationConsole';
   const DOMAIN_CONSOLE_KEY = 'cryptLord.domainConsole';
@@ -46,8 +42,10 @@
   const DETECTIVE_CASE_KEY = 'cryptLord.detectiveCaseUi';
   const DIVINATION_UI_KEY = 'cryptLord.divinationUi';
   const ORIGINAL_PLOT_GUIDE_KEY = 'cryptLord.originalPlotGuideUi';
-  const SAVANT_MATERIAL_UI_KEY = 'cryptLord.savantMaterialUi';
-  const SAVANT_ENHANCEMENT_UI_KEY = 'cryptLord.savantEnhancementUi';
+  const JOURNEY_READER_KEY = 'cryptLord.journeyReaderUi';
+  const CURRENT_CLUES_KEY = 'cryptLord.currentCluesUi';
+  const SAVANT_MATERIAL_UI_KEY = 'cryptLord.materialProcessingUi';
+  const SAVANT_ENHANCEMENT_UI_KEY = 'cryptLord.enhancementNativeUi';
   const SOURCE_CASTLE_UI_KEY = 'cryptLord.sourceCastleUi';
   const THEATER_CONSOLE_KEY = 'cryptLord.theaterConsole';
   const THEME_KEY = 'cryptLord.originalUi.theme';
@@ -72,8 +70,6 @@
   const teamBattleState = modules[TEAM_BATTLE_STATE_KEY];
   const characterPanelState = modules[CHARACTER_PANEL_STATE_KEY];
   if (!characterPanelState) throw new Error(`[${KEY}] core/character-panel-state.js 尚未加载`);
-  const relationshipState = modules[RELATIONSHIP_STATE_KEY];
-  if (!relationshipState) throw new Error(`[${KEY}] core/relationship-state.js 尚未加载`);
 
   const ATTRIBUTE_DEFINITIONS = Object.freeze([
     Object.freeze({ label: '活力', current: '当前活力', maximum: '活力' }),
@@ -88,10 +84,18 @@
     Object.freeze({ id: 'pathway-play', label: '途径玩法', keys: ['途径专属', '放牧', '秘偶', '分身'] }),
     Object.freeze({ id: 'detective', label: '事件真相', keys: ['案件', '破案', '侦探', '线索'] }),
     Object.freeze({ id: 'journey', label: '本周目经历', keys: [] }),
+    Object.freeze({ id: 'journey-sequence', label: '经历序号修正', keys: [] }),
+    Object.freeze({ id: 'current-clues', label: '当前线索', keys: [] }),
+    Object.freeze({ id: 'world-report', label: '世界线同步报告', keys: [] }),
+    Object.freeze({ id: 'cashflow', label: '钱包与稳定收支', keys: [] }),
+    Object.freeze({ id: 'attribute-recalculation', label: '属性上限与重算', keys: [] }),
+    Object.freeze({ id: 'npc-progression', label: 'NPC成长与初始化', keys: [] }),
+    Object.freeze({ id: 'danmaku', label: '楼层弹幕', keys: [] }),
     Object.freeze({ id: 'inventory', label: '物品栏', keys: ['物品栏', '物品', '背包'] }),
     Object.freeze({ id: 'relationships', label: '人物关系', keys: ['人物关系', 'npc_data', 'NPC数据'] }),
     Object.freeze({ id: 'abilities', label: '序列能力', keys: ['序列能力列表', '能力清单'] }),
     Object.freeze({ id: 'battle', label: '战斗系统', keys: ['战斗', '战斗数据'] }),
+    Object.freeze({ id: 'battle-prompt-mode', label: '战斗提示模式', keys: [] }),
     Object.freeze({ id: 'divination', label: '占卜系统', keys: ['占卜'] }),
     Object.freeze({ id: 'original-plot-guide', label: '原著剧情指引', keys: [] }),
     Object.freeze({ id: 'command', label: '指令中心', keys: ['指令', '命令'] }),
@@ -108,6 +112,7 @@
     Object.freeze({ id: 'map', label: '世界地图', keys: ['地图', 'map_data', '当前位置'] }),
     Object.freeze({ id: 'variables', label: '变量修改器', keys: [] }),
     Object.freeze({ id: 'variable-ai-config', label: '变量 AI 配置', keys: [] }),
+    Object.freeze({ id: 'collection-growth', label: '变量增殖提醒', keys: [] }),
     Object.freeze({ id: 'dlc', label: 'DLC管理器', keys: ['DLC', 'dlc', '扩展内容'] }),
     Object.freeze({ id: 'worldbook-profiles', label: '世界书开关方案', keys: [] }),
     Object.freeze({ id: 'dual-worldbook', label: '双库世界书管理', keys: [] }),
@@ -131,17 +136,24 @@
     commandPanel: null,
     commandBody: null,
     commandLoadToken: 0,
+    commandDraft: null,
+    commandCapture: null,
     current: null,
     subscriptions: [],
     cleanups: [],
     inventoryBusy: false,
-    questBusy: false,
-    relationshipBusy: false,
-    relationshipBatch: false,
-    relationshipSelected: new Set(),
     inventoryBatch: false,
-    abilitiesBusy: false,
     battleBusy: false,
+    battleEpoch: 0,
+    battleAudio: null,
+    battleVolume: null,
+    battleGenerating: false,
+    battlePending: null,
+    battleInvalid: false,
+    battleWriting: false,
+    teamSetupDraft: null,
+    battleReportDraft: null,
+    battleReportBusy: false,
     battleAutoTimer: null,
     battleAutoSteps: 0,
     battleAutoPaused: false,
@@ -209,6 +221,80 @@
     state.battleAutoTimer = null;
   }
 
+  function updateBattleControls() {
+    if (state.modalTitle?.textContent !== '战斗系统') return;
+    const locked = state.battleBusy || state.battlePending || state.battleInvalid || state.battleGenerating;
+    state.modal.setAttribute('aria-busy', String(state.battleBusy));
+    if (locked) for (const node of state.modalBody.querySelectorAll('button, input, select, textarea'))
+      if (!node.closest('[data-battle-recovery]')) node.disabled = true;
+    const tools = state.modalBody.querySelector('[data-battle-recovery]');
+    if (!tools) return;
+    const phase = state.battlePending?.transaction.status();
+    tools.querySelector('[role=status]').textContent = state.battleGenerating ? '剧情正在生成'
+      : state.battleInvalid || phase === 'invalid' ? '战斗来源已变化，请重新读取'
+        : phase === 'uncertain' ? '保存状态待核对'
+          : state.battlePending ? '本次战斗结果待保存' : state.battleBusy ? '正在处理' : '';
+    for (const node of tools.querySelectorAll('button')) {
+      node.disabled = state.battleBusy || state.battleGenerating;
+      if (node.dataset.recovery === 'retry') {
+        node.hidden = !['pending', 'uncertain'].includes(phase) || state.battleInvalid;
+        node.textContent = phase === 'uncertain' ? '核对保存' : '重试保存';
+      }
+      if (node.dataset.recovery === 'cancel') {
+        node.hidden = !state.battleBusy || Boolean(state.battlePending);
+        node.disabled = state.battleWriting;
+      }
+    }
+  }
+
+  async function resumeBattleSave() {
+    const pending = state.battlePending;
+    if (!pending || state.battleBusy || state.battleGenerating || state.battleInvalid) return;
+    state.battleBusy = true; state.battleWriting = true; updateBattleControls();
+    try {
+      const result = await (pending.transaction.status() === 'uncertain'
+        ? pending.transaction.inspect() : pending.transaction.save());
+      if (pending.guard()) pending.finish(result);
+    } catch (error) {
+      if (pending.guard()) {
+        state.battleInvalid = pending.transaction.status() === 'invalid';
+        notify(error.message, 'error');
+      }
+    } finally {
+      if (pending.guard()) {
+        state.battleBusy = false; state.battleWriting = false;
+        void renderBattleSystem();
+      }
+    }
+  }
+
+  function renderBattleRecovery() {
+    const tools = element('div', 'crypt-lord-game-shell__battle-recovery');
+    tools.dataset.battleRecovery = '';
+    const status = element('span'); status.setAttribute('role', 'status');
+    const retry = button('重试保存', 'crypt-lord-game-shell__dialog-button', () => void resumeBattleSave());
+    retry.dataset.recovery = 'retry';
+    const reload = button('重新读取', 'crypt-lord-game-shell__dialog-button', async () => {
+      if (state.battleBusy || state.battleGenerating) return;
+      const view = afterNative.getHost()?.window || window;
+      if (state.battlePending && !view.confirm('放弃当前保留的战斗结果并重新读取原生楼层？')) return;
+      state.battleEpoch++; state.battlePending = null; state.battleInvalid = false;
+      state.battleAutoPaused = true; cancelBattleAuto();
+      await refresh();
+    });
+    const cancel = button('取消', 'crypt-lord-game-shell__dialog-button', () => {
+      if (!state.battleBusy || state.battleWriting) return;
+      state.battleEpoch++; state.battleBusy = false; state.battlePending = null;
+      state.battleAutoPaused = true; cancelBattleAuto();
+      notify('战斗操作已取消。');
+      void renderBattleSystem();
+    });
+    cancel.dataset.recovery = 'cancel';
+    tools.append(status, retry, reload, cancel);
+    state.modalBody.prepend(tools);
+    updateBattleControls();
+  }
+
   function displayValue(value, fallback = '—', depth = 0) {
     if (value === null || value === undefined || value === '') return fallback;
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
@@ -231,6 +317,13 @@
   function numeric(value, fallback = 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function battleLocked(data) {
+    const team = data?.cryptLord?.teamBattle, personal = data?.cryptLord?.personalBattle;
+    return team?.status === 'active' || ['finished', 'ended'].includes(team?.status) && !team.settled ||
+      personal?.status === 'active' || personal?.status === 'finished' &&
+      personal.result === 'victory' && Boolean(personal.enemy?.npcKey) && !personal.experienceClaimed;
   }
 
   function messageText(message) {
@@ -295,11 +388,12 @@
   }
 
   function compatibilityFor(message, messageElement = null) {
-    const storedText = messageText(message);
-    const renderedText = displayedText(messageElement);
-    const journey = journeyFromText(storedText) || journeyFromText(renderedText);
     const normalizer = modules[NORMALIZER_KEY];
-    const actions = normalizer?.extractLegacyActions?.(`${storedText}\n${renderedText}`, messageElement) || [];
+    const raw = messageText(message), rendered = displayedText(messageElement);
+    const storedText = normalizer?.maskHidden?.(raw) ?? raw;
+    const renderedText = raw.trim() ? '' : normalizer?.maskHidden?.(rendered) ?? rendered;
+    const journey = journeyFromText(storedText) || journeyFromText(renderedText);
+    const actions = normalizer?.extractLegacyActions?.(raw.trim() ? raw : renderedText, raw.trim() ? null : messageElement) || [];
     const legacy = legacySnapshot(messageElement);
     if (!journey && !actions.length && !Object.keys(legacy.stat).length) return null;
     const stat = { ...legacy.stat };
@@ -329,12 +423,13 @@
   }
 
   function actionsForCurrent(current = state.current) {
-    const nativeActions = current?.data?.cryptLord?.actions;
-    if (Array.isArray(nativeActions)) return nativeActions.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 8);
+    if (messageText(current).trim()) return modules[NORMALIZER_KEY]?.actionsForFloor?.(current) || [];
     return current?.compatibility?.actions || [];
   }
 
   function theme() {
+    const appearance = modules['cryptLord.appearanceUi'];
+    if (appearance) return appearance.current().theme;
     try { return window.localStorage?.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
   }
 
@@ -581,9 +676,21 @@
 
   async function renderBattleSystem() {
     if (!openModal('战斗系统')) return;
+    if (modules['cryptLord.battlePlayUnits'] && !state.pathwayPool) {
+      const token = state.chatToken, messageId = state.current?.message_id;
+      loadPathways();
+      await state.pathwayPoolPromise;
+      if (state.disposed || token !== state.chatToken || messageId !== state.current?.message_id ||
+        state.modal?.dataset.open !== 'true' || state.modalTitle?.textContent !== '战斗系统') return;
+    }
     const hostWindow = afterNative.getHost()?.window || window;
     const gameAudio = modules[GAME_AUDIO_KEY];
     const gameAudioControl = modules[GAME_AUDIO_CONTROL_KEY];
+    if (gameAudioControl && !state.battleVolume) {
+      state.battleVolume = gameAudioControl.create(afterNative.getHost()?.document || document, 'duel');
+      state.modalTitle.parentNode.insertBefore(state.battleVolume, state.modalTitle.nextSibling);
+    }
+    if (state.battleVolume) state.battleVolume.hidden = false;
     state.modal.dataset.audioActive = 'true';
     const body = state.modalBody;
     clear(body);
@@ -600,8 +707,9 @@
     const activeTeam = teamBattleState?.get(state.current?.data);
     const lifeSave = modules[BATTLE_LIFE_SAVE_KEY];
     if (gameAudio) {
+      state.battleAudio ||= gameAudio.createScene(() => state.modal);
       const inBattle = battle?.status === 'active' || activeTeam?.status === 'active';
-      gameAudio.enter(inBattle ? 'battle' : 'prep', 'duel');
+      state.battleAudio.enter(inBattle ? 'battle' : 'prep', 'duel');
       if (inBattle) void gameAudio.preload();
     }
     const modifierLabels = {
@@ -617,10 +725,15 @@
       ? `${modifierLabels[effect.stat] || effect.stat} ${['attack', 'defense'].includes(effect.stat) ? (effect.type === 'buff' ? '+' : '-') : ''}${effect.power}${effect.valueType === 'percentage' ? '%' : ' 点'}`
       : `${effect.power} 点`;
     const renderPersonalBattle = () => { void renderBattleSystem(); };
+    const activeAutoKind = data => data?.cryptLord?.teamBattle?.status === 'active'
+      ? 'teamBattle' : 'personalBattle';
     const scheduleAuto = () => {
       cancelBattleAuto();
-      const current = personalBattleState.get(state.current?.data);
-      if (state.disposed || state.modal?.dataset.open !== 'true' ||
+      const kind = activeAutoKind(state.current?.data);
+      const current = kind === 'teamBattle' ? teamBattleState?.get(state.current?.data)
+        : personalBattleState.get(state.current?.data);
+      if (state.disposed || state.battlePending || state.battleInvalid || state.battleGenerating ||
+        state.modal?.dataset.open !== 'true' ||
         state.modalTitle?.textContent !== '战斗系统' || current?.status !== 'active' ||
         !current.autoPilot?.on || state.battleAutoPaused || state.battleAutoSteps >= 40) return;
       const token = state.chatToken;
@@ -630,15 +743,18 @@
         state.battleAutoTimer = null;
         if (state.disposed || token !== state.chatToken ||
           messageId !== state.current?.message_id ||
-          battleId !== state.current?.data?.cryptLord?.personalBattle?.id ||
-          !state.current.data.cryptLord.personalBattle.autoPilot?.on ||
+          battleId !== state.current?.data?.cryptLord?.[kind]?.id ||
+          !state.current.data.cryptLord[kind].autoPilot?.on ||
           state.modal?.dataset.open !== 'true' ||
           state.modalTitle?.textContent !== '战斗系统') return;
         state.battleAutoSteps += 1;
         void commitBattle(data => {
-          if (data.cryptLord?.personalBattle?.id !== battleId ||
-            !data.cryptLord.personalBattle.autoPilot?.on)
+          if (data.cryptLord?.[kind]?.id !== battleId ||
+            !data.cryptLord[kind].autoPilot?.on)
             return { ok: false, error: '战斗或托管状态已变化。' };
+          if (kind === 'teamBattle')
+            return modules['cryptLord.battleAutoPilot']?.step(data) ||
+              { ok: false, error: '多人托管模块不可用。' };
           const action = personalBattleState.autoPilotAction(data);
           if (!action) return { ok: false, error: '当前没有可托管的行动。' };
           return action.type === 'move'
@@ -648,66 +764,92 @@
       }, 450);
     };
     const commitBattle = async (operation, sound = false, automatic = false) => {
-      if (state.battleBusy || !Number.isInteger(state.current?.message_id)) return;
+      if (state.battleBusy || state.battlePending || state.battleInvalid ||
+        !Number.isInteger(state.current?.message_id)) return;
+      if (state.battleGenerating) { notify('剧情正在生成，请结束后再操作战斗。', 'warning'); return; }
       cancelBattleAuto();
       state.battleBusy = true;
+      updateBattleControls();
       let succeeded = false;
       const token = state.chatToken;
+      const epoch = state.battleEpoch;
+      const messageId = state.current.message_id;
+      const guard = () => !state.disposed && token === state.chatToken &&
+        epoch === state.battleEpoch && !state.battleGenerating &&
+        state.current?.message_id === messageId && state.modal?.dataset.open === 'true' &&
+        state.modalTitle?.textContent === '战斗系统';
       try {
-        const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
-        const messageId = state.current.message_id;
-        const message = await store.readMessage(messageId);
-        if (message?.role !== 'assistant') throw new Error('目标楼层不再是 assistant。');
-        const before = message.data || {};
-        const result = await operation(before, message.message);
-        if (!result?.ok) throw new Error(result?.error || '战斗操作失败。');
-        if (automatic && (state.modal?.dataset.open !== 'true' ||
-          state.modalTitle?.textContent !== '战斗系统' ||
-          !state.current?.data?.cryptLord?.personalBattle?.autoPilot?.on))
-          throw new Error('托管已停止。');
-        if (state.disposed || token !== state.chatToken || state.current?.message_id !== messageId)
-          throw new Error('聊天或楼层已变化');
-        const fresh = await store.readMessage(messageId);
-        if (fresh?.role !== 'assistant' || fresh.message !== message.message ||
-          JSON.stringify(fresh.data) !== JSON.stringify(before)) throw new Error('楼层正文或变量已变化，请重试');
-        if (automatic && state.modal?.dataset.open !== 'true') throw new Error('托管窗口已关闭。');
-        if (result.changed === false) {
+        if (!guard()) throw new DOMException('战斗操作已取消。', 'AbortError');
+        const before = structuredClone(state.current.data);
+        const autoKind = activeAutoKind(before);
+        const session = modules['cryptLord.battleSession'];
+        const transaction = await session.transaction(state.current, guard);
+        const finish = result => {
+          if (!guard()) return;
           state.current.data = result.data;
-          succeeded = true;
-          return;
+          if (result.pathwayPool) state.pathwayPool = result.pathwayPool;
+          if (result.teamConfiguration && state.teamSetupDraft?.token === token &&
+            state.teamSetupDraft.messageId === messageId) {
+            state.teamSetupDraft.configuration = structuredClone(result.teamConfiguration);
+            state.teamSetupDraft.expected = structuredClone(result.teamConfiguration);
+            state.teamSetupDraft.error = '';
+          }
+          state.battlePending = null;
+          state.battleInvalid = false;
+          if (sound || result.data?.cryptLord?.[autoKind]?.units)
+            state.battleAudio?.playHits(before?.cryptLord?.[autoKind],
+            result.data?.cryptLord?.[autoKind]);
+          root.__stage1Modules?.[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
+            messageId, beforeData: before, afterData: result.data,
+            source: result.data?.cryptLord?.teamBattle
+              ? 'team-battle' : 'personal-battle',
+          });
+          renderLeftPanel();
+          if (result.warning) notify(result.warning, 'warning');
+        };
+        const recovery = { transaction, guard, finish };
+        try {
+          const result = await transaction.run(async (data, evidence, valid, assertCurrent) => {
+            const result = await operation(data, evidence, valid, assertCurrent);
+            if (!guard()) throw new DOMException('战斗操作已取消。', 'AbortError');
+            if (automatic && !state.current?.data?.cryptLord?.[autoKind]?.autoPilot?.on)
+              throw Error('托管已停止。');
+            state.battleWriting = result?.ok && result.changed !== false;
+            updateBattleControls();
+            return result;
+          });
+          finish(result);
+        } catch (error) {
+          if (guard()) {
+            const phase = transaction.status();
+            state.battleInvalid = phase === 'invalid';
+            if (['pending', 'uncertain', 'invalid'].includes(phase)) state.battlePending = recovery;
+          }
+          throw error;
         }
-        await store.writeAssistantData(messageId, result.data);
-        const enemyHp = data => (data?.cryptLord?.teamBattle?.units || [])
-          .filter(unit => unit.side === 'enemy').reduce((sum, unit) => sum + numeric(unit.hp), 0);
-        if (sound && (
-          numeric(result.data?.cryptLord?.personalBattle?.enemy?.hp, Infinity) <
-            numeric(before?.cryptLord?.personalBattle?.enemy?.hp, Infinity) ||
-          (before?.cryptLord?.teamBattle && enemyHp(result.data) < enemyHp(before))
-        )) gameAudio?.fireVolley('hit');
-        if (state.current?.message_id === messageId) state.current.data = result.data;
-        root.__stage1Modules?.[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
-          messageId, beforeData: before, afterData: result.data,
-          source: result.data?.cryptLord?.teamBattle?.id !== before?.cryptLord?.teamBattle?.id ||
-            result.data?.cryptLord?.teamBattle?.round !== before?.cryptLord?.teamBattle?.round ||
-            result.data?.cryptLord?.teamBattle?.index !== before?.cryptLord?.teamBattle?.index
-            ? 'team-battle' : 'personal-battle',
-        });
-        renderLeftPanel();
         succeeded = true;
       } catch (error) {
-        if (automatic) state.battleAutoPaused = true;
-        notify(`战斗操作失败：${error?.message || error}`, 'error');
+        if (automatic && guard()) state.battleAutoPaused = true;
+        if (guard()) notify(`战斗操作失败：${error?.message || error}`, 'error');
       } finally {
-        state.battleBusy = false;
-        if (succeeded && state.modal?.dataset.open === 'true' &&
-          state.modalTitle?.textContent === '战斗系统') renderPersonalBattle();
-        if (automatic && state.battleAutoSteps >= 40) {
-          state.battleAutoPaused = true;
-          notify('托管已暂停：连续执行达到 40 步，请手动关闭后重新开启。', 'warning');
-        } else if (succeeded && (automatic || personalBattleState.get(state.current?.data)?.autoPilot?.on)) {
-          scheduleAuto();
+        if (guard()) {
+          state.battleBusy = false;
+          state.battleWriting = false;
+          renderPersonalBattle();
+          if (automatic && state.battleAutoSteps >= 40) {
+            state.battleAutoPaused = true;
+            notify('托管已暂停：连续执行达到 40 步，请手动关闭后重新开启。', 'warning');
+          } else if (succeeded && (automatic ||
+            state.current?.data?.cryptLord?.[activeAutoKind(state.current?.data)]?.autoPilot?.on)) {
+            scheduleAuto();
+          }
         }
       }
+    };
+    const prepareBattle = (data, options, evidence, guard, assertCurrent) => {
+      const session = modules['cryptLord.battleSession'];
+      if (!session) throw Error('原版战斗准备模块未加载。');
+      return session.prepare(data, options, { evidence, guard, notify, assertCurrent });
     };
     const team = teamBattleState?.get(state.current?.data);
     if (lifeSave) {
@@ -716,7 +858,8 @@
         : battle?.status === 'active' ? battle.player : null;
       const current = activePlayer?.lifeSave;
       const eligibility = current || lifeSave.eligibility(stat.当前序列,
-        stat.当前途径 ?? stat.途径 ?? stat.pathway ?? stat.所属途径, battle?.lifeSaveTable);
+        stat.当前途径 ?? stat.途径 ?? stat.pathway ?? stat.所属途径, battle?.lifeSaveTable,
+        state.pathwayPool?.pathways);
       if (eligibility.hasWeak) {
         const editor = element('details', 'crypt-lord-game-shell__battle-strategy');
         editor.appendChild(element('summary', '', `弱保命策略 · ${eligibility.weakName}${current ? `（剩余 ${current.weakLeft} 次）` : ''}`));
@@ -773,113 +916,218 @@
     }
     if (teamBattleState) {
     const teamSession = element('section', 'crypt-lord-game-shell__battle-session');
-    teamSession.appendChild(element('div', 'crypt-lord-game-shell__battle-heading', '多人战斗'));
+    teamSession.appendChild(element('div', 'crypt-lord-game-shell__battle-heading',
+      team?.mode === 'duel' ? '个人对局' : team?.mode === 'practice' ? '训练对局' : '原版战斗'));
     if (!team || team.status === 'finished') {
-      const choices = teamBattleState.roster(state.current?.data);
-      const setup = element('div', 'crypt-lord-game-shell__team-setup');
-      const allyList = element('div', 'crypt-lord-game-shell__team-roster');
-      const enemyList = element('div', 'crypt-lord-game-shell__team-roster');
-      for (const row of choices) {
-        for (const [list, side] of [[allyList, 'ally'], [enemyList, 'enemy']]) {
-          const label = element('label', 'crypt-lord-game-shell__team-option');
-          const checkbox = element('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = row.key;
-          checkbox.dataset.side = side;
-          label.append(checkbox, element('span', '', `${row.name} · 序列 ${row.rank} · 活力 ${row.hp}`));
-          list.appendChild(label);
-        }
+      const builder = modules['cryptLord.battleTeamBuilder'];
+      const pool = state.pathwayPool || {};
+      const messageId = state.current?.message_id, token = state.chatToken;
+      if (!builder) {
+        teamSession.appendChild(element('p', 'crypt-lord-game-shell__empty', '组队模块未加载，不能开始多人战斗。'));
+        body.appendChild(teamSession);
+        return;
       }
-      const allies = element('div');
-      allies.append(element('strong', '', '我方盟友'), allyList);
-      const enemies = element('div');
-      enemies.append(element('strong', '', '敌方单位'), enemyList);
-      setup.append(allies, enemies);
+      if (!state.teamSetupDraft || state.teamSetupDraft.token !== token ||
+        state.teamSetupDraft.messageId !== messageId) {
+        let configuration, error = '';
+        try { configuration = builder.load(state.current?.data); }
+        catch (failure) { configuration = builder.defaults(); error = failure.message; }
+        state.teamSetupDraft = { token, messageId, configuration, error, query: '',
+          expected: structuredClone(state.current?.data?.cryptLord?.teamComposition) };
+      }
+      const draft = state.teamSetupDraft;
+      if (JSON.stringify(state.current?.data?.cryptLord?.teamComposition) ===
+        JSON.stringify(draft.configuration)) {
+        draft.expected = structuredClone(state.current.data.cryptLord.teamComposition);
+        draft.error = '';
+      }
+      const setup = element('section', 'crypt-lord-game-shell__team-builder');
+      const toolbar = element('div', 'crypt-lord-game-shell__team-toolbar');
+      const search = element('input', 'crypt-lord-game-shell__settings-input');
+      search.type = 'search'; search.placeholder = '搜索角色';
+      search.setAttribute('aria-label', '搜索组队角色'); search.value = draft.query;
+      toolbar.appendChild(search);
+      const status = element('p', 'crypt-lord-game-shell__team-status');
+      status.setAttribute('role', 'status');
+      const layout = element('div', 'crypt-lord-game-shell__team-builder-layout');
+      const candidates = element('div', 'crypt-lord-game-shell__team-pool');
+      const selected = element('div', 'crypt-lord-game-shell__team-selected');
+      layout.append(candidates, selected);
+      const assign = (member, side) => {
+        if (state.battleBusy) return;
+        try { draft.configuration = builder.edit(draft.configuration, member, side); renderSetup(); }
+        catch (error) { notify(error.message, 'warning'); }
+      };
+      const smallIcon = (symbol, title, command) => {
+        const control = button(symbol, 'crypt-lord-game-shell__team-icon', command);
+        control.title = title; control.setAttribute('aria-label', title);
+        return control;
+      };
+      const renderSetup = () => {
+        clear(candidates); clear(selected);
+        const resolved = builder.resolve(state.current?.data, pool, draft.configuration);
+        const changedOutside = JSON.stringify(state.current?.data?.cryptLord?.teamComposition) !==
+          JSON.stringify(draft.expected);
+        status.textContent = draft.error || (changedOutside ? '楼层编队已变化，请重新读取编队。' :
+          resolved.missing.length ? `不可用成员 ${resolved.missing.length} 名，请移除或恢复其来源。` :
+          JSON.stringify(draft.configuration) === JSON.stringify(draft.expected || builder.defaults())
+            ? '编队已保存' : '编队未保存');
+        status.dataset.warning = String(Boolean(draft.error || changedOutside || resolved.missing.length));
+        const filtered = builder.filter(resolved.rows, draft.query);
+        if (!filtered.length) candidates.appendChild(element('p', 'crypt-lord-game-shell__empty', '没有匹配角色'));
+        for (const row of filtered) {
+          const member = row.descriptor;
+          const card = element('article', 'crypt-lord-game-shell__team-candidate');
+          card.dataset.source = member.dataSource; card.dataset.name = member.name;
+          const heading = element('div', 'crypt-lord-game-shell__team-candidate-heading');
+          heading.append(element('strong', '', row.name), element('span', '', row.label));
+          if (member.dataSource === 'npc') {
+            const pin = smallIcon(row.important ? '★' : '☆', `标记重要 ${row.name}`, () => {
+              void commitBattle(data => builder.important(data, member.name));
+            });
+            pin.setAttribute('aria-pressed', String(row.important));
+            pin.disabled = state.battleBusy;
+            heading.appendChild(pin);
+          }
+          card.append(heading, element('p', 'crypt-lord-game-shell__muted', row.sequence));
+          const stats = element('dl', 'crypt-lord-game-shell__team-stats');
+          row.stats.forEach(value => stats.append(element('dt', '', value.stat),
+            element('dd', '', value.stat === '运气' ? String(value.maximum ?? '-')
+              : `${value.current ?? '-'}/${value.maximum ?? '-'}${value.percent == null ? '' : ` (${value.percent}%)`}`)));
+          card.appendChild(stats);
+          if (member.dataSource === 'player') card.appendChild(element('span', 'crypt-lord-game-shell__muted', '我方本体'));
+          else {
+            const sides = element('div', 'crypt-lord-game-shell__team-sides');
+            for (const [side, text, sideKey] of [['ally', '我方', 'allyTeam'], ['enemy', '敌方', 'enemyTeam']]) {
+              const label = element('label', 'crypt-lord-game-shell__team-option');
+              const checkbox = element('input');
+              checkbox.type = 'checkbox'; checkbox.value = row.key; checkbox.dataset.side = side;
+              checkbox.checked = draft.configuration[sideKey].some(item =>
+                builder.identity(item) === builder.identity(member));
+              checkbox.disabled = !row.available || state.battleBusy;
+              checkbox.setAttribute('aria-label', `${text} ${row.label} ${row.name}`);
+              checkbox.addEventListener('change', () => assign(member, checkbox.checked ? sideKey : null));
+              label.append(checkbox, element('span', '', text)); sides.appendChild(label);
+            }
+            card.appendChild(sides);
+          }
+          if (!row.available) card.appendChild(element('p', 'crypt-lord-game-shell__muted', row.reason));
+          candidates.appendChild(card);
+        }
+        for (const [key, text] of [['allyTeam', '我方'], ['enemyTeam', '敌方']]) {
+          const section = element('section', 'crypt-lord-game-shell__team-members');
+          section.dataset.side = key;
+          section.appendChild(element('h4', '', `${text} · ${draft.configuration[key].length}/60`));
+          if (!draft.configuration[key].length)
+            section.appendChild(element('p', 'crypt-lord-game-shell__muted', '暂无成员'));
+          for (const member of draft.configuration[key]) {
+            const row = resolved.rows.find(item => builder.identity(item.descriptor) === builder.identity(member));
+            const line = element('div', 'crypt-lord-game-shell__team-member');
+            const description = element('div');
+            description.append(element('strong', '', row?.name || member.name),
+              element('span', 'crypt-lord-game-shell__muted',
+                `${row?.label || member.dataSource} · ${row?.sequence || '来源不可用'}`));
+            if (!row?.available) description.appendChild(element('span', 'crypt-lord-game-shell__team-unavailable',
+              row?.reason || '记录已删除或途径资格未开启'));
+            line.appendChild(description);
+            if (member.dataSource !== 'player') {
+              const remove = smallIcon('×', `移除${text} ${row?.name || member.name}`, () => assign(member, null));
+              remove.disabled = state.battleBusy; line.appendChild(remove);
+            }
+            section.appendChild(line);
+          }
+          selected.appendChild(section);
+        }
+        launch.disabled = state.battleBusy || Boolean(draft.error) || changedOutside ||
+          resolved.missing.length > 0 || resolved.enemies.length === 0 ||
+          personalBattleState.get(state.current?.data)?.status === 'active' ||
+          Boolean(personalBattleState.experiencePreview(state.current?.data)) ||
+          team?.status === 'finished' && !team.settled;
+      };
+      search.addEventListener('input', () => { draft.query = search.value; renderSetup(); });
+      toolbar.append(
+        button('保存编队', 'crypt-lord-game-shell__button', () => {
+          if (draft.error) { notify(draft.error, 'warning'); return; }
+          void commitBattle(data => builder.save(data, pool, draft.configuration, draft.expected));
+        }),
+        button('重新读取编队', 'crypt-lord-game-shell__button', () => {
+          if (state.battleBusy) return;
+          state.teamSetupDraft = null;
+          void contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }).then(async store => {
+            const fresh = await store.readMessage(messageId);
+            if (state.disposed || state.chatToken !== token || state.current?.message_id !== messageId ||
+              state.modal?.dataset.open !== 'true' || state.modalTitle?.textContent !== '战斗系统') return;
+            if (fresh?.role !== 'assistant') throw Error('目标楼层不再是assistant。');
+            state.current = fresh; void renderBattleSystem();
+          }).catch(error => notify(error.message, 'error'));
+        }),
+        button('清空编队', 'crypt-lord-game-shell__button', () => {
+          if (state.battleBusy || !hostWindow.confirm('清空已保存编队？本体仍保留在我方。')) return;
+          void commitBattle(data => builder.save(data, pool, builder.defaults(), draft.expected));
+        }),
+        button('导入原版旧编队', 'crypt-lord-game-shell__button', () => {
+          if (state.battleBusy) return;
+          try {
+            const raw = hostWindow.localStorage.getItem('battle-team-composition');
+            if (!raw) throw Error('此浏览器没有原版旧编队。');
+            draft.configuration = builder.importLegacy(raw);
+            draft.error = ''; renderSetup();
+          } catch (error) { notify(error.message, 'warning'); }
+        }),
+        button('刷新序列能力', 'crypt-lord-game-shell__button', () => {
+          void commitBattle(async (data, _evidence, guard) => {
+            const refreshedPool = await abilityState.loadPool(guard);
+            const result = abilityState.synchronize(data, refreshedPool, abilityLocked());
+            modules[IMAGINATION_KEY]?.sync(result.data, refreshedPool, abilityLocked());
+            modules[READER_MYSTIC_KEY]?.sync(result.data, refreshedPool, abilityLocked());
+            modules[REENACTMENT_KEY]?.sync(result.data, refreshedPool, abilityLocked());
+            return { ok: true, data: result.data,
+              pathwayPool: refreshedPool,
+              rulePool: abilityState.assertPool ? refreshedPool : undefined,
+              changed: JSON.stringify(data) !== JSON.stringify(result.data) };
+          });
+        }),
+      );
+      setup.append(toolbar, status, layout);
       teamSession.appendChild(setup);
       const launch = button('开始多人战斗', 'crypt-lord-game-shell__button is-primary', () => {
-        const picked = side => Array.from(setup.querySelectorAll(`input[data-side="${side}"]:checked`),
-          checkbox => checkbox.value);
-        const allyKeys = picked('ally');
-        const enemyKeys = picked('enemy');
-        if (!enemyKeys.length || allyKeys.some(key => enemyKeys.includes(key))) {
-          notify('至少选择一名敌人；同一 NPC 不能同时属于双方。', 'warning');
-          return;
-        }
-        void commitBattle(async (data, evidence) => {
-          const preflight = teamBattleState.start(data, {
-            allies: allyKeys, enemies: enemyKeys,
-          });
-          if (!preflight.ok) return preflight;
-          let lifeSaveTable;
-          try { lifeSaveTable = await lifeSave?.load(); }
-          catch (error) { notify(`保命配置不可用，本场按内置规则：${error?.message || error}`, 'warning'); }
-          let tagRules;
-          try { tagRules = await modules['cryptLord.battleTags']?.load(); }
-          catch (error) { notify(`标签配置不可用，本场不使用标签修正：${error?.message || error}`, 'warning'); }
-          let pathways = state.pathwayPool?.pathways;
-          if (modules['cryptLord.battleFieldEffects'] && !pathways) {
-            try {
-              if (state.pathwayPoolPromise) await state.pathwayPoolPromise;
-              pathways = (state.pathwayPool || await abilityState.loadPool()).pathways;
-            } catch (error) {
-              notify(`途径库不可用，本场使用现有途径信息：${error?.message || error}`, 'warning');
-            }
-          }
-          let opening = null;
-          try {
-            const [host, settlement] = await Promise.all([
-              contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 }),
-              contract.waitGlobalInitialized(VARIABLE_SETTLEMENT_API_KEY, { timeoutMs: 10000 }),
-            ]);
-            const painter = modules[BATTLEFIELD_PAINTER_KEY];
-            if (!painter) throw new Error('战场绘制模块不可用');
-            const actors = preflight.battle.units.map(unit => ({
-              编号: unit.id, 名称: unit.name, 阵营: unit.side === 'ally' ? '我方' : '敌方',
-            }));
-            const weapons = modules['cryptLord.weaponClassifier']?.collect(data) || [];
-            const npcWeapons = modules['cryptLord.npcWeaponAssigner']
-              ?.collectTeam(preflight.data) || [];
-            const prompt = painter.prompt(preflight.battle.board.cols,
-              preflight.battle.board.rows, evidence, actors, weapons, npcWeapons);
-            const settings = await settlement.readSettings();
-            const config = {
-              should_silence: true, should_stream: false, max_chat_history: 0,
-              use_mes_examples: false, use_story_string: false, use_authors_note: false,
-              use_persona: false,
-              ordered_prompts: [
-                { role: 'system', content: prompt.system },
-                { role: 'user', content: prompt.user },
-              ],
-            };
-            if (settings.useCustomApi) {
-              if (!settings.apiUrl || !settings.model)
-                throw new Error('系统副 API 未配置完整');
-              config.custom_api = { apiurl: settings.apiUrl, key: settings.apiKey,
-                model: settings.model, source: 'openai' };
-            }
-            opening = painter.parse(await host.generateRaw(config));
-            if (!opening) throw new Error('模型未返回有效战场 JSON');
-          } catch (error) {
-            notify(`战场生成不可用，本场以普通棋盘开战：${error?.message || error}`, 'warning');
-          }
-          return teamBattleState.start(data, {
-            allies: allyKeys, enemies: enemyKeys, opening, lifeSaveTable, tagRules, pathways,
-          });
+        if (draft.error) { notify(draft.error, 'warning'); return; }
+        const requested = structuredClone(draft.configuration);
+        void commitBattle(async (data, evidence, guard, assertCurrent) => {
+          const saved = builder.save(data, pool, requested, draft.expected);
+          const resolved = builder.resolve(saved.data, pool, requested);
+          const allyKeys = resolved.allies, enemyKeys = resolved.enemies;
+          data = saved.data;
+          return prepareBattle(data, { allies: allyKeys, enemies: enemyKeys,
+            summonPool: state.pathwayPool }, evidence, guard, assertCurrent);
         });
       });
-      launch.disabled = state.battleBusy || !choices.length ||
-        personalBattleState.get(state.current?.data)?.status === 'active' ||
-        (team?.status === 'finished' && !team.settled);
+      renderSetup();
       teamSession.appendChild(launch);
       if (team?.status === 'finished') {
         teamSession.appendChild(element('p', 'crypt-lord-game-shell__battle-result',
           `上一场：${({ victory: '胜利', defeat: '失败', draw: '平局' })[team.result] || team.result}`));
         const summary = teamBattleState.report(state.current?.data);
         const report = element('div', 'crypt-lord-game-shell__battle-log');
-        for (const unit of team.units) report.appendChild(element('p', '',
+        for (const unit of team.units.filter(row => !row.isSummon)) report.appendChild(element('p', '',
           `${unit.name} · ${unit.side === 'ally' ? '我方' : '敌方'} · 活力 ${unit.hp}/${unit.maxHp} · 输出 ${unit.damage} · 治疗 ${unit.healing} · 击倒 ${unit.kills}${unit.lifeSave?.hasStrong || unit.lifeSave?.hasWeak ? ` · 保命已用 强 ${unit.lifeSave.strongUsed}/1 · 弱 ${unit.lifeSave.weakUsed}/3` : ''}`));
         report.appendChild(element('p', '', `经验池 ${summary?.experience?.pool || 0}`));
         teamSession.appendChild(report);
+        const playOutcomes = modules['cryptLord.battlePlayUnits']?.preview(team) || [];
+        if (playOutcomes.length) {
+          const losses = element('div', 'crypt-lord-game-shell__play-settlement');
+          losses.appendChild(element('h4', '', '专属单位结算'));
+          if (team.settled && !team.accepted) losses.appendChild(element('p', '', '已放弃，袋内记录保持不变。'));
+          else if (team.settled) {
+            for (const text of team.playSettlement || [])
+              losses.appendChild(element('p', '', text));
+            if (!team.playSettlement?.length) losses.appendChild(element('p', '', '袋内记录无变更。'));
+          } else {
+            for (const row of playOutcomes) losses.appendChild(element('p', '',
+              `${row.name} · 活力 ${row.hp}/${row.maxHp} · ${row.outcome}`));
+          }
+          teamSession.appendChild(losses);
+        }
         if (!team.settled) {
           const actions = element('div', 'crypt-lord-game-shell__battle-actions');
           actions.append(
@@ -890,17 +1138,153 @@
           );
           teamSession.appendChild(actions);
         }
+        const battleReporter = modules['cryptLord.battleReport'];
+        if (battleReporter) {
+          const draftKey = `${state.chatToken}:${state.current.message_id}:${team.id}`;
+          if (state.battleReportDraft?.key !== draftKey)
+            state.battleReportDraft = { key: draftKey, spared: [], detailed: false };
+          const draft = state.battleReportDraft;
+          const section = element('section', 'crypt-lord-game-shell__battle-report');
+          section.appendChild(element('h4', '', '战斗报告'));
+          const modes = element('div', 'crypt-lord-game-shell__battle-report-tabs');
+          modes.setAttribute('role', 'tablist');
+          const preview = element('textarea', 'crypt-lord-game-shell__battle-report-text');
+          preview.readOnly = true;
+          preview.setAttribute('aria-label', '战斗报告正文');
+          const refreshReport = () => {
+            const result = battleReporter.build(state.current.data, draft.spared, draft.detailed);
+            preview.value = result.ok ? result.text : result.error;
+            preview.dataset.legacy = String(Boolean(result.legacy));
+            for (const tab of modes.children)
+              tab.setAttribute('aria-selected', String(tab.dataset.detailed === String(draft.detailed)));
+          };
+          for (const [label, detailed] of [['简报', false], ['详细记录', true]]) {
+            const tab = button(label, '', () => { draft.detailed = detailed; refreshReport(); });
+            tab.dataset.detailed = String(detailed);
+            tab.setAttribute('role', 'tab');
+            modes.appendChild(tab);
+          }
+          section.appendChild(modes);
+          const choices = battleReporter.mercyChoices(team);
+          if (choices.length) {
+            const mercy = element('fieldset', 'crypt-lord-game-shell__battle-report-mercy');
+            mercy.appendChild(element('legend', '', '手下留情'));
+            for (const choice of choices) {
+              const label = element('label');
+              const check = element('input');
+              check.type = 'checkbox';
+              check.checked = draft.spared.includes(choice.id);
+              check.addEventListener('change', () => {
+                draft.spared = check.checked ? [...draft.spared, choice.id]
+                  : draft.spared.filter(id => id !== choice.id);
+                refreshReport();
+              });
+              label.append(check, element('span', '', choice.name));
+              mercy.appendChild(label);
+            }
+            section.appendChild(mercy);
+          }
+          if (!team.reportState || team.reportState.legacy) section.appendChild(element('p',
+            'crypt-lord-game-shell__battle-hint', '旧战斗仅保留现有日志，早期记录无法补回。'));
+          const exportReport = button('填入原生输入框',
+            'crypt-lord-game-shell__button is-primary', async () => {
+              if (state.battleReportBusy || state.battleBusy) return;
+              state.battleReportBusy = true;
+              exportReport.disabled = true;
+              const token = state.chatToken, messageId = state.current.message_id;
+              try {
+                const [store, adapter] = await Promise.all([
+                  contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }),
+                  contract.waitGlobalInitialized(INPUT_KEY, { timeoutMs: 10000 }),
+                ]);
+                const sameView = () => !state.disposed && token === state.chatToken &&
+                  messageId === state.current?.message_id &&
+                  state.current?.data?.cryptLord?.teamBattle?.id === team.id &&
+                  state.modal?.dataset.open === 'true' &&
+                  state.modalTitle?.textContent === '战斗系统';
+                const message = await store.readMessage(messageId);
+                const freshBattle = message?.data?.cryptLord?.teamBattle;
+                if (!sameView() || message?.role !== 'assistant' ||
+                  freshBattle?.id !== team.id || !freshBattle.settled || !freshBattle.accepted)
+                  throw Error('楼层或结算状态已变化，请重新打开战斗系统。');
+                const built = battleReporter.build(message.data, draft.spared, false);
+                if (!built.ok) throw Error(built.error);
+                const composer = afterNative.getHost()?.document?.querySelector('#send_textarea');
+                if (!composer || !adapter?.setInputText) throw Error('未找到酒馆原生输入框。');
+                const previous = composer.value;
+                if (previous.trim() && previous !== built.text &&
+                  !window.confirm('原生输入框已有内容，是否替换为本场战报？')) return;
+                const reread = await store.readMessage(messageId);
+                if (!sameView() || JSON.stringify(reread) !== JSON.stringify(message) ||
+                  composer !== afterNative.getHost()?.document?.querySelector('#send_textarea') ||
+                  composer.value !== previous)
+                  throw Error('楼层或输入框已变化，未覆盖内容，请重试。');
+                if (adapter.setInputText(built.text, 'sillytavern-native') === false)
+                  throw Error('原生输入框写入失败。');
+                notify('战报已填入原生输入框。', 'success');
+              } catch (error) {
+                notify(`战报输出失败：${error?.message || error}`, 'error');
+              } finally {
+                state.battleReportBusy = false;
+                exportReport.disabled = !team.settled || !team.accepted;
+              }
+            });
+          exportReport.disabled = state.battleBusy || state.battleReportBusy ||
+            !team.settled || !team.accepted;
+          section.append(preview, exportReport);
+          refreshReport();
+          teamSession.appendChild(section);
+        }
       }
     } else {
       const actor = team.units.find(unit => unit.id === team.queue[team.index]);
+      const teamAuto = modules['cryptLord.battleAutoPilot'];
+      const teamAutoOn = Boolean(teamAuto?.isOn(team));
+      const autoDrives = teamAuto?.drives(team, actor);
+      if (teamAuto) {
+        const autoControl = element('label', 'crypt-lord-game-shell__battle-auto');
+        const autoToggle = element('input');
+        autoToggle.type = 'checkbox';
+        autoToggle.setAttribute('aria-label', team.mode === 'duel' || team.mode === 'practice'
+          ? '托管个人对局' : '托管多人战斗');
+        autoToggle.checked = teamAutoOn;
+        autoToggle.disabled = state.battleBusy;
+        autoToggle.addEventListener('change', () => {
+          cancelBattleAuto();
+          state.battleAutoSteps = 0;
+          state.battleAutoPaused = false;
+          void commitBattle(data => teamAuto.set(data, autoToggle.checked));
+        });
+        autoControl.append(autoToggle, element('span', '', '托管本场战斗'));
+        teamSession.appendChild(autoControl);
+        if (teamAutoOn && state.battleAutoPaused) teamSession.appendChild(element('span',
+          'crypt-lord-game-shell__battle-hint', '托管已暂停，请关闭后重新开启'));
+      }
+      const extraSlot = modules['cryptLord.battleExtraAction']?.currentSlot(team);
+      const hardOccupied = modules['cryptLord.battleHardControl']?.occupied(team,
+        team.units.find(unit => unit.source === 'player'));
       teamSession.appendChild(element('p', 'crypt-lord-game-shell__battle-turn',
-        `第 ${team.round} 回合 · ${team.phase === 'tactic' ? '战术阶段' : `行动：${actor?.name || '未知'}`}`));
+        `第 ${team.round} 回合 · ${team.phase === 'tactic' ? '战术阶段' : `行动：${extraSlot?.extra ? extraSlot.alias : actor?.name || '未知'}`}`));
+      if (team.turnSlots?.some(slot => slot.extra)) {
+        const order = element('p', 'crypt-lord-game-shell__battle-slot-order');
+        order.textContent = team.turnSlots.map((slot, index) => {
+          const label = slot.extra ? slot.alias : team.units.find(unit => unit.id === slot.heroId)?.name;
+          return `${index === team.index ? '当前 · ' : ''}${label}${slot.voided ? '（作废）' : index < team.index ? '（已行动）' : ''}`;
+        }).join(' → ');
+        teamSession.appendChild(order);
+      }
       const overview = element('div', 'crypt-lord-game-shell__battle-overview');
       const formulas = team.formulas?.version === 1 && modules['cryptLord.battleFormulas'];
       for (const unit of team.units) {
+        if (unit.dismissed) continue;
         const card = element('article', 'crypt-lord-game-shell__battle-unit');
+        if (unit.playRecord) card.appendChild(element('span',
+          'crypt-lord-game-shell__battle-field-status',
+          `${({ clone: '袋内分身', puppet: '袋内秘偶', 'savant-construct': '长期造物' })[unit.playRecord.source]} · ${(unit.controller || unit.source) === 'player' ? '玩家操控' : '非玩家操控'}`));
         card.append(element('strong', '', `${unit.side === 'ally' ? '我方' : '敌方'} · ${unit.name}`),
           element('span', '', `活力 ${unit.hp}/${unit.maxHp} · 灵性 ${unit.spirit}/${unit.maxSpirit} · 理智 ${unit.sanity}/${unit.maxSanity} · (${unit.x}, ${unit.y})`));
+        if (unit.isSummon) card.appendChild(element('span', '',
+          `${unit.summonSubtype} · ${unit.picturePersonImmobile ? '固定位置 · ' : ''}${Number.isFinite(unit.summonUntil) ? `第 ${unit.summonUntil} 回合消散` : '随召唤者存续'}`));
         if (formulas) {
           card.appendChild(element('span', '',
             `敏捷 ${unit.agility}/${unit.maxAgility} · 人性 ${unit.humanity}/${unit.maxHumanity} · 运气 ${unit.luck} · 神性 ${unit.divinity}`));
@@ -911,9 +1295,21 @@
         }
         if (unit.fallbackWeapon) card.appendChild(element('span', '',
           `本场武器 · ${unit.fallbackWeapon.显示名} · ${unit.fallbackWeapon.射程}`));
-        const effects = (unit.effects || []).filter(effect => !effect.auraEffect && !effect.fieldEffect);
-        if (effects.length) card.appendChild(element('span', '',
-          effects.map(effect => `${effect.passive ? '被动 · ' : ''}${effect.name} ${effect.power}${effect.valueType === 'fixed' ? ' 点' : '%'} · ${effect.battlePersistent ? '整场' : `${effect.duration} 回合`}`).join('、')));
+        const effects = (unit.effects || []).filter(effect => !effect.auraEffect && !effect.fieldEffect &&
+          !effect.resourceStatus &&
+          !effect.mythicForm && !effect.canonMythicForm && !(team.environmentMeta && effect.environment));
+        if (effects.length) {
+          const state = element('span', 'crypt-lord-game-shell__battle-effect-lifecycle',
+            effects.map(effect => `${effect.passive ? '被动 · ' : ''}${effect.name} ${effect.power}${effect.valueType === 'fixed' ? ' 点' : '%'} · ${effect.battlePersistent ? '整场' : effect.terrainEffect ? `${effect.type === 'regen' ? '恢复' : effect.type === 'poison' ? '损伤' : effect.type === 'buff' ? '增益' : '减益'} / ${effect.duration} 次结算` : `${effect.duration} 回合`}`).join('、'));
+          state.title = modules['cryptLord.battleEffects']?.describe(unit).join('\n') || '';
+          card.appendChild(state);
+        }
+        for (const line of modules['cryptLord.battleTerrainEffects']?.describe(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-terrain-status', line));
+        for (const line of modules['cryptLord.battleResourceStatus']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-resource-status', line));
+        for (const line of modules['cryptLord.battleSkillControl']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
         for (const line of modules['cryptLord.battleAuras']?.statusLines(team, unit) || [])
           card.appendChild(element('span', 'crypt-lord-game-shell__battle-aura-status', line));
         for (const line of modules['cryptLord.battleFieldEffects']?.statusLines(team, unit) || [])
@@ -922,9 +1318,42 @@
           card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
         for (const line of modules['cryptLord.battleBribery']?.statusLines(team, unit) || [])
           card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
-        if (unit.tags?.length) card.appendChild(element('span',
-          'crypt-lord-game-shell__battle-tags',
-          unit.tags.map(tag => `${tag.name} ×${tag.stacks} · ${tag.duration} 回合`).join('、')));
+        for (const line of modules['cryptLord.battleBalance']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battlePunishment']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleMythicForm']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleExile']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleActiveLeave']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleRewind']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleExtraAction']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleHardControl']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleMindDeprive']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleTempControl']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battlePermanentControl']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battlePossession']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleRuleChange']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        for (const line of modules['cryptLord.battleEnvironment']?.statusLines(team, unit) || [])
+          card.appendChild(element('span', 'crypt-lord-game-shell__battle-field-status', line));
+        if (unit.tags?.length) {
+          const tagService = modules['cryptLord.battleTags'];
+          const tags = element('span', 'crypt-lord-game-shell__battle-tags',
+            (tagService?.describe(unit) || unit.tags.map(tag =>
+              `${tag.name} ×${tag.stacks} · ${tag.duration} 回合`)).join('、'));
+          tags.title = tagService?.describeSources(unit) || '';
+          card.appendChild(tags);
+        }
         if (unit.lifeSave?.hasStrong || unit.lifeSave?.hasWeak) card.appendChild(element('span',
           'crypt-lord-game-shell__battle-life-save', [
             unit.lifeSave.hasStrong ? `${unit.lifeSave.strongName} ${unit.lifeSave.strongLeft}/1` : '',
@@ -941,7 +1370,7 @@
           const toggle = element('input', '');
           toggle.type = 'checkbox';
           toggle.checked = choice.active;
-          toggle.disabled = state.battleBusy || team.phase !== 'tactic' ||
+          toggle.disabled = state.battleBusy || hardOccupied || team.phase !== 'tactic' ||
             !(team.units.find(unit => unit.source === 'player')?.hp > 0);
           toggle.setAttribute('aria-label', `${choice.name}光环开关`);
           toggle.title = choice.active ? '关闭光环' : choice.everActivated ? '重新开启光环' : '开启光环';
@@ -966,7 +1395,8 @@
         Object.values(team.naturalEnv).filter(Boolean).join(' · ')));
       const board = element('div', 'crypt-lord-game-shell__battle-board');
       board.style.setProperty('--cl-battle-cols', String(team.board.cols));
-      const reachable = new Set(teamBattleState.reachable(state.current?.data).map(cell => `${cell.x},${cell.y}`));
+      const reachable = new Set((autoDrives ? [] : teamBattleState.reachable(state.current?.data))
+        .map(cell => `${cell.x},${cell.y}`));
       const tacticalCells = new Map();
       let tacticAction = null;
       let updateTerrainChoices = null;
@@ -979,12 +1409,17 @@
           ? ` is-terrain-${tile.blocked ? 'barrier' : family ? `family-${family}` : 'scene'}` : ''}${occupied
           ? ` is-${occupied.side === 'ally' ? 'player' : 'enemy'}` : ''}${reachable.has(`${x},${y}`) ? ' is-reachable' : ''}`);
         cell.type = 'button';
+        cell.dataset.x = String(x);
+        cell.dataset.y = String(y);
         cell.title = occupied ? `${occupied.name} · ${occupied.hp}/${occupied.maxHp}` :
-          tile ? `${tile.name}${tile.duration == null ? '' : ` · ${tile.duration} 回合`}` :
+          tile ? `${tile.name}${tile.duration == null ? '' : Number(tile.duration) === 0 ? ' · 永久' : ` · ${tile.duration} 回合`}` :
             `${team.board.base?.name || '平地'} (${x}, ${y})`;
+        const terrainDetails = modules['cryptLord.battleTerrainEffects']
+          ?.describe(team, actor, x, y) || [];
+        if (terrainDetails.length) cell.title += `\n${terrainDetails.join('\n')}`;
         cell.textContent = occupied ? occupied.name.slice(0, 1) : tile ? tile.id ? '◆' : '△' : '';
         cell.disabled = team.phase === 'tactic'
-          ? state.battleBusy : Boolean(occupied) || !reachable.has(`${x},${y}`) ||
+          ? state.battleBusy || teamAutoOn : Boolean(occupied) || !reachable.has(`${x},${y}`) ||
             state.battleBusy || (actor?.controller || actor?.source) !== 'player';
         if (team.phase === 'tactic') cell.addEventListener('click', () => {
           if (tacticAction?.value !== '改变地形') return;
@@ -1023,23 +1458,259 @@
         props.appendChild(element('p', '', `${prop.名称} ×${prop.数量} · ${prop.描述 || '无描述'}`));
       else props.appendChild(element('p', '', '当前没有可用的现场物件。'));
       teamSession.appendChild(props);
-      if (team.phase === 'tactic') {
+      const ruleSlots = modules['cryptLord.battleRuleChange']?.slots(team);
+      if (ruleSlots?.cap) {
+        const band = element('section', 'crypt-lord-game-shell__battle-rule-slots');
+        band.appendChild(element('h3', '', `共享规则栏 · ${ruleSlots.entries.length}/${ruleSlots.cap}`));
+        for (const entry of ruleSlots.entries) band.appendChild(element('p',
+          entry.side === 'ally' ? 'is-friendly' : 'is-hostile',
+          `${entry.side === 'ally' ? '我方受益' : '敌方受益'} · ${entry.description}`));
+        if (!ruleSlots.entries.length) band.appendChild(element('p', '', '暂无生效规则'));
+        teamSession.appendChild(band);
+      }
+      const environmentSlots = modules['cryptLord.battleEnvironment']?.slots(team) || [];
+      if (environmentSlots.length) {
+        const band = element('section', 'crypt-lord-game-shell__battle-environment-slots');
+        band.appendChild(element('h3', '', '战场环境'));
+        const rows = element('div', 'crypt-lord-game-shell__battle-environment-grid');
+        for (const slot of environmentSlots) {
+          const row = element('div', 'crypt-lord-game-shell__battle-environment-row');
+          row.append(
+            element('strong', '', slot.kind),
+            element('span', '', slot.name || '空'),
+            element('small', '', slot.state === 'artificial'
+              ? `${slot.side === 'ally' ? '我方' : '敌方'} · ${slot.actor} · 回落：${slot.natural || '空'}`
+              : slot.state === 'natural' ? '自然环境' : '暂无环境'));
+          rows.appendChild(row);
+        }
+        band.appendChild(rows);
+        teamSession.appendChild(band);
+      }
+      if (team.fundamentalMeta) {
+        const band = element('section', 'crypt-lord-game-shell__battle-fundamental-laws');
+        band.appendChild(element('h3', '', '当前底层规则'));
+        const rows = modules['cryptLord.battleFundamental']?.rows(team) || [];
+        for (const row of rows) {
+          const line = element('div', 'crypt-lord-game-shell__battle-fundamental-law');
+          line.append(element('strong', '', `${row.family} · ${row.label} → ${row.value}`),
+            element('small', '', `${row.source} · ${row.name} · 剩余 ${row.remaining} 回合 · ${
+              row.pending ? '下回合生效' : row.suppressed ? '上下限冲突，暂不生效' : row.effective ? '生效中' : '被较新规则覆盖'}`));
+          if (!row.effective) line.classList.add('is-muted');
+          band.appendChild(line);
+        }
+        if (!rows.length) band.appendChild(element('p', '', '当前没有底层规则修改。'));
+        teamSession.appendChild(band);
+      }
+      const leaveChoice = teamBattleState.activeLeaveOptions?.(state.current?.data);
+      const possessionChoice = teamBattleState.possessionOptions?.(state.current?.data);
+      if (teamAutoOn) {
+        teamSession.appendChild(element('p', 'crypt-lord-game-shell__battle-hint',
+          team.phase === 'tactic' ? '托管中 · 战术结算'
+            : autoDrives ? '托管中 · AI 代打' : '托管中 · 非玩家行动'));
+      } else if (team.phase === 'tactic' && possessionChoice?.active) {
+        const maintenance = element('section', 'crypt-lord-game-shell__battle-leave-maintenance');
+        maintenance.append(
+          element('h3', '', `${possessionChoice.subtype} · ${possessionChoice.name}`),
+          element('p', '', `${possessionChoice.stat}消耗 ${possessionChoice.cost} · 当前 ${
+            possessionChoice.balance} · 扣后 ${possessionChoice.after}`),
+          element('p', '', `抵抗值 ${possessionChoice.defense} · 本体离场 · 每轮维持重新拼点`));
+        if (possessionChoice.reason)
+          maintenance.appendChild(element('p', 'is-blocked', possessionChoice.reason));
+        const commands = element('div', 'crypt-lord-game-shell__row');
+        for (const [mode, label] of [['continue', '继续附身'], ['release', '解除附身']]) {
+          const command = button(label, 'crypt-lord-game-shell__button', () => {
+            void commitBattle(data => {
+              const result = teamBattleState.possession(data, { mode });
+              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+            });
+          });
+          command.disabled = mode === 'continue' && !possessionChoice.canContinue;
+          commands.appendChild(command);
+        }
+        maintenance.appendChild(commands);
+        teamSession.appendChild(maintenance);
+      } else if (team.phase === 'tactic' && hardOccupied) {
+        teamSession.append(
+          element('p', 'crypt-lord-game-shell__battle-hint', '本轮受到硬控，无法参与战术。'),
+          button('跳过战术阶段', 'crypt-lord-game-shell__button', () => {
+            void commitBattle(data => {
+              const result = teamBattleState.tactic(data);
+              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+            });
+          }));
+      } else if (team.phase === 'tactic' && leaveChoice?.away) {
+        const maintenance = element('section', 'crypt-lord-game-shell__battle-leave-maintenance');
+        maintenance.appendChild(element('h3', '', leaveChoice.subtype));
+        maintenance.appendChild(element('p', '',
+          `当前灵性 ${leaveChoice.spirit} · 本轮维持 ${leaveChoice.cost} 点灵性`));
+        if (!leaveChoice.canStay) maintenance.appendChild(element('p', 'is-blocked', '灵性不足，需返场。'));
+        const commands = element('div', 'crypt-lord-game-shell__row');
+        for (const [mode, label] of [['stay', '继续离场'], ['return', '返场']]) {
+          const command = button(label, 'crypt-lord-game-shell__button', () => {
+            void commitBattle(data => {
+              const result = teamBattleState.activeLeave(data, { mode });
+              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+            });
+          });
+          command.disabled = mode === 'stay' && !leaveChoice.canStay;
+          commands.appendChild(command);
+        }
+        maintenance.appendChild(commands);
+        teamSession.appendChild(maintenance);
+      } else if (team.phase === 'tactic') {
+        const soulChoice = teamBattleState.grazingSwitchOptions(state.current?.data);
+        const soulToken = `${state.chatToken}:${state.current?.message_id}:${team.id}:${team.round}`;
+        if (state.battleSoulDraft?.token !== soulToken) state.battleSoulDraft = null;
+        if (soulChoice) {
+          const bar = element('div', 'crypt-lord-game-shell__soul-toolbar');
+          bar.appendChild(element('span', '', `激活灵魂：${soulChoice.active.join('、') || '无'}`));
+          const open = button('切换激活灵魂', 'crypt-lord-game-shell__button', () => {
+            state.battleSoulDraft = { token: soulToken, names: [...soulChoice.active] };
+            state.battleBorrow = null;
+            renderBattleSystem();
+          });
+          open.disabled = state.battleBusy || Boolean(soulChoice.reason) || Boolean(state.battleSoulDraft);
+          bar.appendChild(open);
+          teamSession.appendChild(bar);
+        }
+        if (state.battleSoulDraft && soulChoice && !soulChoice.reason) {
+          const draft = state.battleSoulDraft;
+          const editor = element('div', 'crypt-lord-game-shell__soul-editor');
+          editor.appendChild(element('h3', '', '激活组合'));
+          const count = element('p', 'crypt-lord-game-shell__muted');
+          const updateCount = () => { count.textContent =
+            `已选 ${draft.names.length}/${soulChoice.capacity} · 切换消耗 ${soulChoice.cost} 灵性`; };
+          updateCount();
+          editor.appendChild(count);
+          for (const row of soulChoice.rows) {
+            const label = element('label', 'crypt-lord-game-shell__soul-option');
+            const input = element('input'); input.type = 'checkbox';
+            input.checked = draft.names.includes(row.name);
+            const released = soulChoice.locked.includes(row.name);
+            input.disabled = state.battleBusy || released;
+            input.setAttribute('aria-label', `激活灵魂 ${row.name}`);
+            input.addEventListener('change', () => {
+              if (input.checked && draft.names.length >= soulChoice.capacity) {
+                input.checked = false; notify('激活数量已达上限', 'warning'); return;
+              }
+              draft.names = input.checked ? [...draft.names, row.name]
+                : draft.names.filter(name => name !== row.name);
+              updateCount();
+            });
+            const detail = element('span');
+            detail.append(element('strong', '', row.name),
+              element('small', 'crypt-lord-game-shell__muted',
+                `${row.sequence}${released ? ' · 外放中，已锁定' : ''}`));
+            label.append(input, detail); editor.appendChild(label);
+          }
+          const commands = element('div', 'crypt-lord-game-shell__scroll-actions');
+          const cancel = button('取消切换', 'crypt-lord-game-shell__button', () => {
+            state.battleSoulDraft = null; renderBattleSystem();
+          });
+          const confirm = button('确认激活组合', 'crypt-lord-game-shell__button', () => {
+            const names = [...new Set([...draft.names, ...soulChoice.locked])];
+            void commitBattle(data => {
+              const result = teamBattleState.switchGrazing(data, names, { locked: abilityLocked() });
+              if (result.ok) state.battleSoulDraft = null;
+              return result;
+            });
+          });
+          cancel.disabled = confirm.disabled = state.battleBusy;
+          commands.append(cancel, confirm); editor.appendChild(commands);
+          teamSession.appendChild(editor);
+        } else {
+        state.battleSoulDraft = null;
+        const borrowManager = modules['cryptLord.battleAbilityBorrow'];
+        const borrowChoices = teamBattleState.abilityBorrowOptions?.(state.current?.data) || [];
+        const borrowToken = `${state.current?.message_id}:${team.round}:${team.log[0]?.at}`;
+        if (state.battleBorrow?.token !== borrowToken) state.battleBorrow = { token: borrowToken };
+        const draft = state.battleBorrow;
+        const borrowControls = element('div', 'crypt-lord-game-shell__battle-borrow-controls');
+        const borrowAuthority = element('select', 'crypt-lord-game-shell__settings-input');
+        borrowAuthority.setAttribute('aria-label', '战术身份');
+        for (const row of [{ authority: '', name: '本体战术' }, ...borrowChoices]) {
+          const option = element('option', '', row.name);
+          option.value = row.authority; borrowAuthority.appendChild(option);
+        }
+        const authority = borrowChoices.find(row => row.authority === draft.authority);
+        if (!authority) { delete draft.authority; delete draft.source; delete draft.ability; }
+        borrowAuthority.value = draft.authority || '';
+        const borrowSource = element('select', 'crypt-lord-game-shell__settings-input');
+        borrowSource.setAttribute('aria-label', '借用能力来源');
+        for (const row of authority?.sources || []) {
+          const option = element('option', '', row.name); option.value = row.id; borrowSource.appendChild(option);
+        }
+        if (!authority?.sources.some(row => row.id === draft.source)) draft.source = borrowSource.value;
+        borrowSource.value = draft.source || '';
+        const source = authority?.sources.find(row => row.id === draft.source);
+        const borrowAbility = element('select', 'crypt-lord-game-shell__settings-input');
+        borrowAbility.setAttribute('aria-label', '借用能力');
+        for (const row of source?.abilities || []) {
+          const option = element('option', '', `${row.group} · ${row.label}`);
+          option.value = row.id; borrowAbility.appendChild(option);
+        }
+        if (!source?.abilities.some(row => row.id === draft.ability)) draft.ability = borrowAbility.value;
+        borrowAbility.value = draft.ability || '';
+        const borrowed = source?.abilities.find(row => row.id === draft.ability);
+        const tacticEngine = borrowed ? borrowManager.facade(teamBattleState,
+          () => state.current.data, draft) : teamBattleState;
+        for (const [select, key] of [[borrowAuthority, 'authority'], [borrowSource, 'source'], [borrowAbility, 'ability']])
+          select.addEventListener('change', () => { draft[key] = select.value; void renderBattleSystem(); });
+        borrowSource.hidden = borrowAbility.hidden = !authority;
+        borrowControls.append(borrowAuthority, borrowSource, borrowAbility);
+        if (authority) borrowControls.append(element('p', '',
+          `权柄灵性 ${authority.cost} · 扣后 ${Math.max(0, authority.balance - authority.cost)} · 原能力另外扣费 · 次数扣在来源，资源与效果归施法者`));
+        if (authority && !borrowed) borrowControls.append(element('p', 'is-blocked', '没有理论上可借用的敌方能力。'));
+        if (borrowChoices.length) teamSession.appendChild(borrowControls);
         const controls = element('div', 'crypt-lord-game-shell__battle-actions');
         const action = element('select', 'crypt-lord-game-shell__settings-input');
         tacticAction = action;
-        const skillControl = teamBattleState.skillControlOptions(state.current?.data);
-        const fieldChoices = teamBattleState.fieldEffectOptions(state.current?.data);
-        const transferChoices = teamBattleState.effectTransferOptions(state.current?.data);
-        const briberyChoices = teamBattleState.briberyOptions(state.current?.data);
+        const skillControl = tacticEngine.skillControlOptions(state.current?.data);
+        const fieldChoices = tacticEngine.fieldEffectOptions(state.current?.data);
+        const transferChoices = tacticEngine.effectTransferOptions(state.current?.data);
+        const briberyChoices = tacticEngine.briberyOptions(state.current?.data);
+        const balanceChoice = tacticEngine.balanceOptions?.(state.current?.data);
+        const punishmentChoice = tacticEngine.punishmentOptions?.(state.current?.data);
+        const mythicChoices = tacticEngine.mythicOptions?.(state.current?.data) || [];
+        const exileChoices = tacticEngine.exileOptions?.(state.current?.data) || [];
+        const eventChoices = tacticEngine.battleEventOptions?.(state.current?.data) || [];
+        const rewindChoice = tacticEngine.rewindOptions?.(state.current?.data);
+        const extraChoices = tacticEngine.extraActionOptions?.(state.current?.data) || [];
+        const hardChoices = tacticEngine.hardControlOptions?.(state.current?.data) || [];
+        const mindChoice = tacticEngine.mindDepriveOptions?.(state.current?.data);
+        const tempChoices = tacticEngine.tempControlOptions?.(state.current?.data) || [];
+        const permanentChoices = tacticEngine.permanentControlOptions?.(state.current?.data) || [];
+        const possessionChoices = possessionChoice?.choices || [];
+        const ruleChoices = tacticEngine.ruleChangeOptions?.(state.current?.data) || [];
+        const environmentChoices = tacticEngine.environmentOptions?.(state.current?.data) || [];
+        const fundamentalChoices = tacticEngine.fundamentalOptions?.(state.current?.data) || [];
+        const summonChoices = tacticEngine.summonOptions?.(state.current?.data) || [];
         for (const label of ['待命', '对角色使用战术', '改变地形',
           ...fieldChoices.length ? ['施加效果'] : [],
           ...transferChoices.length ? ['效果传递'] : [],
           ...briberyChoices.length ? ['贿赂'] : [],
+          ...balanceChoice ? ['平衡'] : [],
+          ...punishmentChoice ? ['惩戒'] : [],
+          ...mythicChoices.length ? ['形态'] : [],
+          ...exileChoices.length ? ['放逐'] : [],
+          ...eventChoices.length ? ['制造战场事件'] : [],
+          ...rewindChoice ? ['回溯'] : [],
+          ...extraChoices.length ? ['额外行动'] : [],
+          ...hardChoices.length ? ['硬控'] : [],
+          ...mindChoice ? ['心智剥夺'] : [],
+          ...tempChoices.length ? ['阵营短控'] : [],
+          ...permanentChoices.length ? ['永久控制'] : [],
+          ...possessionChoices.length ? ['附身'] : [],
+          ...ruleChoices.length ? ['规则修改'] : [],
+          ...environmentChoices.length ? ['改变环境'] : [],
+          ...fundamentalChoices.length ? ['底层规则修改'] : [],
+          ...summonChoices.length ? ['召唤'] : [],
+          ...leaveChoice?.choices.length ? ['主动离场'] : [],
           ...Object.keys(skillControl?.modes || {}).length ? ['技能干涉'] : []]) {
           const option = element('option', '', label); option.value = label; action.appendChild(option);
         }
         const target = element('select', 'crypt-lord-game-shell__settings-input');
-        for (const unit of team.units.filter(row => row.hp > 0)) {
+        for (const unit of team.units.filter(row => row.hp > 0 && !row.exiled && !row.offField && !row.activeLeaving && !row.possessedHidden)) {
           const option = element('option', '', `${unit.side === 'ally' ? '我方' : '敌方'} · ${unit.name}`);
           option.value = unit.id; target.appendChild(option);
         }
@@ -1067,6 +1738,18 @@
         const controlTarget = element('select', 'crypt-lord-game-shell__settings-input');
         const controlMode = element('select', 'crypt-lord-game-shell__settings-input');
         const controlSkill = element('select', 'crypt-lord-game-shell__settings-input');
+        controlTarget.setAttribute('aria-label', '技能干涉目标');
+        controlMode.setAttribute('aria-label', '技能干涉模式');
+        controlSkill.setAttribute('aria-label', '技能干涉技能');
+        const controlInfo = element('p', 'crypt-lord-game-shell__battle-field-info');
+        const syncControlInfo = () => {
+          const target = skillControl?.targets.find(row => row.id === controlTarget.value);
+          const skill = target?.skills.find(row => row.name === controlSkill.value);
+          controlInfo.textContent = `消耗 ${skillControl?.cost ?? 0} 点灵性（成败均扣） · 持续 2 个完整行动回合${
+            skill?.last && controlMode.value !== '复制' ? ' · 最后一技：目标拼点 ×3' : ''}${
+            skill?.banned ? ' · 已封锁：成功后刷新期限' : ''}${
+            skillControl?.spirit < skillControl?.cost ? ' · 当前灵性不足' : ''}`;
+        };
         for (const [mode, ability] of Object.entries(skillControl?.modes || {})) {
           const option = element('option', '', `${mode} · ${ability}`);
           option.value = mode; controlMode.appendChild(option);
@@ -1083,10 +1766,13 @@
               `${skill.name}${skill.banned ? ' · 已封锁' : ''}`);
             option.value = skill.name; controlSkill.appendChild(option);
           }
+          syncControlInfo();
         };
         controlTarget.addEventListener('change', syncControlSkills);
+        controlMode.addEventListener('change', syncControlInfo);
+        controlSkill.addEventListener('change', syncControlInfo);
         syncControlSkills();
-        controlFields.append(controlTarget, controlMode, controlSkill);
+        controlFields.append(controlTarget, controlMode, controlSkill, controlInfo);
         const fieldControls = element('div', 'crypt-lord-game-shell__battle-field-controls');
         const fieldSubtype = element('select', 'crypt-lord-game-shell__settings-input');
         fieldSubtype.setAttribute('aria-label', '施加效果能力');
@@ -1105,7 +1791,7 @@
             : '';
           fieldPreview.replaceChildren();
           if (choice?.hint) fieldPreview.appendChild(element('p', '', choice.hint));
-          for (const row of teamBattleState.fieldEffectPreview(state.current?.data,
+          for (const row of tacticEngine.fieldEffectPreview(state.current?.data,
             fieldSubtype.value, fieldTarget.value))
             fieldPreview.appendChild(element('p', row.blocked || !row.power ? 'is-blocked' : '',
               `${row.name} · ${row.detail}${row.blocked ? ' · 已有不弱于本次的同类效果' : ''}`));
@@ -1142,7 +1828,7 @@
           transferInfo.textContent = choice
             ? `${choice.description} · 消耗 ${choice.cost} 点灵性 · ${choice.direction}` : '';
           transferPreview.replaceChildren();
-          const value = teamBattleState.effectTransferPreview(state.current?.data,
+          const value = tacticEngine.effectTransferPreview(state.current?.data,
             transferSubtype.value, transferTarget.value);
           if (value?.current) transferPreview.appendChild(element('p', '',
             `现有关系：${value.current.name} → ${value.current.target} · 剩余 ${value.current.rounds} 回合`));
@@ -1183,7 +1869,7 @@
           briberySubtype.appendChild(option);
         }
         const syncBriberyPreview = () => {
-          const value = teamBattleState.briberyPreview(state.current?.data,
+          const value = tacticEngine.briberyPreview(state.current?.data,
             briberySubtype.value, briberyTarget.value);
           briberyPreview.replaceChildren();
           if (!value) { briberyInfo.textContent = ''; return; }
@@ -1213,6 +1899,620 @@
         briberyTarget.addEventListener('change', syncBriberyPreview);
         briberyControls.append(briberySubtype, briberyTarget, briberyInfo, briberyPreview);
         syncBriberyTargets();
+        const balanceControls = element('div', 'crypt-lord-game-shell__battle-balance-controls');
+        const balanceTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        balanceTarget.setAttribute('aria-label', '平衡目标');
+        for (const unit of balanceChoice?.targets || []) {
+          const option = element('option', '', `${unit.name} · ${unit.cost} 点 · ${unit.duration} 回合`);
+          option.value = unit.id;
+          balanceTarget.appendChild(option);
+        }
+        const balanceInfo = element('div', 'crypt-lord-game-shell__battle-balance-preview');
+        const syncBalancePreview = () => {
+          balanceInfo.replaceChildren();
+          const value = tacticEngine.balancePreview?.(state.current?.data, balanceTarget.value);
+          if (!value) return;
+          balanceInfo.appendChild(element('strong', '', `${value.name} · 平衡点数 ${value.pointsLeft}/${value.maxPoints}`));
+          if (value.target) {
+            balanceInfo.appendChild(element('p', '',
+              `消耗 ${value.target.cost} 点 · 维持 ${value.target.duration} 回合 · 第 ${value.activeFromRound} 回合起生效`));
+            balanceInfo.appendChild(element('p', '',
+              `第 ${value.expireAfterRound} 回合末结束 · ${value.mode === 'refresh' ? '刷新关系'
+                : value.mode === 'switch' ? '切换对象' : '建立关系'}`));
+          }
+          if (value.current) {
+            const unit = team.units.find(row => row.id === value.current.targetId);
+            balanceInfo.appendChild(element('p', '',
+              `现有平衡 · ${unit?.name || value.current.targetId} · 第 ${value.current.expireAfterRound} 回合末结束`));
+          }
+          if (value.reason) balanceInfo.appendChild(element('p', 'is-blocked', value.reason));
+        };
+        balanceTarget.addEventListener('change', syncBalancePreview);
+        balanceControls.append(balanceTarget, balanceInfo);
+        syncBalancePreview();
+        const punishmentControls = element('div', 'crypt-lord-game-shell__battle-punishment-controls');
+        const punishmentTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        punishmentTarget.setAttribute('aria-label', '惩戒目标');
+        for (const unit of punishmentChoice?.targets || []) {
+          const option = element('option', '', unit.name);
+          option.value = unit.id;
+          punishmentTarget.appendChild(option);
+        }
+        const punishmentInfo = element('div', 'crypt-lord-game-shell__battle-punishment-preview');
+        const syncPunishmentPreview = () => {
+          punishmentInfo.replaceChildren();
+          const value = tacticEngine.punishmentPreview?.(state.current?.data, punishmentTarget.value);
+          if (!value) return;
+          punishmentInfo.appendChild(element('strong', '', `${value.name} · 定向伤害 ×${value.multiplier}`));
+          punishmentInfo.appendChild(element('p', '',
+            `灵性 ${value.spirit} → ${value.afterSpirit} · 消耗 ${value.cost}`));
+          punishmentInfo.appendChild(element('p', '', value.current
+            ? `当前对象：${value.current.name} · 切换对象` : '当前对象：无'));
+          if (value.reason) punishmentInfo.appendChild(element('p', 'is-blocked', value.reason));
+        };
+        punishmentTarget.addEventListener('change', syncPunishmentPreview);
+        punishmentControls.append(punishmentTarget, punishmentInfo);
+        syncPunishmentPreview();
+        const mythicControls = element('div', 'crypt-lord-game-shell__battle-mythic-controls');
+        const mythicKind = element('select', 'crypt-lord-game-shell__settings-input');
+        mythicKind.setAttribute('aria-label', '形态种类');
+        for (const choice of mythicChoices) {
+          const option = element('option', '', choice.name);
+          option.value = choice.id;
+          mythicKind.appendChild(option);
+        }
+        const mythicInfo = element('div', 'crypt-lord-game-shell__battle-mythic-preview');
+        const syncMythicPreview = () => {
+          mythicInfo.replaceChildren();
+          const choice = mythicChoices.find(row => row.id === mythicKind.value);
+          if (!choice) return;
+          mythicInfo.appendChild(element('strong', '',
+            `${choice.name} · 增伤/减伤 ${choice.pct}% · ${choice.rounds} 回合`));
+          mythicInfo.appendChild(element('p', '',
+            `失控代价 +${choice.corruption}% · 冷却 ${choice.cooldownDays} 个游戏日`));
+          if (choice.description) mythicInfo.appendChild(element('p', '', choice.description));
+          if (choice.reason) mythicInfo.appendChild(element('p', 'is-blocked', choice.reason));
+        };
+        mythicKind.addEventListener('change', syncMythicPreview);
+        mythicControls.append(mythicKind, mythicInfo);
+        syncMythicPreview();
+        const exileControls = element('div', 'crypt-lord-game-shell__battle-exile-controls');
+        const exileKind = element('select', 'crypt-lord-game-shell__settings-input');
+        exileKind.setAttribute('aria-label', '放逐种类');
+        const exileTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        exileTarget.setAttribute('aria-label', '放逐目标');
+        const exileInfo = element('p', 'crypt-lord-game-shell__battle-exile-preview');
+        for (const choice of exileChoices) {
+          const option = element('option', '', choice.subtype);
+          option.value = choice.subtype; exileKind.appendChild(option);
+        }
+        const syncExile = () => {
+          const choice = exileChoices.find(row => row.subtype === exileKind.value);
+          exileTarget.replaceChildren();
+          for (const target of choice?.targets || []) {
+            const option = element('option', '', target.name);
+            option.value = target.id; exileTarget.appendChild(option);
+          }
+          exileInfo.textContent = choice
+            ? `消耗 ${choice.cost} 灵性 · 离场 ${choice.rounds} 回合 · ${choice.returnAt === 'caster' ? '放逐者身边回场' : '原格回场'}${choice.poison ? ` · 每回合 ${choice.poison} 点活力伤害` : ' · 无附带伤害'}${choice.reason ? ` · ${choice.reason}` : ''}`
+            : '';
+        };
+        exileKind.addEventListener('change', syncExile);
+        exileControls.append(exileKind, exileTarget, exileInfo);
+        syncExile();
+        const eventControls = element('div', 'crypt-lord-game-shell__battle-event-controls');
+        const eventKind = element('select', 'crypt-lord-game-shell__settings-input');
+        eventKind.setAttribute('aria-label', '战场事件种类');
+        const eventInfo = element('div', 'crypt-lord-game-shell__battle-event-preview');
+        for (const choice of eventChoices) {
+          const option = element('option', '', `${choice.name} · 剩余 ${choice.remaining} 次`);
+          option.value = choice.subtype; eventKind.appendChild(option);
+        }
+        const syncEvent = () => {
+          eventInfo.replaceChildren();
+          const choice = eventChoices.find(row => row.subtype === eventKind.value);
+          if (!choice) return;
+          eventInfo.appendChild(element('p', '', choice.intro));
+          eventInfo.appendChild(element('strong', '',
+            `消耗 ${choice.cost} 灵性 · 每次 ${choice.power} 点活力 · 持续 ${choice.rounds} 回合`));
+          for (const line of [...choice.rules, choice.tail])
+            eventInfo.appendChild(element('p', '', line));
+          if (choice.reason) eventInfo.appendChild(element('p', 'is-blocked', choice.reason));
+        };
+        eventKind.addEventListener('change', syncEvent);
+        eventControls.append(eventKind, eventInfo);
+        syncEvent();
+        const rewindControls = element('div', 'crypt-lord-game-shell__battle-rewind-controls');
+        const rewindKind = element('select', 'crypt-lord-game-shell__settings-input');
+        rewindKind.setAttribute('aria-label', '回溯方式');
+        let rewindRound = rewindChoice?.rounds.find(row => row.differs)?.round;
+        for (const choice of rewindChoice?.choices || []) {
+          const option = element('option', '', `${choice.subtype} · 剩余 ${choice.remaining} 次`);
+          option.value = choice.subtype; rewindKind.appendChild(option);
+        }
+        const rewindInfo = element('div', 'crypt-lord-game-shell__battle-rewind-preview');
+        const syncRewind = () => {
+          rewindInfo.replaceChildren();
+          if (!rewindChoice) return;
+          rewindInfo.appendChild(element('strong', '', '必定成功 · 无属性消耗'));
+          rewindInfo.appendChild(element('p', '',
+            '恢复自身六维当前值与上限；位置、效果、标签、被禁技能与阵营保持现状。保命、召唤与化形等已付出的次数及冷却不退还。'));
+          const choice = rewindChoice.choices.find(row => row.subtype === rewindKind.value);
+          if (choice?.remaining === 0 || rewindChoice.reason)
+            rewindInfo.appendChild(element('p', 'is-blocked', choice?.remaining === 0
+              ? '本场已经用完这种回溯方式。' : rewindChoice.reason));
+          for (const row of rewindChoice.rounds) {
+            const label = element('label', 'crypt-lord-game-shell__battle-rewind-round');
+            const radio = element('input');
+            radio.type = 'radio'; radio.name = 'crypt-lord-rewind-round';
+            radio.value = String(row.round);
+            radio.setAttribute('aria-label', `回溯至第 ${row.round} 回合`);
+            radio.checked = row.round === rewindRound;
+            radio.disabled = !row.differs;
+            const details = element('div', 'crypt-lord-game-shell__battle-rewind-values');
+            details.appendChild(element('strong', '', `第 ${row.round} 回合开始${row.differs ? '' : ' · 与现在相同'}`));
+            for (const [key, was] of Object.entries(row.stats)) {
+              const diff = was - rewindChoice.current[key];
+              const value = element('span', diff > 0 ? 'is-gain' : diff < 0 ? 'is-loss' : '',
+                `${key.replace('当前', '')} ${was}/${row.maxStats[key]}${diff ? `（${diff > 0 ? '+' : ''}${diff}）` : ''}`);
+              details.appendChild(value);
+            }
+            radio.addEventListener('change', () => {
+              rewindRound = row.round;
+              action.dispatchEvent(new Event('change'));
+            });
+            label.append(radio, details); rewindInfo.appendChild(label);
+          }
+        };
+        rewindKind.addEventListener('change', () => {
+          syncRewind(); action.dispatchEvent(new Event('change'));
+        });
+        rewindControls.append(rewindKind, rewindInfo);
+        syncRewind();
+        const leaveControls = element('div', 'crypt-lord-game-shell__battle-leave-controls');
+        const leaveKind = element('select', 'crypt-lord-game-shell__settings-input');
+        leaveKind.setAttribute('aria-label', '主动离场方式');
+        const leaveInfo = element('div', 'crypt-lord-game-shell__battle-leave-preview');
+        for (const choice of leaveChoice?.choices || []) {
+          const option = element('option', '', choice.subtype);
+          option.value = choice.subtype; leaveKind.appendChild(option);
+        }
+        const syncLeave = () => {
+          leaveInfo.replaceChildren();
+          const choice = leaveChoice?.choices.find(row => row.subtype === leaveKind.value);
+          if (!choice) return;
+          leaveInfo.appendChild(element('p', '', `${choice.description} 进入无消耗 · 每轮维持 ${leaveChoice.cost} 灵性`));
+          leaveInfo.appendChild(element('p', '', choice.rivals.length
+            ? `阻止者：${choice.rivals.map(row => `${row.name}（灵性 ${row.spirit}）`).join('、')}`
+            : '当前没有合格阻止者'));
+          if (!choice.possible) leaveInfo.appendChild(element('p', 'is-blocked', '当前灵性无法赢过所有阻止者。'));
+        };
+        leaveKind.addEventListener('change', syncLeave);
+        leaveControls.append(leaveKind, leaveInfo);
+        syncLeave();
+        const extraControls = element('div', 'crypt-lord-game-shell__battle-extra-controls');
+        const extraKind = element('select', 'crypt-lord-game-shell__settings-input');
+        extraKind.setAttribute('aria-label', '额外行动方式');
+        for (const choice of extraChoices) {
+          const option = element('option', '', choice.name);
+          option.value = choice.subtype; extraKind.appendChild(option);
+        }
+        const extraInfo = element('div', 'crypt-lord-game-shell__battle-extra-preview');
+        const syncExtra = () => {
+          const choice = extraChoices.find(row => row.subtype === extraKind.value);
+          extraInfo.replaceChildren();
+          if (!choice) return;
+          extraInfo.append(
+            element('strong', '', `虚影 ${choice.count} 次行动 · 剩余 ${choice.remaining}/${choice.uses} 次`),
+            element('p', '', `灵性消耗 ${choice.cost} · 当前 ${team.units.find(unit => unit.source === 'player')?.spirit}`),
+            element('p', '', '必定成功 · 本体行动后连续行动 · 共用本体技能、位置与资源'),
+            element('p', '', '每次刷新移动力；持续效果不重复结算；本体无法行动时剩余虚影作废。'));
+          if (choice.reason || !choice.remaining)
+            extraInfo.appendChild(element('p', 'is-blocked', choice.reason || '本场额外行动次数已用完。'));
+        };
+        extraKind.addEventListener('change', () => {
+          syncExtra(); action.dispatchEvent(new Event('change'));
+        });
+        extraControls.append(extraKind, extraInfo);
+        syncExtra();
+        const hardControls = element('div', 'crypt-lord-game-shell__battle-hard-controls');
+        const hardKind = element('select', 'crypt-lord-game-shell__settings-input');
+        hardKind.setAttribute('aria-label', '硬控方式');
+        for (const choice of hardChoices) {
+          const option = element('option', '', choice.name);
+          option.value = choice.subtype; hardKind.appendChild(option);
+        }
+        const hardTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        hardTarget.setAttribute('aria-label', '硬控目标');
+        const hardInfo = element('div', 'crypt-lord-game-shell__battle-hard-preview');
+        const syncHardInfo = () => {
+          const choice = hardChoices.find(row => row.subtype === hardKind.value);
+          const picked = choice?.targets.find(row => row.id === hardTarget.value);
+          hardInfo.replaceChildren();
+          if (!choice) return;
+          hardInfo.append(
+            element('strong', '', `灵性消耗 ${choice.cost} · 当前 ${choice.spirit}`),
+            element('p', '', `扣费后出手值 ${choice.after} · 目标抵抗值 ${picked?.defense ?? '无可选目标'}`),
+            element('p', '', `${choice.range == null ? '不限距离' : `切比雪夫距离 ${choice.range} 格`} · 成败都扣费 · 无次数限制`),
+            element('p', '', '成功后跳过下一回合行动并占用战术位；持续效果照常结算，已有硬控不叠加、不刷新。'));
+          if (choice.reason) hardInfo.appendChild(element('p', 'is-blocked', choice.reason));
+        };
+        const syncHard = () => {
+          const choice = hardChoices.find(row => row.subtype === hardKind.value);
+          hardTarget.replaceChildren();
+          for (const row of choice?.targets || []) {
+            const option = element('option', '', row.name);
+            option.value = row.id; hardTarget.appendChild(option);
+          }
+          syncHardInfo();
+        };
+        hardKind.addEventListener('change', () => { syncHard(); action.dispatchEvent(new Event('change')); });
+        hardTarget.addEventListener('change', () => { syncHardInfo(); action.dispatchEvent(new Event('change')); });
+        hardControls.append(hardKind, hardTarget, hardInfo);
+        syncHard();
+        const permanentControls = element('div', 'crypt-lord-game-shell__battle-permanent-controls');
+        const permanentKind = element('select', 'crypt-lord-game-shell__settings-input');
+        permanentKind.setAttribute('aria-label', '永久控制方式');
+        for (const row of permanentChoices) {
+          const option = element('option', '', row.subtype);
+          option.value = row.subtype; permanentKind.appendChild(option);
+        }
+        const permanentTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        permanentTarget.setAttribute('aria-label', '永久控制目标');
+        const permanentInfo = element('div', 'crypt-lord-game-shell__battle-permanent-preview');
+        const syncPermanentInfo = () => {
+          const choice = permanentChoices.find(row => row.subtype === permanentKind.value);
+          const picked = choice?.targets.find(row => row.id === permanentTarget.value);
+          permanentInfo.replaceChildren();
+          if (!choice) return;
+          permanentInfo.append(
+            element('strong', '', `${choice.stat}消耗 ${choice.cost} · 当前 ${choice.balance} · 扣后 ${choice.after}`),
+            element('p', '', `抵抗值 ${picked?.defense ?? '无可选对象'} · 出手倍率 ${picked?.penalty ?? '—'} · ${choice.range == null ? '不限距离' : `距离 ${choice.range} 格`}`),
+            element('p', '', choice.subtype === '秘偶化'
+              ? `${choice.current ? `当前 ${choice.current.stacks}/3 层` : '尚未建立过程'} · 成功三次永久转化 · 失败掉一层 · 每场完成一人`
+              : `本场剩余 ${choice.remaining} 次 · 成败都扣费并消耗名额 · 成功永久转为友军`));
+          if (choice.subtype === '秘偶化') permanentInfo.appendChild(element('p', '',
+            '一、二层攻防速与移动削减40%、80%；施法者防速降低20%。未续同一目标即中断。'));
+          if (choice.reason) permanentInfo.appendChild(element('p', 'is-blocked', choice.reason));
+        };
+        const syncPermanent = () => {
+          const choice = permanentChoices.find(row => row.subtype === permanentKind.value);
+          permanentTarget.replaceChildren();
+          for (const row of choice?.targets || []) {
+            const option = element('option', '', row.name);
+            option.value = row.id; permanentTarget.appendChild(option);
+          }
+          if (choice?.current && choice.targets.some(row => row.id === choice.current.targetId))
+            permanentTarget.value = choice.current.targetId;
+          syncPermanentInfo();
+        };
+        permanentKind.addEventListener('change', () => { syncPermanent(); action.dispatchEvent(new Event('change')); });
+        permanentTarget.addEventListener('change', () => { syncPermanentInfo(); action.dispatchEvent(new Event('change')); });
+        permanentControls.append(permanentKind, permanentTarget, permanentInfo);
+        syncPermanent();
+        const ruleControls = element('div', 'crypt-lord-game-shell__battle-rule-controls');
+        const ruleSelect = (label, rows) => {
+          const select = element('select', 'crypt-lord-game-shell__settings-input');
+          select.setAttribute('aria-label', label);
+          for (const row of rows) {
+            const option = element('option', '', row.label);
+            option.value = row.key; select.appendChild(option);
+          }
+          return select;
+        };
+        const ruleKind = ruleSelect('规则能力', ruleChoices.map(row => ({ key: row.subtype, label: row.name })));
+        const ruleScope = ruleSelect('规则范围', []);
+        const ruleParam = ruleSelect('规则参数', []);
+        const rulePreset = ruleSelect('规则预设', []);
+        const ruleTarget = ruleSelect('规则目标', []);
+        const ruleInfo = element('div', 'crypt-lord-game-shell__battle-rule-preview');
+        const ruleRequest = () => ({ subtype: ruleKind.value, scope: ruleScope.value,
+          param: ruleParam.value, presetKey: rulePreset.value, target: ruleTarget.value });
+        const fillRule = (select, rows) => {
+          const previous = select.value; select.replaceChildren();
+          for (const row of rows) {
+            const option = element('option', '', row.label);
+            option.value = row.key; select.appendChild(option);
+          }
+          if (rows.some(row => row.key === previous)) select.value = previous;
+        };
+        const syncRuleInfo = () => {
+          const choice = ruleChoices.find(row => row.subtype === ruleKind.value);
+          ruleInfo.replaceChildren();
+          if (!choice) return;
+          const preview = tacticEngine.ruleChangePreview(state.current?.data, ruleRequest());
+          ruleInfo.append(
+            element('p', '', choice.description),
+            element('p', '', `灵性消耗 ${choice.cost} · 当前 ${choice.balance} · 扣后 ${choice.after} · 成败都扣费`),
+            element('p', '', `扣后出手值 ${choice.casterScore} · ${choice.rivals.length
+              ? `对抗者：${choice.rivals.map(row => `${row.name} ${row.score}`).join('、')}`
+              : '场上没有对抗者'}`));
+          for (const part of preview.parts) ruleInfo.appendChild(element('p', '',
+            `${part.targets.map(row => row.name).join('、')} · ${part.label} ${part.sign}${part.power}%`));
+          ruleInfo.appendChild(element('p', '', '占用一个共享规则栏位 · 持续至替换、施加者或全部目标阵亡、战斗结束'));
+          if (!preview.ok) ruleInfo.appendChild(element('p', 'is-blocked', preview.reason));
+        };
+        const syncRuleScope = () => {
+          const choice = ruleChoices.find(row => row.subtype === ruleKind.value);
+          const dir = ['敌军单体', '敌军全体'].includes(ruleScope.value) ? 'bad' : 'good';
+          fillRule(ruleParam, (choice?.params || []).filter(row => row.dir === dir)
+            .map(row => ({ key: row.key, label: row.label })));
+          ruleTarget.hidden = Boolean(choice?.presets.length) || ruleScope.value !== '敌军单体';
+          syncRuleInfo();
+        };
+        const syncRuleKind = () => {
+          const choice = ruleChoices.find(row => row.subtype === ruleKind.value);
+          fillRule(ruleScope, (choice?.scopes || []).map(key => ({ key, label: key })));
+          fillRule(rulePreset, choice?.presets || []);
+          fillRule(ruleTarget, (choice?.targets || []).map(row => ({ key: row.id, label: row.name })));
+          ruleScope.hidden = ruleParam.hidden = Boolean(choice?.presets.length);
+          rulePreset.hidden = !choice?.presets.length;
+          syncRuleScope();
+        };
+        ruleKind.addEventListener('change', () => { syncRuleKind(); action.dispatchEvent(new Event('change')); });
+        ruleScope.addEventListener('change', () => { syncRuleScope(); action.dispatchEvent(new Event('change')); });
+        for (const select of [ruleParam, rulePreset, ruleTarget])
+          select.addEventListener('change', () => { syncRuleInfo(); action.dispatchEvent(new Event('change')); });
+        ruleControls.append(ruleKind, ruleScope, ruleParam, rulePreset, ruleTarget, ruleInfo);
+        syncRuleKind();
+        const environmentControls = element('div', 'crypt-lord-game-shell__battle-environment-controls');
+        const environmentKind = ruleSelect('环境能力', environmentChoices.map(row =>
+          ({ key: row.subtype, label: row.name })));
+        const environmentInfo = element('div', 'crypt-lord-game-shell__battle-environment-preview');
+        const syncEnvironmentInfo = () => {
+          environmentInfo.replaceChildren();
+          const choice = environmentChoices.find(row => row.subtype === environmentKind.value);
+          if (!choice) return;
+          environmentInfo.append(
+            element('p', '', choice.description),
+            element('p', '', `${choice.stat}消耗 ${choice.cost} · 当前 ${choice.balance} · 扣后 ${choice.after} · 成败都扣费`),
+            element('p', '', `扣后出手值 ${choice.casterScore} · ${choice.rivals.length
+              ? `对抗者：${choice.rivals.map(row => `${row.name} ${row.score}`).join('、')}`
+              : '场上没有对抗者'}`));
+          for (const slot of choice.slots) environmentInfo.appendChild(element('p', '',
+            `${slot.kind}：${slot.name || '空'} → ${slot.next}`));
+          if (choice.note) environmentInfo.appendChild(element('p', '', choice.note));
+          const preview = tacticEngine.environmentPreview(state.current?.data, choice.subtype);
+          for (const row of preview.rows) {
+            const effects = row.effects.map(effect => `${effect.name} ${
+              effect.stat === 'damageTakenDecrease' || effect.type === 'debuff' ? '-' : '+'}${effect.power}%`);
+            if (row.move) effects.push(`移动力 +${row.move} 格`);
+            environmentInfo.appendChild(element('p', '', `${row.name} · ${effects.join('；') || '无效果'}`));
+          }
+          if (!preview.ok) environmentInfo.appendChild(element('p', 'is-blocked', preview.reason));
+        };
+        environmentKind.addEventListener('change', () => {
+          syncEnvironmentInfo(); action.dispatchEvent(new Event('change'));
+        });
+        environmentControls.append(environmentKind, environmentInfo);
+        const fundamentalControls = element('div', 'crypt-lord-game-shell__battle-fundamental-controls');
+        const summonControls = element('div', 'crypt-lord-game-shell__battle-summon-controls');
+        const summonKind = ruleSelect('召唤类型', summonChoices.map(row =>
+          ({ key: row.subtype, label: row.subtype })));
+        const summonTarget = ruleSelect('召唤原型', []);
+        const summonInfo = element('div', 'crypt-lord-game-shell__battle-summon-preview');
+        const summonRequest = () => ({ subtype: summonKind.value, target: summonTarget.value });
+        const renderSummon = () => {
+          const check = tacticEngine.summonPreview(state.current?.data, summonRequest());
+          summonInfo.replaceChildren();
+          if (check.subtype) {
+            summonInfo.append(element('p', '', `${check.stat} ${check.cost} · 剩余名额 ${check.quota}/${check.max} · ${check.cumulative ? '累计成功计数，消散不返还' : '按在场数量计数'}`));
+            if (check.target) summonInfo.append(element('p', '',
+              `${check.target.sequence} · 实力 ${Math.round(check.target.ratio * 100)}% · ${check.target.rounds == null ? '无固定期限' : `维持 ${check.target.rounds} 回合`}${check.target.immobile ? ' · 移动力 0' : ''}`));
+            if (check.foes) summonInfo.append(element('p', '', `逐一对抗 ${check.foes} 名在场敌人的当前人性，每败一次实力降低 10%。`));
+          }
+          if (!check.ok) summonInfo.append(element('p', 'is-blocked', check.reason));
+          if (action.value === '召唤') submit.disabled = !check.ok;
+        };
+        const updateSummonKind = () => {
+          const choice = summonChoices.find(row => row.subtype === summonKind.value);
+          summonTarget.replaceChildren();
+          for (const row of choice?.rows || []) {
+            const option = element('option', '', row.label);
+            option.value = row.name; summonTarget.appendChild(option);
+          }
+          renderSummon();
+        };
+        summonKind.addEventListener('change', updateSummonKind);
+        summonTarget.addEventListener('change', renderSummon);
+        summonControls.append(summonKind, summonTarget, summonInfo);
+        const fundamentalKind = ruleSelect('底层规则能力', fundamentalChoices.map(row =>
+          ({ key: row.subtype, label: row.name })));
+        const fundamentalAtom = ruleSelect('公式项目', []);
+        const fundamentalValueHost = element('div', 'crypt-lord-game-shell__battle-fundamental-value');
+        const fundamentalSelected = element('div', 'crypt-lord-game-shell__battle-fundamental-selected');
+        const fundamentalInfo = element('div', 'crypt-lord-game-shell__battle-fundamental-preview');
+        const fundamentalReport = element('input', 'crypt-lord-game-shell__settings-input');
+        fundamentalReport.setAttribute('aria-label', '底层规则战报补充');
+        fundamentalReport.placeholder = '战报补充';
+        fundamentalReport.maxLength = 50;
+        let fundamentalMutations = [], fundamentalValue;
+        const fundamentalRequest = () => ({ subtype: fundamentalKind.value,
+          mutations: fundamentalMutations.map(row => ({ ...row })), reportText: fundamentalReport.value });
+        const renderFundamental = () => {
+          fundamentalSelected.replaceChildren();
+          fundamentalInfo.replaceChildren();
+          const choice = fundamentalChoices.find(row => row.subtype === fundamentalKind.value);
+          if (!choice) return;
+          fundamentalInfo.append(element('p', '', choice.description),
+            element('p', '', `已选 ${fundamentalMutations.length}/${choice.maxAtoms} 项 · 全场生效`));
+          const preview = tacticEngine.fundamentalPreview(state.current?.data, fundamentalRequest());
+          if (preview.cost != null) {
+            fundamentalInfo.append(element('p', '',
+              `${preview.stat}消耗 ${preview.cost} · 当前 ${preview.balance} · 扣后 ${preview.after} · 持续 ${preview.duration} 回合 · 成败都扣费`),
+            element('p', '', `扣后出手值 ${preview.casterScore} · ${
+              preview.rivals.length ? preview.rivals.map(row => `${row.name} ${row.score}`).join('；') : '场上没有对抗者'}`));
+            if (preview.old) fundamentalInfo.appendChild(element('p', '',
+              `成功将替换自身旧规则：${preview.old.name} · 到第 ${preview.old.endRound} 回合`));
+          }
+          for (const [index, mutation] of fundamentalMutations.entries()) {
+            const def = choice.atoms.find(row => row.id === mutation.atomId);
+            const text = def.type === 'number' ? String(mutation.value) : def.options[mutation.value];
+            const line = element('div', 'crypt-lord-game-shell__battle-fundamental-selection');
+            line.appendChild(element('span', '', `${def.familyLabel} · ${def.label} → ${text}`));
+            const remove = button('×', 'crypt-lord-game-shell__button', () => {
+              fundamentalMutations.splice(index, 1); renderFundamental();
+            });
+            remove.title = '移除公式项目';
+            remove.setAttribute('aria-label', `移除 ${def.label}`);
+            line.appendChild(remove); fundamentalSelected.appendChild(line);
+          }
+          if (!preview.ok) fundamentalInfo.appendChild(element('p', 'is-blocked', preview.reason));
+          fundamentalAdd.disabled = fundamentalMutations.length >= choice.maxAtoms ||
+            fundamentalMutations.some(row => row.atomId === fundamentalAtom.value);
+          if (action.value === '底层规则修改') submit.disabled = !preview.ok;
+        };
+        const updateFundamentalValue = () => {
+          const def = fundamentalChoices.find(row => row.subtype === fundamentalKind.value)?.atoms
+            .find(row => row.id === fundamentalAtom.value);
+          fundamentalValueHost.replaceChildren();
+          if (!def) return;
+          if (def.type === 'number') {
+            fundamentalValue = element('input', 'crypt-lord-game-shell__settings-input');
+            fundamentalValue.type = 'number';
+            fundamentalValue.required = true;
+            fundamentalValue.min = def.min; fundamentalValue.max = def.max;
+            fundamentalValue.step = def.step; fundamentalValue.value = def.current;
+          } else {
+            fundamentalValue = ruleSelect('公式值', Object.entries(def.options).map(([value, label]) =>
+              ({ key: value, label })));
+            fundamentalValue.value = String(def.current);
+          }
+          fundamentalValue.setAttribute('aria-label', '公式值');
+          fundamentalValueHost.appendChild(fundamentalValue);
+        };
+        const updateFundamentalKind = () => {
+          const choice = fundamentalChoices.find(row => row.subtype === fundamentalKind.value);
+          fundamentalAtom.replaceChildren();
+          if (!choice) return;
+          for (const family of [...new Set(choice.atoms.map(row => row.familyLabel))]) {
+            const group = element('optgroup', ''); group.label = family;
+            for (const def of choice.atoms.filter(row => row.familyLabel === family)) {
+              const opt = element('option', '', def.label); opt.value = def.id; group.appendChild(opt);
+            }
+            fundamentalAtom.appendChild(group);
+          }
+          fundamentalMutations = fundamentalMutations.filter(row => choice.atoms.some(def => def.id === row.atomId))
+            .slice(0, choice.maxAtoms);
+          updateFundamentalValue(); renderFundamental();
+        };
+        const fundamentalAdd = button('加入规则', 'crypt-lord-game-shell__button', () => {
+          const def = fundamentalChoices.find(row => row.subtype === fundamentalKind.value)?.atoms
+            .find(row => row.id === fundamentalAtom.value);
+          if (!def) return;
+          const candidate = { atomId: def.id,
+            value: def.type === 'number' ? Number(fundamentalValue.value) : fundamentalValue.value };
+          if (def.type === 'number' && !fundamentalValue.checkValidity()) {
+            fundamentalValue.reportValidity(); return;
+          }
+          const next = [...fundamentalMutations, candidate];
+          const check = tacticEngine.fundamentalPreview(state.current?.data,
+            { ...fundamentalRequest(), mutations: next });
+          // Only range/constraint-valid drafts are admitted; affordability is checked again at commit.
+          if (!check.valid) {
+            fundamentalInfo.appendChild(element('p', 'is-blocked', check.reason)); return;
+          }
+          fundamentalMutations = next; renderFundamental();
+        });
+        fundamentalAtom.addEventListener('change', () => { updateFundamentalValue(); renderFundamental(); });
+        fundamentalKind.addEventListener('change', updateFundamentalKind);
+        fundamentalControls.append(fundamentalKind, fundamentalAtom, fundamentalValueHost,
+          fundamentalAdd, fundamentalSelected, fundamentalReport, fundamentalInfo);
+        syncEnvironmentInfo();
+        const possessionControls = element('div', 'crypt-lord-game-shell__battle-possession-controls');
+        const possessionKind = element('select', 'crypt-lord-game-shell__settings-input');
+        possessionKind.setAttribute('aria-label', '附身方式');
+        for (const row of possessionChoices) {
+          const option = element('option', '', row.subtype);
+          option.value = row.subtype; possessionKind.appendChild(option);
+        }
+        const possessionTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        possessionTarget.setAttribute('aria-label', '附身目标');
+        const possessionInfo = element('div', 'crypt-lord-game-shell__battle-possession-preview');
+        const syncPossessionInfo = () => {
+          const choice = possessionChoices.find(row => row.subtype === possessionKind.value);
+          const picked = choice?.targets.find(row => row.id === possessionTarget.value);
+          possessionInfo.replaceChildren();
+          if (!choice) return;
+          possessionInfo.append(
+            element('strong', '', `${choice.stat}消耗 ${choice.cost} · 当前 ${choice.balance} · 扣后 ${choice.after}`),
+            element('p', '', `目标抵抗值 ${picked?.defense ?? '无可选对象'} · 不限距离 · 无劣势 · 成败都扣费`),
+            element('p', '', choice.subtype === '怨魂附身' ? '固定灵性出手，目标取当前六项最高值。' :
+              '出手和维持取当前灵性、人性、理智最高项；目标只取这三项最高值。'),
+            element('p', '', '本体离场，取得目标操控权；每轮重新扣费拼点，失败或主动解除后回场，目标恢复原阵营。'));
+          if (choice.reason) possessionInfo.appendChild(element('p', 'is-blocked', choice.reason));
+        };
+        const syncPossession = () => {
+          const choice = possessionChoices.find(row => row.subtype === possessionKind.value);
+          possessionTarget.replaceChildren();
+          for (const row of choice?.targets || []) {
+            const option = element('option', '', row.name);
+            option.value = row.id; possessionTarget.appendChild(option);
+          }
+          syncPossessionInfo();
+        };
+        possessionKind.addEventListener('change', () => { syncPossession(); action.dispatchEvent(new Event('change')); });
+        possessionTarget.addEventListener('change', () => { syncPossessionInfo(); action.dispatchEvent(new Event('change')); });
+        possessionControls.append(possessionKind, possessionTarget, possessionInfo);
+        syncPossession();
+        const tempControls = element('div', 'crypt-lord-game-shell__battle-temp-controls');
+        const tempKind = element('select', 'crypt-lord-game-shell__settings-input');
+        tempKind.setAttribute('aria-label', '短控方式');
+        for (const row of tempChoices) {
+          const option = element('option', '', row.subtype);
+          option.value = row.subtype; tempKind.appendChild(option);
+        }
+        const tempTarget = element('select', 'crypt-lord-game-shell__settings-input');
+        tempTarget.setAttribute('aria-label', '短控目标');
+        const tempInfo = element('div', 'crypt-lord-game-shell__battle-temp-preview');
+        const syncTempInfo = () => {
+          const choice = tempChoices.find(row => row.subtype === tempKind.value);
+          const picked = choice?.targets.find(row => row.id === tempTarget.value);
+          tempInfo.replaceChildren();
+          if (!choice) return;
+          tempInfo.append(
+            element('strong', '', `${choice.stat}消耗 ${choice.cost} · 当前 ${choice.balance}`),
+            element('p', '', `扣费后出手值 ${choice.after} · 目标抵抗值 ${picked?.defense ?? '无可选目标'}`),
+            element('p', '', '不限距离 · 成败都扣费 · 每名施法者最多维持一名临时友军'),
+            element('p', '', '持续下一战斗回合，在该回合结束时恢复原阵营与操纵者；临时倒戈不提前判胜。'));
+          if (choice.reason) tempInfo.appendChild(element('p', 'is-blocked', choice.reason));
+        };
+        const syncTemp = () => {
+          const choice = tempChoices.find(row => row.subtype === tempKind.value);
+          tempTarget.replaceChildren();
+          for (const row of choice?.targets || []) {
+            const option = element('option', '', row.name);
+            option.value = row.id; tempTarget.appendChild(option);
+          }
+          syncTempInfo();
+        };
+        tempKind.addEventListener('change', () => { syncTemp(); action.dispatchEvent(new Event('change')); });
+        tempTarget.addEventListener('change', () => { syncTempInfo(); action.dispatchEvent(new Event('change')); });
+        tempControls.append(tempKind, tempTarget, tempInfo);
+        syncTemp();
+        const mindControls = element('div', 'crypt-lord-game-shell__battle-mind-controls');
+        if (mindChoice) {
+          mindControls.append(
+            element('strong', '', `当前人性 ${mindChoice.humanity} · 消耗 ${mindChoice.cost} · 扣费后 ${mindChoice.after}`),
+            element('p', '', `自身周围 ${mindChoice.radius} 格 · 将卷入 ${mindChoice.targets.length} 人：${mindChoice.targets.map(row => row.name).join('、') || '无'}`),
+            element('p', '', '范围命中只扣一次人性，各目标独立拼点；成败都扣，无次数限制。'));
+          const odds = element('div', 'crypt-lord-game-shell__battle-mind-odds');
+          const details = {
+            颤栗: `攻防降低${mindChoice.tremblePct}%，持续下一战斗回合。`,
+            奔逃: '最多推离两格，踏入危险地形照常结算。',
+            瘫软: '下一战斗回合不能移动，但仍能出手。',
+            昏迷: '跳过下一回合行动，战术位也被占用。',
+            狂热追随: '临时友军至下一回合结束；最多一名，其余退为瘫软。',
+          };
+          for (const row of mindChoice.odds) {
+            const line = element('div', '');
+            line.append(element('strong', '', `${row.key} ${row.weight}%`),
+              element('span', '', details[row.key] || ''));
+            odds.appendChild(line);
+          }
+          mindControls.appendChild(odds);
+          if (mindChoice.reason) mindControls.appendChild(element('p', 'is-blocked', mindChoice.reason));
+        }
         updateTerrainChoices = () => {
           terrainControls.hidden = action.value !== '改变地形';
           target.hidden = action.value !== '对角色使用战术';
@@ -1220,7 +2520,24 @@
           fieldControls.hidden = action.value !== '施加效果';
           transferControls.hidden = action.value !== '效果传递';
           briberyControls.hidden = action.value !== '贿赂';
-          description.hidden = ['技能干涉', '施加效果', '效果传递', '贿赂', '待命'].includes(action.value);
+          balanceControls.hidden = action.value !== '平衡';
+          punishmentControls.hidden = action.value !== '惩戒';
+          mythicControls.hidden = action.value !== '形态';
+          exileControls.hidden = action.value !== '放逐';
+          eventControls.hidden = action.value !== '制造战场事件';
+          rewindControls.hidden = action.value !== '回溯';
+          extraControls.hidden = action.value !== '额外行动';
+          hardControls.hidden = action.value !== '硬控';
+          mindControls.hidden = action.value !== '心智剥夺';
+          tempControls.hidden = action.value !== '阵营短控';
+          permanentControls.hidden = action.value !== '永久控制';
+          possessionControls.hidden = action.value !== '附身';
+          ruleControls.hidden = action.value !== '规则修改';
+          environmentControls.hidden = action.value !== '改变环境';
+          fundamentalControls.hidden = action.value !== '底层规则修改';
+          summonControls.hidden = action.value !== '召唤';
+          leaveControls.hidden = action.value !== '主动离场';
+          description.hidden = ['技能干涉', '施加效果', '效果传递', '贿赂', '平衡', '惩戒', '形态', '放逐', '主动离场', '制造战场事件', '回溯', '额外行动', '硬控', '心智剥夺', '阵营短控', '永久控制', '附身', '规则修改', '改变环境', '底层规则修改', '召唤', '待命'].includes(action.value);
           kind.hidden = operation.value !== 'add';
           terrainName.hidden = operation.value !== 'add' || kind.value !== 'passable';
           clear.hidden = operation.value !== 'remove';
@@ -1240,31 +2557,177 @@
         terrainControls.append(operation, kind, terrainName, clear);
         updateTerrainChoices();
         const submit = button('请求战术裁决', 'crypt-lord-game-shell__button is-primary', () => {
+          if (action.value === '召唤') {
+            void commitBattle(data => {
+              const result = tacticEngine.summon(data, summonRequest());
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '底层规则修改') {
+            void commitBattle(data => {
+              const result = tacticEngine.fundamentalRule(data, fundamentalRequest());
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '改变环境') {
+            void commitBattle(data => {
+              const result = tacticEngine.changeEnvironment(data, { subtype: environmentKind.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '规则修改') {
+            void commitBattle(data => {
+              const result = tacticEngine.ruleChange(data, ruleRequest());
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '附身') {
+            void commitBattle(data => {
+              const result = tacticEngine.possession(data,
+                { subtype: possessionKind.value, target: possessionTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '永久控制') {
+            void commitBattle(data => {
+              const result = tacticEngine.permanentControl(data,
+                { subtype: permanentKind.value, target: permanentTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '阵营短控') {
+            void commitBattle(data => {
+              const result = tacticEngine.tempControl(data,
+                { subtype: tempKind.value, target: tempTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '心智剥夺') {
+            void commitBattle(data => {
+              const result = tacticEngine.mindDeprive(data);
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '硬控') {
+            void commitBattle(data => {
+              const result = tacticEngine.hardControl(data,
+                { subtype: hardKind.value, target: hardTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '额外行动') {
+            void commitBattle(data => {
+              const result = tacticEngine.extraAction(data, extraKind.value);
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '回溯') {
+            void commitBattle(data => {
+              const result = tacticEngine.rewind(data,
+                { subtype: rewindKind.value, round: rewindRound });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '制造战场事件') {
+            const choice = eventChoices.find(row => row.subtype === eventKind.value);
+            if (!choice || choice.reason) {
+              notify(choice?.reason || '请选择战场事件。', 'warning'); return;
+            }
+            void commitBattle(data => {
+              const result = tacticEngine.battleEvent(data, eventKind.value);
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '主动离场') {
+            if (!leaveKind.value) { notify('请选择离场方式。', 'warning'); return; }
+            void commitBattle(data => {
+              const result = tacticEngine.activeLeave(data, { subtype: leaveKind.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '放逐') {
+            const choice = exileChoices.find(row => row.subtype === exileKind.value);
+            if (!choice || choice.reason || !exileTarget.value) {
+              notify(choice?.reason || '请选择放逐目标。', 'warning'); return;
+            }
+            void commitBattle(data => {
+              const result = tacticEngine.exile(data, { subtype: exileKind.value, target: exileTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '形态') {
+            const choice = tacticEngine.mythicOptions(state.current?.data)
+              .find(row => row.id === mythicKind.value);
+            if (!choice || choice.reason) {
+              notify(choice?.reason || '请选择已解锁的形态。', 'warning'); return;
+            }
+            void commitBattle(data => {
+              const result = tacticEngine.mythicForm(data, mythicKind.value);
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '惩戒') {
+            const value = tacticEngine.punishmentPreview(state.current?.data, punishmentTarget.value);
+            if (!value || value.reason) {
+              notify(value?.reason || '请选择惩戒目标。', 'warning'); return;
+            }
+            void commitBattle(data => {
+              const result = tacticEngine.punishment(data, { target: punishmentTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
+          if (action.value === '平衡') {
+            const value = tacticEngine.balancePreview(state.current?.data, balanceTarget.value);
+            if (!value || value.reason) {
+              notify(value?.reason || '请选择平衡目标。', 'warning'); return;
+            }
+            void commitBattle(data => {
+              const result = tacticEngine.balance(data, { target: balanceTarget.value });
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
+            });
+            return;
+          }
           if (action.value === '贿赂') {
-            const value = teamBattleState.briberyPreview(state.current?.data,
+            const value = tacticEngine.briberyPreview(state.current?.data,
               briberySubtype.value, briberyTarget.value);
             if (!value || value.reason) {
               notify(value?.reason || '请选择贿赂能力与目标。', 'warning'); return;
             }
             void commitBattle(data => {
-              const result = teamBattleState.bribery(data, {
+              const result = tacticEngine.bribery(data, {
                 subtype: briberySubtype.value, target: briberyTarget.value,
               });
-              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
             });
             return;
           }
           if (action.value === '效果传递') {
-            const value = teamBattleState.effectTransferPreview(state.current?.data,
+            const value = tacticEngine.effectTransferPreview(state.current?.data,
               transferSubtype.value, transferTarget.value);
             if (!value || value.reason) {
               notify(value?.reason || '请选择效果传递能力与目标。', 'warning'); return;
             }
             void commitBattle(data => {
-              const result = teamBattleState.effectTransfer(data, {
+              const result = tacticEngine.effectTransfer(data, {
                 subtype: transferSubtype.value, target: transferTarget.value,
               });
-              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
             });
             return;
           }
@@ -1274,10 +2737,10 @@
               notify(choice?.reason || '请选择施加效果能力。', 'warning'); return;
             }
             void commitBattle(data => {
-              const result = teamBattleState.fieldEffect(data, {
+              const result = tacticEngine.fieldEffect(data, {
                 subtype: fieldSubtype.value, target: fieldTarget.value || null,
               });
-              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
             });
             return;
           }
@@ -1286,10 +2749,10 @@
               notify('请选择目标、干涉模式和技能。', 'warning'); return;
             }
             void commitBattle(data => {
-              const result = teamBattleState.skillControl(data, {
+              const result = tacticEngine.skillControl(data, {
                 target: controlTarget.value, mode: controlMode.value, skill: controlSkill.value,
               });
-              return result.ok ? teamBattleState.advanceAuto(result.data) : result;
+              return result.ok ? tacticEngine.advanceAuto(result.data) : result;
             });
             return;
           }
@@ -1313,33 +2776,17 @@
                 : kind.value === 'passable' ? { 名称: terrainName.value.trim() }
                   : { 地形: kind.value }) };
           }
-          void commitBattle(async data => {
-            const prompt = teamBattleState.tacticPrompt(data, declaration);
-            const [host, settlement] = await Promise.all([
-              contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 }),
-              contract.waitGlobalInitialized(VARIABLE_SETTLEMENT_API_KEY, { timeoutMs: 10000 }),
-            ]);
-            const settings = await settlement.readSettings();
-            const config = {
-              should_silence: true, should_stream: false, max_chat_history: 0,
-              use_mes_examples: false, use_story_string: false, use_authors_note: false,
-              use_persona: false,
-              ordered_prompts: [
+          void commitBattle(async (data, _evidence, guard, assertCurrent) => {
+            const prompt = tacticEngine.tacticPrompt(data, declaration);
+            const response = await modules['cryptLord.battleSession'].request([
                 { role: 'system', content: prompt.rules },
                 { role: 'system', content: prompt.situation },
                 { role: 'user', content: '审计申报并安排所有 NPC 的战术行动，只输出 JSON。' },
-              ],
-            };
-            if (settings.useCustomApi) {
-              if (!settings.apiUrl || !settings.model)
-                return { ok: false, error: '系统副 API 尚未填写 URL 或模型名。' };
-              config.custom_api = { apiurl: settings.apiUrl, key: settings.apiKey,
-                model: settings.model, source: 'openai' };
-            }
-            const plan = teamBattleState.parsePlan(await host.generateRaw(config));
+              ], guard, assertCurrent);
+            const plan = tacticEngine.parsePlan(response);
             if (!plan) return { ok: false, error: '战术模型未返回可识别的完整 JSON，可直接重试。' };
-            const progressed = teamBattleState.tactic(data, { declaration, plan });
-            return progressed.ok ? teamBattleState.advanceAuto(progressed.data) : progressed;
+            const progressed = tacticEngine.tactic(data, { declaration, plan });
+            return progressed.ok ? tacticEngine.advanceAuto(progressed.data) : progressed;
           });
         });
         action.addEventListener('change', () => {
@@ -1347,15 +2794,80 @@
             : action.value === '施加效果' ? '发动效果'
             : action.value === '效果传递' ? '发动效果传递' : '请求战术裁决';
           if (action.value === '贿赂') submit.textContent = '发动贿赂';
+          if (action.value === '平衡') submit.textContent = '发动平衡';
+          if (action.value === '惩戒') submit.textContent = '发动惩戒';
+          if (action.value === '形态') submit.textContent = '开启形态';
+          if (action.value === '放逐') submit.textContent = '发动放逐';
+          if (action.value === '主动离场') submit.textContent = '主动离场';
+          if (action.value === '制造战场事件') submit.textContent = '发动战场事件';
+          if (action.value === '回溯') submit.textContent = '确认回溯';
+          if (action.value === '额外行动') submit.textContent = '创造虚影';
+          if (action.value === '硬控') submit.textContent = '发动硬控';
+          if (action.value === '心智剥夺') submit.textContent = '发动心智剥夺';
+          if (action.value === '阵营短控') submit.textContent = '发动阵营短控';
+          if (action.value === '附身') submit.textContent = '发动附身';
+          if (action.value === '规则修改') submit.textContent = '改写规则';
+          if (action.value === '改变环境') submit.textContent = '改变环境';
+          if (action.value === '底层规则修改') submit.textContent = '制定底层规则';
+          if (action.value === '召唤') submit.textContent = '发动召唤';
+          if (action.value === '永久控制') submit.textContent = permanentKind.value === '秘偶化' &&
+            permanentChoices.find(row => row.subtype === permanentKind.value)?.current?.targetId === permanentTarget.value
+            ? '继续秘偶化' : '发动永久控制';
+          const extraChoice = extraChoices.find(row => row.subtype === extraKind.value);
+          const hardChoice = hardChoices.find(row => row.subtype === hardKind.value);
+          const tempChoice = tempChoices.find(row => row.subtype === tempKind.value);
+          const permanentChoice = permanentChoices.find(row => row.subtype === permanentKind.value);
+          const possessionOption = possessionChoices.find(row => row.subtype === possessionKind.value);
+          submit.disabled = action.value === '召唤'
+            ? !tacticEngine.summonPreview(state.current?.data, summonRequest()).ok
+            : action.value === '底层规则修改'
+            ? !tacticEngine.fundamentalPreview(state.current?.data, fundamentalRequest()).ok
+            : action.value === '改变环境'
+            ? !tacticEngine.environmentPreview(state.current?.data, environmentKind.value).ok
+            : action.value === '规则修改'
+            ? !tacticEngine.ruleChangePreview(state.current?.data, ruleRequest()).ok
+            : action.value === '附身' ? !possessionOption || Boolean(possessionOption.reason) ||
+            !possessionOption.targets.some(row => row.id === possessionTarget.value)
+            : action.value === '永久控制' ? !permanentChoice || Boolean(permanentChoice.reason) ||
+            !permanentChoice.targets.some(row => row.id === permanentTarget.value)
+            : action.value === '阵营短控' ? !tempChoice || Boolean(tempChoice.reason) ||
+            !tempChoice.targets.some(row => row.id === tempTarget.value)
+            : action.value === '心智剥夺' ? !mindChoice || Boolean(mindChoice.reason)
+            : action.value === '硬控' ? !hardChoice || Boolean(hardChoice.reason) ||
+            !hardChoice.targets.some(row => row.id === hardTarget.value)
+            : action.value === '额外行动'
+            ? !extraChoice || Boolean(extraChoice.reason) || extraChoice.remaining <= 0
+            : action.value === '制造战场事件'
+            ? Boolean(eventChoices.find(row => row.subtype === eventKind.value)?.reason)
+            : action.value === '回溯' ? Boolean(rewindChoice?.reason) ||
+              !rewindChoice?.choices.some(row => row.subtype === rewindKind.value && row.remaining > 0) ||
+              !rewindChoice?.rounds.some(row => row.round === rewindRound && row.differs) : false;
         });
-        controls.append(action, target, terrainControls, controlFields, fieldControls, transferControls, briberyControls, description, submit);
+        eventKind.addEventListener('change', () => {
+          if (action.value === '制造战场事件')
+            submit.disabled = Boolean(eventChoices.find(row => row.subtype === eventKind.value)?.reason);
+        });
+        controls.append(action, target, terrainControls, controlFields, fieldControls,
+          transferControls, briberyControls, balanceControls, punishmentControls, mythicControls, exileControls, leaveControls, eventControls, rewindControls, extraControls, hardControls, mindControls, tempControls, permanentControls, possessionControls, ruleControls, environmentControls, fundamentalControls, summonControls, description, submit);
+        updateFundamentalKind();
+        updateSummonKind();
+        if (borrowed) {
+          action.value = borrowed.actionLabel;
+          action.disabled = true;
+          action.dispatchEvent(new Event('change'));
+          if (!action.value) {
+            submit.disabled = true;
+            borrowControls.append(element('p', 'is-blocked', '当前资源、额度或目标不满足原能力发动条件。'));
+          }
+        } else if (authority) submit.disabled = true;
         teamSession.appendChild(controls);
         teamSession.appendChild(button('跳过战术阶段', 'crypt-lord-game-shell__button', () => {
           void commitBattle(data => {
-            const progressed = teamBattleState.tactic(data);
-            return progressed.ok ? teamBattleState.advanceAuto(progressed.data) : progressed;
+            const progressed = tacticEngine.tactic(data);
+            return progressed.ok ? tacticEngine.advanceAuto(progressed.data) : progressed;
           });
         }));
+        }
       } else if ((actor?.controller || actor?.source) === 'player') {
         const actions = element('div', 'crypt-lord-game-shell__battle-actions');
         const skill = element('select', 'crypt-lord-game-shell__settings-input');
@@ -1436,6 +2948,13 @@
           void commitBattle(data => teamBattleState.advanceAuto(data));
         }));
       }
+      const eventLines = modules['cryptLord.battleEvents']?.statusLines(team) || [];
+      if (eventLines.length) {
+        const ongoing = element('div', 'crypt-lord-game-shell__battle-event-status');
+        ongoing.appendChild(element('strong', '', '持续战场事件'));
+        for (const line of eventLines) ongoing.appendChild(element('p', '', line));
+        teamSession.appendChild(ongoing);
+      }
       if (team.lastTactic) {
         const result = element('div', 'crypt-lord-game-shell__battle-log');
         result.appendChild(element('strong', '', `第 ${team.lastTactic.round} 回合战术裁决`));
@@ -1444,8 +2963,23 @@
         for (const row of team.lastTactic.outcomes || []) {
           const actorName = team.units.find(unit => unit.id === row.actor)?.name || row.actor;
           const targetName = team.units.find(unit => unit.id === row.target)?.name || row.target;
+          if (row.summary?.length) {
+            for (const line of row.summary) result.appendChild(element('p', '', line));
+            continue;
+          }
+          if (row.kind === 'active-leave') {
+            const status = { enter: '离场成功', fail: '离场被阻止',
+              upkeep: '维持离场', return: '已返场' }[row.stage] || '已处理';
+            const reason = { summons: '自有召唤物已全部离场', spirit: '灵性不足',
+              voluntary: '主动返场', 'battle-end': '战斗结束' }[row.reason];
+            result.appendChild(element('p', '',
+              `${actorName} · ${row.subtype} · ${status}${row.cost ? ` · 消耗 ${row.cost} 灵性` : ''}${reason ? ` · ${reason}` : ''}`));
+            continue;
+          }
           const status = { applied: '生效', resisted: '拼点失败',
-            weaker: '同类效果较强', infeasible: '不可行' }[row.outcome] || row.outcome;
+            skipped: '硬控占位', superseded: '被抢先控制',
+            weaker: '同类效果较强', infeasible: '不可行' }[row.outcome] || row.outcome ||
+            (row.applied === false ? '未生效' : row.applied === true ? '生效' : row.stage || '已处理');
           result.appendChild(element('p', '',
             `${actorName}${targetName ? ` → ${targetName}` : ''} · ${row.mode ? `${row.mode}「${row.skill}」 · ` : ''}${status}${row.roll ? ` · ${row.roll.caster}:${row.roll.defender}` : row.scores ? ` · ${row.scores.caster}:${row.scores.defender}` : ''}${row.reason ? ` · ${row.reason}` : ''}${row.spent?.length ? ` · 消耗 ${row.spent.join('、')}` : ''}`));
         }
@@ -1466,13 +3000,22 @@
         log.appendChild(detail);
       });
       teamSession.appendChild(log);
+      if (team.phase === 'tactic') {
+        const end = button('结束战斗', 'crypt-lord-game-shell__button', () => {
+          if (!hostWindow.confirm?.('确定结束本场战斗并进入战报结算？')) return;
+          void commitBattle(data => teamBattleState.end(data, team.id));
+        });
+        end.disabled = state.battleBusy;
+        teamSession.appendChild(end);
+      }
     }
     body.appendChild(teamSession);
-    if (team?.status === 'active') return;
+    if (team?.status === 'active' && team.autoPilot?.on && !state.battleBusy &&
+      !state.battleAutoPaused && state.battleAutoSteps < 40) scheduleAuto();
+    if (team?.status === 'active') { renderBattleRecovery(); return; }
     }
     const heading = element('div', 'crypt-lord-game-shell__battle-heading');
-    heading.appendChild(element('div', '', '个人战斗'));
-    if (gameAudioControl) heading.appendChild(gameAudioControl.create(afterNative.getHost()?.document || document, 'duel'));
+    heading.appendChild(element('div', '', battle?.status === 'active' ? '旧版个人战斗' : '个人对局'));
     personal.appendChild(heading);
     if (!battle || battle.status !== 'active') {
       const form = element('div', 'crypt-lord-game-shell__battle-setup');
@@ -1495,74 +3038,32 @@
       enemyHp.type = 'number';
       enemyHp.min = '1';
       enemyHp.value = String(battle?.enemy?.maxHp || Math.max(20, Math.round(numeric(stat.活力 ?? stat.当前活力, 30) * .85)));
-      const enemyPower = element('input', 'crypt-lord-game-shell__settings-input');
-      enemyPower.type = 'number';
-      enemyPower.min = '1';
-      enemyPower.value = String(battle?.enemy?.power || 4);
+      const enemyAgility = element('input', 'crypt-lord-game-shell__settings-input');
+      enemyAgility.type = 'number';
+      enemyAgility.min = '0';
+      enemyAgility.value = '8';
       const setupField = (label, input) => {
         const field = element('label', 'crypt-lord-game-shell__battle-setup-field');
         field.append(element('span', '', label), input);
         return field;
       };
-      const customFields = [setupField('训练目标', enemyName), setupField('活力', enemyHp), setupField('攻击', enemyPower)];
+      const customFields = [setupField('训练目标', enemyName), setupField('活力', enemyHp), setupField('敏捷', enemyAgility)];
       opponent.addEventListener('change', () => {
         customFields.forEach(field => { field.hidden = Boolean(opponent.value); });
       });
       form.append(setupField('对手', opponent), ...customFields);
       personal.appendChild(form);
       const startPersonalBattle = button('开始个人战斗', 'crypt-lord-game-shell__button is-primary', () => {
-        if (opponent.value && !hostWindow.confirm?.(`与 ${opponent.value} 进行真实 NPC 对局？胜利领取经验时会将该 NPC 当前活力结算为 0。`)) return;
-        void commitBattle(async (data, evidence) => {
-          let shamanJudgment = null;
-          let arbiterJudgment = null;
-          try {
-            shamanJudgment = await modules[SHAMAN_TERRITORY_KEY]?.judgeBattle?.(data, opponent.value, evidence);
-          } catch (error) {
-            notify(`领地判定不可用，本场按中性处理：${error?.message || error}`, 'warning');
-          }
-          try {
-            arbiterJudgment = await modules[ARBITER_JURISDICTION_KEY]?.judgeBattle?.(data, opponent.value, evidence);
-          } catch (error) {
-            notify(`辖区判定不可用，本场按中性处理：${error?.message || error}`, 'warning');
-          }
-          let imaginationPool = null;
-          if (modules[IMAGINATION_KEY]) {
-            try { imaginationPool = await abilityState.loadPool(); }
-            catch (error) { notify(`空想途径库不可用：${error?.message || error}`, 'warning'); }
-          }
-          let tagRules = null;
-          try { tagRules = await modules['cryptLord.battleTags']?.load(); }
-          catch (error) { notify(`战斗标签配置不可用：${error?.message || error}`, 'warning'); }
-          let lifeSaveTable;
-          try { lifeSaveTable = await lifeSave?.load(); }
-          catch (error) { notify(`保命配置不可用，本场按内置规则：${error?.message || error}`, 'warning'); }
-          const started = personalBattleState.start(data, {
-            npcKey: opponent.value,
-            enemyName: enemyName.value,
-            enemyHp: enemyHp.value,
-            enemyPower: enemyPower.value,
-            shamanJudgment,
-            arbiterJudgment,
-            imaginationPool,
-            tagRules,
-            lifeSaveTable,
-          });
-          const painter = modules[BATTLEFIELD_PAINTER_KEY];
-          if (!painter || !started?.ok) return started;
-          try {
-            const painted = await painter.generate(started.data, evidence, state.current.message_id);
-            if (painted.ok) {
-              if (painted.terrainFallback) notify(`战场绘制回退普通棋盘：${painted.terrainFallback}`, 'warning');
-              return painted;
-            }
-            notify(`战场绘制回退普通棋盘：${painted.error}`, 'warning');
-          } catch (error) {
-            notify(`战场绘制回退普通棋盘：${error?.message || error}`, 'warning');
-          }
-          return started;
-        });
+        if (opponent.value && !hostWindow.confirm?.(`与 ${opponent.value} 进行真实 NPC 对局？确认战报时会结算 NPC 的战后资源与经验。`)) return;
+        void commitBattle((data, evidence, guard, assertCurrent) => prepareBattle(data, {
+          personal: true, npcKey: opponent.value, enemyName: enemyName.value,
+          enemyHp: enemyHp.value, enemyAgility: enemyAgility.value,
+          summonPool: state.pathwayPool,
+        }, evidence, guard, assertCurrent));
       });
-      startPersonalBattle.disabled = team?.status === 'finished' && !team.settled;
+      startPersonalBattle.disabled = !teamBattleState ||
+        Boolean(personalBattleState.experiencePreview(state.current?.data)) ||
+        team?.status === 'finished' && !team.settled;
       personal.appendChild(startPersonalBattle);
       if (battle?.result) personal.appendChild(element('p', 'crypt-lord-game-shell__battle-result', `上一场：${battle.result === 'victory' ? '胜利' : battle.result === 'defeat' ? '失败' : '撤离'}`));
       const experience = personalBattleState.experiencePreview(state.current?.data);
@@ -1773,14 +3274,17 @@
         actions.appendChild(grazing);
       }
       const picture = modules[SHAMAN_PICTURE_KEY];
-      if (picture?.gate(state.current?.data?.stat_data).unlocked && !battle.picture) {
+      if (picture?.gate(state.current?.data?.stat_data,
+        battle.player.picturePool || state.pathwayPool, state.current?.data).unlocked && !battle.picture) {
         const rows = picture.records(state.current?.data).filter(row =>
           !battle.pictureLosses?.some(loss => loss.id === row.id));
         if (rows.length) {
           const select = scrollSelect(rows.map(row => [row.id, `${row.name} · ${row.card.当前序列}`]),
             rows[0].id, '画中人成品');
           const control = button(`召唤画中人 · 灵${picture.summonCost(
-            modules[SCROLL_CRAFTING_KEY]?.rankOf(state.current?.data?.stat_data?.当前序列))}`,
+            (modules['cryptLord.marionetteReference']?.rank || modules[SCROLL_CRAFTING_KEY]?.rankOf ||
+              modules['cryptLord.battleExperience'].rank)(
+              battle.player.sequenceString || state.current?.data?.stat_data?.当前序列))}`,
           'crypt-lord-game-shell__button', () => {
             void commitBattle(data => personalBattleState.summonPicture(data, select.value));
           });
@@ -1936,12 +3440,41 @@
     actionRow.style.display = 'flex';
     actionRow.style.gap = '8px';
 
+    if (domainState) {
+      actionRow.appendChild(button('沙盘布阵', 'crypt-lord-game-shell__button', () => {
+        const id = state.current?.message_id;
+        closeModal();
+        void root.__stage1Modules?.['cryptLord.warSandboxUi']?.open(id);
+      }));
+    }
     if (domainState && domain) {
-      actionRow.appendChild(button('沙盘军演（四对四对抗演习）', 'crypt-lord-game-shell__button is-primary', () => {
-        const drill = domainState.runDrill(domain);
-        notify(drill.summary || '沙盘军演演练完毕', 'info');
-        void renderBattleSystem();
-        root.__stage1Modules?.['cryptLord.warReplayUi']?.open(drill.result, { title: '沙盘军演' });
+      actionRow.appendChild(button('沙盘军演', 'crypt-lord-game-shell__button is-primary', async () => {
+        const token = state.chatToken, id = state.current?.message_id, epoch = state.battleEpoch;
+        const valid = () => !state.disposed && token === state.chatToken && epoch === state.battleEpoch &&
+          !state.battleGenerating && state.current?.message_id === id && state.modal?.dataset.open === 'true';
+        const control = actionRow.querySelector('button');
+        control.disabled = true;
+        try {
+          const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
+          const latest = await store.findLatestAssistant(), source = await store.readMessage(id);
+          if (!valid() || latest?.message_id !== id || source?.role !== 'assistant') throw Error('请在最新原生 assistant 楼层军演');
+          const baseline = JSON.stringify(source);
+          const rules = await domainState.loadRules(valid, true);
+          const next = structuredClone(source.data), currentDomain = next.stat_data?.领地;
+          const drill = domainState.withWarRules(rules, () => domainState.runDrill(currentDomain));
+          const assertCurrent = async () => {
+            const latest = await store.findLatestAssistant(), current = await store.readMessage(id);
+            if (!valid() || latest?.message_id !== id || JSON.stringify(current) !== baseline)
+              throw Error('军演来源楼层已变化，请重新打开');
+          };
+          const saved = await store.writeAssistantData(id, next, 'affected', assertCurrent, valid, { warfareRules: rules });
+          if (!valid()) return;
+          state.current.data = saved;
+          notify(drill.summary || '沙盘军演演练完毕', 'info');
+          void renderBattleSystem();
+          root.__stage1Modules?.['cryptLord.warReplayUi']?.open(drill.result, { title: '沙盘军演' });
+        } catch (error) { if (valid()) notify(error?.message || String(error), 'error'); }
+        finally { if (valid()) control.disabled = false; }
       }));
     }
     actionRow.appendChild(button('前往独立领地作战中心', 'crypt-lord-game-shell__button', () => {
@@ -1949,6 +3482,7 @@
       void openDomainConsole();
     }));
     body.appendChild(actionRow);
+    renderBattleRecovery();
   }
 
   function renderPathwayPlay() {
@@ -1960,7 +3494,6 @@
     }
     const stat = statForCurrent();
     const resolved = pathwayPlayState.resolvePathway(stat);
-    const playData = pathwayPlayState.getPlayData(state.current?.data);
 
     const header = element("div", "crypt-lord-game-shell__pathway-header");
     header.append(
@@ -1985,23 +3518,18 @@
         if (feat.unlocked) {
           const actionBox = element("div", "crypt-lord-game-shell__pathway-actions");
           if (feat.id === "marionette") {
-            const count = playData.marionettes.length;
-            actionBox.appendChild(element("span", "", `当前操控秘偶数：${count}`));
-            actionBox.appendChild(button("派遣秘偶协同行动", "crypt-lord-game-shell__small-button", () => {
-              const target = playData.marionettes[0]?.name || "目标待定";
-              const prompt = pathwayPlayState.formatActionPrompt("marionette", "协同侦察与潜行防御", target);
-              void fillAction(prompt);
-              notify("已将秘偶行动指令填入酒馆输入框", "success");
+            actionBox.appendChild(button("秘偶管理", "crypt-lord-game-shell__small-button", () => {
+              closeModal();
+              void modules["cryptLord.marionetteUi"]?.open();
             }));
           } else if (feat.id === "grazing") {
             // The native-floor grazing roster is rendered below.
           } else if (feat.id === "imagination") {
             // The original spectator mechanism is an effective-pathway projection, rendered below.
           } else if (feat.id === "clone") {
-            actionBox.appendChild(button("派遣寄生分身", "crypt-lord-game-shell__small-button", () => {
-              const prompt = pathwayPlayState.formatActionPrompt("clone", "寄生监视与分化潜伏", "目标人物/环境");
-              void fillAction(prompt);
-              notify("已将分身指令填入酒馆输入框", "success");
+            actionBox.appendChild(button("分身管理", "crypt-lord-game-shell__small-button", () => {
+              closeModal();
+              void modules["cryptLord.cloneUi"]?.open();
             }));
           } else if (["scroll", "shaman-territory", "shaman-picture", "jurisdiction", "reader-mystic", "reenactment", "savant-material", "savant-enhancement"].includes(feat.id)) {
             // Dedicated forms are rendered below the pathway list.
@@ -2018,6 +3546,20 @@
       });
     }
     state.modalBody.appendChild(list);
+    if (!resolved.features.some(feat => feat.id === "marionette" && feat.unlocked) &&
+      state.pathwayPool && modules["cryptLord.marionetteState"]?.gate(state.current?.data, state.pathwayPool).unlocked) {
+      state.modalBody.appendChild(button("秘偶管理", "crypt-lord-game-shell__button", () => {
+        closeModal();
+        void modules["cryptLord.marionetteUi"]?.open();
+      }));
+    }
+    if (!resolved.features.some(feat => feat.id === "clone" && feat.unlocked) &&
+      state.pathwayPool && modules["cryptLord.cloneState"]?.gate(state.current?.data, state.pathwayPool).unlocked) {
+      state.modalBody.appendChild(button("分身管理", "crypt-lord-game-shell__button", () => {
+        closeModal();
+        void modules["cryptLord.cloneUi"]?.open();
+      }));
+    }
     renderImagination();
     renderGrazing();
     renderReaderMystic();
@@ -2032,18 +3574,24 @@
   }
 
   function renderSavantMaterial() {
-    const service = modules['cryptLord.savantMaterial'];
+    const service = modules['cryptLord.materialProcessingState'];
     if (!service || !state.current?.data) return;
-    const access = service.gate(state.current.data.stat_data);
+    if (!state.pathwayPool) { loadPathways(); return; }
+    const access = service.gate(state.current.data, state.pathwayPool);
     if (!access.unlocked) return;
+    const session = service.create(state.current.data, state.pathwayPool);
     const section = element('section', 'crypt-lord-game-shell__pathway-item');
     section.append(
-      element('strong', '', '通识者 · 材料加工'),
+      element('strong', '', '通识者 · 材料与制造工坊'),
       element('p', 'crypt-lord-game-shell__muted',
-        `当前可认定 ${service.sources(state.current.data).length} 个来源，仓库有 ${service.batches(state.current.data).length} 批材料。`),
+        `当前可认定 ${session.mode.sources(session.win).length} 个来源，仓库有 ${session.mode.batches(session.data).length} 批材料。`),
       button('打开材料加工', 'crypt-lord-game-shell__small-button', () => {
         void contract.waitGlobalInitialized(SAVANT_MATERIAL_UI_KEY, { timeoutMs: 10000 })
           .then(api => api.open()).catch(error => notify(`打开材料加工失败：${error?.message || error}`, 'error'));
+      }),
+      button('打开制造工坊', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.workshopUi']?.open();
       }),
     );
     state.modalBody.append(section);
@@ -2052,7 +3600,9 @@
   function renderSavantEnhancement() {
     const service = modules['cryptLord.savantEnhancement'];
     const data = state.current?.data;
-    if (!service || !data || !modules['cryptLord.savantMaterial']?.gate(data.stat_data).unlocked) return;
+    if (!service || !data) return;
+    if (!state.pathwayPool) { loadPathways(); return; }
+    if (!modules['cryptLord.enhancementState']?.gate(data, state.pathwayPool).unlocked) return;
     const section = element('section', 'crypt-lord-game-shell__pathway-item');
     section.append(
       element('strong', '', '通识者 · 装备强化'),
@@ -2067,6 +3617,16 @@
   }
 
   function renderImagination() {
+    if (modules['cryptLord.audienceImaginationUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.audienceImaginationState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.appendChild(button('空想', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.audienceImaginationUi'].open();
+      }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const imagination = modules[IMAGINATION_KEY];
     const data = state.current?.data;
     const pool = state.pathwayPool;
@@ -2111,7 +3671,7 @@
     section.appendChild(preview);
     const save = button(state.imaginationBusy ? '保存中…' : '保存空想栏位',
       'crypt-lord-game-shell__dialog-button is-primary', () => { void commitImagination('save', values); });
-    save.disabled = state.imaginationBusy || personalBattleState.get(data)?.status === 'active';
+    save.disabled = state.imaginationBusy || battleLocked(data);
     section.appendChild(save);
     if (owner.rank === 0) {
       section.appendChild(element('p', 'crypt-lord-game-shell__muted',
@@ -2122,7 +3682,7 @@
         }
       });
       separate.disabled = state.imaginationBusy || saved.used >= 2 ||
-        personalBattleState.get(data)?.status === 'active';
+        battleLocked(data);
       section.appendChild(separate);
     }
     state.modalBody.appendChild(section);
@@ -2138,7 +3698,7 @@
       const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中不能修改空想');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再修改空想。');
       const pool = await abilityState.loadPool();
       if (token !== state.chatToken || state.current?.message_id !== messageId) throw new Error('聊天或楼层已变化');
       const fresh = await store.readMessage(messageId);
@@ -2178,6 +3738,19 @@
     const souls = grazing.soulsOf(data);
     const names = Object.keys(souls).filter(name => name !== '$meta' && record(souls[name]));
     const active = snapshot.grazed.map(row => row.name);
+    const rosterUi = modules['cryptLord.grazingUi'];
+    if (rosterUi && !battleLocked(data)) {
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.append(element('h3', '', '秘祈人 · 放牧名册'),
+        element('p', 'crypt-lord-game-shell__muted',
+          `灵魂 ${names.length}/${grazing.capacity(gate.rank)} · 激活 ${active.length}/${grazing.activeCap(gate.rank)}`),
+        button('打开放牧名册', 'crypt-lord-game-shell__dialog-button', () => {
+          closeModal();
+          void rosterUi.open();
+        }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const storedActive = grazing.namesOf(data, '激活灵魂');
     const dormant = grazing.namesOf(data, '休眠灵魂');
     const ordered = [...new Set([...storedActive, ...dormant, ...names])];
@@ -2186,8 +3759,10 @@
     }
     const draft = state.grazingDraft.names;
     const battle = personalBattleState.get(data);
-    const inBattle = battle?.status === 'active';
-    const locked = state.grazingBusy || state.imaginationBusy || state.battleBusy;
+    const teamActive = teamBattleState.get(data)?.status === 'active';
+    const inBattle = battleLocked(data);
+    const locked = state.grazingBusy || state.imaginationBusy || state.battleBusy ||
+      inBattle && battle?.status !== 'active';
     const section = element('section', 'crypt-lord-game-shell__scroll crypt-lord-game-shell__grazing');
     section.appendChild(element('h3', '', '秘祈人 · 放牧'));
     section.appendChild(element('p', 'crypt-lord-game-shell__muted',
@@ -2229,14 +3804,15 @@
     section.appendChild(list);
     if (!names.length) section.appendChild(element('p', 'crypt-lord-game-shell__muted', '尚未放牧灵魂。'));
     section.appendChild(element('p', 'crypt-lord-game-shell__muted',
-      inBattle ? `战斗中切换组合消耗 ${grazing.switchCost(data)} 点灵性；仅玩家回合可切换。`
+      teamActive ? '多人战斗中，请在战术阶段切换激活组合。'
+        : inBattle ? `战斗中切换组合消耗 ${grazing.switchCost(data, state.pathwayPool)} 点灵性；仅玩家回合可切换。`
         : '未激活灵魂保留在名册；场外更换组合不消耗灵性。'));
     const actions = element('div', 'crypt-lord-game-shell__scroll-actions');
     const save = button(inBattle ? '切换激活组合' : '保存激活组合',
       'crypt-lord-game-shell__dialog-button is-primary', () => {
         void commitGrazing('save', [...state.grazingDraft.names]);
       });
-    save.disabled = locked || (inBattle && battle.currentTurn !== 'player');
+    save.disabled = locked || (inBattle && battle?.currentTurn !== 'player');
     actions.appendChild(save);
     section.appendChild(actions);
     if (!inBattle) {
@@ -2268,6 +3844,8 @@
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
       const grazing = modules[GRAZING_KEY];
+      if (battleLocked(original.data) && original.data.cryptLord?.personalBattle?.status !== 'active')
+        throw new Error('请在战术阶段切换组合，结束并结算战斗后才能认证或释放灵魂。');
       const pool = await abilityState.loadPool();
       const inBattle = personalBattleState.get(original.data)?.status === 'active';
       if (inBattle && action !== 'save') throw new Error('战斗中不能认证或释放灵魂');
@@ -2295,15 +3873,21 @@
         ? grazing.capture(fresh.data, pool, payload, verdict, abilityLocked())
         : action === 'release' ? grazing.release(fresh.data, pool, payload, abilityLocked())
           : grazing.save(fresh.data, pool, payload, abilityLocked(), inBattle);
-      await store.writeAssistantData(messageId, next);
-      state.current.data = next;
+      const guard = () => !state.disposed && token === state.chatToken && state.current?.message_id === messageId;
+      const saved = await store.writeAssistantData(messageId, next, 'affected', async () => {
+        const current = await store.readMessage(messageId);
+        if (!guard() || JSON.stringify(current) !== JSON.stringify(original))
+          throw Error('楼层正文、变量或聊天已变化，未写入');
+      }, guard, { rulePool: abilityState.assertPool ? pool : undefined });
+      if (!guard()) return;
+      state.current.data = saved;
       state.pathwayPool = pool;
       state.grazingDraft = null;
       state.grazingCandidate = '';
       state.grazingResult = action === 'certify' ? `认证通过：${verdict.reason}`
         : action === 'release' ? `已永久释放“${payload}”。` : '激活组合已同步。';
       modules[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
-        messageId, beforeData: fresh.data, afterData: next, source: 'grazing',
+        messageId, beforeData: fresh.data, afterData: saved, source: 'grazing',
       });
       renderLeftPanel();
       notify(state.grazingResult, 'success');
@@ -2318,6 +3902,16 @@
   }
 
   function renderReaderMystic() {
+    if (modules['cryptLord.readerMysticUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.readerRosterState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.appendChild(button('秘术强化与解析学习', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.readerMysticUi'].open();
+      }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const reader = modules[READER_MYSTIC_KEY];
     const data = state.current?.data;
     const pool = state.pathwayPool;
@@ -2326,7 +3920,7 @@
     const owner = reader.gate(data, pool);
     if (!owner.unlocked) return;
     const locked = state.readerBusy || state.imaginationBusy ||
-      personalBattleState.get(data)?.status === 'active';
+      battleLocked(data);
     const saved = reader.configs(data);
     const entries = reader.entries(data);
     if (!state.readerDraft || state.readerDraft.messageId !== state.current.message_id) {
@@ -2531,7 +4125,7 @@
       const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中不能编辑秘术或学习任务');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再编辑秘术或学习任务。');
       const reader = modules[READER_MYSTIC_KEY];
       const pool = await abilityState.loadPool();
       let certification = null;
@@ -2585,6 +4179,16 @@
   }
 
   function renderReenactment() {
+    if (modules['cryptLord.mysteryRosterUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.mysteryRosterState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.appendChild(button('神秘再现知识与法术', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.mysteryRosterUi'].open();
+      }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const reenact = modules[REENACTMENT_KEY];
     const reader = modules[READER_MYSTIC_KEY];
     const data = state.current?.data;
@@ -2593,7 +4197,7 @@
     if (!pool) { loadPathways(); return; }
     const owner = reenact.gate(data, pool);
     if (!owner.unlocked) return;
-    const locked = state.reenactBusy || personalBattleState.get(data)?.status === 'active';
+    const locked = state.reenactBusy || battleLocked(data);
     const saved = reenact.configs(data);
     if (!state.reenactDraft || state.reenactDraft.messageId !== state.current.message_id) {
       state.reenactDraft = { messageId: state.current.message_id, configs: {},
@@ -2785,7 +4389,7 @@
       const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中不能修改神秘再现');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再修改神秘再现。');
       const reenact = modules[REENACTMENT_KEY];
       const pool = await abilityState.loadPool();
       let verdict = null;
@@ -2843,6 +4447,16 @@
   }
 
   function renderShamanPicture() {
+    if (modules['cryptLord.shamanPictureUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.shamanPictureState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.appendChild(button('制造画中人', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.shamanPictureUi'].open();
+      }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const picture = modules[SHAMAN_PICTURE_KEY];
     const data = state.current?.data;
     if (!picture?.gate(data?.stat_data).unlocked) return;
@@ -2889,7 +4503,7 @@
     const materials = modules[SCROLL_CRAFTING_KEY]?.materials(data.stat_data) || [];
     const total = materials.reduce((sum, row) => sum +
       Math.min(row.available, Number(state.pictureMaterials[row.key]) || 0) * row.perUnit, 0);
-    const locked = state.pictureBusy || personalBattleState.get(data)?.status === 'active';
+    const locked = state.pictureBusy || battleLocked(data);
     materials.forEach(row => {
       const input = element('input', 'crypt-lord-game-shell__settings-input');
       input.type = 'number'; input.min = '0'; input.max = String(row.available); input.step = '1';
@@ -2922,7 +4536,7 @@
       const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中不能制造画中人');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再制造画中人。');
       const picture = modules[SHAMAN_PICTURE_KEY];
       const pool = await abilityState.loadPool();
       const materials = modules[SCROLL_CRAFTING_KEY].materials(original.data.stat_data);
@@ -2960,6 +4574,16 @@
   }
 
   function renderArbiterJurisdiction() {
+    if (modules['cryptLord.arbiterJurisdictionUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.arbiterJurisdictionState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.appendChild(button('设定辖区', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.arbiterJurisdictionUi'].open();
+      }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const arbiter = modules[ARBITER_JURISDICTION_KEY];
     const data = state.current?.data;
     if (!arbiter?.gate(data?.stat_data).unlocked) return;
@@ -2968,7 +4592,7 @@
     const familiar = arbiter.familiarity(data);
     const rankScope = arbiter.scope(arbiter.gate(data.stat_data).rank);
     const draft = arbiterDraft();
-    const locked = state.arbiterBusy || personalBattleState.get(data)?.status === 'active';
+    const locked = state.arbiterBusy || battleLocked(data);
     const section = element('section', 'crypt-lord-game-shell__scroll crypt-lord-game-shell__arbiter');
     section.appendChild(element('h3', '', '仲裁人 · 设定辖区'));
     section.appendChild(element('p', 'crypt-lord-game-shell__muted', `当前最大基础范围：${rankScope}`));
@@ -3066,7 +4690,7 @@
       const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中不能变更辖区');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再变更辖区。');
       const arbiter = modules[ARBITER_JURISDICTION_KEY];
       let verdict = null;
       if (kind === 'base') {
@@ -3113,6 +4737,16 @@
   }
 
   function renderShamanTerritory() {
+    if (modules['cryptLord.shamanTerritoryUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.shamanTerritoryState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__scroll');
+      section.appendChild(button('领地图腾', 'crypt-lord-game-shell__small-button', () => {
+        closeModal();
+        void modules['cryptLord.shamanTerritoryUi'].open();
+      }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const shaman = modules[SHAMAN_TERRITORY_KEY];
     const data = state.current?.data;
     if (!shaman?.gate(data?.stat_data).unlocked) return;
@@ -3187,7 +4821,7 @@
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
       const shaman = modules[SHAMAN_TERRITORY_KEY];
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中不能更换图腾');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再更换图腾。');
       shaman.validate(original.data, place, quantities);
       if (!window.confirm(`请确认已经在“${place.trim()}”完成图腾仪式。认证通过后将写入本楼层变量${shaman.hasTerritory(shaman.stored(original.data.stat_data)) ? '并消耗所选材料' : ''}。`)) return;
       const verdict = await shaman.certify(original.data, place, original.message);
@@ -3250,12 +4884,23 @@
   }
 
   function renderScrollCrafting() {
+    if (modules['cryptLord.scrollWorkshopUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.scrollWorkshopState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__pathway-item');
+      section.append(element('h3', '', '窥秘人 · 卷轴制造'),
+        button('打开卷轴制造', 'crypt-lord-game-shell__small-button', () => {
+          closeModal();
+          void modules['cryptLord.scrollWorkshopUi'].open();
+        }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const scroll = modules[SCROLL_CRAFTING_KEY];
     const stat = state.current?.data?.stat_data;
     if (!scroll?.gate(stat).unlocked) return;
     const section = element('section', 'crypt-lord-game-shell__scroll');
     section.appendChild(element('h3', '', '窥秘人 · 卷轴制造'));
-    const locked = state.scrollBusy || personalBattleState.get(state.current?.data)?.status === 'active';
+    const locked = state.scrollBusy || battleLocked(state.current?.data);
     const addAction = (label, action, disabled = false) => {
       const control = button(label, 'crypt-lord-game-shell__small-button', action);
       control.disabled = disabled || state.scrollBusy;
@@ -3429,7 +5074,7 @@
       const original = await store.readMessage(messageId);
       if (original?.role !== 'assistant') throw new Error('目标楼层不是 assistant');
       const scroll = modules[SCROLL_CRAFTING_KEY];
-      if (personalBattleState.get(original.data)?.status === 'active') throw new Error('战斗中无法修改卷轴');
+      if (battleLocked(original.data)) throw new Error('请先结束并结算战斗，再修改卷轴。');
       let result;
       if (kind === 'save') result = scroll.save(original.data, payload, state.scrollEditId);
       if (kind === 'delete') {
@@ -3472,6 +5117,17 @@
   }
 
   function renderMysteryAnalysis() {
+    if (modules['cryptLord.mysteryAnalysisUi'] && state.current?.data?.stat_data && state.pathwayPool) {
+      if (!modules['cryptLord.mysteryAnalysisState'].gate(state.current.data, state.pathwayPool).unlocked) return;
+      const section = element('section', 'crypt-lord-game-shell__pathway-item');
+      section.append(element('h3', '', '窥秘人 · 神秘解析'),
+        button('打开神秘解析', 'crypt-lord-game-shell__small-button', () => {
+          closeModal();
+          void modules['cryptLord.mysteryAnalysisUi'].open();
+        }));
+      state.modalBody.appendChild(section);
+      return;
+    }
     const mystery = modules[MYSTERY_ANALYSIS_KEY];
     const stat = state.current?.data?.stat_data;
     const access = mystery?.gate(stat);
@@ -3698,6 +5354,10 @@
   }
 
   function renderInventory() {
+    if (modules['cryptLord.inventoryUi']) {
+      closeModal();
+      return modules['cryptLord.inventoryUi'].open(state.current?.message_id ?? null);
+    }
     if (!openModal('物品栏')) return;
     const groups = inventoryGroups();
     if (!groups.length) {
@@ -3830,163 +5490,52 @@
     updateSelection();
   }
 
-  async function changeAbility(operation) {
-    if (state.abilitiesBusy || !Number.isInteger(state.current?.message_id)) return;
-    if (operation.type === 'remove' && !window.confirm?.(`确定删除能力“${operation.name}”？`)) return;
-    state.abilitiesBusy = true;
-    try {
-      const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
-      const messageId = state.current.message_id;
-      const message = await store.readMessage(messageId);
-      if (message?.role !== 'assistant') throw new Error('目标楼层不再是 assistant。');
-      const before = message.data || {};
-      const next = abilityState.change(before, operation);
-      await store.writeAssistantData(messageId, next);
-      if (state.current?.message_id === messageId) state.current.data = next;
-      root.__stage1Modules?.[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
-        messageId, beforeData: before, afterData: next, source: 'sequence-abilities',
-      });
-      notify(operation.type === 'add' ? '能力已添加。' : '能力已删除。', 'success');
-      if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '序列能力') renderAbilities();
-    } catch (error) {
-      notify(`修改能力失败：${error?.message || error}`, 'error');
-    } finally {
-      state.abilitiesBusy = false;
-    }
-  }
-
   function abilityLocked() {
-    try {
-      const saved = (afterNative.getHost()?.window || window).localStorage?.getItem(ABILITY_LOCK_KEY);
-      if (saved !== null && saved !== undefined) return saved === 'true';
-    } catch { /* Optional local preference. */ }
-    return statForCurrent().序列能力锁定 === true;
-  }
-
-  async function synchronizeAbilities() {
-    if (state.abilitiesBusy || !Number.isInteger(state.current?.message_id)) return;
-    state.abilitiesBusy = true;
-    try {
-      const pool = await abilityState.loadPool();
-      const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
-      const messageId = state.current.message_id;
-      const message = await store.readMessage(messageId);
-      if (message?.role !== 'assistant') throw new Error('目标楼层不再是 assistant。');
-      const before = message.data || {};
-      const result = abilityState.synchronize(before, pool, abilityLocked());
-      const preProjection = JSON.stringify(result.data);
-      modules[IMAGINATION_KEY]?.sync(result.data, pool, abilityLocked());
-      if (result.added || result.patched || JSON.stringify(result.data) !== preProjection) {
-        await store.writeAssistantData(messageId, result.data);
-        if (state.current?.message_id === messageId) state.current.data = result.data;
-        root.__stage1Modules?.[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
-          messageId, beforeData: before, afterData: result.data, source: 'sequence-abilities-sync',
-        });
-      }
-      notify(`世界书同步完成：新增 ${result.added} 项，补齐 ${result.patched} 个战斗字段。`, 'success');
-      if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '序列能力') renderAbilities();
-    } catch (error) {
-      notify(`同步序列能力失败：${error?.message || error}`, 'error');
-    } finally {
-      state.abilitiesBusy = false;
-    }
+    return abilityState.locked(state.current?.data);
   }
 
   function renderAbilities() {
-    if (!openModal('序列能力')) return;
-    const stat = statForCurrent();
-    const groupList = abilityState.groups(state.current?.data);
-    const sequence = String(stat.当前序列 || '').trim();
-    if (sequence && !sequence.includes('普通人')) {
-      const settings = element('div', 'crypt-lord-game-shell__ability-settings');
-      const lockLabel = element('label', 'crypt-lord-game-shell__ability-lock');
-      const lock = element('input');
-      lock.type = 'checkbox';
-      lock.checked = abilityLocked();
-      lock.addEventListener('change', () => {
-        try { (afterNative.getHost()?.window || window).localStorage?.setItem(ABILITY_LOCK_KEY, String(lock.checked)); }
-        catch { notify('无法保存本地能力锁定设置。', 'error'); lock.checked = !lock.checked; return; }
-        notify(lock.checked ? '仅同步当前序列能力。' : '同步当前及低序列能力。', 'info');
-      });
-      lockLabel.append(lock, element('span', '', '仅同步当前序列能力'));
-      const synchronize = button('从世界书同步能力', 'crypt-lord-game-shell__inventory-action', () => { void synchronizeAbilities(); });
-      synchronize.title = '读取源堡、历史孔隙及角色绑定世界书的能力，不覆盖已修改能力';
-      settings.append(lockLabel, synchronize);
-      state.modalBody.appendChild(settings);
-      const form = element('form', 'crypt-lord-game-shell__ability-form');
-      const name = element('input', 'crypt-lord-game-shell__settings-input');
-      name.placeholder = '能力名称';
-      name.maxLength = 100;
-      name.required = true;
-      const description = element('textarea', 'crypt-lord-game-shell__settings-input');
-      description.placeholder = '能力描述';
-      description.rows = 3;
-      const type = element('select', 'crypt-lord-game-shell__settings-input');
-      ['非凡能力', '被动特性', '神之权柄', '旧日象征'].forEach(value => {
-        const option = element('option', '', value);
-        option.value = value;
-        type.appendChild(option);
-      });
-      const save = element('button', 'crypt-lord-game-shell__inventory-action', '添加能力');
-      save.type = 'submit';
-      form.append(element('strong', '', `手动添加能力（${sequence}）`), name, description, type, save);
-      form.addEventListener('submit', event => {
-        event.preventDefault();
-        void changeAbility({ type: 'add', name: name.value, description: description.value, abilityType: type.value });
-      });
-      state.modalBody.appendChild(form);
+    if (modules['cryptLord.abilitiesUi']) {
+      closeModal();
+      return modules['cryptLord.abilitiesUi'].open(state.current?.message_id ?? null);
     }
-    if (!groupList.length) {
-      state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', '尚未获得任何序列能力。'));
-      return;
-    }
-    groupList.forEach(([group, abilities]) => {
-      if (!abilities.length) return;
-      const section = element('details', 'crypt-lord-game-shell__ability-group');
-      section.open = true;
-      section.appendChild(element('summary', '', `${group} · ${abilities.length}`));
-      abilities.forEach((ability, index) => {
-        const row = element('div', 'crypt-lord-game-shell__ability-row');
-        const info = element('div', 'crypt-lord-game-shell__ability-info');
-        info.append(
-          element('strong', '', safeText(ability?.名称, '未命名能力')),
-          element('span', '', safeText(ability?.类型, '非凡能力')),
-          element('p', '', safeText(ability?.描述, '无详细描述。')),
-        );
-        row.appendChild(info);
-        if (group === '#秘术强化' || group === '#神秘再现') {
-          row.appendChild(element('span', 'crypt-lord-game-shell__ability-managed', `请在${group.slice(1)}中修改`));
-        } else {
-          const remove = button('删除', 'crypt-lord-game-shell__inventory-action', () => {
-            void changeAbility({ type: 'remove', group, index, name: String(ability?.名称 || '') });
-          });
-          remove.title = `删除 ${safeText(ability?.名称, '能力')}`;
-          row.appendChild(remove);
-        }
-        section.appendChild(row);
-      });
-      state.modalBody.appendChild(section);
-    });
+    notify('序列能力模块尚未加载。', 'error');
+    return false;
   }
 
-  function closeModal() {
+  function closeModal(force = false) {
+    if (state.modalTitle?.textContent === '战斗系统' && state.battlePending && force !== true &&
+      !(afterNative.getHost()?.window || window).confirm('放弃当前保留的战斗结果并关闭窗口？')) return false;
+    state.battleEpoch++;
+    state.battlePending = null; state.battleBusy = false; state.battleWriting = false;
+    state.battleInvalid = false;
     cancelBattleAuto();
     if (state.modal?.dataset.audioActive === 'true') {
-      modules[GAME_AUDIO_KEY]?.leave();
+      state.battleAudio?.leave();
       delete state.modal.dataset.audioActive;
     }
     state.modal?.setAttribute('data-open', 'false');
+    state.modal?.setAttribute('aria-busy', 'false');
+    if (state.battleReturnFocus?.isConnected) state.battleReturnFocus.focus();
+    state.battleReturnFocus = null;
   }
 
   function openModal(title) {
     if (!state.modal) return false;
+    if (title !== '战斗系统' && state.modalTitle?.textContent === '战斗系统' && closeModal() === false) return false;
+    const openingBattle = title === '战斗系统' &&
+      (state.modal.dataset.open !== 'true' || state.modalTitle.textContent !== title);
+    if (openingBattle) state.battleReturnFocus = (afterNative.getHost()?.document || document).activeElement;
+    if (state.battleVolume) state.battleVolume.hidden = title !== '战斗系统';
     if (state.modal.dataset.audioActive === 'true' && title !== '战斗系统') {
-      modules[GAME_AUDIO_KEY]?.leave();
+      state.battleAudio?.leave();
       delete state.modal.dataset.audioActive;
     }
     state.modalTitle.textContent = title;
+    state.modalDialog.setAttribute('aria-label', title);
     clear(state.modalBody);
     state.modal.setAttribute('data-open', 'true');
+    if (openingBattle) state.modalDialog.focus();
     return true;
   }
 
@@ -4043,11 +5592,15 @@
   }
 
   function closeCommandPanel() {
+    state.commandCapture?.();
+    state.commandCapture = null;
     state.commandLoadToken += 1;
     if (state.commandPanel) {
       state.commandPanel.dataset.open = 'false';
       state.commandPanel.removeAttribute('aria-busy');
     }
+    if (state.commandBall) state.commandBall.style.visibility = '';
+    if (state.commandPanel?.contains((afterNative.getHost()?.document || document).activeElement)) state.commandBall?.focus();
     saveCommandLayout();
   }
 
@@ -4113,115 +5666,210 @@
     state.cleanups.push(() => view.removeEventListener('resize', onResize));
   }
 
-  async function showQuickShortcuts() {
-    if (!state.commandPanel || !state.commandBody) return;
+  async function showQuickShortcuts(options = {}) {
+    if (state.disposed || !state.commandPanel || !state.commandBody) return;
+    state.commandCapture?.();
+    state.commandCapture = null;
+    if (options.discardDraft) state.commandDraft = null;
     state.commandPanel.dataset.open = 'true';
+    state.commandPanel.focus();
+    state.commandBall.style.visibility = 'hidden';
     const token = ++state.commandLoadToken;
+    const chat = state.chatToken;
+    const active = () => !state.disposed && token === state.commandLoadToken &&
+      chat === state.chatToken && state.commandPanel?.dataset.open === 'true';
+    let shortcutsService, generationEpoch;
+    const guard = () => {
+      if (!active()) throw Error('窗口或聊天已变化，保存已取消');
+      if (shortcutsService?.status().generating || generationEpoch !== shortcutsService?.status().adminEpoch)
+        throw Error('生成或聊天已变化，草稿已保留，请重新读取后再保存');
+    };
     const body = state.commandBody;
     clear(body);
     body.appendChild(element('div', 'crypt-lord-game-shell__empty', '正在读取快捷指令…'));
     try {
       const shortcuts = await contract.waitGlobalInitialized(QUICK_SHORTCUTS_KEY, { timeoutMs: 10000 });
-      let { commands, state: shortcutState, revisions } = await shortcuts.load();
-      if (token !== state.commandLoadToken || state.commandPanel.dataset.open !== 'true') return;
+      shortcutsService = shortcuts;
+      generationEpoch = shortcuts.status().adminEpoch;
+      const loaded = await shortcuts.load({ ...options, guard: () => active() });
+      if (!active()) return;
+      const remembered = state.commandDraft?.chat === chat ? state.commandDraft : null;
+      if (remembered) generationEpoch = remembered.adminEpoch ?? generationEpoch;
+      let { commands, state: shortcutState, revisions } = remembered || loaded;
+      let dirty = Boolean(remembered);
       let busy = false;
+      let form;
+      let notice;
+      const message = (text, error = false) => {
+        if (!active() || !notice) return;
+        notice.textContent = text;
+        notice.dataset.error = String(error);
+      };
+      const remember = () => {
+        if (!active() || !form) return;
+        const rows = [...form.querySelectorAll('[data-shortcut-row]')];
+        const next = rows.map(row => row.querySelector('textarea').value);
+        const selected = rows.filter(row => row.querySelector('[data-supplementary]').checked)
+          .map(row => row.querySelector('textarea').value.trim()).filter(Boolean);
+        const keep = form.querySelector('[data-keep]').checked;
+        const nextState = { version: 1, isKeepShortcutsEnabled: keep, pendingSupplementary: selected };
+        dirty = dirty || JSON.stringify(commands) !== JSON.stringify(next) || JSON.stringify(shortcutState) !== JSON.stringify(nextState);
+        commands = next;
+        shortcutState = nextState;
+        state.commandDraft = dirty ? { commands: [...commands], state: structuredClone(shortcutState), revisions: structuredClone(revisions), chat, adminEpoch: generationEpoch } : null;
+      };
+      state.commandCapture = remember;
+      const reload = () => {
+        remember();
+        const view = afterNative.getHost()?.window || window;
+        if (dirty && !view.confirm('放弃未保存的快捷指令修改并重新读取？')) return;
+        void showQuickShortcuts({ discardDraft: true });
+      };
       const persist = async (nextCommands, nextState) => {
-        if (busy) return;
+        if (busy || !active()) return;
+        remember();
+        if (nextCommands != null) commands = nextCommands;
+        if (nextState != null) shortcutState = nextState;
+        dirty = true;
+        state.commandDraft = { commands: [...commands], state: structuredClone(shortcutState), revisions: structuredClone(revisions), chat, adminEpoch: generationEpoch };
         busy = true;
         state.commandPanel.setAttribute('aria-busy', 'true');
+        form.disabled = true;
         try {
-          if (nextCommands) await shortcuts.saveCommands(nextCommands, revisions.commands);
-          if (nextState) await shortcuts.saveState(nextState, revisions.state);
-          ({ commands, state: shortcutState, revisions } = await shortcuts.load());
+          if (!revisions) throw Error('请先重新读取已提交的快捷指令');
+          if (commands.some(command => !command.trim())) throw Error('指令不能为空；删除请使用删除按钮');
+          const saved = await shortcuts.save(commands, shortcutState, revisions, guard, options);
+          if (!active()) return;
+          ({ commands, state: shortcutState, revisions } = saved);
+          dirty = false;
+          state.commandDraft = null;
           render();
+          message(saved.warning || '快捷指令已保存', Boolean(saved.warning));
         } catch (error) {
-          notify(`快捷指令保存失败：${error?.message || error}`, 'error');
-          // A partial write may have succeeded. Read the actual worldbook before allowing another edit.
-          try { ({ commands, state: shortcutState, revisions } = await shortcuts.load()); render(); }
-          catch { closeCommandPanel(); }
+          if (!active()) return;
+          render();
+          message(`保存失败：${error?.message || error}`, true);
         } finally {
           busy = false;
-          if (token === state.commandLoadToken) state.commandPanel?.removeAttribute('aria-busy');
+          if (active()) { form.disabled = false; state.commandPanel.removeAttribute('aria-busy'); }
         }
       };
       const render = () => {
-        if (token !== state.commandLoadToken || state.commandPanel.dataset.open !== 'true') return;
+        if (!active()) return;
         clear(body);
+        form = element('fieldset', 'crypt-lord-game-shell__shortcut-form');
+        form.disabled = busy;
         const toolbar = element('div', 'crypt-lord-game-shell__shortcut-toolbar');
         const keep = element('label', 'crypt-lord-game-shell__shortcut-keep');
         const checkbox = element('input');
         checkbox.type = 'checkbox';
+        checkbox.dataset.keep = '';
         checkbox.checked = shortcutState.isKeepShortcutsEnabled;
-        checkbox.addEventListener('change', () => {
-          void persist(null, { ...shortcutState, isKeepShortcutsEnabled: checkbox.checked });
-        });
+        checkbox.addEventListener('change', () => void persist());
         keep.append(checkbox, element('span', '', '保持选中'));
         toolbar.append(keep, button('添加指令', 'crypt-lord-game-shell__dialog-button', () => {
-          void persist([...commands, '新增快捷指令'], null);
-        }));
-        body.appendChild(toolbar);
+          remember();
+          let name = '新增快捷指令';
+          let suffix = 2;
+          while (commands.includes(name)) name = `新增快捷指令 ${suffix++}`;
+          void persist([...commands, name]);
+        }), button('保存修改', 'crypt-lord-game-shell__dialog-button', () => void persist()),
+        button('↻', 'crypt-lord-game-shell__dialog-button', reload));
+        toolbar.lastChild.title = '重新读取快捷指令';
+        toolbar.lastChild.setAttribute('aria-label', '重新读取快捷指令');
+        form.appendChild(toolbar);
         if (!commands.length) {
-          body.appendChild(element('div', 'crypt-lord-game-shell__empty', '当前没有快捷指令'));
-          return;
+          form.appendChild(element('div', 'crypt-lord-game-shell__empty', '当前没有快捷指令'));
         }
         const list = element('div', 'crypt-lord-game-shell__shortcut-list');
         commands.forEach((command, index) => {
           const row = element('div', 'crypt-lord-game-shell__shortcut-row');
-          row.dataset.selected = String(shortcutState.pendingSupplementary.includes(command));
+          row.dataset.shortcutRow = '';
+          row.dataset.selected = String(shortcutState.pendingSupplementary.includes(command.trim()));
           const input = element('textarea', 'crypt-lord-game-shell__shortcut-input');
           input.value = command;
           input.rows = 2;
           input.setAttribute('aria-label', `快捷指令 ${index + 1}`);
-          input.addEventListener('change', () => {
-            const edited = input.value.trim();
-            if (!edited || edited === command) { input.value = command; return; }
-            const next = [...commands];
-            next[index] = edited;
-            const selected = shortcutState.pendingSupplementary.map(item => item === command ? edited : item);
-            void persist(next, { ...shortcutState, pendingSupplementary: selected });
-          });
+          input.addEventListener('input', remember);
           const actions = element('div', 'crypt-lord-game-shell__shortcut-actions');
           const immediate = button('✓', 'crypt-lord-game-shell__dialog-button', () => {
             const text = input.value.trim();
             if (!text) return;
+            const source = afterNative.getHost(), nativeInput = source?.document.querySelector('#send_textarea');
+            const draft = nativeInput?.value;
+            if (!nativeInput || nativeInput.disabled || nativeInput.readOnly) return message('原生输入框不可编辑', true);
             void contract.waitGlobalInitialized(INPUT_KEY, { timeoutMs: 10000 })
-              .then(inputAdapter => { inputAdapter.setInputText(text, 'sillytavern-native'); closeCommandPanel(); })
-              .catch(error => notify(`无法填入指令：${error?.message || error}`, 'error'));
+              .then(inputAdapter => {
+                guard();
+                const check = () => {
+                  guard();
+                  if (modules[INPUT_KEY] !== inputAdapter || !inputAdapter.status().ready || !input.isConnected ||
+                    input.value.trim() !== text || afterNative.getHost()?.document !== source.document ||
+                    source.document.querySelector('#send_textarea') !== nativeInput || !nativeInput.isConnected ||
+                    nativeInput.disabled || nativeInput.readOnly || nativeInput.value !== draft)
+                    throw Error('输入框、指令或草稿已变化，请重新选择');
+                };
+                check();
+                if (draft?.trim() && draft !== text && !source.window.confirm('原生输入框已有草稿，替换为此快捷指令？')) return;
+                check();
+                inputAdapter.setInputText(text, 'sillytavern-native');
+                closeCommandPanel();
+              })
+              .catch(error => { if (active()) message(`无法填入指令：${error?.message || error}`, true); });
           });
           immediate.title = '填入原生输入框';
-          const supplementary = button(shortcutState.pendingSupplementary.includes(command) ? '●' : '○', 'crypt-lord-game-shell__dialog-button', () => {
-            const selected = shortcutState.pendingSupplementary.includes(command)
-              ? shortcutState.pendingSupplementary.filter(item => item !== command)
-              : [...shortcutState.pendingSupplementary, command];
-            void persist(null, { ...shortcutState, pendingSupplementary: selected });
-          });
-          supplementary.title = '设为补充指令';
-          supplementary.setAttribute('aria-pressed', row.dataset.selected);
+          immediate.setAttribute('aria-label', '填入原生输入框');
+          const supplementary = element('label', 'crypt-lord-game-shell__shortcut-keep');
+          const toggle = element('input');
+          toggle.type = 'checkbox';
+          toggle.dataset.supplementary = '';
+          toggle.setAttribute('aria-label', `补充指令 ${index + 1}`);
+          toggle.checked = row.dataset.selected === 'true';
+          toggle.addEventListener('change', () => void persist());
+          supplementary.append(toggle, element('span', '', '补充'));
           const remove = button('×', 'crypt-lord-game-shell__dialog-button', () => {
-            void persist(commands.filter((_, position) => position !== index), {
-              ...shortcutState, pendingSupplementary: shortcutState.pendingSupplementary.filter(item => item !== command),
-            });
+            remember();
+            if (!(afterNative.getHost()?.window || window).confirm('删除此快捷指令？')) return;
+            const deleted = commands[index].trim();
+            void persist(commands.filter((_, position) => position !== index), { ...shortcutState,
+              pendingSupplementary: shortcutState.pendingSupplementary.filter(item => item !== deleted) });
           });
           remove.title = '删除此指令';
+          remove.setAttribute('aria-label', `删除指令 ${index + 1}`);
           actions.append(immediate, supplementary, remove);
           row.append(input, actions);
           list.appendChild(row);
         });
-        body.appendChild(list);
+        form.appendChild(list);
+        notice = element('div', 'crypt-lord-game-shell__shortcut-notice');
+        notice.setAttribute('role', 'status');
+        body.append(form, notice);
       };
       render();
+      if (dirty) message('未保存的修改已保留');
+      else if (options.repairState) message('默认状态已载入，尚未保存');
     } catch (error) {
-      if (token === state.commandLoadToken && state.commandPanel.dataset.open === 'true') {
+      if (active()) {
         clear(body);
         body.appendChild(element('div', 'crypt-lord-game-shell__empty', `快捷指令读取失败：${error?.message || error}`));
+        body.appendChild(button('重新读取', 'crypt-lord-game-shell__dialog-button', () => void showQuickShortcuts()));
+        if (/JSON 损坏|格式或版本/.test(String(error?.message || error))) {
+          body.appendChild(button('载入默认状态', 'crypt-lord-game-shell__dialog-button', () => {
+            if ((afterNative.getHost()?.window || window).confirm('载入默认勾选状态？只有点击保存后才会写入世界书。')) {
+              void showQuickShortcuts({ discardDraft: true, repairState: true });
+            }
+          }));
+        }
       }
     }
   }
 
   async function openEditor() {
     if (!Number.isInteger(state.current?.message_id)) return;
+    const messageId = state.current.message_id, token = state.chatToken;
     const editor = await contract.waitGlobalInitialized(EDITOR_KEY, { timeoutMs: 10000 });
-    await editor.open(state.current.message_id);
+    if (state.disposed || token !== state.chatToken || state.current?.message_id !== messageId) return;
+    await editor.open(messageId);
   }
 
   async function openVariableEditor() {
@@ -4229,8 +5877,10 @@
       notify('请先选择或生成一条真实 assistant 楼层。', 'warning');
       return;
     }
+    const token = state.chatToken, messageId = state.current.message_id;
     const workbench = await contract.waitGlobalInitialized(VARIABLE_WORKBENCH_KEY, { timeoutMs: 10000 });
-    await workbench.open(state.current.message_id);
+    if (state.disposed || token !== state.chatToken || messageId !== state.current?.message_id) return;
+    await workbench.open(messageId);
   }
 
   async function openOrganizationConsole(kind) {
@@ -4238,8 +5888,10 @@
       notify('请先选择或生成一条真实 assistant 楼层。', 'warning');
       return;
     }
+    const token = state.chatToken, messageId = state.current.message_id;
     const consoleUi = await contract.waitGlobalInitialized(ORGANIZATION_CONSOLE_KEY, { timeoutMs: 10000 });
-    await consoleUi.open(kind, state.current.message_id);
+    if (state.disposed || token !== state.chatToken || messageId !== state.current?.message_id) return;
+    await consoleUi.open(kind, messageId);
   }
 
   async function openDomainConsole() {
@@ -4265,483 +5917,59 @@
     await theater.open(state.current.message_id);
   }
 
-  function settingLabel(text, control) {
-    const row = element('label', 'crypt-lord-game-shell__setting');
-    row.append(element('span', 'crypt-lord-game-shell__setting-label', text), control);
-    return row;
-  }
-
   async function showSettings() {
-    if (!openModal('系统设置')) return;
-    const appearance = element('section', 'crypt-lord-game-shell__settings-section');
-    appearance.appendChild(element('h3', 'crypt-lord-game-shell__section-title', '界面'));
-    const themeRow = element('div', 'crypt-lord-game-shell__settings-row');
-    themeRow.append(
-      button('深色', 'crypt-lord-game-shell__dialog-button', () => setTheme('dark')),
-      button('浅色', 'crypt-lord-game-shell__dialog-button', () => setTheme('light')),
-    );
-    appearance.appendChild(themeRow);
-    state.modalBody.appendChild(appearance);
-
-    let settlement;
+    const token = state.chatToken;
     try {
-      settlement = await contract.waitGlobalInitialized(VARIABLE_SETTLEMENT_API_KEY, { timeoutMs: 10000 });
+      const settings = await contract.waitGlobalInitialized('cryptLord.systemSettingsUi', { timeoutMs: 10000 });
+      if (state.disposed || token !== state.chatToken) return;
+      await settings.open({ get: theme, set: setTheme });
     } catch (error) {
-      state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', `变量结算设置不可用：${error?.message || error}`));
-      return;
+      if (!state.disposed && token === state.chatToken) notify(`系统设置不可用：${error?.message || error}`, 'error');
     }
-    const settings = await settlement.readSettings();
-    if (!state.modal?.dataset.open || state.modal.dataset.open !== 'true') return;
-
-    const section = element('section', 'crypt-lord-game-shell__settings-section');
-    section.appendChild(element('h3', 'crypt-lord-game-shell__section-title', '变量结算副模型'));
-    const enabled = element('input');
-    enabled.type = 'checkbox';
-    enabled.checked = settings.enabled;
-    const streaming = element('input');
-    streaming.type = 'checkbox';
-    streaming.checked = settings.streamingEnabled;
-    const gemini = element('input');
-    gemini.type = 'checkbox';
-    gemini.checked = settings.gemini37fPrefill;
-    const custom = element('input');
-    custom.type = 'checkbox';
-    custom.checked = settings.useCustomApi;
-    section.append(
-      settingLabel('启用本回合变量结算', enabled),
-      settingLabel('静默流式请求', streaming),
-      settingLabel('Gemini 3.6+ 预填兼容', gemini),
-      settingLabel('使用自定义 API', custom),
-    );
-
-    const customFields = element('div', 'crypt-lord-game-shell__settings-fields');
-    const url = element('input', 'crypt-lord-game-shell__settings-input');
-    url.type = 'url';
-    url.placeholder = 'https://api.openai.com/v1';
-    url.value = settings.apiUrl;
-    const key = element('input', 'crypt-lord-game-shell__settings-input');
-    key.type = 'password';
-    key.autocomplete = 'new-password';
-    key.placeholder = 'API Key';
-    key.value = settings.apiKey;
-    const model = element('input', 'crypt-lord-game-shell__settings-input');
-    model.type = 'text';
-    model.placeholder = '模型名';
-    model.value = settings.model;
-    const models = element('select', 'crypt-lord-game-shell__settings-input');
-    const selected = element('option', '', settings.model || '获取列表后选择');
-    selected.value = settings.model;
-    models.appendChild(selected);
-    models.addEventListener('change', () => { model.value = models.value; });
-    customFields.append(
-      settingLabel('反代 URL', url),
-      settingLabel('API Key', key),
-      settingLabel('模型', model),
-      settingLabel('模型列表', models),
-    );
-    const customActions = element('div', 'crypt-lord-game-shell__settings-row');
-    const listButton = button('获取列表', 'crypt-lord-game-shell__dialog-button', async () => {
-      const apiurl = url.value.trim();
-      if (!apiurl) { notify('请先填写变量副模型的反代 URL。', 'warning'); return; }
-      listButton.disabled = true;
-      listButton.textContent = '获取中';
-      try {
-        const names = await settlement.getModelList({ apiurl, key: key.value.trim() });
-        clear(models);
-        Array.from(new Set((Array.isArray(names) ? names : []).map(name => String(name).trim()).filter(Boolean))).forEach(name => {
-          const option = element('option', '', name);
-          option.value = name;
-          option.selected = name === model.value.trim();
-          models.appendChild(option);
-        });
-        if (!models.options.length) models.appendChild(element('option', '', '未返回模型'));
-      } catch (error) {
-        notify(`获取模型列表失败：${error?.message || error}`, 'error');
-      } finally {
-        listButton.disabled = false;
-        listButton.textContent = '获取列表';
-      }
-    });
-    customActions.appendChild(listButton);
-    customFields.appendChild(customActions);
-    customFields.hidden = !custom.checked;
-    custom.addEventListener('change', () => { customFields.hidden = !custom.checked; });
-    section.appendChild(customFields);
-
-    const retry = element('input', 'crypt-lord-game-shell__settings-input');
-    retry.type = 'number';
-    retry.min = '0';
-    retry.max = '99';
-    retry.step = '1';
-    retry.value = String(settings.retryLimit);
-    section.appendChild(settingLabel('失败重试次数', retry));
-    const actions = element('div', 'crypt-lord-game-shell__settings-row');
-    actions.appendChild(button('保存设置', 'crypt-lord-game-shell__dialog-button', async () => {
-      try {
-        await settlement.saveSettings({
-          enabled: enabled.checked,
-          streamingEnabled: streaming.checked,
-          gemini37fPrefill: gemini.checked,
-          useCustomApi: custom.checked,
-          apiUrl: url.value,
-          apiKey: key.value,
-          model: model.value,
-          retryLimit: retry.value,
-        });
-        notify('变量结算副模型设置已保存到此脚本。', 'success');
-      } catch (error) {
-        notify(`保存变量结算设置失败：${error?.message || error}`, 'error');
-      }
-    }));
-    section.appendChild(actions);
-    state.modalBody.appendChild(section);
-  }
-
-  function domainTextarea(label, domain, data) {
-    const section = element('section', 'crypt-lord-game-shell__variable-domain');
-    section.dataset.domain = domain;
-    section.appendChild(element('h3', 'crypt-lord-game-shell__section-title', label));
-    const textarea = element('textarea', 'crypt-lord-game-shell__variable-json');
-    textarea.spellcheck = false;
-    textarea.value = JSON.stringify(record(data?.[domain]) ? data[domain] : {}, null, 2);
-    section.appendChild(textarea);
-    return section;
-  }
-
-  function parseVariableDomains(container, originalData) {
-    const next = typeof window.structuredClone === 'function'
-      ? window.structuredClone(record(originalData) ? originalData : {})
-      : JSON.parse(JSON.stringify(record(originalData) ? originalData : {}));
-    for (const domain of ['stat_data', 'npc_data', 'world_data']) {
-      const textarea = container.querySelector(`[data-domain="${domain}"] textarea`);
-      let parsed;
-      try { parsed = JSON.parse(textarea?.value || '{}'); } catch (error) {
-        throw new Error(`${domain} 不是有效 JSON：${error.message}`);
-      }
-      if (!record(parsed)) throw new Error(`${domain} 必须是 JSON 对象。`);
-      next[domain] = parsed;
-    }
-    return next;
-  }
-
-  function cloneRecord(value) {
-    const source = record(value) ? value : {};
-    if (typeof window.structuredClone === 'function') return window.structuredClone(source);
-    return JSON.parse(JSON.stringify(source));
-  }
-
-  function decodePointerSegment(value) {
-    return String(value).replace(/~1/g, '/').replace(/~0/g, '~');
-  }
-
-  function encodePointerSegment(value) {
-    return String(value).replace(/~/g, '~0').replace(/\//g, '~1');
-  }
-
-  function variablePath(segments) {
-    return `/${segments.map(encodePointerSegment).join('/')}`;
-  }
-
-  function getTreeValue(source, segments) {
-    return segments.reduce((value, segment) => value == null ? undefined : value[segment], source);
-  }
-
-  function setTreeValue(source, segments, value) {
-    if (!segments.length) return value;
-    const parent = getTreeValue(source, segments.slice(0, -1));
-    if (!record(parent) && !Array.isArray(parent)) throw new Error('变量路径的父节点不是对象或列表。');
-    parent[segments.at(-1)] = value;
-    return source;
-  }
-
-  function deleteTreeValue(source, segments) {
-    if (!segments.length) throw new Error('不能删除变量域根节点。');
-    const parent = getTreeValue(source, segments.slice(0, -1));
-    if (Array.isArray(parent)) parent.splice(Number(segments.at(-1)), 1);
-    else if (record(parent)) delete parent[segments.at(-1)];
-    else throw new Error('变量路径的父节点不是对象或列表。');
-    return source;
-  }
-
-  async function showVariableWorkbench() {
-    if (!openModal('变量修改器')) return;
-    let stateStore;
-    let target;
-    try {
-      [stateStore, target] = await Promise.all([
-        contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }),
-        contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 }).then(store => store.readMessage(state.current.message_id)),
-      ]);
-    } catch (error) {
-      state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', `无法读取真实楼层变量：${error?.message || error}`));
-      return;
-    }
-    if (target?.role !== 'assistant') {
-      state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', '当前目标不是 assistant 楼层，无法修改变量。'));
-      return;
-    }
-
-    let workingData = cloneRecord(target.data);
-    let patchInput = null;
-    const expandedPaths = new Set(['stat_data', 'npc_data', 'world_data']);
-    const pendingPatches = [];
-    const toolbar = element('div', 'crypt-lord-game-shell__variable-toolbar');
-    const deepSection = element('section', 'crypt-lord-game-shell__variable-tree');
-    const deepTools = element('div', 'crypt-lord-game-shell__variable-tree-tools');
-    const search = element('input', 'crypt-lord-game-shell__variable-search');
-    search.type = 'search';
-    search.placeholder = '搜索变量名或值';
-    const tree = element('div', 'crypt-lord-game-shell__variable-tree-body');
-    const domains = element('div', 'crypt-lord-game-shell__variable-domains');
-    const status = element('div', 'crypt-lord-game-shell__variable-status', `目标楼层 #${target.message_id}。仅会写入该真实 assistant 楼层。`);
-    const renderDomains = data => {
-      clear(domains);
-      domains.append(
-        domainTextarea('角色状态 stat_data', 'stat_data', data),
-        domainTextarea('人物数据 npc_data', 'npc_data', data),
-        domainTextarea('世界数据 world_data', 'world_data', data),
-      );
-    };
-    renderDomains(workingData);
-
-    const syncTreeToJson = () => {
-      workingData = parseVariableDomains(domains, workingData);
-      return workingData;
-    };
-    const syncPendingPatches = () => {
-      if (!patchInput || !pendingPatches.length) return;
-      patchInput.value = JSON.stringify({
-        stat_data: pendingPatches.filter(item => item.domain === 'stat_data').map(({ domain, ...item }) => item),
-        npc_data: pendingPatches.filter(item => item.domain === 'npc_data').map(({ domain, ...item }) => item),
-        world_data: pendingPatches.filter(item => item.domain === 'world_data').map(({ domain, ...item }) => item),
-      }, null, 2);
-    };
-    const recordTreePatch = (domain, op, segments, value) => {
-      const command = { domain, op, path: variablePath(segments) };
-      if (op !== 'remove') command.value = cloneRecord({ value }).value;
-      pendingPatches.push(command);
-      syncPendingPatches();
-    };
-    const defaultValueFor = kind => {
-      if (kind === '2') return 0;
-      if (kind === '3') return false;
-      if (kind === '4') return {};
-      if (kind === '5') return [];
-      return '新内容';
-    };
-    const promptNewValue = (parentPath, isArray) => {
-      const hostWindow = afterNative.getHost()?.window || window;
-      let key = '';
-      if (!isArray) {
-        key = hostWindow.prompt(`在 ${parentPath || '根节点'} 下新增变量名：`, '新变量');
-        if (key === null || !key.trim()) return null;
-        key = key.trim();
-      }
-      const kind = hostWindow.prompt('选择类型：1 文本；2 数字；3 开关；4 对象；5 列表', '1');
-      if (!['1', '2', '3', '4', '5'].includes(String(kind).trim())) return null;
-      return { key, value: defaultValueFor(String(kind).trim()) };
-    };
-    const renderTree = () => {
-      clear(tree);
-      const filter = search.value.trim().toLocaleLowerCase();
-      const matches = (key, value) => !filter || String(key).toLocaleLowerCase().includes(filter) || displayValue(value, '').toLocaleLowerCase().includes(filter);
-      const renderNode = (domain, key, value, segments, rootNode = false) => {
-        const objectNode = record(value) || Array.isArray(value);
-        const children = objectNode
-          ? Object.entries(value).filter(([childKey]) => childKey !== '$meta').map(([childKey, childValue]) => renderNode(domain, childKey, childValue, [...segments, childKey])).filter(Boolean)
-          : [];
-        if (!matches(key, value) && !children.length) return null;
-        const path = `${domain}:${variablePath(segments)}`;
-        const row = element('div', 'crypt-lord-game-shell__variable-tree-row');
-        const node = element('div', 'crypt-lord-game-shell__variable-tree-node');
-        if (objectNode) {
-          const toggle = button(expandedPaths.has(path) || filter ? '−' : '+', 'crypt-lord-game-shell__tree-icon-button', () => {
-            if (expandedPaths.has(path)) expandedPaths.delete(path);
-            else expandedPaths.add(path);
-            renderTree();
-          });
-          toggle.title = '展开或收起';
-          node.appendChild(toggle);
-        } else {
-          node.appendChild(element('span', 'crypt-lord-game-shell__tree-spacer'));
-        }
-        node.appendChild(element('strong', 'crypt-lord-game-shell__variable-tree-key', rootNode ? domain : key));
-        if (objectNode) {
-          node.appendChild(element('span', 'crypt-lord-game-shell__variable-tree-summary', Array.isArray(value) ? `列表 (${value.length})` : `对象 (${Object.keys(value).filter(childKey => childKey !== '$meta').length})`));
-          const add = button('+', 'crypt-lord-game-shell__tree-icon-button', () => {
-            try {
-              syncTreeToJson();
-              const parent = getTreeValue(workingData[domain], segments);
-              const addition = promptNewValue(variablePath(segments), Array.isArray(parent));
-              if (!addition) return;
-              const nextSegments = Array.isArray(parent) ? [...segments, String(parent.length)] : [...segments, addition.key];
-              if (Array.isArray(parent)) parent.push(addition.value);
-              else parent[addition.key] = addition.value;
-              recordTreePatch(domain, 'add', nextSegments, addition.value);
-              expandedPaths.add(path);
-              renderDomains(workingData);
-              renderTree();
-            } catch (error) { notify(`新增变量失败：${error?.message || error}`, 'error'); }
-          });
-          add.title = '新增字段';
-          node.appendChild(add);
-        } else {
-          const input = element('input', 'crypt-lord-game-shell__variable-tree-input');
-          if (typeof value === 'boolean') {
-            input.type = 'checkbox';
-            input.checked = value;
-          } else {
-            input.type = typeof value === 'number' ? 'number' : 'text';
-            input.value = value === null ? '' : String(value);
-          }
-          input.addEventListener('change', () => {
-            try {
-              syncTreeToJson();
-              const nextValue = typeof value === 'boolean' ? input.checked : typeof value === 'number' ? Number(input.value) : input.value;
-              setTreeValue(workingData[domain], segments, nextValue);
-              recordTreePatch(domain, 'replace', segments, nextValue);
-              renderDomains(workingData);
-              status.textContent = '已修改变量草稿；点击“保存三个变量域”后才会落盘。';
-            } catch (error) { notify(`修改变量失败：${error?.message || error}`, 'error'); }
-          });
-          node.appendChild(input);
-        }
-        if (!rootNode) {
-          const remove = button('×', 'crypt-lord-game-shell__tree-icon-button crypt-lord-game-shell__tree-delete', () => {
-            const hostWindow = afterNative.getHost()?.window || window;
-            if (!hostWindow.confirm(`删除变量 ${variablePath(segments)}？`)) return;
-            try {
-              syncTreeToJson();
-              deleteTreeValue(workingData[domain], segments);
-              recordTreePatch(domain, 'remove', segments);
-              renderDomains(workingData);
-              renderTree();
-              status.textContent = '已删除变量草稿；点击“保存三个变量域”后才会落盘。';
-            } catch (error) { notify(`删除变量失败：${error?.message || error}`, 'error'); }
-          });
-          remove.title = '删除字段';
-          node.appendChild(remove);
-        }
-        row.appendChild(node);
-        if (objectNode && (expandedPaths.has(path) || filter)) {
-          const childBox = element('div', 'crypt-lord-game-shell__variable-tree-children');
-          children.forEach(child => childBox.appendChild(child));
-          row.appendChild(childBox);
-        }
-        return row;
-      };
-      ['stat_data', 'npc_data', 'world_data'].forEach(domain => {
-        const rootNode = renderNode(domain, domain, record(workingData[domain]) ? workingData[domain] : {}, [], true);
-        if (rootNode) tree.appendChild(rootNode);
-      });
-      if (!tree.childElementCount) tree.appendChild(element('div', 'crypt-lord-game-shell__empty', '没有匹配的变量。'));
-    };
-    deepSection.appendChild(element('h3', 'crypt-lord-game-shell__section-title', '深度树编辑'));
-    deepTools.append(search, button('全部展开', 'crypt-lord-game-shell__dialog-button', () => {
-      const collect = (domain, value, segments = []) => {
-        if (!record(value) && !Array.isArray(value)) return;
-        expandedPaths.add(`${domain}:${variablePath(segments)}`);
-        Object.entries(value).filter(([key]) => key !== '$meta').forEach(([key, child]) => collect(domain, child, [...segments, key]));
-      };
-      ['stat_data', 'npc_data', 'world_data'].forEach(domain => collect(domain, workingData[domain], []));
-      renderTree();
-    }), button('全部收起', 'crypt-lord-game-shell__dialog-button', () => {
-      expandedPaths.clear();
-      renderTree();
-    }));
-    search.addEventListener('input', renderTree);
-    deepSection.append(deepTools, tree);
-    renderTree();
-
-    const reload = button('重新读取', 'crypt-lord-game-shell__dialog-button', async () => {
-      const fresh = await stateStore.readMessage(target.message_id);
-      workingData = record(fresh?.data) ? fresh.data : {};
-      pendingPatches.length = 0;
-      renderDomains(workingData);
-      renderTree();
-      status.textContent = `已从真实楼层 #${target.message_id} 重新读取。`;
-    });
-    const save = button('保存三个变量域', 'crypt-lord-game-shell__dialog-button', async () => {
-      try {
-        const next = syncTreeToJson();
-        save.disabled = true;
-        await stateStore.writeAssistantData(target.message_id, next);
-        workingData = next;
-        status.textContent = `已保存到真实 assistant 楼层 #${target.message_id}。`;
-        await refresh();
-        notify('变量已保存到当前真实 assistant 楼层。', 'success');
-      } catch (error) {
-        notify(`保存变量失败：${error?.message || error}`, 'error');
-      } finally {
-        save.disabled = false;
-      }
-    });
-    toolbar.append(reload, save, button('副 API 设置', 'crypt-lord-game-shell__dialog-button', () => { void showSettings(); }));
-
-    const patchSection = element('section', 'crypt-lord-game-shell__variable-patch');
-    patchSection.appendChild(element('h3', 'crypt-lord-game-shell__section-title', 'JSON Patch 原始模式'));
-    patchInput = element('textarea', 'crypt-lord-game-shell__variable-json');
-    patchInput.spellcheck = false;
-    patchInput.placeholder = '{\n  "stat_data": [{ "op": "replace", "path": "/当前活力", "value": 18 }],\n  "npc_data": [],\n  "world_data": []\n}';
-    const patchActions = element('div', 'crypt-lord-game-shell__settings-row');
-    const applyPatch = button('应用补丁到草稿', 'crypt-lord-game-shell__dialog-button', async () => {
-      try {
-        const patch = await contract.waitGlobalInitialized(VARIABLE_PATCH_KEY, { timeoutMs: 10000 });
-        const result = patch.apply(`<UpdateVariable><JSONPatch>${patchInput.value}</JSONPatch></UpdateVariable>`, parseVariableDomains(domains, workingData));
-        if (!result.applied) throw new Error('没有识别到可应用的 add、replace 或 remove 指令。');
-        workingData = result.data;
-        pendingPatches.length = 0;
-        renderDomains(workingData);
-        renderTree();
-        status.textContent = `已将 ${result.applied} 项补丁写入草稿；点击“保存三个变量域”后才会落盘。`;
-      } catch (error) {
-        notify(`应用补丁失败：${error?.message || error}`, 'error');
-      }
-    });
-    const recoverPatch = button('恢复本回合提取', 'crypt-lord-game-shell__dialog-button', async () => {
-      const extracted = workingData?.cryptLord?.lastUpdateVariable;
-      if (!extracted) { notify('当前楼层没有可恢复的 UpdateVariable 提取记录。', 'warning'); return; }
-      const patch = await contract.waitGlobalInitialized(VARIABLE_PATCH_KEY, { timeoutMs: 10000 });
-      const result = patch.apply(extracted, parseVariableDomains(domains, workingData));
-      if (!result.applied) { notify('提取记录中没有可应用的变量补丁。', 'warning'); return; }
-      workingData = result.data;
-      pendingPatches.length = 0;
-      renderDomains(workingData);
-      renderTree();
-      patchInput.value = extracted.replace(/^.*?<JSONPatch>|<\/JSONPatch>[\s\S]*$/gi, '').trim();
-      status.textContent = `已恢复 ${result.applied} 项本回合变量补丁到草稿。`;
-    });
-    patchActions.append(applyPatch, recoverPatch);
-    patchSection.append(patchInput, patchActions);
-
-    const aiSection = element('section', 'crypt-lord-game-shell__variable-patch');
-    aiSection.appendChild(element('h3', 'crypt-lord-game-shell__section-title', 'AI 变量修复与修改'));
-    const instruction = element('textarea', 'crypt-lord-game-shell__variable-instruction');
-    instruction.placeholder = '例如：将当前地点改为贝克兰德北区；移除已死亡 NPC 的关系记录。';
-    const repair = button('让 AI 生成补丁', 'crypt-lord-game-shell__dialog-button', async () => {
-      try {
-        const settlement = await contract.waitGlobalInitialized(VARIABLE_SETTLEMENT_API_KEY, { timeoutMs: 10000 });
-        repair.disabled = true;
-        repair.textContent = '处理中';
-        const result = await settlement.repair({ previousData: parseVariableDomains(domains, workingData), instruction: instruction.value });
-        workingData = result.data;
-        pendingPatches.length = 0;
-        renderDomains(workingData);
-        renderTree();
-        status.textContent = `AI 已生成 ${result.applied} 项变量修改到草稿；检查后点击“保存三个变量域”。`;
-      } catch (error) {
-        notify(`AI 变量修复失败：${error?.message || error}`, 'error');
-      } finally {
-        repair.disabled = false;
-        repair.textContent = '让 AI 生成补丁';
-      }
-    });
-    aiSection.append(instruction, repair);
-
-    state.modalBody.append(toolbar, status, deepSection, domains, patchSection, aiSection);
   }
 
   function showFeature(feature) {
+    if (feature.id === 'npc-progression') {
+      const token = state.chatToken, messageId = state.current?.message_id ?? null;
+      return void contract.waitGlobalInitialized('cryptLord.npcProgressionUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open(messageId))
+        .catch(error => {
+          if (token === state.chatToken && !state.disposed) notify(`打开NPC成长失败：${error?.message || error}`, 'error');
+        });
+    }
+    if (feature.id === 'attribute-recalculation') {
+      const token = state.chatToken, messageId = state.current?.message_id ?? null;
+      return void contract.waitGlobalInitialized('cryptLord.attributeRecalculationUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open(messageId))
+        .catch(error => {
+          if (token === state.chatToken && !state.disposed) notify(`打开属性重算失败：${error?.message || error}`, 'error');
+        });
+    }
+    if (feature.id === 'cashflow') {
+      const token = state.chatToken, messageId = state.current?.message_id ?? null;
+      return void contract.waitGlobalInitialized('cryptLord.cashflowUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open(messageId))
+        .catch(error => {
+          if (token === state.chatToken && !state.disposed) notify(`打开钱包与稳定收支失败：${error?.message || error}`, 'error');
+        });
+    }
+    if (feature.id === 'world-report') {
+      const token = state.chatToken, messageId = state.current?.message_id ?? null;
+      return void contract.waitGlobalInitialized('cryptLord.worldReportUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open(messageId))
+        .catch(error => {
+          if (token === state.chatToken && !state.disposed) notify(`打开世界线同步报告失败：${error?.message || error}`, 'error');
+        });
+    }
+    if (feature.id === 'extracted') {
+      const token = state.chatToken;
+      return void contract.waitGlobalInitialized('cryptLord.responseInspectorUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed &&
+          api.open(Number.isInteger(state.current?.message_id) ? state.current.message_id : null, 'variables'))
+        .catch(error => {
+          if (token === state.chatToken && !state.disposed) notify(`打开提取内容失败：${error?.message || error}`, 'error');
+        });
+    }
     if (feature.id === 'settings') return showSettings();
     if (feature.id === 'variables') return openVariableEditor();
     if (feature.id === 'variable-ai-config') return void contract.waitGlobalInitialized(AI_CONTEXT_CONFIG_UI_KEY, { timeoutMs: 10000 }).then(api => api.open());
@@ -4767,7 +5995,39 @@
     if (feature.id === 'random-events') return void contract.waitGlobalInitialized(RANDOM_EVENTS_KEY, { timeoutMs: 10000 }).then(api => api.open()).catch(error => notify(`打开随机事件失败：${error?.message || error}`, 'error'));
     if (feature.id === 'event-generator') return void contract.waitGlobalInitialized(EVENT_GENERATOR_KEY, { timeoutMs: 10000 }).then(api => api.open()).catch(error => notify(`打开事件词库生成失败：${error?.message || error}`, 'error'));
     if (feature.id === 'inventory') return renderInventory();
+    if (feature.id === 'journey') return void contract.waitGlobalInitialized(JOURNEY_READER_KEY, { timeoutMs: 10000 })
+      .then(api => api.open(Number.isInteger(state.current?.message_id) ? state.current.message_id : null))
+      .catch(error => notify(`打开本周目经历失败：${error?.message || error}`, 'error'));
+    if (feature.id === 'battle-prompt-mode') {
+      const token = state.chatToken;
+      return void contract.waitGlobalInitialized('cryptLord.battlePromptModeUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open())
+        .catch(error => notify(`打开战斗提示模式失败：${error?.message || error}`, 'error'));
+    }
+    if (feature.id === 'collection-growth') {
+      const token = state.chatToken;
+      return void contract.waitGlobalInitialized('cryptLord.collectionGrowthUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open())
+        .catch(error => notify(`打开变量增殖提醒失败：${error?.message || error}`, 'error'));
+    }
+    if (feature.id === 'journey-sequence') {
+      const token = state.chatToken;
+      return void contract.waitGlobalInitialized('cryptLord.journeySequenceUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed && api.open())
+        .catch(error => notify(`打开经历序号修正失败：${error?.message || error}`, 'error'));
+    }
+    if (feature.id === 'danmaku') {
+      const token = state.chatToken;
+      return void contract.waitGlobalInitialized('cryptLord.danmakuUi', { timeoutMs: 10000 })
+        .then(api => token === state.chatToken && !state.disposed &&
+          api.open(Number.isInteger(state.current?.message_id) ? state.current.message_id : null))
+        .catch(error => notify(`打开楼层弹幕失败：${error?.message || error}`, 'error'));
+    }
+    if (feature.id === 'current-clues') return void contract.waitGlobalInitialized(CURRENT_CLUES_KEY, { timeoutMs: 10000 })
+      .then(api => api.open(Number.isInteger(state.current?.message_id) ? state.current.message_id : null))
+      .catch(error => notify(`打开当前线索失败：${error?.message || error}`, 'error'));
     if (feature.id === 'relationships') return showRelationships();
+    if (feature.id === 'archive') return showArchive();
     if (feature.id === 'abilities') return renderAbilities();
     if (feature.id === 'command') return void showQuickShortcuts();
     if (feature.id === 'source-castle') return void contract.waitGlobalInitialized(SOURCE_CASTLE_UI_KEY, { timeoutMs: 10000 }).then(api => api.open()).catch(error => notify(`打开源堡系统失败：${error?.message || error}`, 'error'));
@@ -4776,34 +6036,15 @@
       return;
     }
     if (!openModal(feature.label)) return;
-    if (feature.id === 'archive') {
-      renderArchive();
-      return;
-    }
     if (feature.id === 'actions') {
-      const actions = actionsForCurrent();
-      if (!actions.length) {
-        state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', '本楼层暂无行动选项'));
-      } else {
-        const list = element('div', 'crypt-lord-game-shell__action-list');
-        actions.slice(0, 8).forEach((action, index) => {
-          list.appendChild(button(`${index + 1}. ${safeText(action)}`, 'crypt-lord-game-shell__action-button', () => { void fillAction(safeText(action, '')); }));
-        });
-        state.modalBody.appendChild(list);
-      }
-      return;
-    }
-    if (feature.id === 'journey') {
-      const journey = state.current?.compatibility?.journey;
-      if (!journey) {
-        state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', '当前楼层未包含可识别的本周目经历'));
-      } else {
-        renderValue(state.modalBody, journey);
-      }
-      return;
-    }
-    if (feature.id === 'extracted' && state.current?.compatibility?.journey) {
-      renderValue(state.modalBody, state.current.compatibility.journey);
+      const body = state.modalBody, id = state.current?.message_id, token = state.chatToken;
+      const active = () => !state.disposed && state.chatToken === token && state.current?.message_id === id &&
+        state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === feature.label;
+      body.appendChild(element('div', 'crypt-lord-game-shell__empty', '正在读取行动选项...'));
+      void contract.waitGlobalInitialized('cryptLord.actionOptions', { timeoutMs: 10000 })
+        .then(service => service.createList(id, active))
+        .then(list => { if (active()) body.replaceChildren(list); })
+        .catch(error => { if (active()) body.replaceChildren(element('div', 'crypt-lord-game-shell__empty', `行动读取失败：${error.message}`)); });
       return;
     }
     const value = valueFor(feature, state.current);
@@ -4840,378 +6081,31 @@
       .finally(() => { if (token === state.chatToken) state.pathwayPoolPromise = null; });
   }
 
-  function drawArchiveRadar(canvas, axes) {
-    const hostWindow = afterNative.getHost()?.window || window;
-    const dpr = Math.max(1, Math.min(3, hostWindow.devicePixelRatio || 1));
-    canvas.width = Math.round(256 * dpr);
-    canvas.height = Math.round(240 * dpr);
-    canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', `六维上限相对图：${axes.map(axis => `${axis.label} ${Math.round(axis.value)}%`).join('，')}`);
-    const ctx = canvas.getContext?.('2d');
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const light = (state.root?.dataset.theme || theme()) === 'light';
-    const accent = light ? '#91541f' : '#daa520';
-    const muted = light ? '#67513d' : '#e3c69b';
-    const radius = 72;
-    const cx = 128;
-    const cy = 116;
-    const point = (index, distance) => {
-      const angle = Math.PI * 2 * index / axes.length - Math.PI / 2;
-      return [cx + Math.cos(angle) * distance, cy + Math.sin(angle) * distance];
-    };
-    ctx.clearRect(0, 0, 256, 240);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = light ? 'rgba(145,84,31,.3)' : 'rgba(218,165,32,.35)';
-    for (let level = 1; level <= 5; level++) {
-      ctx.beginPath();
-      axes.forEach((_, index) => {
-        const [x, y] = point(index, radius * level / 5);
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.closePath();
-      ctx.stroke();
+  function showArchive() {
+    if (modules['cryptLord.characterArchiveUi']) {
+      closeModal();
+      return modules['cryptLord.characterArchiveUi'].open(state.current?.message_id ?? null);
     }
-    axes.forEach((axis, index) => {
-      const [x, y] = point(index, radius);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      const [labelX, labelY] = point(index, radius + 27);
-      ctx.fillStyle = muted;
-      ctx.font = '12px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(axis.label, labelX, labelY);
-    });
-    ctx.beginPath();
-    axes.forEach((axis, index) => {
-      const [x, y] = point(index, radius * axis.value / 100);
-      if (index === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.fillStyle = light ? 'rgba(145,84,31,.22)' : 'rgba(218,165,32,.22)';
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 2;
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = accent;
-    axes.forEach((axis, index) => {
-      const [x, y] = point(index, radius * axis.value / 100);
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
-  function renderArchive() {
-    if (!state.modalBody) return;
-    clear(state.modalBody);
-    const stat = state.current?.data?.stat_data;
-    if (!record(stat)) {
-      state.modalBody.appendChild(element('div', 'crypt-lord-game-shell__empty', '当前真实 assistant 楼层没有角色档案数据'));
-      return;
-    }
-    const view = characterPanelState.archive(stat);
-    const layout = element('div', 'crypt-lord-game-shell__archive-layout');
-    const profile = element('section', 'crypt-lord-game-shell__archive-section crypt-lord-game-shell__archive-profile');
-    profile.appendChild(element('h3', '', '调查员档案'));
-    const identity = element('p', 'crypt-lord-game-shell__archive-identity',
-      `${safeText(stat.名称 ?? statForCurrent().名称, '<User>')} · ${safeText(stat.当前序列, '普通人')}`);
-    profile.appendChild(identity);
-    const attributes = element('div', 'crypt-lord-game-shell__archive-attributes');
-    view.attributes.forEach(item => {
-      const row = element('div', 'crypt-lord-game-shell__archive-attribute');
-      const line = element('div', 'crypt-lord-game-shell__archive-line');
-      line.append(element('span', '', item.label),
-        element('strong', '', item.label === '运气' ? String(item.maximum) : `${item.current} / ${item.maximum}`));
-      const track = element('span', 'crypt-lord-game-shell__attribute-track');
-      const fill = element('span', 'crypt-lord-game-shell__attribute-fill');
-      fill.style.width = `${item.percentage}%`;
-      fill.dataset.level = item.percentage < 34 ? 'low' : item.percentage < 67 ? 'medium' : 'high';
-      track.appendChild(fill);
-      row.append(line, track);
-      attributes.appendChild(row);
-    });
-    profile.appendChild(attributes);
-    const ages = element('dl', 'crypt-lord-game-shell__archive-ages');
-    ages.append(element('dt', '', '身体年龄'), element('dd', '', safeText(view.bodyAge)),
-      element('dt', '', '灵魂年龄'), element('dd', '', safeText(view.soulAge)));
-    profile.appendChild(ages);
-    const canvas = element('canvas', 'crypt-lord-game-shell__archive-radar');
-    profile.appendChild(canvas);
-    layout.appendChild(profile);
-
-    const quests = element('section', 'crypt-lord-game-shell__archive-section');
-    const questHeading = element('h3', 'crypt-lord-game-shell__quest-title');
-    questHeading.append(element('span', '', '<User>接受的任务'),
-      element('span', 'crypt-lord-game-shell__quest-count', `${view.quests.length}/10`));
-    quests.appendChild(questHeading);
-    if (view.quests.length >= 10) quests.appendChild(element('p', 'crypt-lord-game-shell__quest-warning', '任务已满 10 个，新任务将被自动清理'));
-    if (!view.quests.length) quests.appendChild(element('p', 'crypt-lord-game-shell__archive-empty', '暂无接受的任务'));
-    view.quests.forEach(quest => {
-      const row = element('div', 'crypt-lord-game-shell__archive-entry');
-      const heading = element('div', 'crypt-lord-game-shell__quest-heading');
-      heading.appendChild(element('strong', '', quest.name));
-      const remove = button('×', 'crypt-lord-game-shell__quest-delete', () => { void deleteAcceptedQuest(quest); });
-      remove.title = `删除任务「${quest.name}」`;
-      remove.setAttribute('aria-label', remove.title);
-      remove.disabled = state.questBusy;
-      heading.appendChild(remove);
-      row.appendChild(heading);
-      [
-        ['委托者', quest.commissioner || '无'],
-        ['概述', quest.summary || '无'],
-        ['完成条件', quest.condition || '无'],
-        ['奖励', quest.reward || '无'],
-      ].forEach(([label, value]) => {
-        const detail = element('div', 'crypt-lord-game-shell__quest-row');
-        detail.append(element('span', '', label), element('span', '', value));
-        row.appendChild(detail);
-      });
-      row.appendChild(element('div', 'crypt-lord-game-shell__quest-flags',
-        `${quest.completed ? '已完成' : '未完成'} · ${quest.claimed ? '已领奖' : '未领奖'}`));
-      quests.appendChild(row);
-    });
-    layout.appendChild(quests);
-
-    const traits = element('section', 'crypt-lord-game-shell__archive-section');
-    traits.appendChild(element('h3', '', '非凡特性'));
-    if (!view.traits.length) traits.appendChild(element('p', 'crypt-lord-game-shell__archive-empty', '暂无非凡特性'));
-    view.traits.forEach(trait => {
-      const row = element('div', 'crypt-lord-game-shell__archive-entry');
-      row.append(element('strong', '', `【${trait.tier}】${trait.name}`),
-        element('p', '', trait.description));
-      trait.bonuses.forEach(([key, value]) =>
-        row.appendChild(element('p', 'crypt-lord-game-shell__archive-subtle', `${key}：${displayValue(value)}`)));
-      traits.appendChild(row);
-    });
-    layout.appendChild(traits);
-
-    const equipment = element('section', 'crypt-lord-game-shell__archive-section');
-    equipment.appendChild(element('h3', '', '装备'));
-    if (!view.equipment.length) equipment.appendChild(element('p', 'crypt-lord-game-shell__archive-empty', '暂无装备'));
-    view.equipment.forEach(item => {
-      const row = element('div', 'crypt-lord-game-shell__archive-equipment');
-      row.append(element('strong', '', item.name),
-        element('span', '', [item.type, item.tier, item.equipped ? '已装备' : ''].filter(Boolean).join(' · ')));
-      equipment.appendChild(row);
-    });
-    layout.appendChild(equipment);
-
-    const acting = element('section', 'crypt-lord-game-shell__archive-section crypt-lord-game-shell__archive-acting');
-    acting.appendChild(element('h3', '', '扮演法详情'));
-    const digestion = Math.max(0, Math.min(100, view.digestion));
-    const line = element('div', 'crypt-lord-game-shell__archive-line');
-    line.append(element('span', '', '消化进度'), element('strong', '', `${view.digestion}%`));
-    const track = element('span', 'crypt-lord-game-shell__attribute-track');
-    const fill = element('span', 'crypt-lord-game-shell__attribute-fill');
-    fill.style.width = `${digestion}%`;
-    track.appendChild(fill);
-    acting.append(line, track);
-    const loss = element('div', 'crypt-lord-game-shell__archive-line');
-    loss.append(element('span', '', '失控进度'), element('strong', '', String(view.loss)));
-    acting.appendChild(loss);
-    layout.appendChild(acting);
-
-    state.modalBody.appendChild(layout);
-    drawArchiveRadar(canvas, view.radar);
-  }
-
-  function relationshipFields(parent, items) {
-    if (!items.length) return;
-    const list = element('dl', 'crypt-lord-game-shell__relationship-fields');
-    items.forEach(([label, value]) => {
-      list.append(element('dt', '', label), element('dd', '', displayValue(value)));
-    });
-    parent.appendChild(list);
+    notify('角色档案模块尚未加载。', 'error');
+    return false;
   }
 
   function showRelationships() {
-    if (!openModal('人物关系')) return;
-    state.relationshipBatch = false;
-    state.relationshipSelected.clear();
-    renderRelationships();
-  }
-
-  function renderRelationships() {
-    if (!state.modalBody || state.modalTitle?.textContent !== '人物关系') return;
-    const scrollTop = state.modalBody.scrollTop;
-    const opened = new Set(Array.from(state.modalBody.querySelectorAll('.crypt-lord-game-shell__relationship-detail[open]'))
-      .map(node => node.closest('.crypt-lord-game-shell__relationship')?.dataset.key));
-    const data = state.current?.data;
-    const entries = relationshipState.list(data);
-    const byKey = new Map(entries.map(entry => [entry.key, entry]));
-    for (const key of state.relationshipSelected) {
-      if (!byKey.has(key)) state.relationshipSelected.delete(key);
+    if (modules['cryptLord.relationshipsUi']) {
+      closeModal();
+      return modules['cryptLord.relationshipsUi'].open(state.current?.message_id ?? null);
     }
-    clear(state.modalBody);
-    if (!record(data?.stat_data?.人物关系列表)) {
-      state.modalBody.appendChild(element('p', 'crypt-lord-game-shell__empty', '当前真实 assistant 楼层没有人物关系列表'));
-      return;
-    }
-    const toolbar = element('div', 'crypt-lord-game-shell__relationship-toolbar');
-    toolbar.appendChild(button(state.relationshipBatch ? '取消批量' : '批量删除', 'crypt-lord-game-shell__dialog-button', () => {
-      state.relationshipBatch = !state.relationshipBatch;
-      state.relationshipSelected.clear();
-      renderRelationships();
-    }));
-    if (state.relationshipBatch) {
-      const selectAll = element('label', 'crypt-lord-game-shell__relationship-select');
-      const checkbox = element('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = entries.length > 0 && state.relationshipSelected.size === entries.length;
-      checkbox.addEventListener('change', () => {
-        state.relationshipSelected.clear();
-        if (checkbox.checked) entries.forEach(entry => state.relationshipSelected.add(entry.key));
-        renderRelationships();
-      });
-      selectAll.append(checkbox, element('span', '', '全选'));
-      toolbar.appendChild(selectAll);
-      const count = element('span', 'crypt-lord-game-shell__relationship-count', `已选 ${state.relationshipSelected.size} 人`);
-      toolbar.appendChild(count);
-      const remove = button('删除选中', 'crypt-lord-game-shell__dialog-button', () => {
-        const selected = [...state.relationshipSelected].map(key => byKey.get(key)).filter(Boolean);
-        void changeRelationships('remove', selected);
-      });
-      remove.disabled = state.relationshipBusy || !state.relationshipSelected.size;
-      toolbar.appendChild(remove);
-    }
-    state.modalBody.appendChild(toolbar);
-    if (!entries.length) {
-      state.modalBody.appendChild(element('p', 'crypt-lord-game-shell__empty', '暂无重要人际关系'));
-      return;
-    }
-    const list = element('div', 'crypt-lord-game-shell__relationships');
-    entries.forEach(entry => {
-      const row = element('article', 'crypt-lord-game-shell__relationship');
-      row.dataset.key = entry.key;
-      const details = element('details', 'crypt-lord-game-shell__relationship-detail');
-      if (opened.has(entry.key)) details.open = true;
-      const header = element('div', 'crypt-lord-game-shell__relationship-header');
-      if (state.relationshipBatch) {
-        const select = element('input');
-        select.type = 'checkbox';
-        select.checked = state.relationshipSelected.has(entry.key);
-        select.title = `选择${entry.name}`;
-        select.addEventListener('change', () => {
-          if (select.checked) state.relationshipSelected.add(entry.key);
-          else state.relationshipSelected.delete(entry.key);
-          renderRelationships();
-        });
-        header.appendChild(select);
-      }
-      const summary = element('summary', 'crypt-lord-game-shell__relationship-summary');
-      summary.append(element('strong', '', entry.name),
-        element('span', '', `${entry.relationship} · 好感度 ${entry.favorability}`));
-      details.appendChild(summary);
-      const content = element('div', 'crypt-lord-game-shell__relationship-content');
-      relationshipFields(content, entry.subjective);
-      const meter = element('div', 'crypt-lord-game-shell__attribute-track');
-      const fill = element('span', 'crypt-lord-game-shell__attribute-fill');
-      fill.style.width = `${Math.max(0, Math.min(100, entry.favorability / 2))}%`;
-      meter.appendChild(fill);
-      content.appendChild(meter);
-      if (entry.objective) {
-        const truth = element('details', 'crypt-lord-game-shell__relationship-truth');
-        truth.appendChild(element('summary', '', '真实信息'));
-        const truthBody = element('div', '');
-        relationshipFields(truthBody, [['真名', entry.key], ['真实序列', entry.objective.sequence],
-          ...entry.objective.stats, ...entry.objective.statuses, ...entry.objective.fields,
-          ...(entry.objective.abilities.length ? [['真实能力', entry.objective.abilities.join('、')]] : [])]);
-        truth.appendChild(truthBody);
-        content.appendChild(truth);
-      }
-      details.appendChild(content);
-      header.appendChild(details);
-      const mark = button(entry.important ? '★' : '☆', 'crypt-lord-game-shell__relationship-icon', () => {
-        void changeRelationships('important', [entry]);
-      });
-      mark.title = entry.important ? `取消${entry.name}的重要标记` : `标记${entry.name}为重要人物`;
-      mark.setAttribute('aria-label', mark.title);
-      mark.disabled = state.relationshipBusy;
-      const remove = button('×', 'crypt-lord-game-shell__relationship-icon is-danger', () => {
-        void changeRelationships('remove', [entry]);
-      });
-      remove.title = `删除人物${entry.name}`;
-      remove.setAttribute('aria-label', remove.title);
-      remove.disabled = state.relationshipBusy;
-      header.append(mark, remove);
-      row.appendChild(header);
-      list.appendChild(row);
-    });
-    state.modalBody.appendChild(list);
-    state.modalBody.scrollTop = scrollTop;
-  }
-
-  async function changeRelationships(action, entries) {
-    const messageId = state.current?.message_id;
-    const chatToken = state.chatToken;
-    if (state.relationshipBusy || !Number.isInteger(messageId) || !entries.length) return;
-    if (action === 'remove') {
-      const prompt = entries.length === 1 ? `确定删除人物「${entries[0].name}」吗？此操作不可恢复。`
-        : `确定删除选中的 ${entries.length} 人吗？此操作不可恢复。`;
-      if (!afterNative.getHost()?.window?.confirm?.(prompt)) return;
-    }
-    state.relationshipBusy = true;
-    try {
-      const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
-      if (state.chatToken !== chatToken || state.current?.message_id !== messageId) throw new Error('当前聊天已变化，请重新读取。');
-      const message = await store.readMessage(messageId);
-      if (message?.role !== 'assistant') throw new Error('目标楼层不再是 assistant。');
-      const before = message.data || {};
-      const next = action === 'important'
-        ? relationshipState.toggleImportant(before, entries[0])
-        : relationshipState.removeMany(before, entries);
-      if (state.chatToken !== chatToken || state.current?.message_id !== messageId) throw new Error('当前聊天已变化，请重新读取。');
-      await store.writeAssistantData(messageId, next);
-      if (state.chatToken === chatToken && state.current?.message_id === messageId) state.current.data = next;
-      modules[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
-        messageId, beforeData: before, afterData: next, source: `relationship-${action}`,
-      });
-      state.relationshipSelected.clear();
-      notify(action === 'important' ? '重要人物标记已更新。' : `已删除 ${entries.length} 条人物关系。`, 'success');
-    } catch (error) {
-      notify(`人物关系操作失败：${error?.message || error}`, 'error');
-    } finally {
-      state.relationshipBusy = false;
-      if (!state.disposed && state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '人物关系') renderRelationships();
-    }
+    notify('人物关系模块尚未加载。', 'error');
+    return false;
   }
 
   async function deleteAcceptedQuest(quest) {
     const messageId = state.current?.message_id;
-    const chatToken = state.chatToken;
-    if (state.questBusy || !Number.isInteger(messageId)) return;
-    const hostWindow = afterNative.getHost()?.window || window;
-    if (!hostWindow.confirm?.(`确定删除任务「${quest.name}」吗？此操作不可恢复。`)) return;
-    state.questBusy = true;
-    try {
-      const store = await contract.waitGlobalInitialized(STATE_STORE_KEY, { timeoutMs: 10000 });
-      if (state.chatToken !== chatToken || state.current?.message_id !== messageId) throw new Error('当前聊天已变化，请重新读取。');
-      const message = await store.readMessage(messageId);
-      if (message?.role !== 'assistant') throw new Error('目标楼层不再是 assistant。');
-      const before = message.data || {};
-      const next = characterPanelState.removeQuest(before, quest.key, quest.original);
-      if (state.chatToken !== chatToken || state.current?.message_id !== messageId) throw new Error('当前聊天已变化，请重新读取。');
-      await store.writeAssistantData(messageId, next);
-      if (state.chatToken === chatToken && state.current?.message_id === messageId) state.current.data = next;
-      modules[VARIABLE_WORKBENCH_KEY]?.notifyUpdate?.({
-        messageId, beforeData: before, afterData: next, source: 'accepted-quest-delete',
-      });
-      notify(`已删除任务「${quest.name}」`, 'success');
-    } catch (error) {
-      notify(`删除任务失败：${error?.message || error}`, 'error');
-    } finally {
-      state.questBusy = false;
-      if (!state.disposed) {
-        renderLeftPanel();
-        if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '档案详情') renderArchive();
-      }
-    }
+    const archive = modules['cryptLord.characterArchiveUi'];
+    if (!archive || !Number.isInteger(messageId)) { notify('角色档案模块尚未加载。', 'error'); return; }
+    const expected = Object.fromEntries(['message_id', 'role', 'message', 'data', 'swipe_id']
+      .map(key => [key, state.current[key]]));
+    await archive.deleteQuest(messageId, quest, expected);
   }
 
   function renderLeftPanel() {
@@ -5283,10 +6177,11 @@
       const item = element('article', 'crypt-lord-game-shell__quest');
       const heading = element('div', 'crypt-lord-game-shell__quest-heading');
       heading.appendChild(element('strong', '', quest.name));
-      const remove = button('×', 'crypt-lord-game-shell__quest-delete', () => { void deleteAcceptedQuest(quest); });
+      const remove = button('', 'crypt-lord-game-shell__quest-delete', () => { void deleteAcceptedQuest(quest); });
+      const trash = element('i', 'fa-solid fa-trash-can'); trash.setAttribute('aria-hidden', 'true'); remove.append(trash);
       remove.title = `删除任务「${quest.name}」`;
       remove.setAttribute('aria-label', remove.title);
-      remove.disabled = state.questBusy;
+      remove.disabled = modules['cryptLord.characterArchiveUi']?.status().busy === true;
       heading.appendChild(remove);
       item.appendChild(heading);
       [
@@ -5439,6 +6334,20 @@
     const modal = element('section', 'crypt-lord-game-shell__modal');
     modal.setAttribute('data-open', 'false');
     const dialog = element('div', 'crypt-lord-game-shell__dialog');
+    dialog.tabIndex = -1;
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.addEventListener('keydown', event => {
+      if (state.modalTitle?.textContent !== '战斗系统') return;
+      if (event.key === 'Escape') { event.preventDefault(); closeModal(); }
+      if (event.key !== 'Tab') return;
+      const nodes = [...dialog.querySelectorAll('button, input, textarea, select, summary')]
+        .filter(node => !node.disabled && node.getClientRects().length);
+      const first = nodes[0], last = nodes.at(-1), focus = dialog.ownerDocument.activeElement;
+      if (!first) { event.preventDefault(); dialog.focus(); }
+      else if (event.shiftKey && (focus === first || focus === dialog)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (focus === last || focus === dialog)) { event.preventDefault(); first.focus(); }
+    });
     const modalHeader = element('header', 'crypt-lord-game-shell__dialog-header');
     const modalTitle = element('strong', 'crypt-lord-game-shell__dialog-title', '诡秘之主');
     modalHeader.append(modalTitle, button('×', 'crypt-lord-game-shell__dialog-close', closeModal));
@@ -5457,6 +6366,17 @@
     const commandPanel = element('section', 'crypt-lord-game-shell__command-panel');
     commandPanel.dataset.open = 'false';
     commandPanel.setAttribute('aria-label', '指令中心');
+    commandPanel.setAttribute('role', 'dialog');
+    commandPanel.setAttribute('aria-modal', 'true');
+    commandPanel.tabIndex = -1;
+    commandPanel.addEventListener('keydown', event => {
+      if (event.key !== 'Tab') return;
+      const nodes = [...commandPanel.querySelectorAll('button, input, textarea')].filter(node => !node.disabled && node.getClientRects().length);
+      const first = nodes[0], last = nodes.at(-1), focus = (afterNative.getHost()?.document || document).activeElement;
+      if (!first) { event.preventDefault(); commandPanel.focus(); }
+      else if (event.shiftKey && (focus === first || focus === commandPanel)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (focus === last || focus === commandPanel)) { event.preventDefault(); first.focus(); }
+    });
     Object.assign(commandPanel.style, {
       left: `${commandLayoutValue.panel.x}px`,
       top: `${commandLayoutValue.panel.y}px`,
@@ -5540,6 +6460,11 @@
     const messageElement = displayedMessageElement(current?.message_id) || current?.messageElement || null;
     state.current = current ? { ...current, compatibility: compatibilityFor(current, messageElement) } : null;
     if (previousId !== state.current?.message_id) {
+      if (Number.isInteger(previousId)) {
+        state.battleEpoch++; state.battleBusy = false; state.battleWriting = false;
+        state.battleInvalid = true; state.battlePending = null; state.battleAutoPaused = true;
+        cancelBattleAuto();
+      }
       state.mysterySummaries = null;
       state.mysteryResult = '';
       state.scrollView = 'list';
@@ -5550,8 +6475,6 @@
       state.shamanMaterials = {};
     }
     renderLeftPanel();
-    if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '档案详情') renderArchive();
-    if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '人物关系') renderRelationships();
     if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '途径专属玩法') renderPathwayPlay();
     if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '战斗系统') void renderBattleSystem();
     if (state.current?.data?.stat_data && !state.pathwayPool) loadPathways();
@@ -5584,31 +6507,59 @@
   function mount() {
     if (state.disposed || !createShell()) return Boolean(state.root);
     const hostWindow = afterNative.getHost()?.window;
-    if (typeof MutationObserver === 'function') {
-      const themeObserver = new MutationObserver(() => {
-        if (state.modal?.dataset.open !== 'true' || state.modalTitle?.textContent !== '档案详情') return;
-        const canvas = state.modalBody?.querySelector?.('.crypt-lord-game-shell__archive-radar');
-        const stat = state.current?.data?.stat_data;
-        if (canvas && record(stat)) drawArchiveRadar(canvas, characterPanelState.archive(stat).radar);
-      });
-      themeObserver.observe(state.root, { attributes: true, attributeFilter: ['data-theme'] });
-      state.cleanups.push(() => themeObserver.disconnect());
-    }
     const openSettlementSettings = () => { void showSettings(); };
     hostWindow?.addEventListener?.('cryptLord:open-variable-settlement-settings', openSettlementSettings);
     state.cleanups.push(() => hostWindow?.removeEventListener?.('cryptLord:open-variable-settlement-settings', openSettlementSettings));
+    const updateConsumedShortcuts = () => {
+      if (!state.disposed && state.commandPanel?.dataset.open === 'true' &&
+        !state.commandPanel.hasAttribute('aria-busy') && !state.commandDraft) void showQuickShortcuts();
+    };
+    const commandEscape = event => {
+      if (event.key === 'Escape' && state.commandPanel?.dataset.open === 'true' &&
+        state.commandPanel.contains(hostWindow.document.activeElement)) {
+        event.preventDefault();
+        closeCommandPanel();
+        state.commandBall?.focus();
+      }
+    };
+    hostWindow?.addEventListener?.('cryptLord:quick-shortcuts-consumed', updateConsumedShortcuts);
+    hostWindow?.addEventListener?.('keydown', commandEscape);
+    state.cleanups.push(() => {
+      hostWindow?.removeEventListener?.('cryptLord:quick-shortcuts-consumed', updateConsumedShortcuts);
+      hostWindow?.removeEventListener?.('keydown', commandEscape);
+    });
     const events = afterNative.tavernEvents();
     if (events) {
+      bind(events.GENERATION_STARTED, (type, options, dryRun) => {
+        if (['quiet', 'quiet_prompt', 'dryRun'].includes(type) || dryRun || options?.dryRun || options?.quiet_prompt) return;
+        if (state.commandPanel?.dataset.open === 'true') closeCommandPanel();
+        state.battleEpoch++;
+        state.battleGenerating = true;
+        state.battleBusy = false; state.battleWriting = false; state.battleInvalid = true;
+        cancelBattleAuto();
+        updateBattleControls();
+      });
+      const endBattleGeneration = () => {
+        state.battleGenerating = false;
+        if (state.modal?.dataset.open === 'true' && state.modalTitle?.textContent === '战斗系统')
+          void renderBattleSystem();
+      };
+      bind(events.GENERATION_ENDED, endBattleGeneration);
+      bind(events.GENERATION_STOPPED, endBattleGeneration);
       bind(events.CHARACTER_MESSAGE_RENDERED, () => { void refresh(); });
       bind(events.MESSAGE_UPDATED, () => { void refresh(); });
       bind(events.MESSAGE_DELETED, () => { void refresh(); });
       bind(events.CHAT_CHANGED, () => {
+        if (state.modalTitle?.textContent === '战斗系统') closeModal(true);
+        closeCommandPanel();
+        state.commandDraft = null;
         cancelBattleAuto();
         state.battleAutoSteps = 0;
         state.battleAutoPaused = false;
         modules[GAME_AUDIO_KEY]?.stop();
         delete state.modal?.dataset.audioActive;
         state.chatToken++;
+        state.battleGenerating = false;
         state.pathwayPool = null;
         state.pathwayPoolPromise = null;
         state.mysterySummaries = null;
@@ -5650,8 +6601,12 @@
     dispose() {
       if (state.disposed) return true;
       cancelBattleAuto();
-      modules[GAME_AUDIO_KEY]?.stop();
+      state.battleAudio?.dispose();
       state.disposed = true;
+      state.battlePending = null;
+      state.commandLoadToken++;
+      state.commandCapture = null;
+      state.commandDraft = null;
       state.subscriptions.forEach(subscription => { try { subscription.stop(); } catch { /* idempotent */ } });
       state.subscriptions = [];
       state.cleanups.forEach(cleanup => { try { cleanup(); } catch { /* idempotent */ } });

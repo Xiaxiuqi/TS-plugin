@@ -12,9 +12,13 @@
   if (!host || !replay || !war) throw new Error(`[${KEY}] 依赖尚未加载`);
   const state = { root: null, dialog: null, board: null, clock: null, seek: null, play: null,
     model: null, tick: 0, speed: 1, playing: false, timer: null, drag: null, pan: null,
-    zoom: 1, offsetX: 0, offsetY: 0, subscription: null, disposed: false };
+    zoom: 1, offsetX: 0, offsetY: 0, subscription: null, disposed: false,
+    audio: null, sounds: null, previousFocus: null, owner: null, timerWindow: null };
   const doc = () => host.getHost()?.document || window.document;
   const view = () => doc().defaultView || window;
+  const current = () => !state.disposed && state.root?.isConnected && state.root.ownerDocument === doc() &&
+    modules[KEY] === api && modules['cryptLord.afterNativeHost'] === host &&
+    modules['cryptLord.warReplay'] === replay && modules['cryptLord.warSim'] === war;
   function el(tag, className, text) {
     const node = doc().createElement(tag);
     if (className) node.className = className;
@@ -30,14 +34,17 @@
   }
   function pause() {
     state.playing = false;
-    if (state.timer) view().clearInterval(state.timer);
-    state.timer = null;
-    if (modules['cryptLord.gameAudio']?.status()?.scope === 'war') modules['cryptLord.gameAudio'].stop();
+    if (state.timer !== null) state.timerWindow?.clearInterval(state.timer);
+    state.timer = null; state.timerWindow = null;
+    state.sounds?.seek(state.tick);
     if (state.play) { state.play.textContent = '▶'; state.play.title = '播放'; }
   }
-  function seek(value) {
+  function seek(value, playback = false) {
     if (!state.model) return;
-    state.tick = Math.max(0, Math.min(state.model.maxTick, Number(value) || 0));
+    if (!current()) { close(); return; }
+    state.tick = state.model.recorded ? Math.max(0, Math.min(state.model.maxTick, Number(value) || 0)) : state.model.maxTick;
+    if (playback) state.sounds?.advance(state.tick, state.speed);
+    else state.sounds?.seek(state.tick);
     const frame = state.model.at(state.tick);
     const cols = Math.max(1, Number(state.model.result.conf?.cols) || 8);
     const rows = Math.max(1, Number(state.model.result.conf?.rows) || 6);
@@ -66,18 +73,23 @@
     if (state.tick >= state.model.maxTick) pause();
   }
   function play() {
-    if (!state.model || state.playing) return;
+    if (!state.model?.recorded || state.playing) return;
+    if (!current()) { close(); return; }
     if (state.tick >= state.model.maxTick) seek(0);
     state.playing = true;
     state.play.textContent = 'Ⅱ';
     state.play.title = '暂停';
-    void modules['cryptLord.gameAudio']?.playWarReplay(state.model.result);
+    state.audio?.enter('battle', 'war');
+    void modules['cryptLord.gameAudio']?.preload();
     let previous = Date.now();
-    state.timer = view().setInterval(() => {
+    state.timerWindow = view();
+    state.timer = state.timerWindow.setInterval(() => {
+      if (!current()) { close(); return; }
       const now = Date.now();
       const elapsed = Math.min(200, now - previous);
       previous = now;
-      seek(state.tick + elapsed * state.speed / (Number(state.model.result.conf?.tickMs) || 100));
+      if (doc().hidden) return;
+      seek(state.tick + elapsed * state.speed / (Number(state.model.result.conf?.tickMs) || 100), true);
     }, 40);
   }
   function transformBoard() {
@@ -133,6 +145,8 @@
     const dialog = el('section', 'crypt-lord-war-replay__dialog');
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-label', '战争回放');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.tabIndex = -1;
     const header = el('header');
     header.append(el('strong', '', '战争沙盘'), el('span', '', ''));
     header.appendChild(button('×', '关闭', close));
@@ -141,6 +155,23 @@
     shell.appendChild(dialog);
     doc().body.appendChild(shell);
     state.root = shell; state.dialog = dialog;
+    state.audio = modules['cryptLord.gameAudio']?.createScene(() => state.root);
+    const audioControl = modules['cryptLord.gameAudioControl'];
+    if (audioControl) header.insertBefore(audioControl.create(doc(), 'war'), header.lastChild);
+    shell.addEventListener('keydown', event => {
+      if (shell.dataset.open !== 'true') return;
+      if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+      if (event.key !== 'Tab') return;
+      const controls = [...dialog.querySelectorAll('button, input, select, summary, [tabindex="0"]')]
+        .filter(node => !node.disabled && node.getClientRects().length &&
+          (!node.closest('details:not([open])') || node.matches('summary')));
+      if (!controls.length) { event.preventDefault(); dialog.focus(); }
+      else if (event.shiftKey && [controls[0], dialog].includes(doc().activeElement)) {
+        event.preventDefault(); controls.at(-1).focus();
+      } else if (!event.shiftKey && [controls.at(-1), dialog].includes(doc().activeElement)) {
+        event.preventDefault(); controls[0].focus();
+      }
+    });
     header.addEventListener('pointerdown', event => {
       if (event.button !== 0 || event.target.closest('button')) return;
       const rect = dialog.getBoundingClientRect();
@@ -162,10 +193,14 @@
     return true;
   }
   function open(result, options = {}) {
-    if (!mount()) return false;
+    if (!mount() || !current()) return false;
+    result = structuredClone(result);
     pause();
+    state.owner = options.owner || null;
+    if (state.root.dataset.open !== 'true') state.previousFocus = doc().activeElement;
     const report = war.buildReport(result);
     state.model = replay.create(result, report);
+    state.sounds = state.audio ? modules['cryptLord.gameAudio'].createReplay(result, state.audio) : null;
     state.tick = 0; state.speed = 1;
     const body = state.dialog.querySelector('.crypt-lord-war-replay__body');
     body.replaceChildren();
@@ -189,16 +224,20 @@
     );
     const speed = el('select');
     speed.title = '播放速度';
+    speed.setAttribute('aria-label', '播放速度');
     for (const value of [1, 2, 4, 8]) {
       const option = el('option', '', `${value}×`);
       option.value = value; speed.appendChild(option);
     }
     speed.addEventListener('change', () => { state.speed = Number(speed.value); });
     controls.appendChild(speed);
+    if (!state.model.recorded) controls.querySelectorAll('button, select').forEach(node => { node.disabled = true; });
     const clock = el('output');
     state.clock = clock; controls.appendChild(clock);
     const track = el('input', 'crypt-lord-war-replay__seek');
     track.type = 'range'; track.min = '0'; track.max = String(Math.max(1, state.model.maxTick));
+    track.setAttribute('aria-label', '回放进度');
+    track.disabled = !state.model.recorded;
     track.addEventListener('input', () => { pause(); seek(track.value); });
     state.seek = track;
     const summary = el('section', 'crypt-lord-war-replay__summary');
@@ -208,7 +247,12 @@
     for (const item of state.model.picks) {
       const row = el('li', '', `第 ${item.tick} 刻 · ${item.text}`);
       row.dataset.warTick = item.tick;
+      row.tabIndex = 0; row.setAttribute('role', 'button');
       row.addEventListener('click', () => { pause(); seek(item.tick); });
+      row.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault(); pause(); seek(item.tick);
+      });
       picks.appendChild(row);
     }
     if (!state.model.picks.length) picks.appendChild(el('li', '', '本场没有特别战况'));
@@ -222,23 +266,35 @@
     details.appendChild(el('summary', '', '完整战报'));
     details.appendChild(el('pre', '', report.text));
     details.appendChild(button('复制战报', '复制战报', async () => {
+      if (!current()) { close(); return; }
       try { await view().navigator.clipboard.writeText(report.text); } catch { /* Clipboard permission is optional. */ }
     }));
     body.append(viewport, controls, track, summary, stats, details);
     state.root.dataset.open = 'true';
+    state.audio?.enter('battle', 'war');
     seek(0);
+    if (playButton.disabled) state.dialog.focus();
+    else playButton.focus();
     return true;
   }
   function close() {
     pause();
     if (state.root) state.root.dataset.open = 'false';
     state.model = null;
+    state.owner = null;
+    state.sounds = null;
+    state.drag = null; state.pan = null;
+    state.audio?.leave();
+    if (state.previousFocus?.isConnected) state.previousFocus.focus();
+    state.previousFocus = null;
   }
   const api = Object.freeze({
-    status: () => Object.freeze({ key: KEY, open: state.root?.dataset.open === 'true', tick: state.tick, playing: state.playing }),
+    status: () => Object.freeze({ key: KEY, open: state.root?.dataset.open === 'true', tick: state.tick,
+      playing: state.playing, owner: state.owner }),
     mount, open, close,
     dispose() {
       state.disposed = true; close(); state.subscription?.stop?.();
+      state.audio?.dispose();
       state.root?.remove(); state.root = null;
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader may have released it. */ }
       if (modules[KEY] === api) delete modules[KEY];

@@ -1,0 +1,61 @@
+.crypt-lord-inventory {
+  position: fixed; z-index: 2147483100; left: 50%; top: 6%;
+  transform: translateX(-50%); width: min(850px, calc(100vw - 24px)); height: min(720px, 88vh);
+  min-width: 300px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+  background: var(--SmartThemeBlurTintColor, #25292b); color: var(--SmartThemeBodyColor, #edeef0);
+  border: 1px solid #72827e; border-radius: 6px; box-shadow: 0 12px 36px #0006;
+  overflow: hidden; display: flex; flex-direction: column; resize: both;
+  font: 14px/1.6 "Microsoft YaHei", sans-serif; letter-spacing: 0;
+}
+.crypt-lord-inventory[data-open="false"] { display: none; }
+.crypt-lord-inventory * { box-sizing: border-box; letter-spacing: 0; }
+.crypt-lord-inventory header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #63736e; cursor: move; }
+.crypt-lord-inventory header strong { font-size: 17px; }
+.crypt-lord-inventory button { display: inline-flex; gap: 6px; align-items: center; justify-content: center; min-height: 34px; padding: 6px 10px; border: 1px solid #7c8f86; border-radius: 4px; background: #354841; color: inherit; font: inherit; cursor: pointer; }
+.crypt-lord-inventory button:hover { background: #496354; }
+.crypt-lord-inventory button:disabled { opacity: .45; cursor: default; }
+.crypt-lord-inventory button.is-danger { background: #653d48; border-color: #bd8391; }
+.crypt-lord-inventory__tools { display: flex; gap: 6px; }
+.crypt-lord-inventory__tools button { width: 34px; padding: 0; }
+.crypt-lord-inventory__tools i { display: none; }
+.crypt-lord-inventory__tools button::after { content: attr(data-fallback); font-size: 20px; }
+.crypt-lord-inventory__status { margin: 0; padding: 8px 16px; color: #edd49a; overflow-wrap: anywhere; }
+.crypt-lord-inventory__recovery { display: flex; flex-wrap: wrap; flex: none; gap: 8px; padding: 0 16px 10px; }
+.crypt-lord-inventory__recovery:empty { display: none; }
+.crypt-lord-inventory__recovery button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.crypt-lord-inventory main { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; }
+.crypt-lord-inventory fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.crypt-lord-inventory__toolbar, .crypt-lord-inventory__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; }
+.crypt-lord-inventory label { display: flex; gap: 6px; align-items: center; }
+.crypt-lord-inventory input[type="checkbox"] { width: 18px; height: 18px; accent-color: #91d3af; flex: none; }
+.crypt-lord-inventory input[type="number"] { width: 78px; min-height: 34px; padding: 4px 6px; font: inherit; color: inherit; background: #191e20; border: 1px solid #758880; border-radius: 4px; }
+.crypt-lord-inventory summary { cursor: pointer; overflow-wrap: anywhere; }
+.crypt-lord-inventory__category { border-top: 1px solid #657772; padding: 10px 0; }
+.crypt-lord-inventory__category > summary { font-weight: bold; color: #a1d1bb; }
+.crypt-lord-inventory__list { margin-top: 8px; }
+.crypt-lord-inventory__item { display: flex; gap: 10px; border-bottom: 1px solid #53615d; padding: 10px 0; }
+.crypt-lord-inventory__item > details { flex: 1; min-width: 0; }
+.crypt-lord-inventory__item-controls { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.crypt-lord-inventory__item-controls:empty { display: none; }
+.crypt-lord-inventory__quantity { float: right; margin-left: 10px; color: #edd49a; }
+.crypt-lord-inventory__tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.crypt-lord-inventory__tags span { font-size: 12px; padding: 0 6px; border: 1px solid #839288; border-radius: 3px; }
+.crypt-lord-inventory__detail { padding: 0 0 4px 14px; overflow-wrap: anywhere; }
+.crypt-lord-inventory__detail p { white-space: pre-wrap; margin: 8px 0; }
+.crypt-lord-inventory dl { display: grid; grid-template-columns: minmax(70px, 1fr) minmax(0, 3fr); gap: 4px 12px; margin: 8px 0; }
+.crypt-lord-inventory dt { color: #b6cac2; }
+.crypt-lord-inventory dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.crypt-lord-inventory__side-effect { border-left: 3px solid #cf7e96; padding: 8px 12px; background: #60334355; }
+.crypt-lord-inventory__effect { color: #e3dba7; }
+.crypt-lord-inventory__empty { margin: 10px 0; color: #b7bebc; }
+.crypt-lord-inventory__targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.crypt-lord-inventory__targets button { flex-wrap: wrap; justify-content: flex-start; overflow-wrap: anywhere; text-align: left; }
+.crypt-lord-inventory__targets small { flex-basis: 100%; }
+@media (max-width: 540px) {
+  .crypt-lord-inventory { top: 12px; height: calc(100vh - 24px); resize: none; }
+  .crypt-lord-inventory header { padding: 10px 12px; }
+  .crypt-lord-inventory main { padding: 0 12px 12px; }
+  .crypt-lord-inventory__item-controls { flex-direction: column; }
+  .crypt-lord-inventory__detail { padding-left: 0; }
+  .crypt-lord-inventory__quantity { float: none; display: block; margin-left: 0; }
+}
