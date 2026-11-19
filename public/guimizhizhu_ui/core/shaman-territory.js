@@ -14,7 +14,9 @@
   const COOLDOWN = 3 * 24 * 60;
   const COST = 5;
   function record(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
-  function gate(stat) {
+  function gate(stat, pool, data) {
+    if (pool?.pathways && modules['cryptLord.shamanTerritoryState'])
+      return modules['cryptLord.shamanTerritoryState'].gate(data || { stat_data: stat }, pool);
     const text = String(stat?.当前序列 || '');
     if (text.includes('高维俯视者')) return { unlocked: true, rank: -1 };
     const fragments = text.split(/[、,，;；+＋/\n]/).filter(part => part.includes('萨满'));
@@ -34,7 +36,10 @@
   function hasTerritory(value) {
     return Boolean(String(value?.图腾位置 || '').trim() && Number(value?.领地半径公里) > 0);
   }
-  function syncRadius(data) {
+  function syncRadius(data, pool) {
+    if (modules['cryptLord.shamanTerritoryState']) {
+      return pool?.pathways ? modules['cryptLord.shamanTerritoryState'].sync(data, pool) : false;
+    }
     const stat = data?.stat_data;
     const current = stored(stat);
     if (!hasTerritory(current) || !gate(stat).unlocked) return false;
@@ -44,6 +49,8 @@
     return true;
   }
   function minutes(value) {
+    if (modules['cryptLord.shamanTerritoryReference'])
+      return modules['cryptLord.shamanTerritoryReference'].minutes(value);
     const match = String(value || '').replace(/\s+/g, '')
       .match(/^第([一二三四五六七八九十\d]+)纪(\d+)年(\d+)月(\d+)日星期(.)?(\d+):(\d+)$/);
     if (!match) return null;

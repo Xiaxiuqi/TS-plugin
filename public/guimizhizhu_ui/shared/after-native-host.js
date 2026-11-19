@@ -10,7 +10,7 @@
   const STACK_CLASS = 'crypt-lord-after-native-stack';
   const TOP_STACK_CLASS = 'crypt-lord-before-native-stack';
   const MOUNT_CLASS = 'crypt-lord-after-native-mount';
-  const MODULE_ORDER = Object.freeze(['status-bar', 'status-card', 'action-options']);
+  const MODULE_ORDER = Object.freeze(['status-bar', 'status-card', 'world-report', 'action-options']);
   const root = (window.cryptLord = window.cryptLord || {});
   const contract = root.contract;
   if (!contract) throw new Error(`[${KEY}] shared/contract.js 尚未加载`);

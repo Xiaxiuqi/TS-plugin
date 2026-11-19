@@ -14,17 +14,25 @@
   const environment = modules['cryptLord.naturalEnvironment'];
   const lifeSave = modules['cryptLord.battleLifeSave'];
   const battleTags = modules['cryptLord.battleTags'];
+  const effectsFor = () => modules['cryptLord.battleEffects'];
   const COLS = 12;
   const ROWS = 10;
   const MAX_LOG = 160;
-  const clone = value => typeof structuredClone === 'function'
-    ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  const clone = value => {
+    const copied = typeof structuredClone === 'function'
+      ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+    const battle = copied?.cryptLord?.teamBattle;
+    if (battle && (!battle.reportState || battle.reportState.version === 1))
+      modules['cryptLord.battleReport']?.initialize(battle, copied);
+    return copied;
+  };
   const object = value => value && typeof value === 'object' && !Array.isArray(value);
   const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const cap = (value, max) => Math.max(0, Math.min(max, num(value)));
   const name = value => String(value ?? '').trim();
   const distance = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
   const alive = unit => unit.hp > 0;
+  const onField = unit => alive(unit) && !unit.exiled && !unit.offField && !unit.activeLeaving && !unit.possessedHidden;
   const formulasFor = battle => battle?.formulas?.version === 1
     ? modules['cryptLord.battleFormulas'] : null;
   const rollFor = battle => formulasFor(battle)
@@ -37,19 +45,173 @@
     ? modules['cryptLord.battleFieldEffects'] : null;
   const transferFor = battle => battle?.effectTransferMeta?.version === 1
     ? modules['cryptLord.battleEffectTransfer'] : null;
+  const terrainFor = () => modules['cryptLord.battleTerrainEffects'];
+  const resourceFor = () => modules['cryptLord.battleResourceStatus'];
+  const autoPilotFor = () => modules['cryptLord.battleAutoPilot'];
+  const skillControlFor = () => modules['cryptLord.battleSkillControl'];
+  const prepareSkillControl = battle => {
+    if (skillControlFor() && !battle.skillControlMeta)
+      skillControlFor().initialize(battle, battle.fieldEffectMeta?.pathways);
+  };
   const briberyFor = battle => battle?.briberyMeta?.version === 1
     ? modules['cryptLord.battleBribery'] : null;
   const conditionsFor = () => modules['cryptLord.battleTeamConditions'];
+  const balanceFor = battle => battle?.balanceMeta?.version === 1
+    ? modules['cryptLord.battleBalance'] : null;
+  const punishmentFor = battle => battle?.punishmentMeta?.version === 1
+    ? modules['cryptLord.battlePunishment'] : null;
+  const mythicFor = battle => battle?.mythicMeta?.version === 1
+    ? modules['cryptLord.battleMythicForm'] : null;
+  const exileFor = battle => battle?.exileMeta?.version === 1
+    ? modules['cryptLord.battleExile'] : null;
+  const activeLeaveFor = battle => battle?.activeLeaveMeta?.version === 1
+    ? modules['cryptLord.battleActiveLeave'] : null;
+  const eventsFor = battle => battle?.battleEventMeta?.version === 1
+    ? modules['cryptLord.battleEvents'] : null;
+  const rewindFor = battle => battle?.rewindMeta?.version === 1
+    ? modules['cryptLord.battleRewind'] : null;
+  const extraFor = battle => battle?.extraActionMeta?.version === 1
+    ? modules['cryptLord.battleExtraAction'] : null;
+  const hardFor = battle => battle?.hardControlMeta?.version === 1
+    ? modules['cryptLord.battleHardControl'] : null;
+  const mindFor = battle => battle?.mindDepriveMeta?.version === 1
+    ? modules['cryptLord.battleMindDeprive'] : null;
+  const tempFor = battle => battle?.tempControlMeta?.version === 1
+    ? modules['cryptLord.battleTempControl'] : null;
+  const permanentFor = battle => battle?.permanentControlMeta?.version === 1
+    ? modules['cryptLord.battlePermanentControl'] : null;
+  const possessionFor = battle => battle?.possessionMeta?.version === 1
+    ? modules['cryptLord.battlePossession'] : null;
+  const rulesFor = battle => battle?.ruleChangeMeta?.version === 1
+    ? modules['cryptLord.battleRuleChange'] : null;
+  const environmentFor = battle => battle?.environmentMeta?.version === 1
+    ? modules['cryptLord.battleEnvironment'] : null;
+  const fundamentalFor = battle => battle?.fundamentalMeta?.version === 1
+    ? modules['cryptLord.battleFundamental'] : null;
+  const summonFor = battle => battle?.summonMeta?.version === 1
+    ? modules['cryptLord.battleSummon'] : null;
+  const cardFor = (data, actor) => actor.summonCard || actor.playCard ||
+    (actor.source === 'player' ? data.stat_data :
+      modules['cryptLord.audienceImaginationState']?.cardFor(data, actor) || data.npc_data?.[actor.id]);
+  const finalize = data => {
+    modules['cryptLord.battleSummon']?.flush(data);
+    if (data.cryptLord?.teamBattle)
+      modules['cryptLord.battleReport']?.capture(data.cryptLord.teamBattle);
+    return data;
+  };
+  function sweepAuthorities(battle, endRound = false) {
+    balanceFor(battle)?.sweep(battle, endRound);
+    punishmentFor(battle)?.sweep(battle);
+    exileFor(battle)?.checkDead(battle);
+    activeLeaveFor(battle)?.checkDead(battle);
+    possessionFor(battle)?.sweep(battle);
+    permanentFor(battle)?.sweep(battle);
+    rulesFor(battle)?.sweep(battle);
+    environmentFor(battle)?.sync(battle);
+    fundamentalFor(battle)?.sweep(battle, endRound);
+    summonFor(battle)?.sweep(battle, endRound);
+  }
+  function finishAuthorities(battle) {
+    if (battle.skillControlMeta) skillControlFor()?.finish(battle);
+    autoPilotFor()?.finish(battle);
+    resourceFor()?.finish(battle);
+    terrainFor()?.finish(battle);
+    summonFor(battle)?.finish(battle);
+    balanceFor(battle)?.finish(battle);
+    punishmentFor(battle)?.finish(battle);
+    mythicFor(battle)?.finish(battle);
+    exileFor(battle)?.finish(battle);
+    activeLeaveFor(battle)?.finish(battle);
+    eventsFor(battle)?.finish(battle);
+    extraFor(battle)?.finish(battle);
+    hardFor(battle)?.finish(battle);
+    mindFor(battle)?.finish(battle);
+    tempFor(battle)?.finish(battle);
+    permanentFor(battle)?.finish(battle);
+    possessionFor(battle)?.finish(battle);
+    rulesFor(battle)?.finish(battle);
+    environmentFor(battle)?.finish(battle);
+    fundamentalFor(battle)?.finish(battle);
+  }
   const hasConditions = skill => Boolean((skill?.conditionalParams || skill?.条件参数集)?.length);
   const affordable = (actor, choice) => actor[choice.costKey || 'spirit'] >= choice.cost;
   const playerControlled = actor => (actor?.controller || actor?.source) === 'player';
-  const moduleError = battle => battle.formulas && !formulasFor(battle)
+  const moduleError = (battle, allowSkipped = false) => battle.formulas && !formulasFor(battle)
     ? '本场原版公式模块不可用，请重启本项目脚本。'
+    : battle.effectLifecycle && (!effectsFor() || battle.effectLifecycle.version !== 1)
+      ? '本场持续效果模块或存档版本不可用，请重启本项目脚本。'
     : battle.auraState && !aurasFor(battle) ? '本场光环模块不可用，请重启本项目脚本。'
     : battle.fieldEffectMeta && !fieldsFor(battle) ? '本场施加效果模块不可用，请重启本项目脚本。'
     : battle.effectTransferMeta && !transferFor(battle) ? '本场效果传递模块不可用，请重启本项目脚本。'
     : battle.briberyMeta && !briberyFor(battle) ? '本场贿赂模块不可用，请重启本项目脚本。'
-    : battle.conditionMeta && !conditionsFor() ? '本场条件参数模块不可用，请重启本项目脚本。' : '';
+    : battle.conditionMeta && !conditionsFor() ? '本场条件参数模块不可用，请重启本项目脚本。'
+    : battle.balanceMeta && (!balanceFor(battle) || !formulasFor(battle))
+      ? '本场平衡权柄或原版公式模块不可用，请重启本项目脚本。'
+    : battle.punishmentMeta && !punishmentFor(battle)
+      ? '本场惩戒模块不可用，请重启本项目脚本。'
+    : battle.mythicMeta && !mythicFor(battle)
+      ? '本场神话形态模块不可用，请重启本项目脚本。'
+    : battle.exileMeta && !exileFor(battle)
+      ? '本场放逐模块不可用，请重启本项目脚本。'
+    : battle.activeLeaveMeta && !activeLeaveFor(battle)
+      ? '本场主动离场模块不可用，请重启本项目脚本。'
+    : battle.battleEventMeta && !eventsFor(battle)
+      ? '本场战场事件模块不可用，请重启本项目脚本。'
+    : battle.rewindMeta && !rewindFor(battle)
+      ? '本场回溯模块不可用，请重启本项目脚本。'
+    : battle.extraActionMeta && !extraFor(battle)
+      ? '本场额外行动模块不可用，请重启本项目脚本。'
+    : battle.hardControlMeta && !hardFor(battle)
+      ? '本场硬控模块不可用，请重启本项目脚本。'
+    : battle.mindDepriveMeta && !mindFor(battle)
+      ? '本场心智剥夺模块不可用，请重启本项目脚本。'
+    : battle.tempControlMeta && !tempFor(battle)
+      ? '本场阵营短控模块不可用，请重启本项目脚本。'
+    : battle.permanentControlMeta && !permanentFor(battle)
+      ? '本场永久控制模块不可用，请重启本项目脚本。'
+    : battle.possessionMeta && !possessionFor(battle)
+      ? '本场附身模块不可用，请重启本项目脚本。'
+    : battle.ruleChangeMeta && !rulesFor(battle)
+      ? '本场规则修改模块不可用，请重启本项目脚本。'
+    : battle.environmentMeta && !environmentFor(battle)
+      ? '本场改变环境模块不可用，请重启本项目脚本。'
+    : battle.fundamentalMeta && !fundamentalFor(battle)
+      ? '本场底层规则模块不可用，请重启本项目脚本。'
+    : battle.summonMeta && !summonFor(battle)
+      ? '本场召唤模块不可用，请重启本项目脚本。'
+    : battle.borrowMeta && !modules['cryptLord.battleAbilityBorrow']
+      ? '本场能力借用模块不可用，请重启本项目脚本。'
+    : battle.tacticCpuMeta && !modules['cryptLord.battleTacticCpu']
+      ? '本场统一战术模块不可用，请重启本项目脚本。'
+    : battle.actionCpuMeta && !modules['cryptLord.battleActionCpu']
+      ? '本场原版行动 CPU 不可用，请重启本项目脚本。'
+    : battle.terrainEffectMeta && !terrainFor()
+      ? '本场危险地形持续结算模块不可用，请重启本项目脚本。'
+    : battle.resourceStatusMeta && !resourceFor()
+      ? '本场五维资源状态模块不可用，请重启本项目脚本。'
+    : battle.autoPilotMeta && !autoPilotFor()
+      ? '本场多人托管模块不可用，请重启本项目脚本。'
+    : battle.skillControlMeta && !skillControlFor()
+      ? '本场技能干涉模块不可用，请重启本项目脚本。'
+    : battle.reportState && (!modules['cryptLord.battleReport'] || battle.reportState.version !== 1)
+      ? '本场战斗报告模块或版本不可用，请重启本项目脚本。'
+    : battle.territoryMeta && (!modules['cryptLord.shamanTerritoryBattle'] || battle.territoryMeta.version !== 1)
+      ? '本场领地图腾模块或版本不可用，请重启本项目脚本。'
+    : battle.jurisdictionMeta && (!modules['cryptLord.arbiterJurisdictionBattle'] || battle.jurisdictionMeta.version !== 1)
+      ? '本场仲裁人辖区模块或版本不可用，请重启本项目脚本。'
+    : battle.imaginationMeta && (!modules['cryptLord.audienceImaginationState'] || battle.imaginationMeta.version !== 1)
+      ? '本场空想投影模块或版本不可用，请重启本项目脚本。'
+    : battle.units.some(unit => unit.playRecord) &&
+      (!modules['cryptLord.battlePlayUnits'] || battle.playUnitMeta?.version !== 1)
+      ? '本场专属玩法单位模块或版本不可用，请重启本项目脚本。'
+    : !allowSkipped && battle.phase === 'tactic' && autoPilotFor()?.isOn(battle)
+      ? '当前由托管执行，请先关闭托管再操作。'
+    : !allowSkipped && battle.phase === 'tactic' &&
+      battle.units.find(unit => unit.source === 'player')?.possessedHidden
+      ? '附身期间只能继续或解除附身。'
+    : !allowSkipped && battle.phase === 'tactic' &&
+      hardFor(battle)?.occupied(battle, battle.units.find(unit => unit.source === 'player'))
+      ? '当前受硬控，本轮只能跳过战术阶段。' : '';
   const inBounds = (x, y) => Number.isInteger(x) && Number.isInteger(y) &&
     x >= 0 && y >= 0 && x < COLS && y < ROWS;
   function prepareLifeSave(battle, data, table) {
@@ -58,14 +220,19 @@
       clone(object(table) ? table : lifeSave.defaults);
     for (const actor of battle.units) {
       if (actor.lifeSave) continue;
-      const card = actor.source === 'player' ? data.stat_data : data.npc_data?.[actor.id];
+      const card = cardFor(data, actor);
       lifeSave.initialize(actor, actor.sequence,
         actor.pathway ?? card?.当前途径 ?? card?.途径 ?? card?.pathway ?? card?.所属途径,
         battle.lifeSaveTable, actor.source === 'player'
-          ? lifeSave.storedStrategy(data) : lifeSave.defaultStrategy);
+          ? data?.cryptLord?.lifeSaveStrategy || null : null,
+        battle.lifeSavePathways || battle.fieldEffectMeta?.pathways || battle.formulas?.pathways);
     }
   }
   function syncEnvironment(battle) {
+    if (battle.environmentMeta) {
+      environmentFor(battle)?.sync(battle);
+      return;
+    }
     if (!environment) return;
     battle.naturalEnv = environment.parse(battle.naturalEnv);
     for (const actor of battle.units) {
@@ -243,6 +410,7 @@
     return Math.max(0, base * (1 + percentage / 100) + fixed);
   }
   function recalculateAttributes(actor) {
+    if (effectsFor()) return effectsFor().recalculate(actor);
     actor.baseAttributes ||= Object.fromEntries(Object.entries(ATTRIBUTES)
       .map(([stat, [, max]]) => [stat, num(actor[max], actor.luck)]));
     for (const [stat, [key, max]] of Object.entries(ATTRIBUTES)) {
@@ -252,6 +420,7 @@
     }
   }
   function storeSkillEffect(battle, actor, target, raw, skill, passive = false) {
+    if (effectsFor()) return effectsFor().apply(battle, actor, target, raw, skill, passive);
     if (!object(raw) || !name(raw.name) ||
       !['buff', 'debuff', 'poison', 'regen'].includes(raw.type)) return false;
     const stat = raw.stat ?? (['poison', 'regen'].includes(raw.type) ? '当前活力' : null);
@@ -277,6 +446,8 @@
         ? raw.triggerTiming : 'turn_start',
       priority: num(raw.priority),
       skillEffect: true, passive, sourceHeroId: actor.id };
+    if (passive && (skill.$放牧来源 || skill.$空想来源 || skill.$秘术投影 || skill.$神秘再现投影))
+      effect.pathwayProjectionPassive = true;
     const store = (recipient, instance) => {
       recipient.effects ||= [];
       const existing = recipient.effects.find(row => row.name === instance.name &&
@@ -290,6 +461,7 @@
         } else recipient.effects[recipient.effects.indexOf(existing)] = instance;
       } else recipient.effects.push(instance);
       recalculateAttributes(recipient);
+      modules['cryptLord.battleReport']?.effect(battle, actor, recipient, instance);
       return true;
     };
     const transfer = transferFor(battle);
@@ -302,14 +474,14 @@
     battle.tagRules ||= clone(object(rules) ? rules : { mapping: {}, damage: {}, healing: {} });
     for (const actor of battle.units) {
       if (actor.tagsAndPassivesInitialized) continue;
-      const card = actor.source === 'player' ? data.stat_data : data.npc_data?.[actor.id];
+      const card = cardFor(data, actor);
       actor.tags = Array.isArray(actor.tags) ? actor.tags : [];
       for (const row of Array.isArray(card?.tags ?? card?.标签) ? card.tags ?? card.标签 : []) {
-        if (typeof row === 'string') battleTags?.add(actor, row, 99);
+        if (typeof row === 'string') battleTags?.add(actor, row, 99, 1, 99, 'applied', battle);
         else if (object(row)) battleTags?.add(actor, row.name ?? row.名称,
-          row.duration ?? 99, row.stacks, row.maxStacks);
+          row.duration ?? 99, row.stacks, row.maxStacks, 'applied', battle);
       }
-      battleTags?.sync(actor, actor.sequence, battle.tagRules.mapping);
+      battleTags?.sync(actor, actor.sequence, battle.tagRules.mapping, battle);
       for (const skill of rawAbilities(card).filter(row =>
         row.isPassive === true || /被动/.test(name(row.类型)))) {
         let applied = 0;
@@ -324,7 +496,7 @@
     if (scope === 'self') return [actor];
     const ally = ['allAlly', 'allAllies'].includes(scope);
     if (!['all', 'allEnemies', 'allAlly', 'allAllies'].includes(scope)) return [center];
-    return battle.units.filter(row => alive(row) &&
+    return battle.units.filter(row => onField(row) &&
       (!excludeSelf || row !== actor) &&
       (ally ? row.side === actor.side : row.side !== actor.side) &&
       distance(row, center) <= choice.radius);
@@ -336,7 +508,8 @@
       sum(victim, 'damageTakenIncrease') - sum(victim, 'damageTakenDecrease');
   }
   function processSkillEffects(battle, actor, timing) {
-    const active = (actor.effects || []).filter(effect => effect.skillEffect &&
+    if (effectsFor()) return effectsFor().process(battle, actor, timing);
+    const active = (actor.effects || []).filter(effect => (effect.skillEffect || effect.exilePoison) &&
       effect.triggerTiming === timing && (effect.battlePersistent || effect.duration > 0))
       .sort((a, b) => a.priority - b.priority);
     for (const effect of active) {
@@ -349,11 +522,16 @@
             sourceKind: '持续伤害', sourceLabel: effect.name }) : null;
         const delta = effect.type === 'poison' ? -(loss?.actualDamage ?? Math.min(actor[key], amount))
           : Math.min(max - actor[key], amount);
-        if (!loss) actor[key] += delta;
+        if (!loss) {
+          actor[key] += delta;
+          permanentFor(battle)?.markDamaged(battle, actor, -delta);
+        }
         log(battle, `${actor.name} 的「${effect.name}」${delta < 0 ? '损失' : '恢复'} ${Math.abs(delta)} 点${effect.stat.slice(2)}。`);
       }
       if (!effect.battlePersistent) effect.duration--;
     }
+    for (const effect of actor.effects || []) if (!effect.battlePersistent && effect.duration <= 0)
+      modules['cryptLord.battleReport']?.effect(battle, actor, actor, effect, 'expired');
     actor.effects = (actor.effects || []).filter(effect => effect.battlePersistent ||
       effect.duration > 0);
     recalculateAttributes(actor);
@@ -361,17 +539,38 @@
   function enterTurn(battle) {
     while (battle.index < battle.queue.length) {
       const actor = current(battle);
-      if (alive(actor) && actor.turnStartedRound !== battle.round) {
+      const extra = extraFor(battle), slot = extra?.currentSlot(battle);
+      if (slot?.voided || slot?.extra && extra.check(battle, actor)) {
+        battle.index++; continue;
+      }
+      if (alive(actor) && !slot?.cfg?.skipTurnStart && actor.turnStartedRound !== battle.round) {
         actor.turnStartedRound = battle.round;
-        fieldsFor(battle)?.turnStart(battle, actor);
+        if (!effectsFor()) fieldsFor(battle)?.turnStart(battle, actor);
         processSkillEffects(battle, actor, 'turn_start');
+        resourceFor()?.turnStart(battle, actor);
+        terrainFor()?.turnStart(battle, actor);
         briberyFor(battle)?.sweep(battle);
+        sweepAuthorities(battle);
         if (formulasFor(battle)) {
           actor.movement = formulasFor(battle).movement(battle, actor);
           actor.moveRemaining = actor.movement;
         }
       }
-      if (alive(actor)) return;
+      if (onField(actor)) {
+        if (hardFor(battle)?.shouldSkip(battle, actor)) {
+          hardFor(battle).consume(battle, actor);
+          extra?.check(battle, actor);
+          processSkillEffects(battle, actor, 'turn_end');
+          battle.index++; continue;
+        }
+        extra?.enter(battle, actor);
+        return;
+      }
+      extra?.check(battle, actor);
+      if (alive(actor)) {
+        processSkillEffects(battle, actor, 'turn_end');
+        log(battle, `${actor.name} 在场外，本次不能行动。`);
+      }
       battle.index++;
     }
   }
@@ -439,18 +638,22 @@
     return winners;
   }
   const log = (battle, message, details = null) => {
+    const slot = extraFor(battle)?.currentSlot(battle);
+    const actor = current(battle);
+    if (slot?.extra && actor && message.startsWith(`${actor.name} `))
+      message = `${slot.alias} ${message.slice(actor.name.length + 1)}`;
     battle.log.push({ round: battle.round, message, at: Date.now(), ...(details || {}) });
     if (battle.log.length > MAX_LOG) battle.log.shift();
   };
 
-  function roster(data) {
+  function roster(data, pool) {
     const npcs = object(data?.npc_data) ? data.npc_data : {};
     return Object.entries(npcs).filter(([key, card]) => key !== '$meta' && object(card) &&
       name(key) && num(card.当前活力) > 0 && num(card.活力, card.当前活力) > 0)
       .map(([key, card]) => ({
         key, name: name(card.名称) || key, hp: num(card.当前活力),
         rank: experience.rank(card.当前序列),
-      }));
+      })).concat(modules['cryptLord.battlePlayUnits']?.roster(data, pool) || []);
   }
 
   function unit(card, id, side, source, x, y, original = false) {
@@ -495,6 +698,30 @@
       effectiveValue(b, 'speed', b.agility) - effectiveValue(a, 'speed', a.agility) ||
       a.id.localeCompare(b.id)).map(unit => unit.id);
   }
+  function createSummonUnit(battle, card, displayName, side) {
+    const id = `summon_${++battle.summonMeta.serial}`;
+    return { ...unit(card, id, side, 'npc', -1, -1), name: displayName,
+      summonCard: clone(card), isSummon: true };
+  }
+  function prepareSummon(battle, actor, data) {
+    const probe = { ...battle, units: [actor] };
+    prepareLifeSave(probe, data);
+    prepareTagsAndPassives(probe, data);
+  }
+  function refreshProjectionPassives(battle, actor, card) {
+    actor.effects = (actor.effects || []).filter(row => !row.pathwayProjectionPassive);
+    recalculateAttributes(actor);
+    battleTags?.sync(actor, actor.sequence, battle.tagRules?.mapping || {}, battle);
+    if (lifeSave && actor.lifeSave) {
+      lifeSave.reconcile(actor, actor.sequence, actor.pathway, battle.lifeSaveTable,
+        battle.lifeSavePathways || battle.fieldEffectMeta?.pathways || battle.formulas?.pathways);
+    }
+    for (const skill of rawAbilities(card).filter(row =>
+      (row.$放牧来源 || row.$空想来源 || row.$秘术投影 || row.$神秘再现投影) &&
+      (row.isPassive === true || /被动/.test(name(row.类型)))))
+      for (const effect of Array.isArray(skill.effects) ? skill.effects : [])
+        storeSkillEffect(battle, actor, actor, effect, skill, true);
+  }
   function modifier(unit, stat) {
     return (unit.effects || []).reduce((sum, effect) =>
       effect.stat === stat && ['buff', 'debuff'].includes(effect.type)
@@ -509,28 +736,75 @@
     return battle.units.find(unit => alive(unit) && unit.x === x && unit.y === y);
   }
   function result(battle) {
-    const side = unit => briberyFor(battle)?.originSide(battle, unit) || unit.side;
-    const allies = battle.units.some(unit => side(unit) === 'ally' && alive(unit));
-    const enemies = battle.units.some(unit => side(unit) === 'enemy' && alive(unit));
+    const side = unit => tempFor(battle)?.originSide(battle, unit) ||
+      mindFor(battle)?.originSide(battle, unit) ||
+      briberyFor(battle)?.originSide(battle, unit) || unit.side;
+    const allies = battle.units.some(unit => !unit.isSummon && side(unit) === 'ally' && alive(unit));
+    const enemies = battle.units.some(unit => !unit.isSummon && side(unit) === 'enemy' && alive(unit));
     if (allies && enemies) return null;
     return allies ? 'victory' : enemies ? 'defeat' : 'draw';
   }
+  function terrainEntry(battle, actor) {
+    if (!onField(actor)) return;
+    if (terrainFor()) return terrainFor().entry(battle, actor);
+    const { x, y } = actor;
+    for (const tile of battle.terrain || []) {
+      if (tile.x !== x || tile.y !== y || !tile.id || !terrainPresets) continue;
+      const terrainActor = { ...actor,
+        tags: (actor.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name) };
+      for (const hit of terrainPresets.hits(tile.id, terrainActor, tile.rank)) {
+        if (hit.kind === 'damage') {
+          if (hit.value >= 0) {
+            const recovered = Math.max(0, Math.min(hit.value, actor.maxHp - actor.hp));
+            actor.hp += recovered;
+            if (recovered) log(battle, `${actor.name} 在「${tile.name}」恢复 ${recovered} 点活力。`);
+            continue;
+          }
+          const loss = transferFor(battle)?.loss(battle, actor, '当前活力', Math.abs(hit.value),
+            { sourceKind: '地形伤害', sourceLabel: tile.name });
+          const damage = loss?.actualDamage ?? Math.min(actor.hp, Math.abs(hit.value));
+          if (!loss) {
+            actor.hp -= damage;
+            permanentFor(battle)?.markDamaged(battle, actor, damage);
+          }
+          log(battle, `${actor.name} 受到「${tile.name}」${damage} 点伤害。`);
+        } else if (hit.kind === 'status' && alive(actor)) {
+          applyTacticEffect(actor, { name: tile.name, type: hit.value < 0 ? 'debuff' : 'buff', stat: hit.stat,
+            power: Math.min(90, Math.abs(hit.value)), duration: 1, terrainSource: `${x},${y}` }, battle, actor);
+          log(battle, `${actor.name} 受到「${tile.name}」状态影响。`);
+        }
+      }
+    }
+  }
+  function finishRound(battle) {
+    for (const unit of battle.units) processSkillEffects(battle, unit, 'round_end');
+    battleTags?.tick(battle.units, battle);
+    fieldsFor(battle)?.endRound(battle);
+    transferFor(battle)?.sweep(battle, true);
+    briberyFor(battle)?.sweep(battle, true);
+    mindFor(battle)?.endRound(battle);
+    tempFor(battle)?.endRound(battle);
+    sweepAuthorities(battle, true);
+    mythicFor(battle)?.tick(battle);
+    exileFor(battle)?.endRound(battle);
+    terrainFor()?.endRound(battle);
+    if (battle.skillControlMeta) skillControlFor().tick(battle);
+  }
   function advance(battle) {
     const actor = current(battle);
-    if (actor) processSkillEffects(battle, actor, 'turn_end');
+    const slot = extraFor(battle)?.currentSlot(battle);
+    if (actor && !slot?.cfg?.freezeDurations) processSkillEffects(battle, actor, 'turn_end');
+    if (actor) extraFor(battle)?.check(battle, actor);
     battle.index++;
     enterTurn(battle);
     if (battle.index >= battle.queue.length) {
-      for (const unit of battle.units) processSkillEffects(battle, unit, 'round_end');
-      battleTags?.tick(battle.units);
-      fieldsFor(battle)?.endRound(battle);
-      transferFor(battle)?.sweep(battle, true);
-      briberyFor(battle)?.sweep(battle, true);
+      finishRound(battle);
     }
     aurasFor(battle)?.sweepDead(battle);
     fieldsFor(battle)?.sweep(battle);
     transferFor(battle)?.sweep(battle);
     briberyFor(battle)?.sweep(battle);
+    sweepAuthorities(battle);
     const outcome = result(battle);
     if (outcome) {
       battle.status = 'finished';
@@ -539,6 +813,7 @@
       fieldsFor(battle)?.finish(battle);
       transferFor(battle)?.finish(battle);
       briberyFor(battle)?.finish(battle);
+      finishAuthorities(battle);
       log(battle, `战斗结束：${({ victory: '胜利', defeat: '失败', draw: '平局' })[outcome]}。`);
       return;
     }
@@ -549,8 +824,11 @@
   }
   function nextRound(battle) {
     battle.round++;
+    hardFor(battle)?.sweep(battle);
+    mindFor(battle)?.sweep(battle);
     fieldsFor(battle)?.sweep(battle);
-    for (const unit of battle.units) {
+    eventsFor(battle)?.tick(battle);
+    for (const unit of battle.skillControlMeta ? [] : battle.units) {
       if (!unit.skillControl) continue;
       const expired = [];
       for (const kind of ['banned', 'granted']) {
@@ -564,7 +842,7 @@
     for (const unit of battle.units) {
       for (const effect of unit.effects || []) {
         if (!alive(unit)) break;
-        if (effect.skillEffect || effect.fieldEffect) continue;
+        if (effect.skillEffect || effect.fieldEffect || effect.exilePoison) continue;
         if (!['poison', 'regen'].includes(effect.type)) continue;
         const key = CURRENT[effect.stat], max = unit[LIMITS[effect.stat]];
         if (!key || !Number.isFinite(max)) continue;
@@ -575,43 +853,56 @@
             sourceKind: '持续伤害', sourceLabel: effect.name }) : null;
         const delta = effect.type === 'poison' ? -(loss?.actualDamage ?? Math.min(unit[key], amount))
           : Math.min(max - unit[key], amount);
-        if (!loss) unit[key] += delta;
+        if (!loss) {
+          unit[key] += delta;
+          permanentFor(battle)?.markDamaged(battle, unit, -delta);
+        }
         log(battle, `${unit.name} 的「${effect.name}」${delta < 0 ? '损失' : '恢复'} ${Math.abs(delta)} 点${effect.stat.slice(2)}。`);
       }
-      unit.effects = (unit.effects || []).map(effect => effect.battlePersistent || effect.skillEffect || effect.fieldEffect
-        ? effect : { ...effect, duration: effect.duration - 1 })
-        .filter(effect => effect.battlePersistent || effect.duration > 0);
+      unit.effects = (unit.effects || []).map(effect => effect.battlePersistent || effect.skillEffect || effect.fieldEffect || effect.exilePoison || effect.mindDeprive || effect.enemyControl ||
+        effect.mythicForm || effect.canonMythicForm || effect.ruleChange || effect.environment
+        ? effect : { ...effect, duration: effect.duration - 1 });
+      for (const effect of unit.effects) if (!effect.battlePersistent && effect.duration <= 0)
+        modules['cryptLord.battleReport']?.effect(battle, unit, unit, effect, 'expired');
+      unit.effects = unit.effects.filter(effect => effect.battlePersistent || effect.duration > 0);
       recalculateAttributes(unit);
     }
-    battle.terrain = (battle.terrain || []).map(tile =>
+    if (!terrainFor()) battle.terrain = (battle.terrain || []).map(tile =>
       tile.duration == null ? tile : { ...tile, duration: tile.duration - 1 })
       .filter(tile => tile.duration == null || tile.duration > 0);
     syncEnvironment(battle);
     aurasFor(battle)?.sweepDead(battle);
     briberyFor(battle)?.sweep(battle);
+    sweepAuthorities(battle);
     const outcome = result(battle);
     if (outcome) {
       battle.status = 'finished'; battle.result = outcome; battle.endedAt = Date.now();
       fieldsFor(battle)?.finish(battle);
       transferFor(battle)?.finish(battle);
       briberyFor(battle)?.finish(battle);
+      finishAuthorities(battle);
       log(battle, `战斗结束：${({ victory: '胜利', defeat: '失败', draw: '平局' })[outcome]}。`);
       return;
     }
     aurasFor(battle)?.tick(battle);
-    battle.queue = queue(battle);
+    const initiative = queue(battle);
+    battle.queue = extraFor(battle)?.expand(battle, initiative) || initiative;
     battle.index = 0;
     battle.phase = 'action';
     battle.units.forEach(unit => { unit.moves = 0; });
+    rewindFor(battle)?.snapshot(battle);
     enterTurn(battle);
+    if (battle.index >= battle.queue.length) finishRound(battle);
     const effectOutcome = result(battle);
     if (effectOutcome) {
       battle.status = 'finished'; battle.result = effectOutcome; battle.endedAt = Date.now();
       fieldsFor(battle)?.finish(battle);
       transferFor(battle)?.finish(battle);
       briberyFor(battle)?.finish(battle);
+      finishAuthorities(battle);
     } else if (battle.index >= battle.queue.length) battle.phase = 'tactic';
     log(battle, `第 ${battle.round} 回合开始。`);
+    modules['cryptLord.battleReport']?.roundStart(battle);
   }
   function start(data, options = {}) {
     if (!object(data)) return { ok: false, error: '当前楼层变量不可用。' };
@@ -622,8 +913,19 @@
       return { ok: false, error: '请先确认或放弃上一场战报。' };
     if (data.cryptLord?.personalBattle?.status === 'active')
       return { ok: false, error: '请先完成当前个人战斗。' };
+    const legacy = data.cryptLord?.personalBattle;
+    if (legacy?.status === 'finished' && legacy.result === 'victory' &&
+      legacy.enemy?.npcKey && !legacy.experienceClaimed)
+      return { ok: false, error: '请先领取或放弃旧个人战斗经验。' };
     const allies = Array.isArray(options.allies) ? options.allies : [];
     const enemies = Array.isArray(options.enemies) ? options.enemies : [];
+    const practice = options.mode === 'practice';
+    if (options.mode != null && !['team', 'duel', 'practice'].includes(options.mode))
+      return { ok: false, error: '战斗模式无效。' };
+    if (options.mode === 'duel' && (allies.length || enemies.length !== 1) ||
+      practice && (allies.length || enemies.length !== 1 || enemies[0] !== '$practice' ||
+        !object(options.practiceCard)))
+      return { ok: false, error: '个人对局只能选择一名对手。' };
     const unique = [...allies, ...enemies];
     if (!enemies.length || allies.length > 59 || enemies.length > 60 ||
       unique.length !== new Set(unique).size ||
@@ -631,24 +933,60 @@
       return { ok: false, error: '双方编队不能为空、重复或超过单方棋盘容量。' };
     const next = clone(data);
     const npc = object(next.npc_data) ? next.npc_data : {};
-    if (unique.some(key => !object(npc[key]) || num(npc[key].当前活力) <= 0))
+    const playUnits = modules['cryptLord.battlePlayUnits'];
+    const candidates = playUnits?.roster(next, options.summonPool || options.pathways) || [];
+    const bagKeys = unique.filter(key => candidates.some(row => row.key === key));
+    if (bagKeys.some(key => Object.hasOwn(npc, key)))
+      return { ok: false, error: 'NPC 编号与专属单位编号冲突，请更换 NPC 名称。' };
+    if (practice && Object.hasOwn(npc, '$practice'))
+      return { ok: false, error: 'NPC 编号与训练目标冲突，请更换 NPC 编号。' };
+    if (unique.some(key => !(practice && key === '$practice') && !bagKeys.includes(key) &&
+      (!object(npc[key]) || num(npc[key].当前活力) <= 0)))
       return { ok: false, error: '参战 NPC 已变化或没有可用活力。' };
     const player = next.stat_data;
     if (!object(player) || num(player.当前活力) <= 0)
       return { ok: false, error: '玩家没有可用活力。' };
     const formulas = modules['cryptLord.battleFormulas'];
     const units = [unit(player, 'player', 'ally', 'player', 0, ROWS - 1, Boolean(formulas))];
-    allies.forEach((key, i) => units.push(unit(npc[key], key, 'ally', 'npc',
-      (i + 1) % COLS, ROWS - 1 - Math.floor((i + 1) / COLS), Boolean(formulas))));
-    enemies.forEach((key, i) => units.push(unit(npc[key], key, 'enemy', 'npc',
-      i % COLS, Math.floor(i / COLS), Boolean(formulas))));
+    let records;
+    try { records = playUnits?.prepare(next, bagKeys, options.summonPool || options.pathways) || []; }
+    catch (error) { return { ok: false, error: error.message }; }
+    const make = (key, side, x, y) => {
+      const play = records.find(row => row.key === key);
+      const training = practice && key === '$practice';
+      const card = training ? options.practiceCard : play?.card || npc[key];
+      const actor = unit(card, key, side, training ? 'practice' : 'npc', x, y, Boolean(formulas));
+      if (training) {
+        actor.name = name(card.名称) || '训练假人';
+        actor.playCard = clone(card);
+        actor.playSource = 'practice';
+      }
+      if (play) {
+        actor.name = play.name;
+        actor.playSource = play.playSource;
+        actor.playCard = clone(play.card);
+        actor.playRecord = { source: play.source, name: play.name, original: clone(play.original) };
+      }
+      if (side === 'ally' && (play || card.$秘偶 === true)) actor.controller = 'player';
+      return actor;
+    };
+    allies.forEach((key, i) => units.push(make(key, 'ally',
+      (i + 1) % COLS, ROWS - 1 - Math.floor((i + 1) / COLS))));
+    enemies.forEach((key, i) => units.push(make(key, 'enemy',
+      i % COLS, Math.floor(i / COLS))));
     const battle = {
       version: 1, id: `team_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      mode: options.mode || 'team',
       status: 'active', phase: 'action', result: null, round: 1,
       units, queue: [], index: 0, log: [], terrain: [],
       props: parseProps(options.props), settled: false,
       board: { cols: COLS, rows: ROWS }, startedAt: Date.now(),
+      ...(lifeSave ? { lifeSavePathways: clone(options.pathways || options.summonPool?.pathways || {}) } : {}),
     };
+    effectsFor()?.initialize(battle);
+    if (records.length) battle.playUnitMeta = { version: 1,
+      pathways: clone(options.summonPool?.pathways || options.pathways || {}) };
+    modules['cryptLord.battleReport']?.initialize(battle, next);
     if (formulas) {
       try {
         battle.formulas = formulas.initialize(options.seed ??
@@ -657,21 +995,60 @@
           battle.formulas.pathways = clone(options.pathways);
       } catch (error) { return { ok: false, error: error.message }; }
     }
+    try { resourceFor()?.initialize(battle, options.statusEffects); }
+    catch (error) { return { ok: false, error: error.message }; }
+    modules['cryptLord.audienceImaginationState']?.initializeTeam(next, battle,
+      options.summonPool, formulas ? rollFor(battle) : undefined, options.imaginationCache);
     prepareLifeSave(battle, next, options.lifeSaveTable);
     prepareTagsAndPassives(battle, next, options.tagRules);
     log(battle, `战斗开始：我方 ${allies.length + 1} 人，敌方 ${enemies.length} 人。`);
     paintOpening(battle, options.opening);
     modules['cryptLord.battleAuras']?.initialize(battle,
       formulasFor(battle) ? rollFor(battle) : undefined);
-    modules['cryptLord.battleFieldEffects']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleFieldEffects']?.initialize(battle, options.pathways,
+      options.averages || options.summonPool?.pictureConfig?.consumableConfig?.avgAttrByRank);
     modules['cryptLord.battleEffectTransfer']?.initialize(battle, options.pathways);
     modules['cryptLord.battleBribery']?.initialize(battle, options.pathways);
     if (conditionsFor()) battle.conditionMeta = { version: 1 };
+    if (formulas) modules['cryptLord.battleBalance']?.initialize(battle, options.pathways);
+    modules['cryptLord.battlePunishment']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleMythicForm']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleExile']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleActiveLeave']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleEvents']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleRewind']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleExtraAction']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleHardControl']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleMindDeprive']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleTempControl']?.initialize(battle, options.pathways);
+    modules['cryptLord.battlePermanentControl']?.initialize(battle, options.pathways);
+    modules['cryptLord.battlePossession']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleRuleChange']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleEnvironment']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleFundamental']?.initialize(battle, options.pathways);
+    modules['cryptLord.battleSummon']?.initialize(battle, next, options.summonPool);
+    if (modules['cryptLord.shamanTerritoryBattle'])
+      modules['cryptLord.shamanTerritoryBattle'].applyTeam(next, battle,
+        options.summonPool || { pathways: options.pathways || {} }, options.opening);
+    modules['cryptLord.arbiterJurisdictionBattle']?.applyTeam(next, battle,
+      options.summonPool || { pathways: options.pathways || {} }, options.opening);
+    modules['cryptLord.battleAbilityBorrow']?.initialize(battle);
+    modules['cryptLord.battleTacticCpu']?.initialize(battle);
+    modules['cryptLord.battleActionCpu']?.initialize(battle, next);
+    skillControlFor()?.initialize(battle, options.pathways);
+    autoPilotFor()?.initialize(battle);
+    if (terrainFor()) {
+      terrainFor().initialize(battle);
+      for (const actor of battle.units) terrainEntry(battle, actor);
+    }
     if (formulas) for (const actor of battle.units) {
       actor.movement = formulas.movement(battle, actor);
       actor.moveRemaining = actor.movement;
     }
-    battle.queue = queue(battle);
+    const initiative = queue(battle);
+    battle.queue = extraFor(battle)?.expand(battle, initiative) || initiative;
+    modules['cryptLord.battleReport']?.roundStart(battle);
+    rewindFor(battle)?.snapshot(battle);
     enterTurn(battle);
     const openingOutcome = result(battle);
     if (openingOutcome) {
@@ -679,6 +1056,7 @@
       fieldsFor(battle)?.finish(battle);
       transferFor(battle)?.finish(battle);
       briberyFor(battle)?.finish(battle);
+      finishAuthorities(battle);
     } else if (battle.index >= battle.queue.length) battle.phase = 'tactic';
     next.cryptLord = object(next.cryptLord) ? next.cryptLord : {};
     next.cryptLord.teamBattle = battle;
@@ -691,6 +1069,20 @@
       : { data: classified.data };
     return { ok: true, data: assigned.data, battle: get(assigned.data) };
   }
+  function startDuel(data, options = {}) {
+    const npcKey = name(options.npcKey);
+    if (npcKey) return start(data, { ...options, mode: 'duel', allies: [], enemies: [npcKey] });
+    const hp = Number(options.enemyHp ?? 30), agility = Number(options.enemyAgility ?? 8);
+    if (!Number.isFinite(hp) || hp < 1 || hp > 1e9 ||
+      !Number.isFinite(agility) || agility < 0 || agility > 1e9)
+      return { ok: false, error: '训练活力或敏捷数值无效。' };
+    const card = { 名称: name(options.enemyName) || '训练假人', 当前序列: '普通人',
+      活力: Math.floor(hp), 敏捷: agility, 灵性: 0, 理智: 100, 人性: 100, 运气: 0,
+      能力清单: [] };
+    for (const stat of ['活力', '敏捷', '灵性', '理智', '人性']) card[`当前${stat}`] = card[stat];
+    return start(data, { ...options, mode: 'practice', allies: [], enemies: ['$practice'],
+      practiceCard: card });
+  }
   function get(data) {
     const battle = data?.cryptLord?.teamBattle;
     if (!object(battle) || battle.version !== 1) return null;
@@ -699,13 +1091,14 @@
     prepareTagsAndPassives(restored, data);
     return restored;
   }
-  function options(data, raw = false) {
+  function options(data, raw = false, includeBanned = false) {
     const battle = get(data);
     const actor = battle?.status === 'active' && battle.phase === 'action' ? current(battle) : null;
     if (!actor) return [];
-    const enemy = battle.units.filter(unit => unit.side !== actor.side && alive(unit));
-    const friends = battle.units.filter(unit => unit.side === actor.side && alive(unit));
-    const card = actor.source === 'player' ? data.stat_data : data.npc_data?.[actor.id];
+    if (!onField(actor)) return [];
+    const enemy = battle.units.filter(unit => unit.side !== actor.side && onField(unit));
+    const friends = battle.units.filter(unit => unit.side === actor.side && onField(unit));
+    const card = cardFor(data, actor);
     const banned = new Set((actor.skillControl?.banned || []).map(row => row.name));
     const original = formulasFor(battle);
     const skillRange = skill => {
@@ -737,7 +1130,7 @@
       const heal = Math.max(0, resolve(skill.healAmt ?? skill.治疗量));
       const rawPower = skill.power ?? skill.威力 ?? skill.伤害;
       const power = Math.max(0, resolve(rawPower, object(rawPower) ? 1 : 0));
-      if (!power && !heal && !skill.effects?.length &&
+      if (!power && !object(rawPower) && !heal && !skill.effects?.length &&
         !skill.applyTags?.length && !skill.removeTags?.length && !hasConditions(skill)) return null;
       const type = name(skill.targetType);
       const ally = ['ally', 'allAlly', 'allAllies', 'self'].includes(type) || (!type && heal > 0);
@@ -752,7 +1145,7 @@
         healValueType: original ? skill.healValueType ?? skill.治疗数值类型 ?? 'percentage' : 'fixed',
         damageType: skill.damageType ?? skill.伤害类型 ?? 'physical',
         skill: clone(skill),
-        range: range.max, targetType: type || (ally ? 'ally' : 'single'),
+        range: range.max, minRange: range.min, targetType: type || (ally ? 'ally' : 'single'),
         radius: Math.max(0, Math.floor(num(skill.aoeRadius, 2))), targets };
     };
     const groups = object(card?.序列能力列表) ? card.序列能力列表 : {};
@@ -768,6 +1161,7 @@
       });
     }
     const weaponEngine = modules['cryptLord.personalBattleState'];
+    const averages = battle.fieldEffectMeta?.averages;
     const itemDamageType = raw => ({
       物理攻击: 'physical', 法术攻击: 'mystical', 精神攻击: 'mental', 命运攻击: 'mixed',
     })[raw?.战斗效果?.基础效果] || 'physical';
@@ -782,13 +1176,27 @@
         distance(actor, target) >= 1 && distance(actor, target) <= 3)
         .map(target => target.id),
     });
-    const auxiliary = actor.source === 'player'
-      ? (weaponEngine?.auxiliaryMoves(data) || []).map(move =>
+    const auxiliary = actor.source === 'player' || actor.cardSource === 'player'
+      ? (weaponEngine?.auxiliaryMoves({ stat_data: card }, averages) || []).map(move =>
         auxiliaryOption(move, `auxiliary:${move.key}`)) : [];
     const granted = (actor.skillControl?.granted || []).flatMap((row, index) => {
+      if (row.choice) {
+        const option = clone(row.choice);
+        option.id = `granted:${index}`;
+        option.grantedIndex = index;
+        if (option.range === 'global') option.range = Infinity;
+        if (option.radius === 'global') option.radius = Infinity;
+        if (option.quantity != null && option.quantity < 1) return [];
+        const ally = ['ally', 'allAlly', 'allAllies', 'self'].includes(option.targetType);
+        option.targets = option.targetType === 'self' || option.range === 0 ? [actor.id]
+          : (ally ? friends : enemy).filter(target =>
+            distance(actor, target) >= (option.minRange ?? 0) &&
+            distance(actor, target) <= option.range).map(target => target.id);
+        return [option];
+      }
       const aux = row.ability?.战斗效果 && weaponEngine?.auxiliaryMoves({
         stat_data: { 辅助能力列表: { borrowed: row.ability } },
-      })[0];
+      }, averages)[0];
       const option = aux ? auxiliaryOption(aux, `granted:${index}`)
         : skillOption(row.ability, `granted:${index}`);
       if (option && aux) option.damageType = itemDamageType(row.ability);
@@ -800,7 +1208,7 @@
           isEquipped: true, $战斗分类: actor.fallbackWeapon },
       } : card?.武器列表 },
     };
-    const weapons = (weaponEngine?.weaponMoves(weaponData) || []).map(move => ({
+    const weapons = (weaponEngine?.weaponMoves(weaponData, averages) || []).map(move => ({
       id: `weapon:${move.key}`, name: move.name, cost: move.cost,
       power: move.damage, heal: move.healing, healStat: move.healStat,
       healValueType: 'fixed', damageType: itemDamageType(weaponData.stat_data?.武器列表?.[move.key]),
@@ -810,8 +1218,8 @@
       targets: (move.healing ? friends : enemy)
         .filter(target => distance(actor, target) <= move.range).map(target => target.id),
     }));
-    const consumables = actor.source === 'player'
-      ? (weaponEngine?.consumableMoves(data) || []).map(move => ({
+    const consumables = actor.source === 'player' || actor.cardSource === 'player'
+      ? (weaponEngine?.consumableMoves({ stat_data: card }, averages) || []).map(move => ({
         id: `${move.isScroll ? 'scroll' : 'consumable'}:${move.key}`,
         name: move.name, cost: move.cost, power: move.healing ? 0 : move.power,
         heal: move.healAmt, healStat: move.statName, quantity: move.quantity,
@@ -819,9 +1227,9 @@
         range: move.range, targetType: move.area
           ? move.healing ? 'allAllies' : 'allEnemies'
           : move.healing ? 'ally' : 'single',
-        radius: move.area ? Infinity : 0, consumable: move,
+        radius: move.area ? move.radius ?? Infinity : 0, consumable: move,
         targets: (move.healing ? friends : enemy)
-          .filter(target => move.healing || distance(actor, target) <= move.range)
+          .filter(target => move.healing && !move.originalScroll || distance(actor, target) <= move.range)
           .map(target => target.id),
       })) : [];
     return [
@@ -830,7 +1238,7 @@
         heal: 0,
         range: 1, targets: enemy.filter(target => distance(actor, target) <= 1).map(target => target.id) },
       ...skills, ...granted, ...weapons, ...consumables, ...auxiliary,
-    ].filter(option => !banned.has(option.name)).map(option => {
+    ].filter(option => includeBanned || !banned.has(option.name)).map(option => {
       if (raw) return option;
       const conditional = hasConditions(option.skill);
       return { ...option, conditional, targets: option.targets.filter(id => {
@@ -859,7 +1267,8 @@
       targets: details?.details || [] };
   }
   function calculationSkill(choice) {
-    return { ...(choice.skill || {}), power: choice.power,
+    const rawPower = choice.skill?.power ?? choice.skill?.威力 ?? choice.skill?.伤害;
+    return { ...(choice.skill || {}), power: object(rawPower) ? rawPower : choice.power,
       damageType: choice.damageType || 'physical',
       healAmt: choice.heal, healType: choice.healStat || '活力',
       healValueType: choice.healValueType || 'fixed',
@@ -871,11 +1280,16 @@
   }
   function reachable(data) {
     const battle = get(data);
+    if (battle && current(battle)?.picturePersonImmobile) return [];
     const actor = battle?.phase === 'action' ? current(battle) : null;
-    if (!actor || !alive(actor) || (formulasFor(battle)
+    if (!actor || !onField(actor) || actor.mindDepriveMovePct >= 100 || (formulasFor(battle)
       ? actor.moveRemaining <= 0 : actor.moves >= 1)) return [];
     const allowance = formulasFor(battle) ? actor.moveRemaining
       : effectiveValue(actor, 'movement', 3 + Math.max(0, actor.envMoveBonus || 0));
+    if (battle.formulas && modules['cryptLord.battleActionCpu']) {
+      modules['cryptLord.battleActionCpu'].initialize(battle, data);
+      return modules['cryptLord.battleActionCpu'].reachable(battle, data, actor);
+    }
     const frontier = [{ x: actor.x, y: actor.y, cost: 0 }];
     const costs = new Map([[`${actor.x},${actor.y}`, 0]]);
     const directions = [-1, 0, 1].flatMap(dx => [-1, 0, 1]
@@ -904,15 +1318,20 @@
       return { x, y, ...(formulasFor(battle) ? { cost: costs.get(key) } : {}) };
     }).filter(cell => !occupied(battle, cell.x, cell.y));
   }
-  function action(data, move = {}, random) {
+  function action(data, move = {}, random, { autoPilot = false } = {}) {
     const next = clone(data || {});
     const battle = next.cryptLord?.teamBattle;
     if (!object(battle) || battle.status !== 'active' || battle.phase !== 'action')
       return { ok: false, error: '当前不在行动阶段。' };
+    prepareSkillControl(battle);
     if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    if (!autoPilot && autoPilotFor()?.drives(battle, current(battle)))
+      return { ok: false, error: '当前由托管执行，请先关闭托管再操作。' };
+    if (modules['cryptLord.battleActionCpu'])
+      modules['cryptLord.battleActionCpu'].initialize(battle, next);
     random ||= rollFor(battle);
     const actor = current(battle);
-    if (!actor || !alive(actor)) return { ok: false, error: '行动单位已变化。' };
+    if (!actor || !onField(actor)) return { ok: false, error: '行动单位已变化或不在场上。' };
     prepareLifeSave(battle, next);
     prepareTagsAndPassives(battle, next);
     if (move.type === 'move') {
@@ -923,33 +1342,21 @@
         return { ok: false, error: '目标格不可达或已被占用。' };
       actor.x = x; actor.y = y; actor.moves++;
       if (formulasFor(battle)) actor.moveRemaining = Math.max(0, actor.moveRemaining - landing.cost);
-      log(battle, `${actor.name} 移动到 (${x}, ${y})。`);
-      for (const tile of battle.terrain || []) {
-        if (tile.x !== x || tile.y !== y || !tile.id || !terrainPresets) continue;
-        for (const hit of terrainPresets.hits(tile.id, actor, tile.rank)) {
-          if (hit.kind === 'damage') {
-            const loss = transferFor(battle)?.loss(battle, actor, '当前活力', Math.abs(hit.value),
-              { sourceKind: '地形伤害', sourceLabel: tile.name });
-            const damage = loss?.actualDamage ?? Math.min(actor.hp, Math.abs(hit.value));
-            if (!loss) actor.hp -= damage;
-            log(battle, `${actor.name} 受到「${tile.name}」${damage} 点伤害。`);
-          } else if (hit.kind === 'status' && alive(actor)) {
-            applyTacticEffect(actor, { name: tile.name, type: 'debuff', stat: hit.stat,
-              power: Math.min(90, Math.abs(hit.value)), duration: 1, terrainSource: `${x},${y}` }, battle, actor);
-            log(battle, `${actor.name} 受到「${tile.name}」状态影响。`);
-          }
-        }
-      }
+      log(battle, `${actor.name} 移动到 (${x}, ${y})。`, { reportQuiet: true });
+      terrainEntry(battle, actor);
       aurasFor(battle)?.sweepDead(battle);
       transferFor(battle)?.sweep(battle);
       briberyFor(battle)?.sweep(battle);
+      sweepAuthorities(battle);
       const outcome = result(battle);
       if (outcome) {
         battle.status = 'finished'; battle.result = outcome; battle.endedAt = Date.now();
         fieldsFor(battle)?.finish(battle);
         transferFor(battle)?.finish(battle);
         briberyFor(battle)?.finish(battle);
+        finishAuthorities(battle);
       }
+      if (!outcome && !onField(actor)) advance(battle);
     } else if (move.type === 'wait') {
       log(battle, `${actor.name} 待命。`);
       advance(battle);
@@ -967,8 +1374,13 @@
         ? conditionsFor().blockReason(battle, actor, choice, target, session)
         : briberyFor(battle)?.blockReason(battle, actor, choice, target);
       if (blocked) return { ok: false, error: blocked };
-      if (choice.consumable) {
-        const list = next.stat_data?.消耗品列表;
+      if (choice.consumable && choice.grantedIndex != null) {
+        const granted = actor.skillControl.granted[choice.grantedIndex];
+        if (granted.choice.quantity !== choice.quantity || choice.quantity < 1)
+          return { ok: false, error: '临时消耗品数量已变化。' };
+        granted.choice.quantity--;
+      } else if (choice.consumable) {
+        const list = cardFor(next, actor)?.消耗品列表;
         const item = list?.[choice.consumable.key];
         if (!item || Number(item.数量) !== choice.quantity || choice.quantity < 1)
           return { ok: false, error: '消耗品数量已变化。' };
@@ -977,7 +1389,11 @@
           else delete list[choice.consumable.key];
         } else item.数量 = choice.quantity - 1;
       }
+      const report = modules['cryptLord.battleReport'];
+      const oldCost = actor[choice.costKey || 'spirit'];
       actor[choice.costKey || 'spirit'] -= choice.cost;
+      report?.cost(battle, actor, choice, oldCost, actor[choice.costKey || 'spirit']);
+      const fireDistance = distance(actor, target);
       session?.bind(actor);
       const fields = fieldsFor(battle);
       const interference = fields?.redirect(battle, actor, target, choice, next, random);
@@ -992,7 +1408,7 @@
         : ally ? actor.side : actor.side === 'ally' ? 'enemy' : 'ally';
       const victims = session ? conditionsFor().recipients(battle, actor, target, circle, interference)
         : interference && !interference.targets.length ? []
-        : isArea ? battle.units.filter(unit => alive(unit) &&
+        : isArea ? battle.units.filter(unit => onField(unit) &&
         unit.side === victimSide && (!interference?.excludeSelf || unit !== actor) &&
         (choice.weapon ? Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y)
           : distance(unit, target)) <= choice.radius) : [target];
@@ -1004,11 +1420,15 @@
         const weapon = resolved.weapon;
         const formulas = formulasFor(battle);
         const skill = calculationSkill(resolved);
+        const balanced = balanceFor(battle)?.pair(battle, actor, victim);
+        const parameterActor = balanced ? victim : actor;
         const isHealing = resolved.isHeal ?? resolved.heal > 0;
         const isDamage = !isHealing && (session ||
-          (skill.isAccuracyWeapon ? skill.fixedDamage > 0 : resolved.power > 0));
+          (skill.isAccuracyWeapon ? skill.fixedDamage > 0 :
+            formulas ? formulas.strength(skill.power, parameterActor) > 0 : resolved.power > 0));
         if (session) conditionalDetails.push({ id: victim.id, name: victim.name, side: victim.side,
-          power: skill.isAccuracyWeapon ? skill.fixedDamage : resolved.power, isHeal: isHealing,
+          power: skill.isAccuracyWeapon ? skill.fixedDamage :
+            formulas ? formulas.strength(skill.power, parameterActor) : resolved.power, isHeal: isHealing,
           heal: resolved.heal, healStat: resolved.healStat, damageType: resolved.damageType,
           healValueType: resolved.healValueType });
         if (session ? !isHealing : isDamage) usedAttack = true;
@@ -1019,23 +1439,29 @@
           ? modules['cryptLord.personalBattleState'].weaponHitChance(
             weapon, actor, victim, weapon.range) : 1;
         if (chance < 1 && random() >= chance) {
-          log(battle, `${actor.name} 使用「${choice.name}」未命中 ${victim.name}（${Math.round(chance * 100)}%）。`);
+          report?.miss(battle, actor, victim, resolved, fireDistance);
+          log(battle, `${actor.name} 使用「${choice.name}」${balanced ? '（平衡：借用目标参数）' : ''}未命中 ${victim.name}（${Math.round(chance * 100)}%）。`,
+            { reportHandled: Boolean(report), ...(balanced ? { actor: actor.id, target: victim.id,
+              balanceTriggered: true, parameterAttacker: victim.id } : {}) });
           continue;
         }
         if (isHealing) {
           const stat = resolved.healStat || '活力';
           const key = CURRENT[`当前${stat}`] || 'hp';
           const max = LIMITS[`当前${stat}`] || 'maxHp';
-          const tagModifier = battleTags?.modifier(actor, victim, resolved.skill,
-            battle.tagRules.healing) || 0;
+          const tags = battleTags?.analyze(actor, victim, resolved.skill, battle.tagRules.healing, 'healing');
+          const tagModifier = tags?.modifier || 0;
           const calculation = formulas?.healing(battle, actor, victim, skill, random);
           const healed = calculation ? calculation.amount :
             Math.max(0, Math.min(victim[max] - victim[key],
               Math.round(resolved.heal * (1 + tagModifier))));
+          const oldValue = victim[key];
           victim[key] += healed; actor.healing += healed;
+          report?.hit(battle, actor, victim, resolved, calculation || tags || {}, oldValue,
+            victim[key], victim[max], fireDistance, true);
           log(battle, `${actor.name} 使用「${choice.name}」为 ${victim.name} 恢复 ${healed} 点${stat}。`,
-            calculation ? { actor: actor.id, target: victim.id, healing: healed,
-              calculation: { ...calculation, kind: 'healing' } } : null);
+            { reportHandled: Boolean(report), ...(calculation ? { actor: actor.id, target: victim.id,
+              healing: healed, calculation: { ...calculation, kind: 'healing' } } : {}) });
         } else if (isDamage) {
           const scale = weapon?.mode === 'accuracy' || resolved.power <= 0 ? 1 :
             Math.max(0, effectiveValue(actor, 'attack', resolved.power) -
@@ -1044,35 +1470,46 @@
               ? { ...victim, effects: victim.effects.filter(effect =>
                 !(effect.type === 'buff' && effect.stat === 'defense')) } : victim, 'defense') -
               (briberyFor(battle)?.weakenPercent(battle, actor, victim, 'defense') || 0)) / 100);
-          const tagModifier = battleTags?.modifier(actor, victim, resolved.skill,
-            battle.tagRules.damage) || 0;
+          const tags = battleTags?.analyze(actor, victim, resolved.skill, battle.tagRules.damage);
+          const tagModifier = tags?.modifier || 0;
           const calculation = formulas?.damage(battle, actor, victim, skill, random, attackContext);
+          const punishment = punishmentFor(battle)?.multiplier(battle, actor, victim) || 1;
           const incoming = calculation ? calculation.amount :
             Math.max(0, Math.round(resolved.power * scale *
-              Math.max(0, 1 + tagModifier + damageAdjustment(actor, victim))));
+              Math.max(0, 1 + tagModifier + damageAdjustment(actor, victim)) * punishment));
           const damageKey = calculation?.attribute || 'hp';
           const saved = (damageKey === 'hp' ? lifeSave?.absorb(victim, incoming) : null) ||
             { damage: incoming, triggered: false, incoming, absorbed: 0 };
+          const oldValue = victim[damageKey];
           const routed = transferFor(battle)?.loss(battle, victim,
             damageKey === 'sanity' ? '当前理智' : '当前活力', saved.damage,
             { sourceLabel: `${actor.name}的「${choice.name}」`, sourceKind: '直接伤害' });
           const dealt = routed?.actualDamage ?? Math.min(victim[damageKey], Math.max(0, Math.round(saved.damage)));
-          if (!routed) victim[damageKey] -= dealt;
+          if (!routed) {
+            victim[damageKey] -= dealt;
+            permanentFor(battle)?.markDamaged(battle, victim, dealt);
+          }
           actor.damage += dealt;
+          report?.hit(battle, actor, victim, resolved, { ...tags, ...calculation, incoming,
+            attribute: damageKey, lifeSaveMeta: saved,
+            punishmentTriggered: calculation?.punishmentTriggered ?? punishment > 1 },
+          oldValue, victim[damageKey], victim[damageKey === 'sanity' ? 'maxSanity' : 'maxHp'],
+          fireDistance);
           if (damageKey === 'hp' && !alive(victim)) actor.kills++;
           if (saved.triggered) log(battle,
-            `${victim.name} 的「${saved.skillName}」吸收 ${saved.absorbed} 点伤害（${saved.absorbPct}%），实扣 ${dealt}。`);
-          log(battle, `${actor.name} 使用「${choice.name}」命中 ${victim.name}，造成 ${dealt} 点${damageKey === 'sanity' ? '理智伤害' : '伤害'}。`,
-            { actor: actor.id, target: victim.id, damage: dealt,
+            `${victim.name} 的「${saved.skillName}」吸收 ${saved.absorbed} 点伤害（${saved.absorbPct}%），实扣 ${dealt}。`,
+            { reportHandled: Boolean(report) });
+          log(battle, `${actor.name} 使用「${choice.name}」${balanced ? '（平衡：借用目标参数）' : ''}${(calculation?.punishmentTriggered ?? punishment > 1) ? '（惩戒加成）' : ''}命中 ${victim.name}，造成 ${dealt} 点${damageKey === 'sanity' ? '理智伤害' : '伤害'}。`,
+            { reportHandled: Boolean(report), actor: actor.id, target: victim.id, damage: dealt,
               incoming, lifeSaveMeta: { ...saved }, ...(routed ? { transfers: routed.transfers } : {}),
               ...(calculation ? { calculation: { ...calculation, chance, kind: 'damage' } } : {}) });
         }
         for (const effect of [...(weapon?.effects || []),
-          ...(choice.consumable?.effects || [])]) {
+          ...(choice.consumable?.originalScroll ? [] : choice.consumable?.effects || [])]) {
           if (choice.consumable?.healing && effect.effectTarget === 'target') continue;
           if (effect.effectTarget === 'self' && victim !== victims[0]) continue;
           const recipient = effect.effectTarget === 'self' ? actor : victim;
-          applyTacticEffect(recipient, { ...effect }, battle, actor);
+          applyTacticEffect(recipient, { ...effect }, battle, actor, skill);
         }
       }
       if (pendingAttack && usedAttack) fields.consume(battle, actor);
@@ -1089,21 +1526,29 @@
           ? effectTargets(battle, actor, target, circle, effects[0].effectTarget,
             interference?.excludeSelf) : victims;
         // Tag/effect scopes are selected once per action, never once per AOE hit.
-        for (const recipient of tagTargets)
-          battleTags?.applySkill(actor, recipient, { ...skill, targetType: 'single' },
-            true);
+        battleTags?.applySkill(actor, target, skill, true, { targets: tagTargets, battle });
         for (const effect of effects) for (const recipient of
           effectTargets(battle, actor, target, circle, effect.effectTarget,
             interference?.excludeSelf)) {
-          if (storeSkillEffect(battle, actor, recipient, effect, skill))
-            log(battle, `${actor.name} 对 ${recipient.name} 施加「${effect.name}」。`);
+          if (storeSkillEffect(battle, actor, recipient, effect, skill)) {
+            log(battle, `${actor.name} 对 ${recipient.name} 施加「${effect.name}」。`,
+              { reportHandled: Boolean(report) });
+          }
         }
       }
-      if (choice.consumable?.healing && victims.length) {
+      if (choice.consumable?.originalScroll && victims.length) {
+        for (const effect of choice.consumable.effects || []) {
+          for (const recipient of effectTargets(battle, actor, target, circle,
+            effect.effectTarget, interference?.excludeSelf)) {
+            if (alive(recipient)) applyTacticEffect(recipient, { ...effect }, battle, actor, circle.skill || {});
+          }
+        }
+      }
+      if (choice.consumable?.healing && !choice.consumable.originalScroll && victims.length) {
         for (const effect of choice.consumable.effects || []) {
           if (effect.effectTarget !== 'target') continue;
-          for (const enemy of battle.units.filter(unit => alive(unit) && unit.side !== actor.side))
-            applyTacticEffect(enemy, { ...effect }, battle, actor);
+          for (const enemy of battle.units.filter(unit => onField(unit) && unit.side !== actor.side))
+            applyTacticEffect(enemy, { ...effect }, battle, actor, circle.skill || {});
         }
       }
       for (const effect of victims.length ? choice.auxiliary?.effects || [] : []) {
@@ -1111,11 +1556,11 @@
           : actor.side === 'ally' ? 'enemy' : 'ally';
         const recipients = effect.effectTarget === 'self' ? [actor]
           : effect.effectTarget === 'target' ? [target]
-            : battle.units.filter(unit => alive(unit) && unit.side === side &&
+            : battle.units.filter(unit => onField(unit) && unit.side === side &&
               (!interference?.excludeSelf || unit !== actor) &&
               distance(unit, target) <= choice.radius);
         for (const recipient of recipients)
-          if (alive(recipient)) applyTacticEffect(recipient, { ...effect }, battle, actor);
+          if (alive(recipient)) applyTacticEffect(recipient, { ...effect }, battle, actor, circle.skill || {});
       }
       advance(battle);
     }
@@ -1124,7 +1569,7 @@
     next.stat_data.当前理智 = battle.units[0].sanity;
     next.stat_data.当前人性 = battle.units[0].humanity;
     next.stat_data.当前敏捷 = battle.units[0].agility;
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function rawAbilities(card) {
     return [
@@ -1162,13 +1607,15 @@
     return result;
   }
   function interferableSkills(data, unit) {
-    const card = unit.source === 'player' ? data.stat_data : data.npc_data?.[unit.id];
+    if (data.cryptLord?.teamBattle?.skillControlMeta)
+      return skillControlFor().skills(data, unit);
+    const card = cardFor(data, unit);
     const abilities = [
       ...Object.values(object(card?.序列能力列表) ? card.序列能力列表 : {})
         .flatMap(entries => Array.isArray(entries) ? entries : []),
       ...(Array.isArray(card?.能力清单) ? card.能力清单 : []),
       ...(unit.source === 'player' ? (modules['cryptLord.personalBattleState']
-        ?.auxiliaryMoves({ stat_data: card }) || [])
+        ?.auxiliaryMoves({ stat_data: card }, data.cryptLord?.teamBattle?.fieldEffectMeta?.averages) || [])
         .map(move => ({ ...card.辅助能力列表[move.key], 名称: move.name })) : []),
       ...(unit.skillControl?.granted || []).map(row => row.ability),
     ].filter(entry => object(entry) && name(entry.名称) &&
@@ -1185,23 +1632,35 @@
     const battle = get(data);
     if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
     const player = battle.units.find(unit => unit.id === 'player');
-    if (!alive(player)) return null;
-    const modes = skillControlEligibility(data.stat_data);
-    const targets = battle.units.filter(unit => unit.id !== 'player' && alive(unit))
+    if (!onField(player)) return null;
+    const modes = battle.skillControlMeta ? skillControlFor().eligibility(data, player)
+      : skillControlEligibility(data.stat_data);
+    const targets = battle.units.filter(unit => unit.id !== 'player' && onField(unit))
       .map(unit => ({ id: unit.id, name: unit.name,
         skills: interferableSkills(data, unit).map(skill => ({
           name: skill.name, banned: skill.banned,
+          last: interferableSkills(data, unit).filter(row => !row.banned).length === 1 && !skill.banned,
         })) })).filter(row => row.skills.length);
-    return { modes, targets };
+    return { modes, targets, cost: controlCost(player, battle), spirit: player.spirit };
   }
-  function controlCost(unit) {
+  function controlCost(unit, battle) {
+    if (battle?.skillControlMeta)
+      return Math.max(1, Math.round((battle.fieldEffectMeta.averages[String(unit.rank)] ||
+        battle.fieldEffectMeta.averages['10'] ||
+        modules['cryptLord.battleFieldEffectReference'].averages()['10']).灵性 * .05));
     const average = num(window.GameDBManager?.DB?.consumableConfig
       ?.avgAttrByRank?.[String(unit.rank)]?.灵性, unit.maxSpirit);
     return Math.max(1, Math.round(average * .05));
   }
-  function resolveSkillControl(data, battle, actor, target, mode, chosen, ability, random) {
-    const cost = controlCost(actor);
-    actor.spirit -= cost;
+  function resolveSkillControl(data, battle, actor, target, mode, chosen, ability, random, borrowRank) {
+    if (battle.skillControlMeta)
+      return skillControlFor().attempt(data, battle, actor, target, mode, chosen.name,
+        ability, random, borrowRank);
+    const cost = borrowRank == null ? controlCost(actor) : Math.max(1, Math.round(
+      (battle.fieldEffectMeta.averages[String(borrowRank)] ||
+        battle.fieldEffectMeta.averages['10'] ||
+        modules['cryptLord.battleFieldEffectReference'].averages()['10']).灵性 * .05));
+    actor.spirit = Math.max(0, actor.spirit - cost);
     const live = interferableSkills(data, target).filter(row => !row.banned);
     const last = mode !== '复制' && live.length === 1 && live[0].name === chosen.name;
     const best = Math.max(target.hp, target.agility, target.spirit,
@@ -1235,15 +1694,16 @@
     log(battle, `${actor.name} 对 ${target.name} 的「${chosen.name}」${mode}${outcome === 'applied' ? '成功' : '失败'}（拼点 ${scores.caster}:${scores.defender}）。`);
     return result;
   }
-  function npcSkillControl(data, battle, random) {
+  function npcSkillControl(data, battle, random, excluded = []) {
     const outcomes = [];
-    for (const actor of battle.units.filter(unit => !playerControlled(unit) && alive(unit))) {
-      const card = data.npc_data?.[actor.id];
+    for (const actor of battle.units.filter(unit => !playerControlled(unit) && onField(unit) &&
+      !excluded.includes(unit.id))) {
+      const card = cardFor(data, actor);
       const modes = skillControlEligibility(card);
       if (actor.spirit < controlCost(actor)) continue;
       for (const mode of ['禁止', '偷窃']) {
         if (!modes[mode]) continue;
-        const candidates = battle.units.filter(unit => alive(unit) && unit.side !== actor.side)
+        const candidates = battle.units.filter(unit => onField(unit) && unit.side !== actor.side)
           .flatMap(target => interferableSkills(data, target)
             .filter(chosen => !chosen.banned).map(chosen => ({ target, chosen })))
           .filter(({ target, chosen }) => {
@@ -1266,32 +1726,105 @@
     }
     return outcomes;
   }
-  function npcTactics(data, battle, random) {
-    const controls = npcSkillControl(data, battle, random);
+  function npcTactics(data, battle, random, mythicCount = mythicFor(battle)?.activeCount(battle) || 0, exileRequest = null, leaveRequest = null, hardRequest = null, mindRequest = false, tempRequest = null, permanentRequest = null, possessionRequest = null, ruleRequest = null, environmentRequest = null) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return modules['cryptLord.battleTacticCpu'].run(battle, data, {
+        mythicCount, exile: exileRequest, leave: leaveRequest, hard: hardRequest,
+        mind: mindRequest, temp: tempRequest, permanent: permanentRequest,
+        possession: possessionRequest, rule: ruleRequest, environment: environmentRequest,
+      }, random);
+    const possessed = possessionFor(battle)?.maintain(battle, data, random, [], possessionRequest) || [];
+    const maintenance = [...possessed, ...(activeLeaveFor(battle)?.prepare(battle, data, random, leaveRequest) || [])];
+    const rewinds = rewindFor(battle)?.npc(battle, data, maintenance.map(row => row.actor)) || [];
+    const maintained = permanentFor(battle)?.maintain(battle, data, random,
+      [...maintenance, ...rewinds].map(row => row.actor), permanentRequest) || [];
+    const maintaining = maintained.map(row => ({ actor: row.actor, outcome: 'permanent-pending' }));
+    const borrowings = modules['cryptLord.battleAbilityBorrow']?.npc(battle, data,
+      [...maintenance, ...rewinds, ...maintaining].map(row => row.actor), random) || [];
+    const extras = extraFor(battle)?.npc(battle, data,
+      [...maintenance, ...rewinds, ...maintaining, ...borrowings].map(row => row.actor)) || [];
+    const punishments = punishmentFor(battle)?.npc(battle, data, random,
+      [...maintenance, ...rewinds, ...maintaining, ...borrowings, ...extras].map(row => row.actor)) || [];
+    const prioritySummons = summonFor(battle)?.npc(battle, data,
+      [...maintenance, ...rewinds, ...maintaining, ...borrowings, ...extras, ...punishments].map(row => row.actor),
+      random, true) || [];
+    const first = [...maintenance, ...rewinds, ...maintaining, ...borrowings, ...extras, ...punishments, ...prioritySummons];
+    const freshPermanent = permanentFor(battle)?.prepare(battle, data, random,
+      first.map(row => row.actor), permanentRequest) || [];
+    first.push(...freshPermanent.map(row => ({ actor: row.actor, outcome: 'permanent-pending' })));
+    const possessionPrepared = possessionFor(battle)?.prepare(battle, data, random,
+      first.map(row => row.actor), possessionRequest) || [];
+    first.push(...possessionPrepared.map(row => ({ actor: row.actor, outcome: 'possession-pending' })));
+    const skipped = battle.units.filter(unit => hardFor(battle)?.occupied(battle, unit))
+      .map(unit => ({ actor: unit.id, outcome: 'skipped' }));
+    const hard = hardFor(battle)?.resolve(battle, data, random,
+      [...first, ...skipped].map(row => row.actor), hardRequest) || [];
+    first.push(...skipped, ...hard);
+    const tempPrepared = tempFor(battle)?.prepare(battle, data, random,
+      first.map(row => row.actor), tempRequest) || [];
+    first.push(...tempPrepared.map(row => ({ actor: row.actor, outcome: 'temp-pending' })));
+    const mindPrepared = mindFor(battle)?.prepare(battle, data, random,
+      first.map(row => row.actor), mindRequest) || [];
+    first.push(...mindPrepared.map(row => ({ actor: row.actor, outcome: 'mind-pending' })));
+    const rulePrepared = rulesFor(battle)?.prepare(battle, data, random,
+      first.map(row => row.actor), ruleRequest) || [];
+    first.push(...rulePrepared.map(row => ({ actor: row.actor, outcome: 'rule-pending' })));
+    const environmentPrepared = environmentFor(battle)?.prepare(battle, data, random,
+      first.map(row => row.actor), environmentRequest) || [];
+    first.push(...environmentPrepared.map(row => ({ actor: row.actor, outcome: 'environment-pending' })));
+    const excluded = first.map(row => row.actor);
+    const summons = summonFor(battle)?.npc(battle, data, excluded, random) || [];
+    first.push(...summons);
+    excluded.push(...summons.map(row => row.actor));
+    const controls = npcSkillControl(data, battle, random, [...excluded, ...summons.map(row => row.actor)]);
     const fieldOutcomes = fieldsFor(battle)?.npc(battle, data,
-      controls.map(row => row.actor), random) || [];
+      [...excluded, ...controls.map(row => row.actor)], random) || [];
     const transfers = transferFor(battle)?.npc(battle, data,
-      [...controls, ...fieldOutcomes].map(row => row.actor), random) || [];
+      [...first, ...controls, ...fieldOutcomes].map(row => row.actor), random) || [];
     const bribes = briberyFor(battle)?.npc(battle, data,
-      [...controls, ...fieldOutcomes, ...transfers].map(row => row.actor), random) || [];
-    return [...controls, ...fieldOutcomes, ...transfers, ...bribes];
+      [...first, ...controls, ...fieldOutcomes, ...transfers].map(row => row.actor), random) || [];
+    const balances = balanceFor(battle)?.npc(battle, data,
+      [...first, ...controls, ...fieldOutcomes, ...transfers, ...bribes].map(row => row.actor), random) || [];
+    const leaves = activeLeaveFor(battle)?.npc(battle, data,
+      [...first, ...controls, ...fieldOutcomes, ...transfers, ...bribes, ...balances]
+        .map(row => row.actor), random) || [];
+    const forms = mythicFor(battle)?.npc(battle, data,
+      [...first, ...controls, ...fieldOutcomes, ...transfers, ...bribes, ...balances, ...leaves]
+        .map(row => row.actor), random, mythicCount) || [];
+    const previous = [...first, ...controls, ...fieldOutcomes, ...transfers, ...bribes, ...balances, ...leaves, ...forms];
+    const permanent = permanentFor(battle)?.apply(battle, data, random, [...maintained, ...freshPermanent]) || [];
+    const possessions = possessionFor(battle)?.apply(battle, data, random, possessionPrepared) || [];
+    const exileResult = exileFor(battle)?.resolve(battle, data, random, exileRequest, previous.map(row => row.actor));
+    const exiles = exileRequest ? exileResult?.outcomes || [] : exileResult || [];
+    const events = eventsFor(battle)?.npc(battle, data,
+      [...previous, ...exiles].map(row => row.actor), random) || [];
+    const temps = tempFor(battle)?.apply(battle, data, random, tempPrepared) || [];
+    const minds = mindFor(battle)?.apply(battle, data, random, mindPrepared) || [];
+    const rules = rulesFor(battle)?.apply(battle, data, random, rulePrepared) || [];
+    const environments = environmentFor(battle)?.apply(battle, data, random, environmentPrepared) || [];
+    const switches = battle.grazingSwitchFinal ? [clone(battle.grazingSwitchFinal)] : [];
+    delete battle.grazingSwitchFinal;
+    return [...previous.filter(row => !['mind-pending', 'temp-pending', 'permanent-pending', 'possession-pending', 'rule-pending', 'environment-pending'].includes(row.outcome)),
+      ...permanent, ...possessions, ...exiles, ...events, ...temps, ...minds, ...rules, ...environments, ...switches];
   }
   function skillControl(data, request, random) {
     const next = clone(data || {});
     const battle = next.cryptLord?.teamBattle;
     if (!object(battle) || battle.status !== 'active' || battle.phase !== 'tactic')
       return { ok: false, error: '当前不在战术阶段。' };
+    prepareSkillControl(battle);
     if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
     random ||= rollFor(battle);
     const player = battle.units.find(unit => unit.id === 'player');
     const target = battle.units.find(unit => unit.id === request?.target);
     const mode = name(request?.mode), skillName = name(request?.skill);
-    const ability = skillControlEligibility(next.stat_data)[mode];
+    const ability = (battle.skillControlMeta ? skillControlFor().eligibility(next, player)
+      : skillControlEligibility(next.stat_data))[mode];
     const choices = target && interferableSkills(next, target);
     const chosen = choices?.find(row => row.name === skillName);
-    if (!ability || !alive(player) || !target || target === player || !alive(target) ||
+    if (!ability || !playerControlled(player) || !onField(player) || !target || target === player || !onField(target) ||
       !chosen) return { ok: false, error: '技能干涉资格、目标或技能已变化。' };
-    const cost = controlCost(player);
+    const cost = controlCost(player, battle);
     if (player.spirit < cost) return { ok: false, error: '当前灵性不足。' };
     const result = resolveSkillControl(next, battle, player, target, mode, chosen, ability, random);
     const npcOutcomes = npcTactics(next, battle, random);
@@ -1304,21 +1837,24 @@
     next.stat_data.当前理智 = player.sanity;
     next.stat_data.当前人性 = player.humanity;
     next.stat_data.当前敏捷 = player.agility;
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function tacticPrompt(data, declaration = {}) {
     const battle = get(data);
     if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
       throw new Error('当前不在战术阶段。');
-    const summary = battle.units.filter(alive).map(unit => ({
+    const summary = battle.units.filter(onField).map(unit => ({
       id: unit.id, name: unit.name, side: unit.side, sequence: unit.sequence,
       x: unit.x, y: unit.y, hp: unit.hp, sanity: unit.sanity,
-      abilities: abilityList(unit.source === 'player' ? data.stat_data : data.npc_data?.[unit.id]),
+      tacticOccupied: Boolean(hardFor(battle)?.occupied(battle, unit)),
+      turnSkip: unit.turnSkip || null,
+      abilities: abilityList(cardFor(data, unit)),
     }));
     const rules = [
       '你是诡秘之主战斗战术裁决员。只依据下列角色能力描述和战况，不臆造能力。',
       '先盘点每人的能力。审计玩家申报时，必须指出具体能力和描述是否覆盖作用、位置与目标；不成立写明理由。',
       '为每个活着的 NPC 安排一次改变地形、对角色使用战术或待命；理智低于上限一半则待命。',
+      'tacticOccupied 为 true 的 NPC 已被硬控占位，不必安排战术，禁止替其移动、施加效果或使用物品。',
       `效果类别仅能用：${Object.keys(CATEGORIES).join('、')}。`,
       `相性档位仅能用：${TIERS.join('、')}。`,
       `持续/一次性伤害与恢复的目标属性仅能用：${EFFECT_STATS.join('、')}。`,
@@ -1366,12 +1902,18 @@
         : meta[1] ? [20, 15, 10][tier % 3] : [4, 3, 2][tier % 3],
       duration: oneShot ? 1 : 3, valueType: 'percentage' };
   }
-  function applyTacticEffect(target, effect, battle, actor) {
+  function applyTacticEffect(target, effect, battle, actor, skill = {}) {
+    if (battle && effectsFor())
+      return effectsFor().apply(battle, actor || target, target, effect, skill);
     const transfer = transferFor(battle);
     if (transfer) return transfer.routeEffect(battle, target, effect, {
       transferableExternal: true, sourceLabel: `${actor?.name || '未知'}的战术`,
       sourceKind: '普通战术',
-    }, (recipient, instance) => applyTacticEffect(recipient, instance));
+    }, (recipient, instance) => {
+      const applied = applyTacticEffect(recipient, instance);
+      if (applied) modules['cryptLord.battleReport']?.effect(battle, actor, recipient, instance);
+      return applied;
+    });
     target.effects ||= [];
     const same = target.effects.filter(row => row.stat === effect.stat &&
       row.type === effect.type && !row.ruleChange && !row.environment && !row.fieldEffect &&
@@ -1379,6 +1921,7 @@
     if (same.some(row => row.power >= effect.power)) return false;
     target.effects = target.effects.filter(row => !same.includes(row));
     target.effects.push(effect);
+    if (battle) modules['cryptLord.battleReport']?.effect(battle, actor, target, effect);
     return true;
   }
   function contestTactic(actor, target, tier, random, battle) {
@@ -1392,20 +1935,26 @@
       (fields?.tacticMultiplier(battle, target, actor) ?? 1) * roll());
     return { win: caster > defender, caster, defender };
   }
-  function tactic(data, command = 'skip', random) {
+  function tactic(data, command = 'skip', random, { autoPilot = false } = {}) {
     const next = clone(data || {});
     const battle = next.cryptLord?.teamBattle;
     if (!object(battle) || battle.status !== 'active' || battle.phase !== 'tactic')
       return { ok: false, error: '当前不在战术阶段。' };
-    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    prepareSkillControl(battle);
+    if (moduleError(battle, command === 'skip')) return { ok: false, error: moduleError(battle, command === 'skip') };
+    if (autoPilotFor()?.isOn(battle) && !autoPilot)
+      return { ok: false, error: '当前由托管执行，请先关闭托管再操作。' };
     random ||= rollFor(battle);
     prepareTagsAndPassives(battle, next);
     if (command !== 'skip') {
+      if (battle.units.find(unit => unit.source === 'player')?.activeLeaving)
+        return { ok: false, error: '主动离场期间只能维持或返场。' };
       const declaration = command?.declaration || { action: '待命' };
       const plan = command?.plan;
       if (!object(plan) || !Array.isArray(plan.NPC行动))
         return { ok: false, error: '战术计划缺少 NPC 行动。' };
-      const npcs = battle.units.filter(unit => alive(unit) && unit.id !== 'player');
+      const npcs = battle.units.filter(unit => onField(unit) && unit.id !== 'player' &&
+        !hardFor(battle)?.occupied(battle, unit));
       const entries = npcs.map(unit => plan.NPC行动.find(row =>
         name(row?.角色) === unit.id || name(row?.角色) === unit.name));
       if (entries.some(row => !object(row)) || new Set(entries).size !== npcs.length)
@@ -1419,7 +1968,7 @@
       const normalized = [];
       for (const entry of acts) {
         const { unit, row } = entry;
-        if (!alive(unit)) continue;
+        if (!onField(unit)) continue;
         let actionType = name(row.行动);
         const infeasible = entry.player && actionType !== '待命' &&
           plan.玩家审计?.可行 !== true;
@@ -1433,7 +1982,7 @@
         if (!['待命', '对角色使用战术', '改变地形'].includes(actionType))
           return { ok: false, error: `${unit.name} 的战术类型无效。` };
         if (!entry.player && actionType !== '待命') {
-          const abilities = abilityList(next.npc_data?.[unit.id]);
+          const abilities = abilityList(cardFor(next, unit));
           if (!abilities.some(ability => ability.name === name(row.依据能力)))
             return { ok: false, error: `${unit.name} 的战术没有可核对的依据能力。` };
         }
@@ -1442,7 +1991,7 @@
             ability.name === name(plan.玩家审计?.依据能力)))
           return { ok: false, error: '玩家战术没有可核对的依据能力。' };
         const targetId = name(row.战术方案?.目标);
-        const target = battle.units.find(other => alive(other) &&
+        const target = battle.units.find(other => onField(other) &&
           (other.id === targetId || other.name === targetId));
         if (entry.player && actionType === '对角色使用战术' && !infeasible &&
           name(declaration.target) && target?.id !== name(declaration.target))
@@ -1469,19 +2018,26 @@
             row.物品消耗, battle), player: entry.player, infeasible });
       }
       const npcOutcomes = npcTactics(next, battle, random);
-      const controlled = new Set(npcOutcomes.map(row => row.actor));
+      const controlled = new Set(npcOutcomes.filter(row => row.stage !== 'switch-final')
+        .map(row => row.actor));
       for (const entry of normalized) if (controlled.has(entry.unit.id))
         entry.actionType = '待命';
       const winners = terrainWinners(normalized);
       const outcomes = [...npcOutcomes];
       for (const entry of normalized) {
         const { unit, actionType, target, effect, terrainOps } = entry;
+        if (!onField(unit) || (actionType === '对角色使用战术' && !onField(target))) {
+          log(battle, `${unit.name} 的战术因发动者或目标离场而取消。`);
+          continue;
+        }
         if (actionType === '待命') {
           if (!controlled.has(unit.id)) log(battle, `${unit.name} 战术待命。`);
           continue;
         }
-        const averageSanity = num(window.GameDBManager?.DB?.consumableConfig
-          ?.avgAttrByRank?.[String(unit.rank)]?.理智, unit.maxSanity);
+        const averageSanity = battle.fieldEffectMeta
+          ? (battle.fieldEffectMeta.averages[String(unit.rank)] || battle.fieldEffectMeta.averages['10'] ||
+            modules['cryptLord.battleFieldEffectReference'].averages()['10']).理智
+          : num(window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.[String(unit.rank)]?.理智, unit.maxSanity);
         const cost = Math.max(1, Math.round(averageSanity * .05));
         unit.sanity = Math.max(0, unit.sanity - cost);
         if (entry.infeasible) {
@@ -1537,7 +2093,15 @@
         actions: clone(plan.NPC行动), outcomes };
     } else {
       log(battle, '本轮战术阶段跳过。');
-      const outcomes = npcTactics(next, battle, random);
+      let outcomes;
+      if (autoPilot) {
+        const player = battle.units.find(row => row.source === 'player' && !row.isSummon);
+        const leave = battle.activeLeave?.processes.find(row => row.heroId === player?.id);
+        if (!leave) autoPilotFor()?.autoAuras(battle, random);
+        outcomes = modules['cryptLord.battleTacticCpu'].run(battle, next, {
+          asNpc: !leave, leave: leave ? { mode: 'stay' } : null,
+        }, random);
+      } else outcomes = npcTactics(next, battle, random);
       battle.lastTactic = { round: battle.round, declaration: { action: '待命' },
         audit: null, abilityReview: [], actions: [], outcomes };
     }
@@ -1547,7 +2111,7 @@
     next.stat_data.当前理智 = battle.units[0].sanity;
     next.stat_data.当前人性 = battle.units[0].humanity;
     next.stat_data.当前敏捷 = battle.units[0].agility;
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function auraOptions(data) {
     const battle = get(data);
@@ -1573,6 +2137,543 @@
     return modules['cryptLord.battleBribery']?.options(battle,
       battle.units.find(unit => unit.source === 'player'), data) || [];
   }
+  function balanceOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return balanceFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || null;
+  }
+  function punishmentOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return punishmentFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || null;
+  }
+  function mythicOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return mythicFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function exileOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return exileFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function activeLeaveOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return activeLeaveFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || null;
+  }
+  function battleEventOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return eventsFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function rewindOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return rewindFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || null;
+  }
+  function extraActionOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return extraFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function hardControlOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return hardFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function mindDepriveOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return mindFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || null;
+  }
+  function tempControlOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return tempFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function permanentControlOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return permanentFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function environmentOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return environmentFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function fundamentalOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return fundamentalFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function summonOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return summonFor(battle)?.options(battle, battle.units.find(row => row.source === 'player'), data) || [];
+  }
+  function abilityBorrowOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return modules['cryptLord.battleAbilityBorrow']?.options(battle,
+      battle.units.find(row => row.source === 'player'), data) || [];
+  }
+  function abilityBorrow(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'abilityBorrow', request, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (battle?.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '能力借用只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const actor = battle.units.find(row => row.source === 'player');
+    random ||= rollFor(battle);
+    const outcome = modules['cryptLord.battleAbilityBorrow']?.apply(battle, actor, request, next, random);
+    if (!outcome?.ok) return outcome || { ok: false, error: '能力借用模块不可用。' };
+    battle.lastTactic = { round: battle.round,
+      declaration: { action: '能力借用', ...request }, audit: null, actions: [],
+      outcomes: [outcome, ...npcTactics(next, battle, random)] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function borrowedSkillControl(data, actor, request, random) {
+    const battle = data.cryptLord.teamBattle, scope = battle.borrowScope;
+    const target = battle.units.find(row => row.id === request?.target);
+    const chosen = target && interferableSkills(data, target).find(row => row.name === request?.skill);
+    if (!scope || !target || target === actor || !onField(target) || !chosen)
+      return { ok: false, error: '技能干涉目标或技能已变化。' };
+    const result = resolveSkillControl(data, battle, actor, target, request.mode, chosen,
+      scope.descriptor.label, random, scope.descriptor.abilityRank);
+    return { ok: true, ...result };
+  }
+  function applyBorrowedSkill(data, battle, actor, target, mode, skillName) {
+    if (battle.skillControlMeta)
+      return skillControlFor().apply(data, battle, actor, target, mode, skillName);
+    const chosen = interferableSkills(data, target).find(row => row.name === skillName);
+    if (!chosen) return { applied: false, reason: '技能不存在。' };
+    const until = battle.round + 2;
+    if (mode !== '复制') {
+      target.skillControl ||= { banned: [], granted: [] };
+      const old = target.skillControl.banned.find(row => row.name === skillName);
+      if (old) old.until = Math.max(old.until, until);
+      else target.skillControl.banned.push({ name: skillName, until });
+    }
+    if (mode !== '禁止') {
+      actor.skillControl ||= { banned: [], granted: [] };
+      const old = actor.skillControl.granted.find(row => row.name === skillName);
+      if (old) old.until = Math.max(old.until, until);
+      else actor.skillControl.granted.push({ name: skillName, ability: chosen.ability, from: target.id, until });
+    }
+    return { applied: true };
+  }
+  function summonPreview(data, request) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, reason: '当前不在战术阶段。' };
+    return summonFor(battle)?.preview(battle,
+      battle.units.find(row => row.source === 'player'), request, data) ||
+      { ok: false, reason: '召唤模块不可用。' };
+  }
+  function summon(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'summon', request, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '召唤只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const actor = battle.units.find(row => row.source === 'player');
+    const outcome = summonFor(battle)?.apply(battle, actor, request, next, random || rollFor(battle));
+    if (!outcome?.ok) return outcome || { ok: false, error: '召唤模块不可用。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '召唤', ...request },
+      audit: null, actions: [], outcomes: [outcome, ...npcTactics(next, battle, random || rollFor(battle))] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function fundamentalPreview(data, request) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, reason: '当前不在战术阶段。' };
+    return fundamentalFor(battle)?.preview(battle,
+      battle.units.find(unit => unit.source === 'player'), request, data) ||
+      { ok: false, reason: '底层规则模块不可用。' };
+  }
+  function fundamentalRule(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'fundamentalRule', request, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '底层规则只能在战术阶段修改。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcome = fundamentalFor(battle)?.apply(battle, actor, request, next, random || rollFor(battle));
+    if (!outcome?.ok) return outcome || { ok: false, error: '底层规则模块不可用。' };
+    // Original player-native laws are registered before the ordinary NPC arbitration pipeline.
+    const outcomes = [outcome, ...npcTactics(next, battle, random || rollFor(battle))];
+    battle.lastTactic = { round: battle.round, declaration: { action: '底层规则修改',
+      ...outcome.declaration },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function environmentPreview(data, subtype) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, reason: '当前不在战术阶段。', rows: [] };
+    return environmentFor(battle)?.preview(battle,
+      battle.units.find(unit => unit.source === 'player'), subtype, data) ||
+      { ok: false, reason: '改变环境模块不可用。', rows: [] };
+  }
+  function changeEnvironment(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '改变环境只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const check = environmentPreview(next, request?.subtype);
+    if (!check.ok) return { ok: false, error: check.reason };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle),
+      undefined, null, null, null, false, null, null, null, null, request);
+    if (!outcomes.some(row => row.actor === actor.id && row.subtype === request.subtype))
+      return { ok: false, error: '本次改变环境未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '改变环境', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function ruleChangeOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return [];
+    return rulesFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || [];
+  }
+  function ruleChangePreview(data, request) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, reason: '当前不在战术阶段。', parts: [] };
+    return rulesFor(battle)?.preview(battle,
+      battle.units.find(unit => unit.source === 'player'), request, data) ||
+      { ok: false, reason: '规则修改模块不可用。', parts: [] };
+  }
+  function ruleChange(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '规则修改只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const check = ruleChangePreview(next, request);
+    if (!check.ok) return { ok: false, error: check.reason };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle),
+      undefined, null, null, null, false, null, null, null, request);
+    if (!outcomes.some(row => row.actor === actor.id && row.subtype === request.subtype))
+      return { ok: false, error: '本次规则修改未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '规则修改', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function possessionOptions(data) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return possessionFor(battle)?.options(battle,
+      battle.units.find(unit => unit.source === 'player'), data) || null;
+  }
+  function possession(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '附身只能在战术阶段发动或维持。' };
+    if (moduleError(battle, true)) return { ok: false, error: moduleError(battle, true) };
+    const option = possessionOptions(next);
+    if (option?.active) {
+      if (!['continue', 'release'].includes(request?.mode))
+        return { ok: false, error: '请选择继续或解除附身。' };
+      if (request.mode === 'continue' && !option.canContinue)
+        return { ok: false, error: option.reason || '无法继续附身。' };
+    } else {
+      const choice = option?.choices.find(row => row.subtype === request?.subtype);
+      if (!choice || choice.reason || !choice.targets.some(row => row.id === request?.target))
+        return { ok: false, error: choice?.reason || '附身资格或目标已变化。' };
+    }
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle),
+      undefined, null, null, null, false, null, null, request);
+    if (!outcomes.some(row => row.actor === actor.id && (option.active || row.subtype === request.subtype)))
+      return { ok: false, error: '本次附身未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '附身', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function permanentControl(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '永久控制只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const choice = permanentControlOptions(next).find(row => row.subtype === request?.subtype);
+    if (!choice || choice.reason || !choice.targets.some(row => row.id === request?.target))
+      return { ok: false, error: choice?.reason || '永久控制资格或目标已变化。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle),
+      undefined, null, null, null, false, null, request);
+    if (!outcomes.some(row => row.actor === actor.id && row.subtype === request.subtype))
+      return { ok: false, error: '本次永久控制未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '永久控制', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function tempControl(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '阵营短控只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const choice = tempControlOptions(next).find(row => row.subtype === request?.subtype);
+    if (!choice || choice.reason || !choice.targets.some(row => row.id === request?.target))
+      return { ok: false, error: choice?.reason || '阵营短控资格或目标已变化。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle),
+      undefined, null, null, null, false, request);
+    if (!outcomes.some(row => row.actor === actor.id && row.subtype === request.subtype))
+      return { ok: false, error: '本次阵营短控未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '阵营短控', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function mindDeprive(data, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '心智剥夺只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const choice = mindDepriveOptions(next);
+    if (!choice || choice.reason) return { ok: false, error: choice?.reason || '当前没有心智剥夺资格。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle), undefined, null, null, null, true);
+    if (!outcomes.some(row => row.actor === actor.id && row.outcome === 'mind-deprive'))
+      return { ok: false, error: '本次心智剥夺未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '心智剥夺' },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function hardControl(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '硬控只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const choice = hardControlOptions(next).find(row => row.subtype === request?.subtype);
+    if (!choice || choice.reason || !choice.targets.some(row => row.id === request?.target))
+      return { ok: false, error: choice?.reason || '硬控资格或目标已变化。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle), undefined, null, null, request);
+    if (!outcomes.some(row => row.actor === actor.id && row.subtype === request.subtype))
+      return { ok: false, error: '本次硬控未能发动，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '硬控', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function extraAction(data, subtype, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'extraAction', subtype, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '额外行动只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const actor = battle.units.find(unit => unit.source === 'player'), manager = extraFor(battle);
+    if (!manager) return { ok: false, error: '本场额外行动模块不可用。' };
+    const outcome = manager.grant(battle, actor, subtype, next);
+    if (!outcome.ok) return outcome;
+    const outcomes = npcTactics(next, battle, random || rollFor(battle));
+    battle.lastTactic = { round: battle.round, declaration: { action: '额外行动', subtype },
+      audit: null, abilityReview: [], actions: [], outcomes: [outcome, ...outcomes] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function rewind(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'rewind', request, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '回溯只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const manager = rewindFor(battle), actor = battle.units.find(unit => unit.source === 'player');
+    if (!manager) return { ok: false, error: '本场回溯模块不可用。' };
+    const outcome = manager.apply(battle, actor, request?.subtype, request?.round, next);
+    if (!outcome.ok) return outcome;
+    const outcomes = npcTactics(next, battle, random || rollFor(battle));
+    battle.lastTactic = { round: battle.round, declaration: { action: '回溯', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes: [outcome, ...outcomes] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function battleEvent(data, subtype, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'battleEvent', subtype, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '战场事件只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const manager = eventsFor(battle);
+    if (!manager) return { ok: false, error: '本场战场事件模块不可用。' };
+    const outcome = manager.attempt(battle, actor, subtype, next, random);
+    if (!outcome.ok) return outcome;
+    const outcomes = npcTactics(next, battle, random || rollFor(battle));
+    battle.lastTactic = { round: battle.round, declaration: { action: '制造战场事件', subtype },
+      audit: null, abilityReview: [], actions: [], outcomes: [outcome, ...outcomes] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function activeLeave(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '主动离场只能在战术阶段操作。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const choice = activeLeaveOptions(next);
+    if (!choice || (choice.away ? !['stay', 'return'].includes(request?.mode)
+      : !choice.choices.some(row => row.subtype === request?.subtype)))
+      return { ok: false, error: '主动离场资格或请求已变化。' };
+    const outcomes = npcTactics(next, battle, random || rollFor(battle), undefined, null, request);
+    const actor = battle.units.find(unit => unit.source === 'player');
+    battle.lastTactic = { round: battle.round, declaration: { action: '主动离场', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function exile(data, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '放逐只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const choice = exileOptions(next).find(row => row.subtype === request?.subtype);
+    if (!choice || choice.reason || !choice.targets.some(row => row.id === request?.target))
+      return { ok: false, error: choice?.reason || '放逐资格或目标已变化。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcomes = npcTactics(next, battle, random || rollFor(battle), undefined,
+      { actor: actor.id, subtype: request.subtype, target: request.target });
+    if (!outcomes.some(row => row.actor === actor.id))
+      return { ok: false, error: '战术结算时放逐资格或目标已变化，未保存楼层。' };
+    battle.lastTactic = { round: battle.round, declaration: { action: '放逐', ...request },
+      audit: null, abilityReview: [], actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function mythicForm(data, kind, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '神话形态只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const manager = mythicFor(battle);
+    if (!manager) return { ok: false, error: '本场没有可用的神话形态模块。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const count = manager.activeCount(battle);
+    const outcome = manager.attempt(battle, actor, kind, next);
+    if (!outcome.ok) return outcome;
+    const outcomes = npcTactics(next, battle, random || rollFor(battle), count);
+    battle.lastTactic = { round: battle.round, declaration: { action: '神话形态', kind },
+      audit: null, abilityReview: [], actions: [], outcomes: [outcome, ...outcomes] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function punishmentPreview(data, target) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return punishmentFor(battle)?.preview(battle,
+      battle.units.find(unit => unit.source === 'player'), target, data) || null;
+  }
+  function punishment(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'punishment', request, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '惩戒只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const manager = punishmentFor(battle);
+    if (!manager) return { ok: false, error: '本场没有可用的惩戒模块。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcome = manager.attempt(battle, actor, request?.target, next);
+    if (!outcome.ok) return outcome;
+    const outcomes = npcTactics(next, battle, random || rollFor(battle));
+    battle.lastTactic = { round: battle.round, declaration: { action: '惩戒',
+      target: request.target }, audit: null, abilityReview: [], actions: [],
+      outcomes: [outcome, ...outcomes] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function balancePreview(data, target) {
+    const battle = get(data);
+    if (battle?.status !== 'active' || battle.phase !== 'tactic') return null;
+    return balanceFor(battle)?.preview(battle,
+      battle.units.find(unit => unit.source === 'player'), target, data) || null;
+  }
+  function balance(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'balance', request, random);
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '平衡只能在战术阶段发动。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    const manager = balanceFor(battle);
+    if (!manager) return { ok: false, error: '本场没有可用的平衡模块。' };
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const outcome = manager.attempt(battle, actor, request?.target, next);
+    if (!outcome.ok) return outcome;
+    const outcomes = npcTactics(next, battle, random || rollFor(battle));
+    battle.lastTactic = { round: battle.round, declaration: { action: '平衡',
+      target: request.target }, audit: null, abilityReview: [], actions: [],
+      outcomes: [outcome, ...outcomes] };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
   function briberyPreview(data, subtype, target) {
     const battle = get(data);
     if (!battle || battle.phase !== 'tactic') return null;
@@ -1580,6 +2681,8 @@
       battle.units.find(unit => unit.source === 'player'), subtype, target, data) || null;
   }
   function bribery(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'bribery', request, random);
     const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
     if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
       return { ok: false, error: '贿赂只能在战术阶段发动。' };
@@ -1597,7 +2700,7 @@
     nextRound(battle);
     Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
       当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function effectTransferPreview(data, subtype, target) {
     const battle = get(data);
@@ -1606,6 +2709,8 @@
       battle.units.find(unit => unit.source === 'player'), subtype, target, data) || null;
   }
   function effectTransfer(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'effectTransfer', request, random);
     const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
     if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
       return { ok: false, error: '效果传递只能在战术阶段发动。' };
@@ -1623,7 +2728,7 @@
     nextRound(battle);
     Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
       当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function fieldEffectPreview(data, subtype, target) {
     const battle = get(data);
@@ -1632,6 +2737,8 @@
       battle.units.find(unit => unit.source === 'player'), subtype, target, data) || [];
   }
   function fieldEffect(data, request, random) {
+    if (modules['cryptLord.battleTacticCpu'])
+      return unifiedNativeTactic(data, 'fieldEffect', request, random);
     const next = clone(data || {});
     const battle = next.cryptLord?.teamBattle;
     if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
@@ -1650,7 +2757,7 @@
     nextRound(battle);
     Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
       当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function aura(data, subtype, enabled) {
     const next = clone(data || {});
@@ -1661,16 +2768,23 @@
     const auras = modules['cryptLord.battleAuras'];
     const actor = battle.units.find(unit => unit.source === 'player');
     if (!auras || typeof enabled !== 'boolean' ||
-      !auras.eligibility(battle, actor, subtype) || !alive(actor))
+      !auras.eligibility(battle, actor, subtype) || !onField(actor))
       return { ok: false, error: '当前光环资格或操作已变化。' };
     const initialized = Boolean(battle.auraState);
     auras.initialize(battle, formulasFor(battle) ? rollFor(battle) : undefined);
     const result = enabled ? auras.activate(battle, actor, subtype)
       : auras.deactivate(battle, actor, subtype);
     return result.ok ? { ...result, changed: result.changed || !initialized,
-      data: next, battle: clone(battle) } : result;
+      data: finalize(next), battle: clone(battle) } : result;
   }
   function autoAction(data) {
+    if (modules['cryptLord.battleActionCpu']) {
+      const plan = modules['cryptLord.battleActionCpu'].preview(data);
+      if (!plan) return null;
+      return plan.moveTo?.cost > 0
+        ? { ...plan, type: 'move', x: plan.moveTo.x, y: plan.moveTo.y }
+        : plan.id ? plan : { ...plan, type: 'wait' };
+    }
     const battle = get(data);
     const actor = battle?.status === 'active' && battle.phase === 'action' ? current(battle) : null;
     if (!actor || playerControlled(actor)) return null;
@@ -1701,17 +2815,22 @@
       return amount > 0 ? [{ id: choice.id, target: id, amount }] : [];
     }).sort((a, b) => b.amount - a.amount);
     if (recovery.length) return { id: recovery[0].id, target: recovery[0].target };
+    const balancePriority = balanceFor(battle)?.priorityTarget(battle, actor);
+    const punishmentPriority = punishmentFor(battle)?.priorityTarget(battle, actor);
+    const priorityRank = id => id === balancePriority ? 2 : id === punishmentPriority ? 1 : 0;
     const choices = candidates.map(({ choice, id, preview }) => ({
       id: choice.id, target: id, power: preview ? preview.targets.reduce((sum, row) =>
         sum + (!row.isHeal ? row.power * (row.side === actor.side ? -1 : 1) : 0), 0)
         : choice.heal ? -1 : choice.power,
       support: preview ? preview.effects.length > 0 && preview.targets.some(row => !row.isHeal)
         : !choice.heal,
-    })).filter(row => row.power > 0 || row.support).sort((a, b) => b.power - a.power);
+    })).filter(row => row.power > 0 || row.support).sort((a, b) =>
+      priorityRank(b.target) - priorityRank(a.target) || b.power - a.power);
     if (choices.length) return { id: choices[0].id, target: choices[0].target };
-    const targets = battle.units.filter(unit => alive(unit) && unit.side !== actor.side)
-      .sort((a, b) => distance(actor, a) - distance(actor, b));
-    if (!targets.length) return null;
+    const targets = battle.units.filter(unit => onField(unit) && unit.side !== actor.side)
+      .sort((a, b) => priorityRank(b.id) - priorityRank(a.id) ||
+        distance(actor, a) - distance(actor, b));
+    if (!targets.length) return { type: 'wait' };
     const cells = reachable(data).sort((a, b) =>
       distance(a, targets[0]) - distance(b, targets[0]));
     return cells.length && distance(cells[0], targets[0]) < distance(actor, targets[0])
@@ -1720,6 +2839,14 @@
   function advanceAuto(data) {
     let next = clone(data || {});
     for (let step = 0; step < 240; step++) {
+      const battle = next.cryptLord?.teamBattle;
+      if (battle && moduleError(battle)) return { ok: false, error: moduleError(battle) };
+      if (modules['cryptLord.battleActionCpu']) {
+        const outcome = modules['cryptLord.battleActionCpu'].step(next);
+        if (!outcome.ok || outcome.stopped) return outcome;
+        next = outcome.data;
+        continue;
+      }
       const choice = autoAction(next);
       if (!choice) return { ok: true, data: next, battle: get(next) };
       const outcome = action(next, choice);
@@ -1731,25 +2858,55 @@
   function report(data) {
     const battle = get(data);
     if (!battle || battle.status !== 'finished') return null;
-    const heroes = battle.units.map(unit => ({
+    const heroes = battle.units.filter(unit => !unit.isSummon).map(unit => ({
       name: unit.name, teamType: unit.side, dataSource: unit.source,
+      isSummon: unit.isSummon, playSource: unit.playSource,
       sequenceRank: unit.rank, additionalStats: { 当前活力: unit.hp, 活力: unit.maxHp },
     }));
     return { battle, experience: experience.compute(heroes, data) };
+  }
+  function end(data, id) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.id !== id || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '只能在本轮全部行动结束后结束当前战斗。' };
+    if (moduleError(battle, true)) return { ok: false, error: moduleError(battle, true) };
+    battle.status = 'finished';
+    battle.endedAt = Date.now();
+    fieldsFor(battle)?.finish(battle);
+    transferFor(battle)?.finish(battle);
+    briberyFor(battle)?.finish(battle);
+    finishAuthorities(battle);
+    battle.result = result(battle) || 'draw';
+    log(battle, `手动结束战斗：${({ victory: '胜利', defeat: '失败', draw: '平局' })[battle.result]}。`);
+    const player = battle.units.find(actor => actor.source === 'player');
+    if (player) Object.assign(next.stat_data, { 当前活力: player.hp, 当前灵性: player.spirit,
+      当前理智: player.sanity, 当前人性: player.humanity, 当前敏捷: player.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
   }
   function settle(data, id, accept) {
     const next = clone(data || {});
     const battle = next.cryptLord?.teamBattle;
     if (!battle || battle.id !== id || battle.status !== 'finished' || battle.settled)
       return { ok: false, error: '战报不存在或已经结算。' };
+    if (battle.jurisdictionMeta && (!modules['cryptLord.arbiterJurisdictionBattle'] ||
+      battle.jurisdictionMeta.version !== 1))
+      return { ok: false, error: '仲裁人辖区模块或版本不可用，不能结算临时属性。' };
     const settledUnits = battle.units.map(actor => {
       const resolved = clone(actor);
+      modules['cryptLord.shamanTerritoryBattle']?.strip(resolved);
+      modules['cryptLord.arbiterJurisdictionBattle']?.strip(resolved);
       resolved.effects = [];
       recalculateAttributes(resolved);
       return resolved;
     });
     if (accept) {
-      for (const unit of battle.units.filter(unit => unit.source === 'npc')) {
+      if (battle.units.some(unit => unit.playRecord)) {
+        const playUnits = modules['cryptLord.battlePlayUnits'];
+        if (!playUnits) return { ok: false, error: '专属玩法结算模块不可用。' };
+        try { battle.playSettlement = playUnits.settle(next, battle, settledUnits); }
+        catch (error) { return { ok: false, error: error.message }; }
+      }
+      for (const unit of battle.units.filter(unit => unit.source === 'npc' && !unit.isSummon && !unit.playSource)) {
         const card = next.npc_data?.[unit.id];
         if (!object(card) || num(card.当前活力) !== unit.startingHp ||
           num(card.当前灵性, unit.startingSpirit) !== unit.startingSpirit ||
@@ -1760,13 +2917,15 @@
           return { ok: false, error: `NPC ${unit.name} 的数据已变化，请重新核对。` };
       }
       const computed = report(next)?.experience;
-      settledUnits.filter(unit => unit.source === 'npc').forEach(unit => {
+      settledUnits.filter(unit => unit.source === 'npc' && !unit.isSummon && !unit.playSource).forEach(unit => {
         Object.assign(next.npc_data[unit.id], {
           当前活力: unit.hp, 当前灵性: unit.spirit,
           当前理智: unit.sanity, 当前人性: unit.humanity, 当前敏捷: unit.agility,
         });
       });
       if (battle.result === 'victory') experience.commit(computed, next);
+      for (const loss of battle.picturePersonLosses || [])
+        modules['cryptLord.shamanPicture']?.removeLoss(next, loss.id);
     }
     const player = settledUnits.find(unit => unit.source === 'player');
     if (player) Object.assign(next.stat_data, {
@@ -1776,17 +2935,80 @@
     battle.settled = true;
     battle.accepted = Boolean(accept);
     log(battle, accept ? '战报与经验已经提交。' : '战报已放弃，不改写 NPC 属性。');
-    return { ok: true, data: next, battle: clone(battle) };
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function unifiedNativeTactic(data, method, request, random) {
+    const next = clone(data || {}), battle = next.cryptLord?.teamBattle;
+    if (!battle || battle.status !== 'active' || battle.phase !== 'tactic')
+      return { ok: false, error: '当前不在战术阶段。' };
+    if (moduleError(battle)) return { ok: false, error: moduleError(battle) };
+    modules['cryptLord.battleTacticCpu'].initialize(battle, next);
+    const actor = battle.units.find(unit => unit.source === 'player');
+    const manager = modules['cryptLord.battleAbilityBorrow'];
+    const probe = clone(next), probeBattle = probe.cryptLord.teamBattle;
+    const probeActor = probeBattle.units.find(unit => unit.source === 'player');
+    const validation = method === 'abilityBorrow'
+      ? manager.validateRequest(probeBattle, probeActor, request, probe)
+      : manager.validateNative(probeBattle, probeActor, method, request, probe);
+    if (!validation?.ok) return validation || { ok: false, error: '战术参数无效。' };
+    const outcomes = modules['cryptLord.battleTacticCpu'].run(battle, next,
+      method === 'abilityBorrow' ? { borrow: request } : { method, value: request },
+      random || rollFor(battle));
+    const labels = { abilityBorrow: '能力借用', summon: '召唤', fundamentalRule: '底层规则修改',
+      extraAction: '额外行动', rewind: '回溯', battleEvent: '制造战场事件', punishment: '惩戒',
+      balance: '平衡', bribery: '贿赂', effectTransfer: '效果传递', fieldEffect: '施加效果' };
+    battle.lastTactic = { round: battle.round,
+      declaration: { action: labels[method], ...(typeof request === 'string'
+        ? { subtype: request } : clone(request)) },
+      audit: null, actions: [], outcomes };
+    nextRound(battle);
+    Object.assign(next.stat_data, { 当前活力: actor.hp, 当前灵性: actor.spirit,
+      当前理智: actor.sanity, 当前人性: actor.humanity, 当前敏捷: actor.agility });
+    return { ok: true, data: finalize(next), battle: clone(battle) };
+  }
+  function grazingSwitchOptions(data) {
+    return modules['cryptLord.battleSummon']?.switchOptions(get(data), data) || null;
+  }
+  function switchGrazing(data, names, { locked = false } = {}) {
+    const next = clone(data);
+    const battle = next?.cryptLord?.teamBattle;
+    const manager = modules['cryptLord.battleSummon'];
+    if (!manager) return { ok: false, error: '放牧战斗模块未加载。' };
+    const result = manager.switchPlayer(battle, next, names, locked);
+    if (!result.ok) return result;
+    return { ...result, data: result.changed === false ? data : finalize(next),
+      battle: result.changed === false ? get(data) : clone(battle) };
   }
   const api = Object.freeze({
     status: () => Object.freeze({ key: KEY, ready: true }),
-    roster, get, start, options, actionPreview, reachable, action, tactic, tacticPrompt, parsePlan,
+    roster, get, start, startDuel, options, actionPreview, reachable, action, tactic, tacticPrompt, parsePlan,
+    current, playerControlled, calculationSkill,
     parseProps,
     skillControlEligibility, skillControlOptions, skillControl, recalculateAttributes,
     auraOptions, aura, fieldEffectOptions, fieldEffectPreview, fieldEffect,
     effectTransferOptions, effectTransferPreview, effectTransfer,
     briberyOptions, briberyPreview, bribery,
-    autoAction, advanceAuto, report, settle,
+    balanceOptions, balancePreview, balance,
+    punishmentOptions, punishmentPreview, punishment,
+    mythicOptions, mythicForm,
+    exileOptions, exile, terrainEntry,
+    activeLeaveOptions, activeLeave,
+    battleEventOptions, battleEvent,
+    rewindOptions, rewind,
+    extraActionOptions, extraAction,
+    hardControlOptions, hardControl,
+    mindDepriveOptions, mindDeprive,
+    tempControlOptions, tempControl,
+    permanentControlOptions, permanentControl,
+    possessionOptions, possession,
+    ruleChangeOptions, ruleChangePreview, ruleChange,
+    environmentOptions, environmentPreview, changeEnvironment,
+    fundamentalOptions, fundamentalPreview, fundamentalRule,
+    summonOptions, summonPreview, summon, createSummonUnit, prepareSummon, refreshProjectionPassives,
+    grazingSwitchOptions, switchGrazing,
+    abilityBorrowOptions, abilityBorrow, borrowedSkillControl, applyBorrowedSkill,
+    cardAbilities: rawAbilities,
+    autoAction, advanceAuto, report, end, settle,
     dispose() {
       contract.releaseGlobal(KEY, api);
       if (modules[KEY] === api) delete modules[KEY];

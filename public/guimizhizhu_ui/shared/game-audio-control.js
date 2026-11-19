@@ -7,18 +7,54 @@
   if (modules[KEY]) { contract.initializeGlobal(KEY, modules[KEY]); return; }
   const audio = modules['cryptLord.gameAudio'];
   if (!audio) throw new Error(`[${KEY}] game-audio 尚未加载`);
+  const documents = new Map();
+  const synchronizers = new WeakMap();
+  const unsubscribe = audio.subscribe(() => {
+    documents.forEach((_cleanup, doc) => doc.querySelectorAll('.crypt-lord-audio').forEach(node =>
+      synchronizers.get(node)?.()));
+  });
+  function bindDocument(doc) {
+    if (documents.has(doc)) return;
+    const dismiss = event => {
+      doc.querySelectorAll('.crypt-lord-audio').forEach(holder => {
+        if (event.type === 'keydown' ? event.key !== 'Escape' || !holder.contains(doc.activeElement)
+          : holder.contains(event.target)) return;
+        const panel = holder.querySelector('.crypt-lord-audio__panel');
+        if (panel.hidden) return;
+        panel.hidden = true;
+        const toggle = holder.querySelector('button');
+        toggle.setAttribute('aria-expanded', 'false');
+        if (event.type === 'keydown') { event.preventDefault(); event.stopPropagation(); toggle.focus(); }
+      });
+    };
+    doc.addEventListener('pointerdown', dismiss, true);
+    doc.addEventListener('keydown', dismiss, true);
+    documents.set(doc, () => {
+      doc.removeEventListener('pointerdown', dismiss, true);
+      doc.removeEventListener('keydown', dismiss, true);
+    });
+  }
 
   function create(doc, scope) {
+    bindDocument(doc);
     const holder = doc.createElement('div');
     holder.className = 'crypt-lord-audio';
+    holder.dataset.audioScope = scope;
+    holder.addEventListener('pointerdown', event => event.stopPropagation());
     const toggle = doc.createElement('button');
     toggle.type = 'button';
     toggle.className = 'crypt-lord-audio__toggle';
     toggle.title = '音量设置';
     toggle.setAttribute('aria-label', scope === 'duel' ? '个人战斗音量' : '领地战争音量');
+    toggle.setAttribute('aria-expanded', 'false');
+    const icon = doc.createElement('i');
+    icon.setAttribute('aria-hidden', 'true');
+    toggle.appendChild(icon);
     const panel = doc.createElement('div');
     panel.className = 'crypt-lord-audio__panel';
     panel.hidden = true;
+    panel.setAttribute('role', 'group');
+    panel.setAttribute('aria-label', '音量设置');
     const controls = {};
     for (const [key, label] of [['bgm', '音乐'], ['sfx', '音效']]) {
       const row = doc.createElement('label');
@@ -43,6 +79,7 @@
     mute.className = 'crypt-lord-audio__row';
     const checkbox = doc.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.setAttribute('aria-label', '静音');
     checkbox.addEventListener('change', () => {
       audio.set({ muted: checkbox.checked }, scope);
       sync();
@@ -53,6 +90,7 @@
     toggle.addEventListener('click', event => {
       event.stopPropagation();
       panel.hidden = !panel.hidden;
+      toggle.setAttribute('aria-expanded', String(!panel.hidden));
       if (!panel.hidden) {
         panel.style.left = '';
         panel.style.right = '';
@@ -76,7 +114,7 @@
     });
     const sync = () => {
       const config = audio.get(scope);
-      toggle.textContent = config.muted ? '♪̸' : '♫';
+      icon.className = `fa-solid ${config.muted ? 'fa-volume-xmark' : 'fa-volume-high'}`;
       checkbox.checked = config.muted;
       for (const key of ['bgm', 'sfx']) {
         const amount = Math.round(config[key] * 100);
@@ -84,13 +122,20 @@
         controls[key][1].textContent = String(amount);
       }
     };
+    synchronizers.set(holder, sync);
     sync();
     return holder;
   }
   const api = Object.freeze({
     status() { return Object.freeze({ key: KEY, ready: true }); },
     create,
-    dispose() { contract.releaseGlobal(KEY, api); if (modules[KEY] === api) delete modules[KEY]; },
+    dispose() {
+      unsubscribe();
+      documents.forEach(cleanup => cleanup());
+      documents.clear();
+      contract.releaseGlobal(KEY, api);
+      if (modules[KEY] === api) delete modules[KEY];
+    },
   });
   modules[KEY] = api;
   contract.initializeGlobal(KEY, api);

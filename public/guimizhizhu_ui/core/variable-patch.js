@@ -19,14 +19,43 @@
     return String(pointer || '').split('/').slice(1).map(key => key.replace(/~1/g, '/').replace(/~0/g, '~'));
   }
 
+  function controlText(rawText) {
+    const text = String(rawText || ''), stack = [], parts = [], protectedTags = [];
+    if (/^\s*[[{]/.test(text)) {
+      try { JSON.parse(text); return text; } catch { /* Tagged model replies are handled below. */ }
+    }
+    const tags = /<(\/?)(thinking|reasoning|think|analysis|思考|推理|分析|safe|details|UpdateVariable|JSONPatch)(?=\s|>)[^>]*>/gi;
+    let offset = 0;
+    for (const match of text.matchAll(tags)) {
+      const name = match[2].toLowerCase();
+      // Tags inside a real patch belong to JSON values, not the model's analysis.
+      if (['updatevariable', 'jsonpatch'].includes(name)) {
+        if (!stack.length) {
+          if (!match[1]) protectedTags.push(name);
+          else if (protectedTags.at(-1) === name) protectedTags.pop();
+        }
+        continue;
+      }
+      if (!stack.length && protectedTags.length) continue;
+      if (!stack.length) parts.push(text.slice(offset, match.index));
+      if (!match[1]) stack.push(name);
+      else if (stack.pop() !== name) throw Error('变量回复分析块未闭合或嵌套无效，未应用指令');
+      offset = match.index + match[0].length;
+    }
+    if (stack.length) throw Error('变量回复分析块未闭合，未应用指令');
+    parts.push(text.slice(offset));
+    return parts.join('');
+  }
+
   function content(rawText, options = {}) {
-    const matches = Array.from(String(rawText || '').matchAll(/<UpdateVariable\b[^>]*>([\s\S]*?)<\/UpdateVariable>/gi));
+    let clean;
+    try { clean = controlText(rawText); } catch { return ''; }
+    const matches = Array.from(clean.matchAll(/<UpdateVariable\b[^>]*>([\s\S]*?)<\/UpdateVariable>/gi));
     if (matches.length) return matches[matches.length - 1][1].replace(/<\/?JSONPatch\b[^>]*>/gi, '').replace(/```(?:json)?/gi, '').trim();
     if (!options.allowBare) return '';
-    const clean = String(rawText || '').replace(/<(?:thinking|reasoning|think)\b[^>]*>[\s\S]*?<\/(?:thinking|reasoning|think)>/gi, '');
     const patch = Array.from(clean.matchAll(/<JSONPatch\b[^>]*>([\s\S]*?)<\/JSONPatch>/gi)).at(-1)?.[1];
     const candidate = patch || clean;
-    const start = candidate.search(/[\[{]/);
+    const start = candidate.search(/[[{]/);
     const end = Math.max(candidate.lastIndexOf('}'), candidate.lastIndexOf(']'));
     return start >= 0 && end > start ? candidate.slice(start, end + 1).trim() : '';
   }
@@ -90,6 +119,10 @@
     if (!['add', 'replace', 'remove'].includes(op)) return false;
     const target = resolveDomain(fallbackDomain, command.path);
     if (!DOMAINS.includes(target.domain) || !target.parts.length) return false;
+    const reserved = key => ['__proto__', 'constructor', 'prototype'].includes(key);
+    const unsafe = value => value && typeof value === 'object' &&
+      Object.keys(value).some(key => reserved(key) || unsafe(value[key]));
+    if (target.parts.some(reserved) || unsafe(command.value)) return false;
     if (!data[target.domain] || typeof data[target.domain] !== 'object' || Array.isArray(data[target.domain])) data[target.domain] = {};
     const parent = parentAt(data[target.domain], target.parts, op !== 'remove');
     if (!parent) return false;
@@ -122,11 +155,13 @@
   const api = Object.freeze({
     status() { return Object.freeze({ key: KEY, ready: true, domains: DOMAINS }); },
     commands,
+    controlText,
     commandPath,
     apply,
     updateTag,
     embedUpdate,
-    dispose() { try { contract.releaseGlobal(KEY, api); } catch {} if (modules[KEY] === api) delete modules[KEY]; return true; },
+    dispose() { try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
+      if (modules[KEY] === api) delete modules[KEY]; return true; },
   });
   modules[KEY] = api;
   contract.initializeGlobal(KEY, api);

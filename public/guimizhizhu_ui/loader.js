@@ -52,17 +52,23 @@
     'shared/styles.css',
     'shared/game-audio.css',
     'modules/native-floor-editor/style.css',
+    'modules/generation-repair/style.css',
     'modules/action-options/style.css',
     'modules/native-floor-status-bar/style.css',
     'modules/world-map/style.css',
     'modules/theater-console/style.css',
     'modules/floating-variable-workbench/style.css',
     'modules/ai-context-config/style.css',
+    'modules/system-settings/style.css',
+    'modules/appearance/style.css',
+    'modules/danmaku/style.css',
+    'modules/response-inspector/style.css',
     'modules/organization-console/style.css',
     'modules/domain-console/style.css',
     'modules/domain-affairs/style.css',
     'modules/domain-campaign/style.css',
     'modules/war-replay/style.css',
+    'modules/war-sandbox/style.css',
     'modules/dlc-manager/style.css',
     'modules/worldbook-toggle-profiles/style.css',
     'modules/dual-worldbook/style.css',
@@ -73,8 +79,20 @@
     'modules/detective-case/style.css',
     'modules/divination/style.css',
     'modules/original-plot-guide/style.css',
-    'modules/savant-material/style.css',
-    'modules/savant-enhancement/style.css',
+    'modules/journey-reader/style.css',
+    'modules/journey-sequence/style.css',
+    'modules/battle-prompt-mode/style.css',
+    'modules/collection-growth/style.css',
+    'modules/world-report/style.css',
+    'modules/cashflow/style.css',
+    'modules/attribute-recalculation/style.css',
+    'modules/npc-progression/style.css',
+    'modules/current-clues/style.css',
+    'modules/inventory/style.css',
+    'modules/abilities/style.css',
+    'modules/relationships/style.css',
+    'modules/character-archive/style.css',
+    'modules/marionette/style.css',
     'modules/source-castle/style.css',
     'modules/game-shell/style.css',
     'modules/judgment/style.css',
@@ -119,6 +137,7 @@
         'getModelList',
         'getVariables',
         'replaceVariables',
+        'updateVariablesWith',
         'getCharWorldbookNames',
         'getWorldbook',
         'waitForMvu',
@@ -129,6 +148,11 @@
       path: 'shared/lifecycle.js',
       key: 'cryptLord.lifecycle',
       validate: api => validateMethods('cryptLord.lifecycle', api, ['status', 'createScope', 'dispose']),
+    },
+    {
+      path: 'shared/save-recovery.js',
+      key: 'cryptLord.saveRecovery',
+      validate: api => validateMethods('cryptLord.saveRecovery', api, ['status', 'create', 'dispose']),
     },
     {
       path: 'shared/after-native-host.js',
@@ -161,39 +185,124 @@
       validate: api => validateMethods('cryptLord.contextBuilder', api, ['status', 'register', 'build', 'dispose']),
     },
     {
+      path: 'core/native-floor-source.js',
+      key: 'cryptLord.nativeFloorSource',
+      validate: api => validateMethods('cryptLord.nativeFloorSource', api, ['status', 'read', 'assert', 'assertIdentity', 'floorSignature', 'writeDependencies', 'transaction', 'dispose']),
+    },
+    {
       path: 'core/state-store.js',
       key: 'cryptLord.stateStore',
-      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'readMessage', 'writeAssistantData', 'writeAssistantMessage', 'dispose']),
+      validate: api => validateMethods('cryptLord.stateStore', api, ['status', 'findLatestAssistant', 'readAssistantData', 'readMessageData', 'readMessage', 'previewAssistantData', 'writeAssistantData', 'writeAssistantMessage', 'dispose']),
     },
     {
       path: 'core/response-normalizer.js',
       key: 'cryptLord.responseNormalizer',
-      validate: api => validateMethods('cryptLord.responseNormalizer', api, ['status', 'normalize', 'extractActions', 'extractLegacyActions', 'dispose']),
+      validate: api => validateMethods('cryptLord.responseNormalizer', api, ['status', 'normalize', 'maskHidden', 'tagSpans', 'extractActions', 'extractLegacyActions', 'actionsForFloor', 'dispose']),
+    },
+    {
+      path: 'core/response-inspector.js',
+      key: 'cryptLord.responseInspector',
+      validate: api => validateMethods('cryptLord.responseInspector', api, ['status', 'parse', 'project', 'chooseTab', 'captureVariable', 'load', 'dispose']),
+    },
+    {
+      path: 'core/world-report.js',
+      key: 'cryptLord.worldReport',
+      validate: api => validateMethods('cryptLord.worldReport', api, ['status', 'project', 'load', 'scan', 'dispose']),
+    },
+    {
+      path: 'core/cashflow.js',
+      key: 'cryptLord.cashflow',
+      validate: api => validateMethods('cryptLord.cashflow', api, ['status', 'parseAmount', 'delta', 'normalize', 'collect', 'totals', 'project', 'settle', 'load', 'scan', 'dispose']),
+    },
+    {
+      path: 'core/attribute-recalculation.js',
+      key: 'cryptLord.attributeRecalculation',
+      validate: api => validateMethods('cryptLord.attributeRecalculation', api, ['status', 'calculate', 'details', 'reconcileStat', 'apply', 'busyBattle', 'load', 'commit', 'dispose']),
+    },
+    {
+      path: 'core/player-progression.js',
+      key: 'cryptLord.playerProgression',
+      validate: api => validateMethods('cryptLord.playerProgression', api, ['status', 'defaults', 'settle', 'finalize', 'prepare', 'signature', 'assertPrepared', 'readSettings', 'saveSettings', 'dispose']),
+    },
+    {
+      path: 'core/npc-progression.js',
+      key: 'cryptLord.npcProgression',
+      validate: api => validateMethods('cryptLord.npcProgression', api, ['status', 'settle', 'prepare', 'assertPrepared', 'adopt', 'load', 'commit', 'dispose']),
+    },
+    {
+      path: 'core/character-extraction.js',
+      key: 'cryptLord.characterExtraction',
+      validate: api => validateMethods('cryptLord.characterExtraction', api, ['status', 'readConfig', 'saveConfig', 'beginConfig', 'prepare', 'begin', 'commit', 'prepareTurn', 'completeTurn', 'dispose']),
+    },
+    {
+      path: 'core/story-archive.js',
+      key: 'cryptLord.storyArchive',
+      validate: api => validateMethods('cryptLord.storyArchive', api, ['status', 'readConfig', 'beginConfig', 'saveConfig', 'prepare', 'begin', 'commit', 'prepareTurn', 'completeTurn', 'dispose']),
+    },
+    {
+      path: 'core/battle-prompt-mode.js',
+      key: 'cryptLord.battlePromptMode',
+      validate: api => validateMethods('cryptLord.battlePromptMode', api, ['status', 'load', 'setMode', 'saveAutomatic', 'prepareTurn', 'completeTurn', 'finishTurn', 'observe', 'dispose']),
+    },
+    {
+      path: 'core/collection-growth.js',
+      key: 'cryptLord.collectionGrowth',
+      validate: api => validateMethods('cryptLord.collectionGrowth', api, ['status', 'load', 'saveConfig', 'acknowledge', 'beginConfig', 'beginAcknowledgement', 'observe', 'subscribe', 'dispose']),
+    },
+    {
+      path: 'core/generation-quality.js',
+      key: 'cryptLord.generationQuality',
+      validate: api => validateMethods('cryptLord.generationQuality', api, ['status', 'readSnapshot', 'saveSettings', 'diagnose', 'inspect', 'dispose']),
+    },
+    {
+      path: 'core/world-map.js',
+      key: 'cryptLord.worldMapState',
+      validate: api => validateMethods('cryptLord.worldMapState', api, ['status', 'defaults', 'load', 'loadView', 'readPosition', 'correct', 'marker', 'lod', 'zoom', 'dispose']),
     },
     {
       path: 'core/native-settlement.js',
       key: 'cryptLord.nativeSettlement',
-      validate: api => validateMethods('cryptLord.nativeSettlement', api, ['status', 'apply', 'dispose']),
+      validate: api => validateMethods('cryptLord.nativeSettlement', api, ['status', 'apply', 'prepare', 'assertPrepared', 'adopt', 'gameMinutes', 'dispose']),
     },
     {
       path: 'core/variable-patch.js',
       key: 'cryptLord.variablePatch',
-      validate: api => validateMethods('cryptLord.variablePatch', api, ['status', 'commands', 'commandPath', 'apply', 'dispose']),
+      validate: api => validateMethods('cryptLord.variablePatch', api, ['status', 'controlText', 'commands', 'commandPath', 'apply', 'dispose']),
     },
     {
       path: 'core/ai-context-config.js',
       key: 'cryptLord.aiContextConfig',
-      validate: api => validateMethods('cryptLord.aiContextConfig', api, ['status', 'normalize', 'allPaths', 'patternMatches', 'isHidden', 'isLocked', 'filterData', 'readConfig', 'saveConfig', 'dispose']),
+      validate: api => validateMethods('cryptLord.aiContextConfig', api, ['status', 'normalize', 'allPaths', 'patternMatches', 'isHidden', 'isLocked', 'affectsLocked', 'invalidFields', 'filterData', 'readConfig', 'readSnapshot', 'saveConfig', 'dispose']),
     },
     {
       path: 'core/variable-settlement-api.js',
       key: 'cryptLord.variableSettlementApi',
-      validate: api => validateMethods('cryptLord.variableSettlementApi', api, ['status', 'readSettings', 'saveSettings', 'getModelList', 'settle', 'repair', 'retryTurn', 'dispose']),
+      validate: api => validateMethods('cryptLord.variableSettlementApi', api, ['status', 'readSettings', 'readSnapshot', 'saveSettings', 'getModelList', 'settle', 'repair', 'retryTurn', 'readFloorSource', 'assertFloorSource', 'assertResult', 'dispose']),
+    },
+    {
+      path: 'core/variable-workbench-state.js',
+      key: 'cryptLord.variableWorkbenchState',
+      validate: api => validateMethods('cryptLord.variableWorkbenchState', api, ['status', 'load', 'mutate', 'changes', 'applyPatch', 'recovered', 'prepareCommit', 'commit', 'repair', 'retry', 'dispose']),
+    },
+    {
+      path: 'core/item-forge-reference.js',
+      key: 'cryptLord.itemForgeReference',
+      validate: api => validateMethods('cryptLord.itemForgeReference', api, ['status', 'create', 'dispose']),
     },
     {
       path: 'core/item-forge.js',
       key: 'cryptLord.itemForge',
-      validate: api => validateMethods('cryptLord.itemForge', api, ['status', 'loadConfigs', 'parseRank', 'baseValue', 'cost', 'roll', 'traits', 'dispose']),
+      validate: api => validateMethods('cryptLord.itemForge', api, ['status', 'loadConfigs', 'parseRank', 'baseValue', 'cost', 'roll', 'apply', 'isEquipped', 'unequip', 'traits', 'load', 'prepareOperation', 'commitOperation', 'inspectOperation', 'operationStatus', 'dispose']),
+    },
+    {
+      path: 'core/item-derivation-reference.js',
+      key: 'cryptLord.itemDerivationReference',
+      validate: api => validateMethods('cryptLord.itemDerivationReference', api, ['status', 'create', 'dispose']),
+    },
+    {
+      path: 'core/item-derivation.js',
+      key: 'cryptLord.itemDerivation',
+      validate: api => validateMethods('cryptLord.itemDerivation', api, ['status', 'settle', 'prepare', 'assertPrepared', 'load', 'commit', 'begin', 'adopt', 'loadRules', 'assertRules', 'itemSignature', 'dispose']),
     },
     {
       path: 'core/equipment-state.js',
@@ -203,7 +312,7 @@
     {
       path: 'core/character-panel-state.js',
       key: 'cryptLord.characterPanelState',
-      validate: api => validateMethods('cryptLord.characterPanelState', api, ['status', 'attribute', 'traits', 'slots', 'quests', 'removeQuest', 'archive', 'dispose']),
+      validate: api => validateMethods('cryptLord.characterPanelState', api, ['status', 'attribute', 'traits', 'slots', 'quests', 'removeQuest', 'normalizeQuests', 'archive', 'load', 'begin', 'commit', 'dispose']),
     },
     {
       path: 'core/pathway-play-state.js',
@@ -313,7 +422,8 @@
       path: 'core/battle-tags.js',
       key: 'cryptLord.battleTags',
       validate: api => validateMethods('cryptLord.battleTags', api, [
-        'status', 'load', 'add', 'remove', 'sync', 'tick', 'modifier', 'applySkill', 'dispose',
+        'status', 'load', 'add', 'remove', 'sync', 'tick', 'modifier', 'analyze',
+        'getTags', 'getTag', 'hasTag', 'getTagStacks', 'getTagDuration', 'applySkill', 'dispose',
       ]),
     },
     {
@@ -344,7 +454,7 @@
     {
       path: 'core/detective-rules.js',
       key: 'cryptLord.detectiveRules',
-      validate: api => validateMethods('cryptLord.detectiveRules', api, ['status', 'draw', 'formatDraw', 'formatAxes', 'fillPrompt', 'dispose']),
+      validate: api => validateMethods('cryptLord.detectiveRules', api, ['status', 'draw', 'formatDraw', 'formatAxes', 'fillPrompt', 'createRules', 'dispose']),
     },
     {
       path: 'core/detective-state.js',
@@ -352,25 +462,32 @@
       validate: api => validateMethods('cryptLord.detectiveState', api, [
         'status', 'getCases', 'createCase', 'addClue', 'toggleClueVerified', 'addSuspect', 'solveCase', 'buildCaseReport',
         'newInvestigation', 'removeCase', 'drawCase', 'promptFor', 'applyStage', 'request', 'exportChronicle',
-        'configuration', 'saveConfiguration', 'customFor', 'dispose',
+        'configuration', 'saveConfiguration', 'customFor', 'normalizeConfig', 'validateCase', 'saveCases',
+        'load', 'assertSource', 'prepareOperation', 'commitOperation', 'assertConfig', 'dispose',
       ]),
     },
     {
       path: 'core/judgment-state.js',
       key: 'cryptLord.judgmentState',
       validate: api => validateMethods('cryptLord.judgmentState', api, [
-        'status', 'JudgmentParser', 'JudgmentRenderer', 'JudgmentInteractor', 'JudgmentBeautifier', 'createBeautifier', 'dispose',
+        'status', 'JudgmentParser', 'JudgmentRenderer', 'JudgmentInteractor', 'JudgmentBeautifier', 'createBeautifier',
+        'createSession', 'logs', 'dispose',
       ]),
+    },
+    {
+      path: 'core/journey-reader.js',
+      key: 'cryptLord.journeyReader',
+      validate: api => validateMethods('cryptLord.journeyReader', api, ['status', 'load', 'native', 'books', 'extract', 'filter', 'page', 'parse', 'stringify', 'dispose']),
     },
     {
       path: 'core/relationship-state.js',
       key: 'cryptLord.relationshipState',
-      validate: api => validateMethods('cryptLord.relationshipState', api, ['status', 'list', 'toggleImportant', 'removeMany', 'dispose']),
+      validate: api => validateMethods('cryptLord.relationshipState', api, ['status', 'list', 'toggleImportant', 'removeMany', 'load', 'commit', 'begin', 'dispose']),
     },
     {
       path: 'core/industry-state.js',
       key: 'cryptLord.industryState',
-      validate: api => validateMethods('cryptLord.industryState', api, ['status', 'loadConfigs', 'loadPathways', 'principal', 'parseCurrency', 'evaluate', 'dashboard', 'allocation', 'create', 'settleWeekly', 'industryWeeklyGoods', 'applyIndustryProduce', 'dispose']),
+      validate: api => validateMethods('cryptLord.industryState', api, ['status', 'loadConfigs', 'loadPathways', 'principal', 'parseCurrency', 'evaluate', 'dashboard', 'allocation', 'create', 'settleWeekly', 'industryWeeklyGoods', 'applyIndustryProduce', 'loadRules', 'assertRules', 'load', 'prepare', 'project', 'commit', 'begin', 'dispose']),
     },
     {
       path: 'core/domain-defaults.js',
@@ -389,8 +506,14 @@
         'foundationLevels', 'missedFoundationSpoils', 'setFoundationTarget', 'foundDomain',
         'promote', 'settlePeerRecognition', 'settlePeerBattle',
         'runDrill', 'runPeerBattle', 'nowMinutes', 'clearLedger',
-        'weeklySettle', 'refreshZeroed', 'syncProjection', 'dispose',
+        'loadRules', 'assertWarRules', 'withWarRules', 'warBoard', 'formationCell', 'armyToPiece',
+        'weeklySettle', 'refreshZeroed', 'syncProjection', 'renameDomain', 'dispose',
       ]),
+    },
+    {
+      path: 'core/faction-state.js',
+      key: 'cryptLord.factionState',
+      validate: api => validateMethods('cryptLord.factionState', api, ['status', 'defaults', 'load', 'assertRules', 'loadNative', 'assertNative', 'normalize', 'prepare', 'apply', 'list', 'hasPopulation', 'dispose']),
     },
     {
       path: 'core/domain-foundation.js',
@@ -413,19 +536,24 @@
       validate: api => validateMethods('cryptLord.warReplay', api, ['status', 'create', 'dispose']),
     },
     {
+      path: 'core/war-sandbox.js',
+      key: 'cryptLord.warSandbox',
+      validate: api => validateMethods('cryptLord.warSandbox', api, ['status', 'create', 'sync', 'importPeer', 'validate', 'simulate', 'exportText', 'loadNative', 'assertNative', 'beginNative', 'dispose']),
+    },
+    {
       path: 'core/affair-state.js',
       key: 'cryptLord.affairState',
-      validate: api => validateMethods('cryptLord.affairState', api, ['status', 'affairsOf', 'todosOf', 'findTodo', 'openAssembly', 'closeAssembly', 'generateAffairs', 'settleBatch', 'settleOwn', 'settleNeglect', 'dispose']),
+      validate: api => validateMethods('cryptLord.affairState', api, ['status', 'loadRules', 'assertRules', 'withRules', 'affairsOf', 'todosOf', 'findTodo', 'openAssembly', 'closeAssembly', 'generateAffairs', 'settleBatch', 'settleOwn', 'settleNeglect', 'dispose']),
     },
     {
       path: 'core/domain-affairs.js',
       key: 'cryptLord.domainAffairs',
-      validate: api => validateMethods('cryptLord.domainAffairs', api, ['status', 'start', 'attendance', 'advance', 'assign', 'claim', 'dispose']),
+      validate: api => validateMethods('cryptLord.domainAffairs', api, ['status', 'start', 'attendance', 'advance', 'prepareAdvance', 'completeAdvance', 'finish', 'assign', 'claim', 'dispose']),
     },
     {
       path: 'core/domain-campaign.js',
       key: 'cryptLord.domainCampaign',
-      validate: api => validateMethods('cryptLord.domainCampaign', api, ['status', 'start', 'verdict', 'settle', 'battleProse', 'aftermath', 'exportText', 'dispose']),
+      validate: api => validateMethods('cryptLord.domainCampaign', api, ['status', 'start', 'verdict', 'settle', 'battleProse', 'aftermath', 'exportText', 'loadNative', 'assertNative', 'beginNative', 'dispose']),
     },
     {
       path: 'core/divination-presets.js',
@@ -435,17 +563,17 @@
     {
       path: 'core/divination-state.js',
       key: 'cryptLord.divinationState',
-      validate: api => validateMethods('cryptLord.divinationState', api, ['status', 'calcThreshold', 'resolveCheck', 'createSession', 'parseAndApplyParams', 'buildPendingRitual', 'commitPendingRitual', 'buildExportReport', 'defaultPreset', 'loadPresets', 'savePresets', 'candidatePrompt', 'requestPhase', 'validateRitual', 'dispose']),
+      validate: api => validateMethods('cryptLord.divinationState', api, ['status', 'calcThreshold', 'resolveCheck', 'createSession', 'parseAndApplyParams', 'buildPendingRitual', 'commitPendingRitual', 'buildExportReport', 'defaultPreset', 'loadPresets', 'savePresets', 'loadContext', 'assertContext', 'candidatePrompt', 'requestPhase', 'validateRitual', 'previewRates', 'normalizePreset', 'dispose']),
     },
     {
       path: 'core/original-plot-guide.js',
       key: 'cryptLord.originalPlotGuide',
-      validate: api => validateMethods('cryptLord.originalPlotGuide', api, ['status', 'parseCurrentDate', 'parseEntryDateRange', 'currentEra', 'search', 'dispose']),
+      validate: api => validateMethods('cryptLord.originalPlotGuide', api, ['status', 'parseCurrentDate', 'parseEntryDateRange', 'currentEra', 'search', 'lookup', 'dispose']),
     },
     {
       path: 'core/source-castle-state.js',
       key: 'cryptLord.sourceCastleState',
-      validate: api => validateMethods('cryptLord.sourceCastleState', api, ['status', 'collect', 'formatLogs', 'dispose']),
+      validate: api => validateMethods('cryptLord.sourceCastleState', api, ['status', 'collect', 'assertCurrent', 'formatLogs', 'dispose']),
     },
     {
       path: 'core/battle-experience.js',
@@ -455,17 +583,28 @@
     {
       path: 'core/inventory-state.js',
       key: 'cryptLord.inventoryState',
-      validate: api => validateMethods('cryptLord.inventoryState', api, ['status', 'remove', 'giftGain', 'gift', 'dispose']),
+      validate: api => validateMethods('cryptLord.inventoryState', api, ['status', 'remove', 'giftGain', 'gift', 'view', 'load', 'commit', 'begin', 'dispose']),
     },
     {
       path: 'core/ability-state.js',
       key: 'cryptLord.abilityState',
-      validate: api => validateMethods('cryptLord.abilityState', api, ['groups', 'change', 'loadPool', 'synchronize', 'dispose']),
+      validate: api => validateMethods('cryptLord.abilityState', api, ['groups', 'change', 'loadPool', 'assertPool', 'normalizeRecord', 'synchronize', 'locked', 'view', 'load', 'project', 'commit', 'begin', 'prepare', 'signature', 'assertPrepared', 'dispose']),
     },
       {
         path: 'core/battle-terrain-presets.js',
         key: 'cryptLord.battleTerrainPresets',
         validate: api => validateMethods('cryptLord.battleTerrainPresets', api, ['status', 'get', 'option', 'hits', 'tierOf', 'options', 'dispose']),
+      },
+      {
+        path: 'core/battle-effect-reference.js',
+        key: 'cryptLord.battleEffectReference',
+        validate: api => validateMethods('cryptLord.battleEffectReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-effects.js',
+        key: 'cryptLord.battleEffects',
+        validate: api => validateMethods('cryptLord.battleEffects', api,
+          ['initialize', 'apply', 'store', 'process', 'recalculate', 'describe', 'status', 'dispose']),
       },
       {
         path: 'core/natural-environment.js',
@@ -480,7 +619,7 @@
       {
         path: 'core/battle-life-save.js',
         key: 'cryptLord.battleLifeSave',
-        validate: api => validateMethods('cryptLord.battleLifeSave', api, ['status', 'load', 'eligibility', 'initialize', 'absorb', 'saveStrategy', 'dispose']),
+        validate: api => validateMethods('cryptLord.battleLifeSave', api, ['status', 'load', 'eligibility', 'initialize', 'reconcile', 'absorb', 'finalEffectVerdict', 'saveStrategy', 'dispose']),
       },
       {
         path: 'core/battle-conditional-params.js',
@@ -505,7 +644,7 @@
       {
         path: 'core/battle-field-effect-reference.js',
         key: 'cryptLord.battleFieldEffectReference',
-        validate: api => validateMethods('cryptLord.battleFieldEffectReference', api, ['create', 'averages', 'dispose']),
+        validate: api => validateMethods('cryptLord.battleFieldEffectReference', api, ['create', 'createStatus', 'createReporter', 'createAutoPilot', 'createSkillControlResolver', 'averages', 'mythicConfig', 'exileConfig', 'activeLeaveConfig', 'rewindConfig', 'extraConfig', 'hardConfig', 'mindConfig', 'tempConfig', 'controlConfig', 'possessionConfig', 'ruleConfig', 'environmentConfig', 'dispose']),
       },
       {
         path: 'core/battle-field-effects.js',
@@ -523,25 +662,315 @@
         validate: api => validateMethods('cryptLord.battleBribery', api, ['initialize', 'options', 'preview', 'attempt', 'npc', 'blockReason', 'weakenPercent', 'originSide', 'sweep', 'finish', 'statusLines', 'dispose']),
       },
       {
+        path: 'core/battle-balance.js',
+        key: 'cryptLord.battleBalance',
+        validate: api => validateMethods('cryptLord.battleBalance', api, ['initialize', 'options', 'preview', 'attempt', 'pair', 'priorityTarget', 'npc', 'sweep', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-punishment.js',
+        key: 'cryptLord.battlePunishment',
+        validate: api => validateMethods('cryptLord.battlePunishment', api, ['initialize', 'options', 'preview', 'attempt', 'multiplier', 'priorityTarget', 'npc', 'sweep', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-mythic-form.js',
+        key: 'cryptLord.battleMythicForm',
+        validate: api => validateMethods('cryptLord.battleMythicForm', api, ['initialize', 'options', 'attempt', 'description', 'activeCount', 'npc', 'tick', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-exile.js',
+        key: 'cryptLord.battleExile',
+        validate: api => validateMethods('cryptLord.battleExile', api,
+          ['initialize', 'options', 'resolve', 'checkDead', 'endRound', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-active-leave.js',
+        key: 'cryptLord.battleActiveLeave',
+        validate: api => validateMethods('cryptLord.battleActiveLeave', api,
+          ['initialize', 'options', 'prepare', 'npc', 'checkDead', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-events.js',
+        key: 'cryptLord.battleEvents',
+        validate: api => validateMethods('cryptLord.battleEvents', api,
+          ['initialize', 'options', 'attempt', 'npc', 'tick', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-rewind.js',
+        key: 'cryptLord.battleRewind',
+        validate: api => validateMethods('cryptLord.battleRewind', api,
+          ['initialize', 'snapshot', 'options', 'apply', 'npc', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-extra-action.js',
+        key: 'cryptLord.battleExtraAction',
+        validate: api => validateMethods('cryptLord.battleExtraAction', api,
+          ['initialize', 'options', 'grant', 'npc', 'expand', 'currentSlot', 'check', 'enter', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-hard-control.js',
+        key: 'cryptLord.battleHardControl',
+        validate: api => validateMethods('cryptLord.battleHardControl', api,
+          ['initialize', 'options', 'resolve', 'occupied', 'shouldSkip', 'consume', 'sweep', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-mind-deprive.js',
+        key: 'cryptLord.battleMindDeprive',
+        validate: api => validateMethods('cryptLord.battleMindDeprive', api,
+          ['initialize', 'options', 'prepare', 'apply', 'sweep', 'endRound', 'finish', 'originSide', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-temp-control.js',
+        key: 'cryptLord.battleTempControl',
+        validate: api => validateMethods('cryptLord.battleTempControl', api,
+          ['initialize', 'options', 'prepare', 'apply', 'endRound', 'finish', 'originSide', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-permanent-control.js',
+        key: 'cryptLord.battlePermanentControl',
+        validate: api => validateMethods('cryptLord.battlePermanentControl', api,
+          ['initialize', 'options', 'maintain', 'prepare', 'apply', 'sweep', 'markDamaged', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-possession.js',
+        key: 'cryptLord.battlePossession',
+        validate: api => validateMethods('cryptLord.battlePossession', api,
+          ['initialize', 'options', 'maintain', 'prepare', 'apply', 'sweep', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-rule-change.js',
+        key: 'cryptLord.battleRuleChange',
+        validate: api => validateMethods('cryptLord.battleRuleChange', api,
+          ['initialize', 'options', 'preview', 'prepare', 'apply', 'sweep', 'finish', 'slots', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-environment.js',
+        key: 'cryptLord.battleEnvironment',
+        validate: api => validateMethods('cryptLord.battleEnvironment', api,
+          ['initialize', 'options', 'preview', 'prepare', 'apply', 'sync', 'finish', 'slots', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-fundamental.js',
+        key: 'cryptLord.battleFundamental',
+        validate: api => validateMethods('cryptLord.battleFundamental', api,
+          ['initialize', 'options', 'preview', 'apply', 'sweep', 'finish', 'rows', 'resolve', 'dispose']),
+      },
+      {
+        path: 'core/battle-summon.js',
+        key: 'cryptLord.battleSummon',
+        validate: api => validateMethods('cryptLord.battleSummon', api,
+          ['initialize', 'options', 'preview', 'apply', 'npc', 'sweep', 'finish', 'flush', 'dispose']),
+      },
+      {
+        path: 'core/battle-ability-borrow.js',
+        key: 'cryptLord.battleAbilityBorrow',
+        validate: api => validateMethods('cryptLord.battleAbilityBorrow', api,
+          ['initialize', 'options', 'selection', 'project', 'facade', 'apply', 'npc',
+            'validateRequest', 'validateNative', 'dispose']),
+      },
+      {
+        path: 'core/battle-tactic-cpu.js',
+        key: 'cryptLord.battleTacticCpu',
+        validate: api => validateMethods('cryptLord.battleTacticCpu', api,
+          ['initialize', 'run', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-action-cpu.js',
+        key: 'cryptLord.battleActionCpu',
+        validate: api => validateMethods('cryptLord.battleActionCpu', api,
+          ['initialize', 'reachable', 'preview', 'step', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-terrain-effects.js',
+        key: 'cryptLord.battleTerrainEffects',
+        validate: api => validateMethods('cryptLord.battleTerrainEffects', api,
+          ['initialize', 'entry', 'turnStart', 'endRound', 'finish', 'describe', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-resource-status.js',
+        key: 'cryptLord.battleResourceStatus',
+        validate: api => validateMethods('cryptLord.battleResourceStatus', api,
+          ['initialize', 'configure', 'manager', 'turnStart', 'agilityThresholds', 'statusLines', 'finish', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-skill-control.js',
+        key: 'cryptLord.battleSkillControl',
+        validate: api => validateMethods('cryptLord.battleSkillControl', api,
+          ['initialize', 'skills', 'moves', 'eligibility', 'contest', 'attempt', 'apply', 'tick', 'finish', 'statusLines', 'dispose']),
+      },
+      {
+        path: 'core/battle-auto-pilot.js',
+        key: 'cryptLord.battleAutoPilot',
+        validate: api => validateMethods('cryptLord.battleAutoPilot', api,
+          ['initialize', 'isOn', 'drives', 'autoAuras', 'skillsFor', 'set', 'step', 'finish', 'status', 'dispose']),
+      },
+      {
         path: 'core/battle-team-conditions.js',
         key: 'cryptLord.battleTeamConditions',
         validate: api => validateMethods('cryptLord.battleTeamConditions', api, ['has', 'session', 'recipients', 'blockReason', 'effective', 'dispose']),
       },
       {
+        path: 'core/battle-play-reference.js',
+        key: 'cryptLord.battlePlayReference',
+        validate: api => validateMethods('cryptLord.battlePlayReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-play-units.js',
+        key: 'cryptLord.battlePlayUnits',
+        validate: api => validateMethods('cryptLord.battlePlayUnits', api,
+          ['roster', 'prepare', 'preview', 'settle', 'sources', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-team-builder.js',
+        key: 'cryptLord.battleTeamBuilder',
+        validate: api => validateMethods('cryptLord.battleTeamBuilder', api,
+          ['defaults', 'normalize', 'load', 'roster', 'filter', 'resolve', 'edit', 'save', 'important', 'importLegacy', 'identity', 'status', 'dispose']),
+      },
+      {
+        path: 'core/marionette-reference.js',
+        key: 'cryptLord.marionetteReference',
+        validate: api => validateMethods('cryptLord.marionetteReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/marionette-state.js',
+        key: 'cryptLord.marionetteState',
+        validate: api => validateMethods('cryptLord.marionetteState', api, ['create', 'gate', 'guard', 'request', 'status', 'dispose']),
+      },
+      {
+        path: 'core/clone-reference.js', key: 'cryptLord.cloneReference',
+        validate: api => validateMethods('cryptLord.cloneReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/clone-state.js', key: 'cryptLord.cloneState',
+        validate: api => validateMethods('cryptLord.cloneState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/workshop-reference.js', key: 'cryptLord.workshopReference',
+        validate: api => validateMethods('cryptLord.workshopReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/workshop-state.js', key: 'cryptLord.workshopState',
+        validate: api => validateMethods('cryptLord.workshopState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/material-processing-state.js', key: 'cryptLord.materialProcessingState',
+        validate: api => validateMethods('cryptLord.materialProcessingState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/enhancement-reference.js', key: 'cryptLord.enhancementReference',
+        validate: api => validateMethods('cryptLord.enhancementReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/enhancement-state.js', key: 'cryptLord.enhancementState',
+        validate: api => validateMethods('cryptLord.enhancementState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/grazing-reference.js', key: 'cryptLord.grazingReference',
+        validate: api => validateMethods('cryptLord.grazingReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/grazing-roster-state.js', key: 'cryptLord.grazingRosterState',
+        validate: api => validateMethods('cryptLord.grazingRosterState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/reader-reference.js', key: 'cryptLord.readerReference',
+        validate: api => validateMethods('cryptLord.readerReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/reader-roster-state.js', key: 'cryptLord.readerRosterState',
+        validate: api => validateMethods('cryptLord.readerRosterState', api, ['create', 'gate', 'guard', 'sync', 'status', 'dispose']),
+      },
+      {
+        path: 'core/mystery-roster-reference.js', key: 'cryptLord.mysteryRosterReference',
+        validate: api => validateMethods('cryptLord.mysteryRosterReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/mystery-roster-state.js', key: 'cryptLord.mysteryRosterState',
+        validate: api => validateMethods('cryptLord.mysteryRosterState', api, ['create', 'gate', 'guard', 'sync', 'status', 'dispose']),
+      },
+      {
+        path: 'core/mystery-analysis-reference.js', key: 'cryptLord.mysteryAnalysisReference',
+        validate: api => validateMethods('cryptLord.mysteryAnalysisReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/mystery-analysis-state.js', key: 'cryptLord.mysteryAnalysisState',
+        validate: api => validateMethods('cryptLord.mysteryAnalysisState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/scroll-workshop-reference.js', key: 'cryptLord.scrollWorkshopReference',
+        validate: api => validateMethods('cryptLord.scrollWorkshopReference', api, ['create', 'build', 'status', 'dispose']),
+      },
+      {
+        path: 'core/scroll-workshop-state.js', key: 'cryptLord.scrollWorkshopState',
+        validate: api => validateMethods('cryptLord.scrollWorkshopState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/shaman-picture-reference.js', key: 'cryptLord.shamanPictureReference',
+        validate: api => validateMethods('cryptLord.shamanPictureReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/shaman-picture-state.js', key: 'cryptLord.shamanPictureState',
+        validate: api => validateMethods('cryptLord.shamanPictureState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/shaman-territory-reference.js', key: 'cryptLord.shamanTerritoryReference',
+        validate: api => validateMethods('cryptLord.shamanTerritoryReference', api, ['create', 'minutes', 'status', 'dispose']),
+      },
+      {
+        path: 'core/shaman-territory-state.js', key: 'cryptLord.shamanTerritoryState',
+        validate: api => validateMethods('cryptLord.shamanTerritoryState', api, ['create', 'gate', 'guard', 'sync', 'status', 'dispose']),
+      },
+      {
+        path: 'core/shaman-territory-battle.js', key: 'cryptLord.shamanTerritoryBattle',
+        validate: api => validateMethods('cryptLord.shamanTerritoryBattle', api, ['collect', 'section', 'applyTeam', 'applyPersonal', 'strip', 'status', 'dispose']),
+      },
+      {
+        path: 'core/arbiter-jurisdiction-reference.js', key: 'cryptLord.arbiterJurisdictionReference',
+        validate: api => validateMethods('cryptLord.arbiterJurisdictionReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/audience-imagination-reference.js', key: 'cryptLord.audienceImaginationReference',
+        validate: api => validateMethods('cryptLord.audienceImaginationReference', api, ['create', 'status', 'dispose']),
+      },
+      {
+        path: 'core/audience-imagination-state.js', key: 'cryptLord.audienceImaginationState',
+        validate: api => validateMethods('cryptLord.audienceImaginationState', api,
+          ['create', 'gate', 'guard', 'validate', 'initializeTeam', 'cardFor', 'status', 'dispose']),
+      },
+      {
+        path: 'core/arbiter-jurisdiction-state.js', key: 'cryptLord.arbiterJurisdictionState',
+        validate: api => validateMethods('cryptLord.arbiterJurisdictionState', api, ['create', 'gate', 'guard', 'status', 'dispose']),
+      },
+      {
+        path: 'core/arbiter-jurisdiction-battle.js', key: 'cryptLord.arbiterJurisdictionBattle',
+        validate: api => validateMethods('cryptLord.arbiterJurisdictionBattle', api, ['section', 'applyTeam', 'applyPersonal', 'strip', 'status', 'dispose']),
+      },
+      {
+        path: 'core/battle-report.js',
+        key: 'cryptLord.battleReport',
+        validate: api => validateMethods('cryptLord.battleReport', api,
+          ['initialize', 'capture', 'roundStart', 'cost', 'hit', 'miss', 'effect', 'trigger', 'mercyChoices', 'build', 'status', 'dispose']),
+      },
+      {
         path: 'core/team-battle-state.js',
         key: 'cryptLord.teamBattleState',
-        validate: api => validateMethods('cryptLord.teamBattleState', api, ['status', 'roster', 'get', 'start', 'options', 'actionPreview', 'reachable', 'action', 'tactic', 'tacticPrompt', 'parsePlan', 'parseProps', 'skillControlEligibility', 'skillControlOptions', 'skillControl', 'auraOptions', 'aura', 'fieldEffectOptions', 'fieldEffectPreview', 'fieldEffect', 'effectTransferOptions', 'effectTransferPreview', 'effectTransfer', 'briberyOptions', 'briberyPreview', 'bribery', 'advanceAuto', 'report', 'settle', 'dispose']),
+        validate: api => validateMethods('cryptLord.teamBattleState', api, ['status', 'roster', 'get', 'start', 'startDuel', 'options', 'actionPreview', 'reachable', 'action', 'tactic', 'tacticPrompt', 'parsePlan', 'parseProps', 'skillControlEligibility', 'skillControlOptions', 'skillControl', 'auraOptions', 'aura', 'fieldEffectOptions', 'fieldEffectPreview', 'fieldEffect', 'effectTransferPreview', 'effectTransferOptions', 'effectTransfer', 'briberyOptions', 'briberyPreview', 'bribery', 'balanceOptions', 'balancePreview', 'balance', 'punishmentOptions', 'punishmentPreview', 'punishment', 'mythicOptions', 'mythicForm', 'exileOptions', 'exile', 'activeLeaveOptions', 'activeLeave', 'battleEventOptions', 'battleEvent', 'rewindOptions', 'rewind', 'extraActionOptions', 'extraAction', 'hardControlOptions', 'hardControl', 'mindDepriveOptions', 'mindDeprive', 'tempControlOptions', 'tempControl', 'permanentControlOptions', 'permanentControl', 'possessionOptions', 'possession', 'ruleChangeOptions', 'ruleChangePreview', 'ruleChange', 'environmentOptions', 'environmentPreview', 'changeEnvironment', 'fundamentalOptions', 'fundamentalPreview', 'fundamentalRule', 'terrainEntry', 'advanceAuto', 'report', 'settle', 'dispose']),
+      },
+      {
+        path: 'core/battle-session.js',
+        key: 'cryptLord.battleSession',
+        validate: api => validateMethods('cryptLord.battleSession', api, ['prepare', 'status', 'dispose']),
       },
     {
       path: 'core/game-audio.js',
       key: 'cryptLord.gameAudio',
-      validate: api => validateMethods('cryptLord.gameAudio', api, ['status', 'get', 'set', 'enter', 'leave', 'stop', 'preload', 'fireVolley', 'playWarReplay', 'dispose']),
+      validate: api => validateMethods('cryptLord.gameAudio', api, ['status', 'get', 'set', 'enter', 'leave',
+        'stop', 'preload', 'fireVolley', 'createScene', 'createReplay', 'campaignGroup', 'dispose']),
     },
     {
       path: 'core/worldbook-toggle-profiles.js',
       key: 'cryptLord.worldbookToggleProfiles',
       validate: api => validateMethods('cryptLord.worldbookToggleProfiles', api, [
-        'status', 'normalize', 'load', 'save', 'boundBooks', 'entriesFor', 'validate', 'apply', 'dispose',
+        'status', 'normalize', 'defaultProfile', 'load', 'beginSave', 'save', 'boundBooks', 'entriesFor', 'validate', 'beginApply', 'apply', 'dispose',
       ]),
     },
     {
@@ -560,21 +989,21 @@
       path: 'core/image-generation.js',
       key: 'cryptLord.imageGeneration',
       validate: api => validateMethods('cryptLord.imageGeneration', api, [
-        'status', 'loadPresets', 'savePresets', 'readSettings', 'saveSettings', 'story', 'generatePrompt', 'requestImage', 'dispose',
+        'status', 'loadPresets', 'savePresets', 'readSettings', 'saveSettings', 'story', 'readFloor', 'verifyFloor', 'verifyPresets', 'generatePrompt', 'requestImage', 'dispose',
       ]),
     },
     {
       path: 'core/random-events.js',
       key: 'cryptLord.randomEvents',
       validate: api => validateMethods('cryptLord.randomEvents', api, [
-        'status', 'normalize', 'parseEntry', 'load', 'save', 'remove', 'restore', 'draw', 'passive', 'format', 'pending', 'queueManual', 'consume', 'dispose',
+        'status', 'normalize', 'parseEntry', 'load', 'save', 'remove', 'restore', 'recover', 'draw', 'passive', 'format', 'pending', 'queueManual', 'prepareTurn', 'assertTurn', 'consumeTurn', 'consumeNative', 'dispose',
       ]),
     },
     {
       path: 'core/event-generator.js',
       key: 'cryptLord.eventGenerator',
       validate: api => validateMethods('cryptLord.eventGenerator', api, [
-        'status', 'loadConfig', 'compose', 'extractCard', 'readCardTarget', 'saveCard', 'dispose',
+        'status', 'loadConfig', 'assertConfig', 'compose', 'extractCard', 'generateCard', 'readCardTarget', 'saveCard', 'dispose',
       ]),
     },
     {
@@ -585,7 +1014,17 @@
     {
       path: 'core/quick-shortcuts.js',
       key: 'cryptLord.quickShortcuts',
-      validate: api => validateMethods('cryptLord.quickShortcuts', api, ['status', 'parse', 'load', 'saveCommands', 'saveState', 'consumeSupplementary', 'dispose']),
+      validate: api => validateMethods('cryptLord.quickShortcuts', api, ['status', 'parse', 'load', 'save', 'saveCommands', 'saveState', 'consumeSupplementary', 'consumeNative', 'prepareTurn', 'assertTurn', 'consumeTurn', 'format', 'dispose']),
+    },
+    {
+      path: 'core/geographic-context.js',
+      key: 'cryptLord.geographicContext',
+      validate: api => validateMethods('cryptLord.geographicContext', api, ['status', 'assemble', 'provide', 'area', 'dispose']),
+    },
+    {
+      path: 'core/dynamic-status.js',
+      key: 'cryptLord.dynamicStatus',
+      validate: api => validateMethods('cryptLord.dynamicStatus', api, ['status', 'load', 'assertLoaded', 'assertIdentity', 'createGuard', 'evaluate', 'apply', 'assemble', 'provide', 'dispose']),
     },
     {
       path: 'prompts/game-context-providers.js',
@@ -593,9 +1032,24 @@
       validate: api => validateMethods('cryptLord.gameContextProviders', api, ['status', 'dispose']),
     },
     {
+      path: 'core/current-clues.js',
+      key: 'cryptLord.currentClues',
+      validate: api => validateMethods('cryptLord.currentClues', api, ['status', 'extract', 'embed', 'load', 'readFloor', 'begin', 'archive', 'beginConfig', 'saveConfig', 'prepareTurn', 'assertTurn', 'completeTurn', 'finishTurn', 'nativeTicket', 'provide', 'dispose']),
+    },
+    {
       path: 'core/native-editor.js',
       key: 'cryptLord.nativeEditor',
-      validate: api => validateMethods('cryptLord.nativeEditor', api, ['status', 'open', 'save', 'dispose']),
+      validate: api => validateMethods('cryptLord.nativeEditor', api, ['status', 'sections', 'compose', 'open', 'begin', 'commit', 'save', 'prepareSync', 'beginSync', 'syncJourney', 'dispose']),
+    },
+    {
+      path: 'core/journey-sequence.js',
+      key: 'cryptLord.journeySequence',
+      validate: api => validateMethods('cryptLord.journeySequence', api, ['status', 'load', 'prepare', 'beginCommit', 'beginRestore', 'commit', 'restore', 'cancel', 'dispose']),
+    },
+    {
+      path: 'core/theater-actions.js',
+      key: 'cryptLord.theaterActions',
+      validate: api => validateMethods('cryptLord.theaterActions', api, ['status', 'actions', 'points', 'revision', 'snapshot', 'queue', 'cancel', 'settle', 'guardSettlement', 'assertSettlement', 'consume', 'dispose']),
     },
     {
       path: 'core/generation-bridge.js',
@@ -621,6 +1075,11 @@
       validate: api => validateMethods('cryptLord.debugToolbar', api, ['status', 'reconnect', 'dispose']),
     },
     {
+      path: 'modules/generation-repair/index.js',
+      key: 'cryptLord.generationRepairUi',
+      validate: api => validateMethods('cryptLord.generationRepairUi', api, ['status', 'review', 'close', 'dispose']),
+    },
+    {
       path: 'modules/native-floor/index.js',
       key: 'cryptLord.nativeFloor',
       validate: api => validateMethods('cryptLord.nativeFloor', api, ['status', 'submitNativeTurn', 'dispose']),
@@ -628,7 +1087,7 @@
     {
       path: 'modules/action-options/index.js',
       key: 'cryptLord.actionOptions',
-      validate: api => validateMethods('cryptLord.actionOptions', api, ['status', 'mount', 'refresh', 'dispose']),
+      validate: api => validateMethods('cryptLord.actionOptions', api, ['status', 'mount', 'refresh', 'createList', 'dispose']),
     },
     {
       path: 'modules/input-adapter/index.js',
@@ -638,7 +1097,7 @@
     {
       path: 'modules/native-floor-editor/index.js',
       key: 'cryptLord.nativeFloorEditorUi',
-      validate: api => validateMethods('cryptLord.nativeFloorEditorUi', api, ['status', 'mount', 'open', 'openData', 'close', 'unmount', 'dispose']),
+      validate: api => validateMethods('cryptLord.nativeFloorEditorUi', api, ['status', 'mount', 'open', 'openData', 'close', 'reload', 'save', 'sync', 'unmount', 'dispose']),
     },
     {
       path: 'modules/native-floor-status-bar/index.js',
@@ -658,12 +1117,112 @@
     {
       path: 'modules/floating-variable-workbench/index.js',
       key: 'cryptLord.variableWorkbench',
-      validate: api => validateMethods('cryptLord.variableWorkbench', api, ['status', 'mount', 'open', 'close', 'notifyUpdate', 'dispose']),
+      validate: api => validateMethods('cryptLord.variableWorkbench', api, ['status', 'mount', 'open', 'close', 'reload', 'save', 'notifyUpdate', 'retryVariableSettlement', 'dispose']),
     },
     {
       path: 'modules/ai-context-config/index.js',
       key: 'cryptLord.aiContextConfigUi',
       validate: api => validateMethods('cryptLord.aiContextConfigUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'core/appearance.js',
+      key: 'cryptLord.appearance',
+      validate: api => validateMethods('cryptLord.appearance', api, ['status', 'defaults', 'readSnapshot', 'saveSettings', 'loadCatalog', 'readFloors', 'dispose']),
+    },
+    {
+      path: 'modules/appearance/index.js',
+      key: 'cryptLord.appearanceUi',
+      validate: api => validateMethods('cryptLord.appearanceUi', api, ['status', 'current', 'mount', 'open', 'close', 'reload', 'save', 'dispose']),
+    },
+    {
+      path: 'core/danmaku.js',
+      key: 'cryptLord.danmaku',
+      validate: api => validateMethods('cryptLord.danmaku', api, ['status', 'extract', 'project', 'readFloors', 'readMode', 'setMode', 'dispose']),
+    },
+    {
+      path: 'core/danmaku-engine.js',
+      key: 'cryptLord.danmakuEngine',
+      validate: api => validateMethods('cryptLord.danmakuEngine', api, ['status', 'create', 'dispose']),
+    },
+    {
+      path: 'modules/danmaku/index.js',
+      key: 'cryptLord.danmakuUi',
+      validate: api => validateMethods('cryptLord.danmakuUi', api, ['status', 'mount', 'mountSettings', 'open', 'close', 'play', 'reloadMode', 'dispose']),
+    },
+    {
+      path: 'modules/response-inspector/index.js',
+      key: 'cryptLord.responseInspectorUi',
+      validate: api => validateMethods('cryptLord.responseInspectorUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/system-settings/index.js',
+      key: 'cryptLord.systemSettingsUi',
+      validate: api => validateMethods('cryptLord.systemSettingsUi', api, ['status', 'mount', 'open', 'close', 'reload', 'save', 'dispose']),
+    },
+    {
+      path: 'modules/journey-reader/index.js',
+      key: 'cryptLord.journeyReaderUi',
+      validate: api => validateMethods('cryptLord.journeyReaderUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/journey-sequence/index.js',
+      key: 'cryptLord.journeySequenceUi',
+      validate: api => validateMethods('cryptLord.journeySequenceUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/battle-prompt-mode/index.js',
+      key: 'cryptLord.battlePromptModeUi',
+      validate: api => validateMethods('cryptLord.battlePromptModeUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/collection-growth/index.js',
+      key: 'cryptLord.collectionGrowthUi',
+      validate: api => validateMethods('cryptLord.collectionGrowthUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/world-report/index.js',
+      key: 'cryptLord.worldReportUi',
+      validate: api => validateMethods('cryptLord.worldReportUi', api, ['status', 'mount', 'open', 'close', 'reload', 'refresh', 'dispose']),
+    },
+    {
+      path: 'modules/cashflow/index.js',
+      key: 'cryptLord.cashflowUi',
+      validate: api => validateMethods('cryptLord.cashflowUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/attribute-recalculation/index.js',
+      key: 'cryptLord.attributeRecalculationUi',
+      validate: api => validateMethods('cryptLord.attributeRecalculationUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/npc-progression/index.js',
+      key: 'cryptLord.npcProgressionUi',
+      validate: api => validateMethods('cryptLord.npcProgressionUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/current-clues/index.js',
+      key: 'cryptLord.currentCluesUi',
+      validate: api => validateMethods('cryptLord.currentCluesUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/inventory/index.js',
+      key: 'cryptLord.inventoryUi',
+      validate: api => validateMethods('cryptLord.inventoryUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/abilities/index.js',
+      key: 'cryptLord.abilitiesUi',
+      validate: api => validateMethods('cryptLord.abilitiesUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/relationships/index.js',
+      key: 'cryptLord.relationshipsUi',
+      validate: api => validateMethods('cryptLord.relationshipsUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'modules/character-archive/index.js',
+      key: 'cryptLord.characterArchiveUi',
+      validate: api => validateMethods('cryptLord.characterArchiveUi', api, ['status', 'mount', 'open', 'close', 'reload', 'deleteQuest', 'dispose']),
     },
     {
       path: 'modules/organization-console/index.js',
@@ -691,9 +1250,19 @@
       validate: api => validateMethods('cryptLord.warReplayUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
     },
     {
+      path: 'modules/war-sandbox/index.js',
+      key: 'cryptLord.warSandboxUi',
+      validate: api => validateMethods('cryptLord.warSandboxUi', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
+    },
+    {
+      path: 'core/dlc-manager.js',
+      key: 'cryptLord.dlcService',
+      validate: api => validateMethods('cryptLord.dlcService', api, ['status', 'name', 'preview', 'isDlc', 'load', 'toggle', 'dispose']),
+    },
+    {
       path: 'modules/dlc-manager/index.js',
       key: 'cryptLord.dlcManager',
-      validate: api => validateMethods('cryptLord.dlcManager', api, ['status', 'mount', 'open', 'close', 'dispose']),
+      validate: api => validateMethods('cryptLord.dlcManager', api, ['status', 'mount', 'open', 'close', 'reload', 'dispose']),
     },
     {
       path: 'modules/worldbook-toggle-profiles/index.js',
@@ -741,14 +1310,67 @@
       validate: api => validateMethods('cryptLord.originalPlotGuideUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
     },
     {
-      path: 'modules/savant-material/index.js',
-      key: 'cryptLord.savantMaterialUi',
-      validate: api => validateMethods('cryptLord.savantMaterialUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+      path: 'modules/pathway-roster-window/index.js', key: 'cryptLord.pathwayRosterWindow',
+      validate: api => validateMethods('cryptLord.pathwayRosterWindow', api, ['create', 'status', 'dispose']),
     },
     {
-      path: 'modules/savant-enhancement/index.js',
-      key: 'cryptLord.savantEnhancementUi',
-      validate: api => validateMethods('cryptLord.savantEnhancementUi', api,
+      path: 'modules/material-processing-native/index.js',
+      key: 'cryptLord.materialProcessingUi',
+      validate: api => validateMethods('cryptLord.materialProcessingUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/clone/index.js', key: 'cryptLord.cloneUi',
+      validate: api => validateMethods('cryptLord.cloneUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/workshop/index.js', key: 'cryptLord.workshopUi',
+      validate: api => validateMethods('cryptLord.workshopUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/grazing/index.js', key: 'cryptLord.grazingUi',
+      validate: api => validateMethods('cryptLord.grazingUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/reader-mystic/index.js', key: 'cryptLord.readerMysticUi',
+      validate: api => validateMethods('cryptLord.readerMysticUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/mystery-roster/index.js', key: 'cryptLord.mysteryRosterUi',
+      validate: api => validateMethods('cryptLord.mysteryRosterUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/mystery-analysis/index.js', key: 'cryptLord.mysteryAnalysisUi',
+      validate: api => validateMethods('cryptLord.mysteryAnalysisUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/scroll-workshop/index.js', key: 'cryptLord.scrollWorkshopUi',
+      validate: api => validateMethods('cryptLord.scrollWorkshopUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/shaman-picture/index.js', key: 'cryptLord.shamanPictureUi',
+      validate: api => validateMethods('cryptLord.shamanPictureUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/shaman-territory/index.js', key: 'cryptLord.shamanTerritoryUi',
+      validate: api => validateMethods('cryptLord.shamanTerritoryUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/arbiter-jurisdiction/index.js', key: 'cryptLord.arbiterJurisdictionUi',
+      validate: api => validateMethods('cryptLord.arbiterJurisdictionUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/audience-imagination/index.js', key: 'cryptLord.audienceImaginationUi',
+      validate: api => validateMethods('cryptLord.audienceImaginationUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/marionette/index.js',
+      key: 'cryptLord.marionetteUi',
+      validate: api => validateMethods('cryptLord.marionetteUi', api, ['status', 'mount', 'open', 'close', 'dispose']),
+    },
+    {
+      path: 'modules/enhancement-native/index.js',
+      key: 'cryptLord.enhancementNativeUi',
+      validate: api => validateMethods('cryptLord.enhancementNativeUi', api,
         ['status', 'mount', 'open', 'close', 'dispose']),
     },
     {

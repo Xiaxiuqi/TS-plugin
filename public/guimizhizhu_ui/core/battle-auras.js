@@ -14,7 +14,7 @@
     return value;
   };
   const alive = unit => Boolean(unit && unit.hp > 0);
-  const onField = unit => alive(unit) && unit.offField !== true && !unit.activeLeaving;
+  const onField = unit => alive(unit) && unit.offField !== true && !unit.activeLeaving && !unit.exiled && !unit.possessedHidden;
   const channels = [
     ['attack', 'attack', '攻击力'], ['defense', 'defense', '防御力'],
     ['speed', 'speed', '速度'], ['movement', 'movement', '移动力'],

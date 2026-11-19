@@ -34,10 +34,13 @@
   const capacity = value => value == null || value > 5 ? 0
     : value <= 1 ? 22 : value <= 2 ? 18 : value <= 3 ? 13 : value <= 4 ? 9 : 7;
   const activeCap = value => value == null || value > 5 ? 0 : value <= 0 ? 5 : value <= 3 ? 3 : 1;
-  const switchCost = data => {
+  const switchCost = (data, pool) => {
     const ownerRank = rank(data?.stat_data?.当前序列);
-    const table = window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank || {};
-    const spirit = Number(table[String(ownerRank)]?.灵性 ?? averageSpirit[String(ownerRank)]);
+    const scoped = pool?.pictureConfig?.consumableConfig?.avgAttrByRank ||
+      data?.cryptLord?.teamBattle?.fieldEffectMeta?.averages;
+    const table = scoped || window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank;
+    const spirit = Number(table?.[String(ownerRank)]?.灵性 ??
+      (scoped ? table?.['10']?.灵性 ?? 43 : averageSpirit[String(ownerRank)]));
     if (!Number.isFinite(spirit)) throw new Error('当前真实序列缺少平均灵性配置');
     return Math.max(1, Math.round(spirit * .02));
   };
@@ -143,7 +146,7 @@
     if (battle) {
       const session = next.cryptLord?.personalBattle;
       if (session?.status !== 'active' || session.currentTurn !== 'player') throw new Error('当前不是可切换的战斗回合');
-      const cost = switchCost(data);
+      const cost = switchCost(data, pool);
       if (session.player.spirit <= 0 || session.player.spirit < cost) throw new Error(`切换需要 ${cost} 点灵性`);
       session.player.spirit -= cost;
       const baseline = session.player.territory?.baseline?.maxSpirit;

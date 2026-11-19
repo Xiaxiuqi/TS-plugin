@@ -110,6 +110,8 @@
     return base;
   }
   function sync(data, pool) {
+    if (modules['cryptLord.mysteryRosterState'])
+      return modules['cryptLord.mysteryRosterState'].sync(data, pool);
     const stat = data?.stat_data;
     if (!record(stat)) return false;
     const groups = record(stat.序列能力列表) ? stat.序列能力列表 : {};
@@ -131,7 +133,7 @@
         if (!cfg || names.has(cfg.名称)) continue;
         try {
           validate(data, pool, slot, cfg, true);
-          const built = reader.build(cfg, slot, owner.rank);
+          const built = reader.build(cfg, slot, owner.rank, pool);
           built.$神秘再现投影 = '神秘再现';
           if (!cfg.描述) built.描述 = '自定义魔法或巫术';
           projected.push(built); names.add(cfg.名称);

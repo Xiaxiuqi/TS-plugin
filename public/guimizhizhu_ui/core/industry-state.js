@@ -42,6 +42,10 @@
   let activeConfig = DEFAULT_CONFIG;
   let configStatus = { source: '默认规则', books: [], accepted: 0, warnings: [] };
   let loadSequence = 0;
+  let epoch = 0, disposed = false, generating = false, queue = Promise.resolve();
+  const subscriptions = [], ruleTickets = new WeakMap(), loadedTickets = new WeakMap();
+  const RESERVED = new Set(['$meta', '__proto__', 'constructor', 'prototype']);
+  const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
   function record(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
   function number(value, fallback = 0) {
     if (value === null || value === undefined || value === '') return fallback;
@@ -137,81 +141,19 @@
     Object.assign(next, staged);
     return accepted;
   }
-  async function loadConfigs() {
+  async function loadConfigs(guard) {
     const sequence = ++loadSequence;
-    activeConfig = DEFAULT_CONFIG;
-    configStatus = { source: '默认规则', books: [], accepted: 0, warnings: [] };
-    const next = Object.fromEntries(Object.entries(DEFAULT_CONFIG).map(([key, value]) => [
-      key, record(value) ? { ...value } : value,
-    ]));
-    const host = await contract.waitGlobalInitialized(HOST_KEY, { timeoutMs: 10000 });
-    try {
-      const bound = await host.getCharWorldbookNames('current');
-      const names = [...new Set(['2历史孔隙', ...(bound?.additional || []), bound?.primary, '1源堡'].filter(Boolean))];
-      const warnings = [];
-      let accepted = 0;
-      const books = [];
-      const selected = new Map();
-      for (const name of names) {
-        let entries;
-        try { entries = await host.getWorldbook(name); }
-        catch (error) {
-          if (/未能找到世界书|世界书.*(?:不存在|未找到)|(?:worldbook|lorebook).*?(?:not found|does not exist)/i.test(String(error?.message || error))) continue;
-          throw error;
-        }
-        if (!Array.isArray(entries)) throw new Error(`世界书“${name}”不可读取。`);
-        books.push(name);
-        for (const entry of entries) {
-          const title = String(entry?.name || entry?.comment || '').trim();
-          if (!title.startsWith('【配置') || !title.includes('产业配置')) continue;
-          selected.set(title, { name, entry });
-        }
-      }
-      for (const [title, { name, entry }] of selected) {
-        try { accepted += applyConfig(next, parseWorldbookJson(entry.content)); }
-        catch (error) { warnings.push(`${name} / ${title}: ${error.message}`); }
-      }
-      if (sequence !== loadSequence) return { ...configStatus };
-      activeConfig = accepted ? next : DEFAULT_CONFIG;
-      configStatus = { source: accepted ? '世界书配置' : '默认规则', books, accepted, warnings };
-      return { ...configStatus };
-    } catch (error) {
-      if (sequence === loadSequence) {
-        activeConfig = DEFAULT_CONFIG;
-        configStatus = { source: '默认规则', books: [], accepted: 0, warnings: [String(error?.message || error)] };
-      }
-      throw error;
-    }
+    const loaded = await loadRules(guard);
+    if (sequence !== loadSequence) throw Error('产业配置读取已被新请求替代');
+    if (loaded.warnings.length) throw Error(`产业配置异常：${loaded.warnings.join('；')}`);
+    activeConfig = structuredClone(loaded.config);
+    configStatus = { source: loaded.source, books: [...loaded.books], accepted: loaded.accepted, warnings: [] };
+    return structuredClone(configStatus);
   }
-  async function loadPathways() {
-    const host = await contract.waitGlobalInitialized(HOST_KEY, { timeoutMs: 10000 });
-    const bound = await host.getCharWorldbookNames('current');
-    const names = [...new Set(['2历史孔隙', ...(bound?.additional || []), bound?.primary, '1源堡'].filter(Boolean))];
-    const selected = new Map();
-    for (const name of names) {
-      let entries;
-      try { entries = await host.getWorldbook(name); }
-      catch (error) {
-        if (/未能找到世界书|世界书.*(?:不存在|未找到)|(?:worldbook|lorebook).*?(?:not found|does not exist)/i.test(String(error?.message || error))) continue;
-        throw error;
-      }
-      if (!Array.isArray(entries)) throw new Error(`世界书“${name}”不可读取。`);
-      for (const entry of entries) {
-        const title = String(entry?.name || entry?.comment || '').trim();
-        if (title.startsWith('[神之途径]')) selected.set(title, entry);
-      }
-    }
-    const pathways = Object.create(null);
-    for (const entry of selected.values()) {
-      const parsed = parseWorldbookJson(entry.content);
-      if (!record(parsed)) continue;
-      for (const [name, sequences] of Object.entries(parsed)) {
-        if (name !== '$meta' && !['__proto__', 'constructor', 'prototype'].includes(name) && Array.isArray(sequences)) {
-          pathways[name] = sequences;
-        }
-      }
-    }
-    return pathways;
+  async function loadPathways(guard) {
+    const loaded = await loadRules(guard);
+    if (loaded.warnings.length) throw Error(`产业配置异常：${loaded.warnings.join('；')}`);
+    return structuredClone(loaded.pathways);
   }
   function principal(industry, data, pathways = {}, industries = data?.stat_data?.产业) {
     const name = String(industry?.负责人 || '').trim();
@@ -278,13 +220,13 @@
     const techPotential = clamp(techIndex <= 0
       ? 1 - number(formulas.techNegativeCoeff, .0000125) * techIndex ** 2
       : 1 + number(formulas.techPositiveCoeff, .000002) * techIndex ** 2, .1, 100);
-    const baseGrossProfit = capital * actualRate / 100;
+    const baseGrossProfit = capital * (actualRate / 100);
     const grossProfit = baseGrossProfit >= 0 ? baseGrossProfit * techPotential : baseGrossProfit / techPotential;
     const efficiency = clamp(number(industry?.运营效率, 50), 0, 100);
     const costMultiplier = number(formulas.costMultiplierBase, 2) -
       efficiency / number(formulas.costMultiplierDivisor, 100);
     const fixedCostRate = Math.max(0, number(industry?.固定成本率, 5));
-    const actualFixedCost = capital * fixedCostRate / 100 * costMultiplier;
+    const actualFixedCost = capital * (fixedCostRate / 100) * costMultiplier;
     const monthlyReturn = grossProfit - actualFixedCost;
     const productType = (config.typeMapping || TYPES)[industry?.类型] || '农产品';
     const maxLevel = scale === '小型' ? 2 : scale === '中型' ? 4 : 5;
@@ -332,9 +274,9 @@
     const index = Number(level) - 1;
     if (!Number.isInteger(index) || index < 0 || index > 4) throw new Error('生产等级无效。');
     const result = evaluate(industry, config);
-    if (index >= result.maxLevel) throw new Error('当前产业规模尚未解锁该等级。');
+    if (index >= result.maxLevel && Number(value) !== 0) throw new Error('当前产业规模尚未解锁该等级。');
     const amount = Number(value);
-    if (!Number.isFinite(amount) || amount < 0 || amount > 100) throw new Error('分配比例必须在 0 到 100 之间。');
+    if (!Number.isInteger(amount) || amount < 0 || amount > 100) throw new Error('分配比例必须是 0 到 100 之间的整数。');
     const next = [...result.allocation];
     next[index] = amount;
     if (next.reduce((sum, item) => sum + item, 0) > 100) throw new Error('分配比例总和不能超过 100%。');
@@ -350,6 +292,226 @@
       生产分配_1级: 100, 生产分配_2级: 0, 生产分配_3级: 0,
       生产分配_4级: 0, 生产分配_5级: 0,
     };
+  }
+  async function loadRules(guard) {
+    const token = epoch;
+    const valid = () => check(guard, token, true);
+    valid();
+    const host = await contract.waitGlobalInitialized(HOST_KEY, { timeoutMs: 10000 });
+    const bound = await host.getCharWorldbookNames('current');
+    valid();
+    const primary = bound?.primary || '1源堡';
+    const names = [...new Set(['【源堡】玩家自建内容', ...(bound?.additional || []), '2历史孔隙']
+      .filter(name => name && name !== primary)), primary];
+    const selected = new Map(), revision = [], warnings = [];
+    for (const name of names) {
+      valid();
+      let entries;
+      try { entries = await host.getWorldbook(name); }
+      catch (error) {
+        valid();
+        if (name !== primary && /未能找到世界书|世界书.*(?:不存在|未找到)|(?:worldbook|lorebook).*?(?:not found|does not exist)/i.test(String(error?.message || error))) {
+          revision.push([name, null]); continue;
+        }
+        throw error;
+      }
+      valid();
+      if (!Array.isArray(entries)) throw Error(`世界书“${name}”不可读取。`);
+      const relevant = entries.filter(entry => {
+        const title = String(entry?.name || entry?.comment || '').trim();
+        return title.startsWith('【配置') && title.includes('产业配置') || title.startsWith('[神之途径]');
+      });
+      revision.push([name, relevant]);
+      for (const entry of relevant) selected.set(String(entry.name || entry.comment).trim(), entry);
+    }
+    valid();
+    if (!same(bound, await host.getCharWorldbookNames('current'))) throw Error('世界书绑定已变化，请重新读取');
+    valid();
+    if (modules[HOST_KEY] !== host) throw Error('产业规则宿主已变化，请重新读取');
+    const config = structuredClone(DEFAULT_CONFIG), pathways = {};
+    let accepted = 0;
+    for (const [title, entry] of selected) {
+      try {
+        const parsed = parseWorldbookJson(entry.content);
+        if (title.startsWith('[神之途径]')) {
+          if (!record(parsed)) throw Error('神之途径必须是对象');
+          for (const [name, values] of Object.entries(parsed)) {
+            if (RESERVED.has(name)) continue;
+            if (!Array.isArray(values) || values.some(value => typeof value !== 'string')) throw Error('神之途径序列必须是字符串数组');
+            pathways[name] = values;
+          }
+        } else {
+          if (!record(parsed)) throw Error('产业配置必须是对象');
+          for (const [group, values] of Object.entries(parsed)) {
+            if (!Object.hasOwn(DEFAULT_CONFIG, group)) continue;
+            if (group === 'industryInjectRetention') {
+              if (typeof values !== 'number' || !Number.isFinite(values) || values < 0 || values > 1) throw Error('产业产出留存比例无效');
+            } else {
+              if (!record(values)) throw Error(`配置组 ${group} 必须是对象`);
+              for (const [key, value] of Object.entries(values)) {
+                if (!Object.hasOwn(DEFAULT_CONFIG[group], key)) continue;
+                if (group === 'typeMapping') {
+                  if (typeof value !== 'string' || !value.trim()) throw Error('产业产出类型无效');
+                } else if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 ||
+                  (group === 'scaleThresholds' || group === 'productionConversion' ||
+                    ['scalePenaltyBase', 'marketFactorDivisor', 'costMultiplierBase', 'costMultiplierDivisor'].includes(key)) && value === 0)
+                  throw Error(`配置数值 ${group}.${key} 无效`);
+              }
+            }
+          }
+          accepted += applyConfig(config, parsed);
+        }
+      } catch (error) { warnings.push(`${title}: ${error.message}`); }
+    }
+    const loaded = { config, pathways, warnings, source: accepted ? '世界书配置' : '默认规则',
+      books: names, accepted, revision: JSON.stringify({ bound, revision }) };
+    ruleTickets.set(loaded, { token, host, result: JSON.stringify(loaded) });
+    return loaded;
+  }
+  async function assertRules(loaded, guard) {
+    const ticket = ruleTickets.get(loaded);
+    if (!ticket || ticket.result !== JSON.stringify(loaded)) throw Error('产业规则来源无效或已修改，请重新读取');
+    check(guard, ticket.token, true);
+    if (modules[HOST_KEY] !== ticket.host) throw Error('产业规则宿主已变化，请重新读取');
+    if (loaded.warnings.length) throw Error(`产业配置异常：${loaded.warnings.join('；')}`);
+    const fresh = await loadRules(guard);
+    if (fresh.revision !== loaded.revision) throw Error('产业配置或世界书绑定已变化，请重新读取');
+    check(guard, ticket.token, true);
+    if (modules[HOST_KEY] !== ticket.host) throw Error('产业规则宿主已变化，请重新读取');
+  }
+  function sourceOf(data) {
+    for (const domain of ['stat_data', 'world_data']) {
+      for (const key of ['产业', '产业数据', 'industries', 'industry']) {
+        if (record(data?.[domain]) && Object.hasOwn(data[domain], key))
+          return { domain, key, value: data[domain][key] };
+      }
+    }
+    return { domain: 'stat_data', key: '产业', value: undefined };
+  }
+  function malformed(value) {
+    return value !== undefined && (!record(value) && !Array.isArray(value) ||
+      Object.entries(value).some(([key, item]) => key !== '$meta' && (RESERVED.has(key) || !record(item))));
+  }
+  function check(guard, token, allowGeneration = false) {
+    if (disposed || generating && !allowGeneration || token !== epoch || modules[KEY] !== api || guard && !guard())
+      throw new DOMException('产业操作已取消，请重新读取', 'AbortError');
+  }
+  async function load(messageId = null, guard, token = epoch) {
+    check(guard, token);
+    if (messageId !== null && (!Number.isInteger(messageId) || messageId < 0)) throw Error('楼层编号无效');
+    const service = modules['cryptLord.nativeFloorSource'];
+    const dependencies = service.writeDependencies([KEY, 'cryptLord.domainState', 'cryptLord.factionState', 'cryptLord.cashflow']);
+    const page = await service.read(() => { check(guard, token); return true; }), latest = page.rows.at(-1);
+    const id = messageId ?? latest?.message_id;
+    const floor = page.rows.find(row => row.message_id === id && row.role === 'assistant');
+    check(guard, token);
+    if (!floor || !Number.isInteger(id) || !record(floor.data?.stat_data)) throw Error('所选 assistant 楼层没有角色状态');
+    const rules = await loadRules(() => { check(guard, token); return true; });
+    check(guard, token);
+    await service.assert(page, () => { check(guard, token); return true; });
+    const source = sourceOf(floor.data);
+    const battle = ['teamBattle', 'personalBattle'].some(key => {
+      const value = floor.data.cryptLord?.[key];
+      return value?.status === 'active' ||
+        key === 'teamBattle' && ['finished', 'ended'].includes(value?.status) && !value.settled ||
+        key === 'personalBattle' && value?.status === 'finished' && value.result === 'victory' &&
+          value.enemy?.npcKey && !value.experienceClaimed;
+    });
+    const reason = floor.is_hidden ? '隐藏楼层只读' : id === 0 || latest?.message_id !== id ? '历史楼层只读' : battle ? '请先结束并结算战斗' :
+      source.domain !== 'stat_data' || source.key !== '产业' ? '旧版产业路径只读，请在变量面板迁入 stat_data.产业' :
+      malformed(source.value) ? '产业字典格式异常，请在变量面板修复' :
+      [floor.data.stat_data.人物关系列表, floor.data.npc_data, floor.data.stat_data.生产力]
+        .some(value => value !== undefined && !record(value)) ? '负责人或生产力字典格式异常，请在变量面板修复' :
+      rules.warnings.length ? '产业配置异常，请修复世界书配置后重新读取' : '';
+    const loaded = { floor: structuredClone(floor), latest: structuredClone(latest), revision: service.signature(page), rules: structuredClone(rules),
+      source: structuredClone(source), editable: !reason, reason };
+    loadedTickets.set(loaded, { token, page, rules, dependencies, signature: service.signature(loaded),
+      locked: dependencies['cryptLord.abilityState']?.locked?.(floor.data) });
+    return loaded;
+  }
+  function prepare(data, value, rules) {
+    if (malformed(value)) throw Error('产业字典格式异常');
+    const next = structuredClone(data), industries = structuredClone(value);
+    const time = data.world_data?.当前时间纪元 || data.stat_data?.当前时间纪元 || '';
+    for (const [key, item] of Object.entries(industries)) {
+      if (key === '$meta') continue;
+      if (!String(item.名称 || '').trim()) throw Error('产业名称不能为空');
+      const capital = String(item.当前投入资本总额 ?? '').trim().replace(/[\s,_]/g, '');
+      if (!/^\d+(?:\.\d+)?[^\d.+-]*$/.test(capital) || !Number.isSafeInteger(parseCurrency(capital).value))
+        throw Error(`「${item.名称}」的投入资本格式无效`);
+      if (!Object.hasOwn(TYPES, item.类型)) throw Error(`「${item.名称}」的产业类型无效`);
+      if (item.利润倍率 !== undefined && (item.利润倍率 === '' || !Number.isFinite(Number(item.利润倍率)) ||
+        Number(item.利润倍率) < 0 || Number(item.利润倍率) > 5)) throw Error('利润倍率必须在 0 到 5 之间');
+      const amounts = Array.from({ length: 5 }, (_, index) => {
+        const amount = item[`生产分配_${index + 1}级`] ?? (index ? 0 : 100);
+        return typeof amount === 'string' && !amount.trim() ? NaN : Number(amount);
+      });
+      if (amounts.some(amount => !Number.isInteger(amount) || amount < 0 || amount > 100) ||
+        amounts.reduce((sum, amount) => sum + amount, 0) > 100) throw Error('生产分配必须为整数百分比且总和不能超过 100%');
+      const perf = evaluate(item, rules.config);
+      if (amounts.some((amount, index) => index >= perf.maxLevel && amount > 0)) throw Error('当前产业规模尚未解锁已分配的生产等级');
+      if (item['$轻负荷运营'] !== undefined && typeof item['$轻负荷运营'] !== 'boolean') throw Error('轻负荷运营必须是开关');
+      item.利润倍率 = Number(item.利润倍率 ?? 1);
+      Object.assign(item, principal(item, data, rules.pathways, industries).fields);
+      item.规模 = perf.scale;
+      item.创建时间 ||= time;
+      item.上次结算时间 ||= item.创建时间 || time;
+    }
+    next.stat_data.产业 = industries;
+    project(next, rules.pathways, rules.config);
+    return next;
+  }
+  function project(data, pathways = {}, config = activeConfig) {
+    const industries = data?.stat_data?.产业;
+    if (industries === undefined) return false;
+    if (malformed(industries)) throw Error('产业字典格式异常');
+    for (const [key, item] of Object.entries(industries)) {
+      if (key === '$meta') continue;
+      Object.assign(item, principal(item, data, pathways, industries).fields);
+      item.规模 = evaluate(item, config).scale;
+    }
+    const summary = dashboard(industries, config);
+    if (!Array.isArray(industries)) {
+      if (industries.$meta !== undefined && !record(industries.$meta)) throw Error('产业元数据格式异常');
+      industries.$meta = { ...(industries.$meta || { extensible: true }), 总估值: summary.valuation };
+    }
+    if (data.stat_data.生产力 !== undefined && !record(data.stat_data.生产力)) throw Error('生产力字典格式异常');
+    const production = { ...(data.stat_data.生产力 || {}) };
+    for (const type of new Set([...Object.values(TYPES), ...Object.values(config.typeMapping || TYPES)]))
+      for (let level = 1; level <= 5; level++) production[`${level}级${type}`] = 0;
+    for (const [key, amount] of summary.production) {
+      if (!Number.isSafeInteger(amount)) throw Error('生产力超出安全数值范围');
+      production[key] = amount;
+    }
+    data.stat_data.生产力 = production;
+    return true;
+  }
+  function begin(baseline, value, guard) {
+    const ticket = loadedTickets.get(baseline), service = modules['cryptLord.nativeFloorSource'];
+    if (!ticket || ticket.signature !== service.signature(baseline)) throw Error('产业来源无效或已修改，请重新读取');
+    const { token, page, rules, dependencies, locked } = ticket, draft = structuredClone(value), expected = structuredClone(baseline);
+    check(guard, token);
+    if (!expected.editable) throw Error(expected.reason);
+    const valid = () => {
+      check(guard, token);
+      if (dependencies['cryptLord.abilityState']?.locked?.(expected.floor.data) !== locked)
+        throw Error('能力锁定已变化，请重新读取');
+      return true;
+    };
+    return service.transaction(page, expected.floor.message_id, {
+      dependencies, guard: valid, beforeWrite: () => assertRules(rules, valid),
+      compute(data) {
+        const initial = sourceOf(data).value ?? { $meta: { extensible: true, 总估值: '0', 上次计算时间: '' } };
+        return { data: same(draft, initial) ? data : prepare(data, draft, rules), writeOptions: { industryRules: rules } };
+      },
+      async onSaved(result) { return { ...result, loaded: await load(expected.floor.message_id, guard, token) }; },
+    });
+  }
+  function commit(baseline, value, guard) {
+    const draft = structuredClone(value);
+    const task = queue.then(() => begin(baseline, draft, guard).run());
+    queue = task.catch(() => {});
+    return task;
   }
   const WALLET_PATHS = Object.freeze({
     金镑: ['鲁恩王国', '金镑'], 银苏勒: ['鲁恩王国', '银苏勒'], 铜便士: ['鲁恩王国', '铜便士'],
@@ -447,13 +609,13 @@
     return { settled, affinityChanged };
   }
 
-  function industryWeeklyGoods(industries) {
+  function industryWeeklyGoods(industries, config = activeConfig) {
     const output = {};
     if (!industries || typeof industries !== 'object') return output;
-    const retention = clamp(number(activeConfig.industryInjectRetention, 0.75), 0, 1);
+    const retention = clamp(number(config.industryInjectRetention, 0.75), 0, 1);
     for (const [id, industry] of Object.entries(industries)) {
       if (id === '$meta' || !record(industry)) continue;
-      const result = evaluate(industry);
+      const result = evaluate(industry, config);
       if (result.monthlyReturn <= 0) continue;
       for (let index = 0; index < result.production.length; index += 1) {
         const weekly = Math.floor(Math.floor(result.production[index] / 4) * retention);
@@ -465,11 +627,11 @@
     return output;
   }
 
-  function applyIndustryProduce(data, cycles) {
+  function applyIndustryProduce(data, cycles, config = activeConfig) {
     const domain = data?.stat_data?.领地;
     if (!record(domain) || !domain.已建立) return { kinds: 0, goods: {} };
     const store = record(domain.物资库) ? domain.物资库 : (domain.物资库 = {});
-    const goods = industryWeeklyGoods(data?.stat_data?.产业);
+    const goods = industryWeeklyGoods(data?.stat_data?.产业, config);
     const multiplier = Math.max(1, Number(cycles) || 1);
     let kinds = 0;
     for (const [key, amount] of Object.entries(goods)) {
@@ -483,14 +645,23 @@
 
   const api = Object.freeze({
     status() { return Object.freeze({ key: KEY, ready: true, ...configStatus, books: [...configStatus.books], warnings: [...configStatus.warnings] }); },
-    loadConfigs, loadPathways, principal, parseCurrency, evaluate, dashboard, allocation, create,
-    settleWeekly, industryWeeklyGoods, applyIndustryProduce,
+    loadConfigs, loadPathways, parseWorldbookJson, principal, parseCurrency, evaluate, dashboard, allocation, create,
+    settleWeekly, industryWeeklyGoods, applyIndustryProduce, loadRules, assertRules, sourceOf, load, prepare, project, commit, begin,
     dispose() {
+      disposed = true; epoch++; subscriptions.forEach(item => item?.stop());
       loadSequence++;
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];
     },
   });
+  const after = modules['cryptLord.afterNativeHost'], events = after?.tavernEvents() || {};
+  const bind = (event, fn) => { if (event) subscriptions.push(after.bindEvent(event, fn)); };
+  bind(events.CHAT_CHANGED, () => { epoch++; generating = false; });
+  bind(events.GENERATION_STARTED, (type, options, dryRun) => {
+    if (!['quiet', 'quiet_prompt', 'dryRun'].includes(type) && !dryRun && !options?.quiet_prompt && !options?.dryRun) { epoch++; generating = true; }
+  });
+  for (const event of new Set([events.GENERATION_ENDED, events.GENERATION_STOPPED].filter(Boolean)))
+    bind(event, () => { generating = false; });
   modules[KEY] = api;
   contract.initializeGlobal(KEY, api);
 })();

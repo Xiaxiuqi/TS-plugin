@@ -124,7 +124,16 @@
     });
   }
 
-  function consumableMoves(data) {
+  function averageTable(data, averages) {
+    return averages || data?.cryptLord?.teamBattle?.fieldEffectMeta?.averages ||
+      window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank || {};
+  }
+  function averageAttrs(data, rank, averages) {
+    const table = averageTable(data, averages);
+    return table[String(rank)] || table['10'] ||
+      { 活力: 37, 敏捷: 45, 灵性: 43, 理智: 28, 人性: 27, 运气: 20 };
+  }
+  function consumableMoves(data, averages) {
     const list = statOf(data).消耗品列表;
     if (!record(list) && !Array.isArray(list)) return [];
     return Object.entries(list).filter(([key, item]) => key !== '$meta' && record(item) &&
@@ -135,10 +144,21 @@
         const attack = ['物理攻击', '法术攻击', '精神攻击', '命运攻击'].includes(battle.基础效果);
         if (!healing && !attack) return null;
         const isScroll = item.$卷轴制造 === true;
+        const originalScroll = modules['cryptLord.scrollWorkshopReference'];
+        if (isScroll && originalScroll) {
+          const userRank = modules['cryptLord.marionetteReference'].rank(String(statOf(data).当前序列 || ''));
+          const built = originalScroll.build(item, key, userRank,
+            averageTable(data, averages));
+          if (!built) return null;
+          return { key, name: built.name, description: built.description, isScroll, originalScroll: true,
+            quantity: integer(item.数量), healing: Boolean(built.isHeal),
+            area: ['all', 'allAlly', 'allEnemies', 'allAllies'].includes(built.targetType),
+            statName: built.isHeal ? built.healType : '活力', power: built.power ?? 0,
+            healAmt: built.healAmt ?? 0, cost: built.cost?.amount ?? 0,
+            range: built.range ?? 3, radius: built.aoeRadius ?? 2, effects: built.effects || [] };
+        }
         const rank = modules['cryptLord.scrollCrafting']?.rankOf(item.序列) ?? battleExp.rank(item.序列);
-        const attrs = window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.[String(rank)] ||
-          window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.['10'] ||
-          { 活力: 37, 敏捷: 45, 灵性: 43, 理智: 28, 人性: 27 };
+        const attrs = averageAttrs(data, rank, averages);
         const scope = battle.范围 === '全体' ? '全体' : '单体';
         const statName = healing ? battle.基础效果.replace(/恢复$/, '') : '活力';
         const userRank = modules['cryptLord.scrollCrafting']?.gate(statOf(data)).rank ??
@@ -176,7 +196,7 @@
           effects };
       }).filter(Boolean);
   }
-  function scrollMoves(data) { return consumableMoves(data).filter(row => row.isScroll); }
+  function scrollMoves(data, averages) { return consumableMoves(data, averages).filter(row => row.isScroll); }
 
   const WEAPON_CLASS = Object.freeze({
     威力量级: ['棍棒级', '砍刀级', '手枪级', '重型手枪级', '步枪级', '狙击枪级', '炸弹级'],
@@ -189,7 +209,7 @@
   const WEAPON_ACCURACY = Object.freeze({ 霰弹枪级: 1.2, 手枪级: 1.6, 步枪级: 2, 狙击枪级: 2.4 });
   const WEAPON_ATTACKS = ['物理攻击', '法术攻击', '精神攻击', '命运攻击'];
   const WEAPON_HEALS = ['活力恢复', '敏捷恢复', '灵性恢复', '理智恢复', '人性恢复'];
-  function weaponMoves(data) {
+  function weaponMoves(data, averages) {
     const list = statOf(data).武器列表;
     if (!record(list) && !Array.isArray(list)) return [];
     return Object.entries(list).flatMap(([key, raw]) => {
@@ -216,9 +236,7 @@
           cost: 0, healing: 0, effects: [] }];
       }
       const scope = item.战斗效果.范围 === '全体' ? '全体' : '单体';
-      const attrs = window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.[String(rank)] ||
-        window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.['10'] ||
-        { 活力: 37, 敏捷: 45, 灵性: 43, 理智: 28, 人性: 27 };
+      const attrs = averageAttrs(data, rank, averages);
       const healing = WEAPON_HEALS.includes(base);
       const healStat = healing ? base.replace(/恢复$/, '') : '活力';
       const extra = text(item.战斗效果.额外效果);
@@ -240,7 +258,7 @@
     });
   }
 
-  function auxiliaryMoves(data) {
+  function auxiliaryMoves(data, averages) {
     const list = statOf(data).辅助能力列表;
     if (!record(list) && !Array.isArray(list)) return [];
     return Object.entries(list).flatMap(([key, item]) => {
@@ -250,9 +268,7 @@
       const heal = WEAPON_HEALS.includes(base);
       if (!attack && !heal) return [];
       const rank = battleExp.rank(item.序列);
-      const attrs = window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.[String(rank)] ||
-        window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.['10'] ||
-        { 活力: 37, 敏捷: 45, 灵性: 43, 理智: 28, 人性: 27 };
+      const attrs = averageAttrs(data, rank, averages);
       const all = item.战斗效果.范围 === '全体';
       const healStat = heal ? base.replace(/恢复$/, '') : '活力';
       const extra = text(item.战斗效果.额外效果);
@@ -736,7 +752,7 @@
 
   function beginNextPlayerRound(battle) {
     tickTerrain(battle);
-    battleTags?.tick([battle.player, battle.enemy, ...(battle.picture ? [battle.picture] : [])]);
+    battleTags?.tick([battle.player, battle.enemy, ...(battle.picture ? [battle.picture] : [])], battle);
     battle.round += 1;
     refreshTurn(battle, 'player');
     pushLog(battle, 'system', `第 ${battle.round} 回合开始。`);
@@ -784,7 +800,7 @@
       const damage = withEnvironment(battle, battle.enemy, battle[targetKey],
         modifiedAttack(battle.enemy, battle.enemy.power + powerOf(skill) + roll.unit * 2), skill);
       const dealt = directHit(battle, targetKey, damage);
-      battleTags?.applySkill(battle.enemy, battle[targetKey], skill, true);
+      battleTags?.applySkill(battle.enemy, battle[targetKey], skill, true, { battle });
       pushLog(battle, 'enemy', `${battle.enemy.name} 施展「${text(skill.名称 || skill.name)}」，对${battle[targetKey].name}造成 ${dealt} 点伤害。`, dealt);
       if (targetKey === 'picture' && battle.picture.hp <= 0) {
         battle.pictureLosses ||= [];
@@ -870,6 +886,9 @@
 
   function start(data, options = {}) {
     if (!record(data)) throw new Error('当前 assistant 楼层没有可写入的数据对象。');
+    if (data.cryptLord?.teamBattle?.status === 'active' ||
+      data.cryptLord?.teamBattle?.status === 'finished' && !data.cryptLord.teamBattle.settled)
+      throw new Error('请先完成并结算当前原版战斗。');
     if (data.cryptLord?.personalBattle?.status === 'active') throw new Error('请先结束当前战斗。');
     if (data.cryptLord?.personalBattle?.status === 'finished' &&
       data.cryptLord.personalBattle.result === 'victory' &&
@@ -885,6 +904,8 @@
       modules['cryptLord.mysteryReenactment']?.sync(next, options.imaginationPool);
     }
     const player = playerFrom(next);
+    if (options.imaginationPool?.pathways)
+      player.picturePool = { pathways: copy(options.imaginationPool.pathways) };
     if (playerProjection?.imagined.length || playerProjection?.grazed.length) {
       player.imagination = {
         baseSequence: playerProjection.real,
@@ -928,14 +949,6 @@
       enemy.sequenceString = projection.effectiveSequence || enemy.sequenceString;
     }
     const tagRules = options.tagRules || {};
-    if (battleTags) {
-      for (const actor of [player, enemy]) {
-        actor.tags = (actor.tags || []).map(tag => typeof tag === 'string'
-          ? { name: tag, duration: 99, stacks: 1, maxStacks: 99, source: 'inherent',
-            $inherentStacks: 0 } : tag);
-        battleTags.sync(actor, actor.sequenceString || actor.name, tagRules.mapping);
-      }
-    }
     const assigner = modules['cryptLord.npcWeaponAssigner'];
     if (npc && assigner?.eligible(npc) && !enemy.imagination?.abilities?.some(ability =>
       record(ability) && !ability.isPassive && powerOf(ability) > 0)) {
@@ -953,7 +966,8 @@
       seed: (Date.now() ^ Math.floor(player.maxHp * 31)) >>> 0,
       player,
       enemy,
-      ...(lifeSave ? { lifeSaveTable: options.lifeSaveTable || lifeSave.defaults } : {}),
+      ...(lifeSave ? { lifeSaveTable: copy(options.lifeSaveTable || lifeSave.defaults),
+        lifeSavePathways: copy(options.imaginationPool?.pathways || options.pathways || {}) } : {}),
       tagRules,
       canon: { sequence: text(next.stat_data?.当前序列),
         unlocked: options.imaginationPool && reenactment?.gate(next, options.imaginationPool).unlocked
@@ -967,12 +981,21 @@
       startedAt: Date.now(),
       endedAt: null,
     };
+    if (battleTags) {
+      for (const actor of [player, enemy]) {
+        actor.tags = (actor.tags || []).map(tag => typeof tag === 'string'
+          ? { name: tag, duration: 99, stacks: 1, maxStacks: 99, source: 'inherent',
+            $inherentStacks: 0 } : tag);
+        battleTags.sync(actor, actor.sequenceString || actor.name, tagRules.mapping, battle);
+      }
+    }
     ensureBoardState(battle);
     if (lifeSave) {
       lifeSave.initialize(battle.player, battle.player.sequenceString,
-        next.stat_data?.当前途径, options.lifeSaveTable, lifeSave.storedStrategy(next));
+        next.stat_data?.当前途径, battle.lifeSaveTable, next.cryptLord?.lifeSaveStrategy || null,
+        battle.lifeSavePathways);
       lifeSave.initialize(battle.enemy, battle.enemy.sequenceString,
-        npc?.当前途径, options.lifeSaveTable);
+        npc?.当前途径, battle.lifeSaveTable, null, battle.lifeSavePathways);
     }
     modules['cryptLord.shamanTerritory']?.applyBattle?.(battle, options.shamanJudgment);
     modules['cryptLord.arbiterJurisdiction']?.applyBattle?.(battle, options.arbiterJudgment);
@@ -1095,11 +1118,13 @@
     ensureBoardState(battle);
     if (battle.picture) return { ok: false, error: '场上已有一名画中人。', data: next };
     const picture = modules['cryptLord.shamanPicture'];
-    if (!picture?.gate(next.stat_data).unlocked) return { ok: false, error: '当前没有画中人召唤资格。', data: next };
+    if (!picture?.gate(next.stat_data, battle.player.picturePool, next).unlocked)
+      return { ok: false, error: '当前没有画中人召唤资格。', data: next };
     const row = picture.records(next).find(item => item.id === id &&
       !battle.pictureLosses?.some(loss => loss.id === id));
     if (!row) return { ok: false, error: '画中人成品已不存在。', data: next };
-    const cost = picture.summonCost(modules['cryptLord.scrollCrafting']?.rankOf(next.stat_data?.当前序列));
+    const cost = picture.summonCost((modules['cryptLord.marionetteReference']?.rank ||
+      modules['cryptLord.scrollCrafting']?.rankOf || battleExp.rank)(battle.player.sequenceString || next.stat_data?.当前序列));
     if (battle.player.spirit < cost) return { ok: false, error: `召唤需要 ${cost} 点灵性。`, data: next };
     const cell = [];
     for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
@@ -1120,7 +1145,7 @@
       effects: [], moveMax: 0, moveRemaining: 0, card: copy(card),
       sequenceString: text(card.当前序列) };
     lifeSave?.initialize(battle.picture, battle.picture.sequenceString,
-      card.当前途径 ?? card.途径, battle.lifeSaveTable);
+      card.当前途径 ?? card.途径, battle.lifeSaveTable, null, battle.lifeSavePathways);
     naturalEnvironment?.sync(battle);
     battle.turns += 1;
     pushLog(battle, 'player', `${battle.player.name} 消耗 ${cost} 点灵性，召唤 ${row.name}（实力100%，移动力0）。`);
@@ -1327,7 +1352,7 @@
           ? { stat: effect.stat, valueType: effect.valueType, appliedAtTurn: battle.turns } : {}),
       });
     });
-    battleTags?.applySkill(player, selfTarget || healing ? player : battle.enemy, skill, hit);
+    battleTags?.applySkill(player, selfTarget || healing ? player : battle.enemy, skill, hit, { battle });
     player.moveMax = movementOf(player);
     battle.enemy.moveMax = movementOf(battle.enemy);
     if (battle.enemy.hp <= 0) {

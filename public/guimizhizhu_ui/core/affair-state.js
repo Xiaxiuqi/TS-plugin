@@ -225,7 +225,88 @@
     ],
   },
 };
-  window.AFFAIR_CONF = AFFAIR_CONF;
+  const clone = value => JSON.parse(JSON.stringify(value));
+  function freeze(value) {
+    if (value && typeof value === 'object') {
+      Object.values(value).forEach(freeze);
+      Object.freeze(value);
+    }
+    return value;
+  }
+  freeze(AFFAIR_CONF);
+  const tickets = new WeakMap();
+  let scopedRules = null, disposed = false, generating = false, epoch = 0;
+  const subscriptions = [];
+  function check(guard, token = epoch) {
+    if (disposed || generating || token !== epoch || modules[KEY] !== api || guard && !guard())
+      throw Error('事务规则来源已变化，请重新读取');
+  }
+  async function loadRules(guard) {
+    const token = epoch;
+    check(guard, token);
+    const host = await contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 });
+    check(guard, token);
+    const binding = await host.getCharWorldbookNames('current');
+    check(guard, token);
+    const primary = binding?.primary || '1源堡';
+    const names = [...new Set(['【源堡】玩家自建内容', ...(binding?.additional || []), '2历史孔隙']
+      .filter(name => name && name !== primary)), primary];
+    const selected = new Map(), revision = [], pathways = Object.create(null);
+    const parser = modules['cryptLord.industryState'];
+    if (!parser?.parseWorldbookJson) throw Error('世界书解析服务尚未加载');
+    for (const name of names) {
+      check(guard, token);
+      let entries;
+      try { entries = await host.getWorldbook(name); }
+      catch (error) {
+        check(guard, token);
+        if (name !== primary && /未能找到世界书|世界书.*(?:不存在|未找到)|(?:worldbook|lorebook).*?(?:not found|does not exist)/i.test(String(error?.message || error))) {
+          revision.push([name, null]); continue;
+        }
+        throw error;
+      }
+      check(guard, token);
+      if (!Array.isArray(entries)) throw Error(`世界书「${name}」不可读取`);
+      const relevant = entries.filter(entry => String(entry?.name || entry?.comment || '').trim().startsWith('[神之途径]'));
+      revision.push([name, relevant]);
+      for (const entry of relevant) {
+        const title = String(entry.name || entry.comment).trim();
+        selected.delete(title); selected.set(title, entry);
+      }
+    }
+    for (const entry of selected.values()) {
+      const parsed = parser.parseWorldbookJson(entry.content);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('神之途径必须是对象');
+      for (const [name, sequences] of Object.entries(parsed)) {
+        if (name === '$meta') continue;
+        if (['__proto__', 'constructor', 'prototype'].includes(name) ||
+          !Array.isArray(sequences) || sequences.some(value => typeof value !== 'string'))
+          throw Error('神之途径序列表无效');
+        pathways[name] = sequences.slice();
+      }
+    }
+    if (JSON.stringify(binding) !== JSON.stringify(await host.getCharWorldbookNames('current')))
+      throw Error('事务世界书绑定已变化，请重新读取');
+    check(guard, token);
+    const result = freeze({ config: clone(AFFAIR_CONF), pathways, revision: JSON.stringify({ binding, revision }) });
+    tickets.set(result, { token, host, parser, domain: modules['cryptLord.domainState'], value: JSON.stringify(result) });
+    return result;
+  }
+  async function assertRules(rules, guard) {
+    const ticket = tickets.get(rules);
+    check(guard, ticket?.token);
+    if (!ticket || JSON.stringify(rules) !== ticket.value) throw Error('事务规则来源不可确认，请重新读取');
+    const current = await loadRules(guard);
+    if (modules['cryptLord.hostApi'] !== ticket.host || modules['cryptLord.industryState'] !== ticket.parser ||
+      modules['cryptLord.domainState'] !== ticket.domain || current.revision !== rules.revision)
+      throw Error('事务规则、途径或世界书绑定已变化，请重新读取');
+    check(guard, ticket.token);
+  }
+  function withRules(rules, run) {
+    const previous = scopedRules;
+    scopedRules = rules;
+    try { return run(); } finally { scopedRules = previous; }
+  }
 
 
   function parsePrincipalTier(sequenceStr, npcMatched = true, subjectiveExists = true) {
@@ -244,43 +325,31 @@
   function resolvePathwayFromSequence(sequenceStr) {
     const s = String(sequenceStr || "").trim();
     if (!s || s.includes("普通人")) return "";
-    const m = s.match(/-(.+)$/);
-    return m ? m[1].replace(/途径$/, "").trim() : "";
+    return Object.entries(scopedRules?.pathways || {}).find(([, sequences]) =>
+      Array.isArray(sequences) && sequences.includes(s))?.[0]?.replace(/途径$/, '').trim() || '';
   }
 
-  if (typeof window !== "undefined" && !window.CurrencyHelper) {
-    window.CurrencyHelper = {
-      applyCurrencyDelta(wallet, currency, delta, label = "") {
-        if (!wallet || typeof wallet !== "object") return false;
-        const key = (currency || "金镑").trim();
-        if (typeof wallet[key] === "number" || typeof wallet[key] === "string") {
-          wallet[key] = Math.max(0, Number(wallet[key]) + delta);
-          return true;
-        }
-        for (const [k, v] of Object.entries(wallet)) {
-          if (v && typeof v === "object" && v[key] !== undefined) {
-            v[key] = Math.max(0, Number(v[key]) + delta);
-            return true;
-          }
-        }
-        wallet[key] = Math.max(0, delta);
-        return true;
-      },
-      resolveWalletPath(currency) {
-        return ["常用", (currency || "金镑").trim()];
-      }
-    };
-  }
+  const currency = {
+    resolveWalletPath: () => ['鲁恩王国', '金镑'],
+    applyCurrencyDelta(wallet, _currency, delta) {
+      const group = wallet?.鲁恩王国;
+      if (!group || typeof group !== 'object' || Array.isArray(group)) return false;
+      const held = Number(group.金镑);
+      if (!Number.isFinite(held) || !Number.isFinite(delta)) throw Error('原生金镑余额无效');
+      group.金镑 = Math.max(0, held + delta);
+      return true;
+    },
+  };
 
 
   const AffairCore = (function () {
 
 
   function conf() {
-    return (typeof window !== 'undefined' && window.AFFAIR_CONF) || {};
+    return scopedRules?.config || AFFAIR_CONF;
   }
 
-  function core() { return (window.cryptLord && window.cryptLord.__stage1Modules && window.cryptLord.__stage1Modules['cryptLord.domainState']) || (typeof window !== 'undefined' && window.DomainCore) || null; }
+  function core() { return modules['cryptLord.domainState'] || null; }
 
   // 只剩路人职衔在用。收益基数已改成逐级查表，不再按段取
   function bandOf(level) {
@@ -508,7 +577,7 @@
 
   function goldHeld(mvuState) {
     const w = walletOf(mvuState);
-    const helper = window.CurrencyHelper;
+    const helper = currency;
     if (!w || !helper || typeof helper.resolveWalletPath !== 'function') return 0;
     const path = helper.resolveWalletPath('金镑');
     const grp = path && w[path[0]];
@@ -578,8 +647,7 @@
     if (s < 0 && budget) gold = Math.min(gold, Math.max(0, Number(budget.left) || 0));
     if (gold > 0) {
       const w = walletOf(mvuState);
-      if (w && window.CurrencyHelper) {
-        window.CurrencyHelper.applyCurrencyDelta(w, '金镑', s * gold, '领地评定');
+      if (w && currency.applyCurrencyDelta(w, '金镑', s * gold)) {
         got.金镑 = s * gold;
         if (s < 0 && budget) budget.left = Math.max(0, (Number(budget.left) || 0) - gold);
       }
@@ -1087,84 +1155,6 @@
     rosterText, attendanceText, memberFacts,
   };
   })();
-  window.AffairCore = AffairCore;
-
-  const AFFAIR_CANDIDATE_TEMPLATES = {
-    "治安": [
-      { 标题: "巡防私运与帮派械斗", 经过: "领地边境有走私船只偷运违禁品，并与本地帮派发生摩擦，需派员处置。", 难度: 2, 推荐方法: ["武力强压", "依法办理"], 收益: { 类别: ["金镑", "物资"], 货种: "农产品" }, 后果: { 类别: ["金镑"], 系数: 0.5 } },
-      { 标题: "流寇哨探驱离", 经过: "哨塔发现在荒野边界有小股盗匪出没窥伺领地仓库。", 难度: 3, 推荐方法: ["武力强压", "暗中动手"], 收益: { 类别: ["物资", "好感度"], 货种: "工业品" }, 后果: { 类别: ["物资"], 货种: "工业品", 系数: 0.5 } },
-      { 标题: "集市斗殴裁断", 经过: "酒馆与马车行因占道发生争执打斗，损坏货摊。", 难度: 1, 推荐方法: ["依法办理", "谈判交涉"], 收益: { 类别: ["金镑"], 货种: "服务" }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "民生": [
-      { 标题: "冬日救济粮与流民安置", 经过: "周边荒原流民涌入，粮价微涨，需调拨物资安抚并统筹修葺避寒棚屋。", 难度: 2, 推荐方法: ["行政调度", "利益收买"], 收益: { 类别: ["人口", "好感度"] }, 后果: { 类别: ["物资"], 货种: "农产品", 系数: 0.5 } },
-      { 标题: "济贫所修缮与柴炭核发", 经过: "寒潮来袭，孤寡贫民需增拨柴炭补助。", 难度: 1, 推荐方法: ["行政调度", "威望感召"], 收益: { 类别: ["好感度"] }, 后果: { 类别: ["金镑"], 系数: 0.5 } },
-      { 标题: "饮用水井疏浚工程", 经过: "主要村落水井淤塞，村民请愿开掘新深井防冻。", 难度: 2, 推荐方法: ["技艺施为", "行政调度"], 收益: { 类别: ["人口", "物资"], 货种: "服务" }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "医疗卫生": [
-      { 标题: "巡诊医馆药材紧缺", 经过: "领地初冬湿寒，咳喘疫病有蔓延迹象，医师请求增设药房与储备药草。", 难度: 2, 推荐方法: ["技艺施为", "行政调度"], 收益: { 类别: ["人口", "好感度"] }, 后果: { 类别: ["人口"], 系数: 0.5 } },
-      { 标题: "屠宰作坊卫生检疫", 经过: "肉铺集市出现腐坏肉类传闻，需规范检疫立规。", 难度: 1, 推荐方法: ["依法办理", "技艺施为"], 收益: { 类别: ["好感度", "金镑"] }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "生产": [
-      { 标题: "作坊改良与产能扩张", 经过: "铁匠作坊与磨坊提出改良水车联动轴，有望大幅提高周产量。", 难度: 3, 推荐方法: ["技艺施为", "利益收买"], 收益: { 类别: ["物资", "金镑"], 货种: "工业品" }, 后果: { 类别: ["物资"], 货种: "工业品", 系数: 0.5 } },
-      { 标题: "农田灌溉渠系清淤", 经过: "主干水渠沉积泥沙，农夫工头呈请召集劳力疏通。", 难度: 2, 推荐方法: ["行政调度", "利益收买"], 收益: { 类别: ["物资"], 货种: "农产品" }, 后果: { 类别: ["物资"], 货种: "农产品", 系数: 0.5 } }
-    ],
-    "财务": [
-      { 标题: "领地租赋与欠款清缴", 经过: "几处商行租契到期，账房核查发现有一笔陈年欠款未结，需按成例追讨。", 难度: 2, 推荐方法: ["依法办理", "谈判交涉"], 收益: { 类别: ["金镑"] }, 后果: { 类别: ["金镑"], 系数: 0.5 } },
-      { 标题: "岁末账册平准审计", 经过: "核对各项仓库账目与出库收据，规避虚报冒领。", 难度: 2, 推荐方法: ["技艺施为", "依法办理"], 收益: { 类别: ["金镑", "物资"], 货种: "工业品" }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "市场监管": [
-      { 标题: "集市度量衡与掺假整治", 经过: "农贸集市有客商反映谷物掺沙、秤杆缺斤短两，影响集市信誉。", 难度: 1, 推荐方法: ["依法办理", "查访取证"], 收益: { 类别: ["金镑", "好感度"] }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "军备": [
-      { 标题: "哨所军械修缮与冬饷核发", 经过: "卫队防具需要修补磨砺，军官呈请提支部分军费与优质铁料。", 难度: 3, 推荐方法: ["行政调度", "武力强压"], 收益: { 类别: ["物资"], 货种: "工业品" }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "对外交涉": [
-      { 标题: "邻境乡绅的结盟试探", 经过: "邻地贵族派信使送来礼函，试探我方在通商税率上的态度与协防意向。", 难度: 3, 推荐方法: ["谈判交涉", "利益收买"], 收益: { 类别: ["金镑", "好感度"] }, 后果: { 类别: ["好感度"], 系数: 0.5 } }
-    ],
-    "情报": [
-      { 标题: "密探截获加密信笺", 经过: "密探在旅馆截获一份加密字条，疑似有可疑人员在刺探领地仓库防务。", 难度: 2, 推荐方法: ["查访取证", "暗中动手"], 收益: { 类别: ["金镑", "好感度"] }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "非凡事务": [
-      { 标题: "废弃矿道灵性骚动", 经过: "伐木工在林区边缘听到诡异低语，疑似有微弱的灵界生物徘徊，需慎重调查。", 难度: 3, 推荐方法: ["暗中动手", "查访取证"], 收益: { 类别: ["物资", "好感度"], 货种: "服务" }, 后果: { 类别: ["人口"], 系数: 0.5 } }
-    ],
-    "<User>的个人私事与私人社交圈": [
-      { 标题: "旧识来信与人情往来", 经过: "一位旧友寄来请托信，询问领地能否为其亲眷提供经商庇护或落脚住处。", 难度: 2, 推荐方法: ["人脉疏通", "威望感召"], 收益: { 类别: ["好感度", "金镑"] }, 后果: { 类别: ["好感度"], 系数: 0.5 } }
-    ],
-    "土地房产": [
-      { 标题: "地界石移位与林权争议", 经过: "相邻两处庄园佃户因林地界限起纠纷，双方各执一词，需领主裁断。", 难度: 2, 推荐方法: ["依法办理", "谈判交涉"], 收益: { 类别: ["金镑"] }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ],
-    "仆役与修缮": [
-      { 标题: "主楼管事房与蓄水池翻修", 经过: "领地水井与蓄水池年久失修，泥瓦匠呈递修缮预算与工期申请。", 难度: 1, 推荐方法: ["行政调度", "技艺施为"], 收益: { 类别: ["物资"], 货种: "工业品" }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-    ]
-  };
-
-  function generateFallbackAffairs(domain, mvuState, level) {
-    const rolledTypes = AffairCore.rollTypes(level);
-    const cands = [];
-    let idx = 0;
-    rolledTypes.forEach(t => {
-      const list = AFFAIR_CANDIDATE_TEMPLATES[t] || [
-        { 标题: t + "常规事务", 经过: "关于" + t + "的日常条规执行与申诉处理。", 难度: 2, 推荐方法: ["依法办理", "行政调度"], 收益: { 类别: ["金镑"], 货种: "农产品" }, 后果: { 类别: ["金镑"], 系数: 0.5 } }
-      ];
-      list.forEach(item => {
-        idx++;
-        cands.push({
-          id: "af-" + Date.now().toString(36) + "-" + idx + "-" + Math.floor(Math.random() * 10000),
-          类型: t,
-          标题: item.标题,
-          经过: item.经过,
-          难度: item.难度 || 2,
-          推荐方法: item.推荐方法 ? [...item.推荐方法] : ["依法办理"],
-          $收益: item.收益 || { 类别: ["金镑"], 货种: "农产品" },
-          $后果: item.后果 || { 类别: ["金镑"], 系数: 0.5 },
-          $后果系数: item.后果?.系数 || 0.5,
-          状态: "待指派",
-          处理者: "",
-        });
-      });
-    });
-    return AffairCore.pickReal(cands, level);
-  }
 
   const api = Object.freeze({
     status() {
@@ -1176,6 +1166,7 @@
     },
     AFFAIR_CONF,
     AffairCore,
+    loadRules, assertRules, withRules,
     affairsOf: AffairCore.affairsOf,
     todosOf: AffairCore.todosOf,
     findTodo: AffairCore.findTodo,
@@ -1191,9 +1182,11 @@
       todo.处理者 = String(handler || "").trim();
       return true;
     },
-    generateAffairs(domain, mvuState, level) {
+    generateAffairs(domain, mvuState, level, candidates) {
+      if (!Array.isArray(candidates) || !candidates.length)
+        throw Error('请先由事务拟事官生成有效候选，不使用虚构模板补齐');
       const lv = Number(level || domain?.等级 || 1);
-      const realTasks = generateFallbackAffairs(domain, mvuState, lv);
+      const realTasks = AffairCore.pickReal(candidates, lv);
       const af = AffairCore.affairsOf(domain);
       af.待办 = realTasks;
       return realTasks;
@@ -1203,6 +1196,8 @@
     settleNeglect: AffairCore.settleNeglect,
     rollPasserby: AffairCore.rollPasserby,
     dispose() {
+      disposed = true; epoch++;
+      subscriptions.forEach(subscription => subscription?.stop?.());
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];
       return true;
@@ -1211,4 +1206,17 @@
 
   modules[KEY] = api;
   contract.initializeGlobal(KEY, api);
+  const host = modules['cryptLord.afterNativeHost'];
+  const events = host?.tavernEvents?.();
+  if (events?.CHAT_CHANGED) subscriptions.push(host.bindEvent(events.CHAT_CHANGED, () => { epoch++; generating = false; }));
+  if (events?.GENERATION_STARTED) subscriptions.push(host.bindEvent(events.GENERATION_STARTED, (_id, info, dryRun) => {
+    const type = typeof _id === 'string' ? _id : info?.type ?? _id?.type;
+    if (['quiet', 'quiet_prompt', 'dryRun'].includes(type) || dryRun || info?.dryRun || _id?.dryRun ||
+      info?.quiet_prompt || _id?.quiet_prompt || info?.options?.quiet_prompt || _id?.options?.quiet_prompt ||
+      info?.options?.dryRun || _id?.options?.dryRun) return;
+    generating = true; epoch++;
+  }));
+  for (const event of new Set([events?.GENERATION_ENDED, events?.GENERATION_STOPPED].filter(Boolean))) {
+    subscriptions.push(host.bindEvent(event, () => { generating = false; }));
+  }
 })();

@@ -18,7 +18,9 @@
   const STORE = '制造画中人玩法';
   function record(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
   function copy(value) { return structuredClone(value); }
-  function gate(stat) {
+  function gate(stat, pool, data) {
+    if (pool?.pathways && modules['cryptLord.shamanPictureState'])
+      return modules['cryptLord.shamanPictureState'].gate(data || { stat_data: stat }, pool);
     const territory = modules['cryptLord.shamanTerritory']?.gate(stat);
     return { unlocked: Boolean(territory?.unlocked && territory.rank <= 5), rank: territory?.rank ?? 10 };
   }
@@ -32,6 +34,12 @@
     return stat.$专属玩法?.萨满途径?.[STORE]?.画中人列表 || {};
   }
   function records(data) {
+    if (modules['cryptLord.shamanPictureReference']) {
+      const mode = modules['cryptLord.shamanPictureReference'].create({ pool: { pathways: {} } });
+      return mode.recordsOfState(data).filter(row => row.id &&
+        !String(row.id).startsWith('$') && !['__proto__', 'constructor', 'prototype'].includes(row.id))
+        .map(({ data: card, ...row }) => ({ ...row, card: copy(card) }));
+    }
     return Object.entries(list(data?.stat_data))
       .filter(([id, row]) => id !== '$meta' && record(row) && record(row.角色卡))
       .map(([id, row]) => ({ id, name: String(row.名称 || row.角色卡.名称 || id),
@@ -161,7 +169,12 @@
     return { data: next, id, name, total };
   }
   function removeLoss(data, id) {
+    if (!id || String(id).startsWith('$') || ['__proto__', 'constructor', 'prototype'].includes(id)) return;
     const rows = list(data?.stat_data);
+    if (modules['cryptLord.shamanPictureReference']) {
+      modules['cryptLord.shamanPictureReference'].create({ pool: { pathways: {} } }).removeByIds(data, [id]);
+      return;
+    }
     if (Object.hasOwn(rows, id)) delete rows[id];
   }
   const api = Object.freeze({

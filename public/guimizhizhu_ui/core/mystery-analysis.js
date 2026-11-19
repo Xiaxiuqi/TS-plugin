@@ -22,7 +22,9 @@
       .filter(Number.isFinite);
     return ranks.length ? Math.min(...ranks) : null;
   }
-  function gate(stat) {
+  function gate(stat, pool) {
+    if (modules['cryptLord.mysteryAnalysisState'] && pool?.pathways)
+      return modules['cryptLord.mysteryAnalysisState'].gate({ stat_data: stat }, pool);
     const rank = rankOf(stat?.当前序列);
     return { rank, unlocked: rank !== null && rank <= 5, active: rank !== null && rank <= 4 };
   }
@@ -30,13 +32,13 @@
   function bonus(stat) {
     const raw = stored(stat)?.最终加成;
     if (!record(raw)) return null;
-    const values = STATS.map(key => Number.parseFloat(raw[key]));
+    const values = STATS.map(key => Math.round(Number.parseFloat(raw[key]) * 100) / 100);
     if (values.some(value => !Number.isFinite(value) || value < 0) ||
       ![30, 40, 50, 60, 70].some(total => Math.abs(values.reduce((a, b) => a + b, 0) - total) < .001)) return null;
     return Object.fromEntries(STATS.map((key, index) => [key, `${values[index].toFixed(2)}%`]));
   }
   function completed(stat) { return Boolean(String(stored(stat)?.描述 || '').trim() && bonus(stat)); }
-  function activeBonus(stat) { return gate(stat).active ? bonus(stat) : null; }
+  function activeBonus(stat, pool) { return gate(stat, pool).active ? bonus(stat) : null; }
   function originalMaximum(stat, key, extraPercent) {
     const rawBase = Number(stat[`基础${key}`]);
     if (!Number.isFinite(rawBase) || rawBase < 0 || stat[`基础${key}`] == null) return null;
@@ -62,9 +64,11 @@
     }
     return Math.round((base + flat) * (1 + percent / 100));
   }
-  function reconcile(stat) {
+  function reconcile(stat, pool) {
     if (!record(stat)) return false;
-    const active = activeBonus(stat);
+    const attributes = modules['cryptLord.attributeRecalculation'];
+    if (attributes) return attributes.reconcileStat(stat, pool);
+    const active = activeBonus(stat, pool);
     const prior = record(stat.$神秘解析上限同步) ? stat.$神秘解析上限同步 : {};
     const next = {};
     let changed = false;
@@ -98,8 +102,10 @@
     }
     return changed;
   }
-  function syncDisplay(stat) {
+  function syncDisplay(stat, pool) {
     if (!record(stat)) return false;
+    if (modules['cryptLord.mysteryAnalysisReference'] && pool?.pathways)
+      return modules['cryptLord.mysteryAnalysisReference'].create({ pool }).core.syncDisplayAbility({ stat_data: stat });
     const existing = stat.辅助能力列表;
     if (!gate(stat).active || !completed(stat)) {
       if (!record(existing) || !Object.hasOwn(existing, DISPLAY)) return false;

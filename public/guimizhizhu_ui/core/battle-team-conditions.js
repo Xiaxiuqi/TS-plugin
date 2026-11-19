@@ -57,7 +57,7 @@
     const side = interference?.forceSide
       ? interference.forceSide === 'ally' ? actor.side : actor.side === 'ally' ? 'enemy' : 'ally'
       : ally ? actor.side : actor.side === 'ally' ? 'enemy' : 'ally';
-    return battle.units.filter(unit => unit.hp > 0 && !unit.offField && !unit.activeLeaving &&
+    return battle.units.filter(unit => unit.hp > 0 && !unit.offField && !unit.activeLeaving && !unit.exiled && !unit.possessedHidden &&
       unit.side === side && (!interference?.excludeSelf || unit !== actor) &&
       Math.max(Math.abs(unit.x - center.x), Math.abs(unit.y - center.y)) <= choice.radius);
   }

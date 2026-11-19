@@ -313,15 +313,19 @@
       values.some(ability => text(ability?.名称 || ability?.name) === cfg.名称))) throw new Error('已有同名序列能力');
     return { config: cfg, points: spent, owner };
   }
-  function average(rank) {
-    const source = window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank?.[String(rank)];
+  function average(rank, pool) {
+    const scoped = pool?.pictureConfig?.consumableConfig?.avgAttrByRank;
+    const table = scoped ||
+      window.GameDBManager?.DB?.consumableConfig?.avgAttrByRank;
+    const source = table?.[String(rank)] || table?.['10'] ||
+      (scoped ? { 活力: 37, 敏捷: 45, 灵性: 43, 理智: 28, 人性: 27 } : undefined);
     const values = AVG[String(rank)];
     if (!source && !values) throw new Error('当前位阶没有六维平均值配置');
     return Object.fromEntries(RESOURCE.map((key, index) => [key, Number(source?.[key] ?? values?.[index]) || 0]));
   }
-  function build(config, slot, rank) {
+  function build(config, slot, rank, pool) {
     const cfg = normalize(config, slot);
-    const attrs = average(rank);
+    const attrs = average(rank, pool);
     const fixed = (key, ratio, zero = false) => Math.max(zero ? 0 : 1, Math.round(attrs[key] * ratio));
     const isGroup = cfg.目标模式 === 'group';
     const effects = cfg.状态效果.flatMap((effect, index) => {
@@ -355,6 +359,8 @@
     };
   }
   function sync(data, pool) {
+    if (modules['cryptLord.readerRosterState'])
+      return modules['cryptLord.readerRosterState'].sync(data, pool);
     const stat = data?.stat_data;
     if (!record(stat)) return false;
     const groups = record(stat.序列能力列表) ? stat.序列能力列表 : {};
@@ -370,7 +376,7 @@
         try {
           const check = validate(data, pool, slot, cfg, true);
           projectedNames.add(check.config.名称);
-          projected.push(build(check.config, slot, owner.rank));
+          projected.push(build(check.config, slot, owner.rank, pool));
         }
         catch { /* Keep invalid or over-budget saved configurations without projecting them. */ }
       }

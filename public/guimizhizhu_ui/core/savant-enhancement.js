@@ -254,6 +254,11 @@
     return { data: next, broken, risk: detachRisk(count) };
   }
   function reconcile(data) {
+    const original = modules['cryptLord.enhancementReference']?.create();
+    if (original) {
+      const next = clone(data);
+      return { data: next, changed: original.mode.reconcile(next) };
+    }
     const next = clone(data);
     const records = bag(next);
     let changed = false;
@@ -277,6 +282,8 @@
     return { data: next, changed };
   }
   function productionBonuses(data) {
+    const original = modules['cryptLord.enhancementReference']?.create();
+    if (original) return original.mode.productionBonuses(data);
     const best = { successBonus: 0, yieldBonus: 0, craftDiscount: 0, repairBonus: 0 };
     for (const row of equipment(data)) {
       if (row.listKey === '武器列表' || row.item.isEquipped !== true) continue;
@@ -295,6 +302,9 @@
     return best;
   }
   function resolveWeapon(item, data, listKey, itemKey) {
+    const original = modules['cryptLord.enhancementReference']?.create();
+    if (original) return listKey === '武器列表'
+      ? original.weapon.resolve(item, data, { 列表键: listKey, 物品键: itemKey }) : item;
     const id = item?.$强化模块安装?.模块ID;
     const rec = id && bag(data)[id];
     if (!rec?.武器效果 || rec.安装位置?.列表键 !== listKey ||

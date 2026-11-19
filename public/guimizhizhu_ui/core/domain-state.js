@@ -75,12 +75,167 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
   function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-  function db() { return window.GameDBManager?.DB || {}; }
+  let scopedRules = null;
+  let disposed = false, generating = false, epoch = 0;
+  const warTickets = new WeakMap();
+  function db() { return scopedRules ? { ...(window.GameDBManager?.DB || {}), ...scopedRules } : window.GameDBManager?.DB || {}; }
   function domainConfig() {
+    if (scopedRules?.domainConfig) return scopedRules.domainConfig;
     const configured = db().domainConfig;
     return configured?.stages?.[1] ? configured : modules['cryptLord.domainDefaults']?.config || configured || {};
   }
   function demands() { return db().factionConfig?.productivityDemands || FALLBACK_DEMANDS; }
+  function withRules(rules, run) {
+    const previous = scopedRules;
+    scopedRules = rules;
+    try { return run(); } finally { scopedRules = previous; }
+  }
+  function validateConfig(value, example, path = '领地配置') {
+    if (typeof example === 'number') {
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw Error(`${path}必须为非负有限数`);
+    } else if (typeof example === 'string' || typeof example === 'boolean') {
+      if (typeof value !== typeof example) throw Error(`${path}类型无效`);
+    } else if (Array.isArray(example)) {
+      if (!Array.isArray(value)) throw Error(`${path}必须是数组`);
+      value.forEach((item, index) => {
+        if (example[index] !== undefined || example[0] !== undefined)
+          validateConfig(item, example[index] ?? example[0], `${path}[${index}]`);
+      });
+    } else if (record(example)) {
+      if (!record(value)) throw Error(`${path}必须是对象`);
+      for (const key of Object.keys(value)) {
+        if (['__proto__', 'constructor', 'prototype'].includes(key)) throw Error(`${path}含保留键`);
+        if (Object.hasOwn(example, key)) validateConfig(value[key], example[key], `${path}.${key}`);
+      }
+    }
+  }
+  function checkRules(guard, token, strict = true) {
+    if (disposed || strict && (generating || modules[KEY] !== api || token !== epoch) || guard && !guard())
+      throw Error('领地规则读取已取消，请重新读取');
+  }
+  function validateWar(config) {
+    const { cols, rows } = config.board;
+    if (!Number.isSafeInteger(cols) || cols < 1 ||
+      !Number.isSafeInteger(rows) || rows < 2 ||
+      !Number.isSafeInteger(config.maxPiecesPerSide) || config.maxPiecesPerSide < 1 ||
+      config.maxPiecesPerSide > cols * Math.floor(rows / 2)) throw Error('战争棋盘或出战上限无效');
+    for (const key of ['tickMs', 'segmentTicks', 'stalemateTicks', 'hardCapTicks'])
+      if (!Number.isSafeInteger(config[key]) || config[key] < 1) throw Error(`战争配置.${key}必须为正整数`);
+    if (!Number.isSafeInteger(config.reportMaxDamageSources) || config.reportMaxDamageSources < 0)
+      throw Error('战争伤害来源显示数量无效');
+    if (config.baseProjectileSpeed <= 0 ||
+      config.defaults.maxPP < 1 || config.defaults.range < 1 ||
+      config.defaults.dodge > .9 || config.pp.damageRatioCap > 1)
+      throw Error('战争步长、时长、弹速或棋子缺省属性无效');
+    if (!['NEUTRAL', 'RAIN', 'DROUGHT', 'SANDSTORM', 'MISTY', 'BLOODMOON', 'ZENITH'].includes(config.weather))
+      throw Error('战争天气无效');
+    if (config.defaults.luck < -100 || config.defaults.luck > 100) throw Error('战争幸运值无效');
+    for (const hazard of config.hazards) {
+      if (!record(hazard) || !['STEALTH_ROCKS', 'SPIKES', 'TOXIC_SPIKES', 'HAIL', 'EMBER'].includes(hazard.type) ||
+        hazard.team != null && !['A', 'B'].includes(hazard.team))
+        throw Error('战争场地危险物无效');
+    }
+    const frames = config.defaults.attackFrames;
+    if (!record(frames) || !Number.isFinite(frames.d) || !Number.isFinite(frames.t) ||
+      frames.d < 0 || frames.t < 1 || frames.d > frames.t) throw Error('战争攻击帧无效');
+    const skills = modules['cryptLord.domainDefaults']?.warConfig?.abilities || {};
+    if (!Object.hasOwn(skills, config.defaults.ability)) throw Error('战争缺省技能不存在');
+    for (const [key, ability] of Object.entries(config.abilities)) {
+      if (!record(ability) || typeof ability.name !== 'string' || !Object.hasOwn(skills, key))
+        throw Error('战争技能索引无效');
+    }
+  }
+  async function loadRules(guard, warfare = false) {
+    const token = epoch;
+    checkRules(guard, token, warfare);
+    const host = await contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 });
+    const binding = await host.getCharWorldbookNames('current'), primary = binding?.primary || '1源堡';
+    const names = [...new Set(['【源堡】玩家自建内容', ...(binding?.additional || []), '2历史孔隙']
+      .filter(name => name && name !== primary)), primary], selected = new Map(), revision = [];
+    const base = clone(warfare ? modules['cryptLord.domainDefaults']?.config : domainConfig()), config = clone(base);
+    const warBase = warfare ? clone(modules['cryptLord.domainDefaults']?.warConfig) : null;
+    const roster = warfare ? clone(modules['cryptLord.domainDefaults']?.roster) : null;
+    if (warfare && (!base || !warBase)) throw Error('原版战争配置尚未加载');
+    const warConfig = clone(warBase);
+    for (const name of names) {
+      checkRules(guard, token, warfare);
+      let rows;
+      try { rows = await host.getWorldbook(name); }
+      catch (error) {
+        if (name !== primary && /未能找到世界书|世界书.*(?:不存在|未找到)|(?:worldbook|lorebook).*?(?:not found|does not exist)/i.test(String(error.message || error))) {
+          revision.push([name, null]); continue;
+        }
+        throw error;
+      }
+      if (!Array.isArray(rows)) throw Error(`领地世界书「${name}」不可读取`);
+      const relevant = rows.filter(entry => {
+        const title = String(entry?.name || entry?.comment || '');
+        return title.startsWith('【配置') && (title.includes('领地配置') || warfare && title.includes('战争配置'));
+      });
+      revision.push([name, relevant]);
+      for (const entry of relevant) {
+        const title = String(entry.name || entry.comment);
+        selected.delete(title); selected.set(title, entry);
+      }
+    }
+    for (const entry of selected.values()) {
+      const patch = industryState.parseWorldbookJson(entry.content);
+      const war = String(entry.name || entry.comment).includes('战争配置');
+      if (!record(patch)) throw Error(`${war ? '战争' : '领地'}配置必须是对象`);
+      if (war) {
+        const checked = clone(patch);
+        if (typeof checked.defaults?.luck === 'number') checked.defaults.luck = Math.abs(checked.defaults.luck);
+        validateConfig(checked, warBase, '战争配置');
+        Object.assign(warConfig, clone(patch));
+      } else {
+        validateConfig(patch, base);
+        Object.assign(config, patch);
+      }
+    }
+    checkRules(guard, token, warfare);
+    if (JSON.stringify(binding) !== JSON.stringify(await host.getCharWorldbookNames('current')))
+      throw Error('领地世界书绑定已变化，请重新读取');
+    checkRules(guard, token, warfare);
+    if (warfare) {
+      for (const key of ['board', 'defaults', 'pp']) warConfig[key] = { ...warBase[key], ...warConfig[key] };
+      validateWar(warConfig);
+    }
+    const faction = warfare ? modules['cryptLord.factionState'] : null;
+    const factionRules = faction?.load ? await faction.load(() => {
+      checkRules(guard, token); return true;
+    }) : null;
+    if (factionRules?.warnings?.length) throw Error(factionRules.warnings.join('；'));
+    checkRules(guard, token, warfare);
+    const result = { config, ...(warfare ? { warConfig, roster,
+      factionConfig: factionRules?.config || { productivityDemands: clone(FALLBACK_DEMANDS) } } : {}),
+      revision: JSON.stringify({ binding, revision, base, warBase, roster, faction: factionRules?.revision }) };
+    if (warfare) warTickets.set(result, { host, token, faction, value: JSON.stringify(result) });
+    return result;
+  }
+  async function assertWarRules(rules, guard) {
+    const ticket = warTickets.get(rules);
+    checkRules(guard, ticket?.token ?? epoch);
+    if (!ticket || JSON.stringify(rules) !== ticket.value) throw Error('战争规则来源不可确认，请重新读取');
+    const host = await contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 });
+    const current = await loadRules(guard, true);
+    if (host !== ticket.host || modules['cryptLord.factionState'] !== ticket.faction ||
+      current.revision !== rules.revision) throw Error('战争规则或世界书绑定已变化，请重新读取');
+    checkRules(guard, ticket.token);
+  }
+  function withWarRules(rules, run) {
+    return withRules({ domainConfig: rules.config, warConfig: rules.warConfig, domainRoster: rules.roster,
+      factionConfig: rules.factionConfig }, run);
+  }
+  function warBoard() {
+    const board = db().warConfig?.board || { cols: 8, rows: 6 };
+    return { ...board, half: Math.floor(board.rows / 2) };
+  }
+  function formationCell(index, team = 'A') {
+    const { cols, rows, half } = warBoard();
+    return { x: index % cols, y: team === 'A'
+      ? half + ((Math.floor(index / cols) + Math.min(1, rows - half - 1)) % (rows - half))
+      : Math.floor(index / cols) };
+  }
   function domainOf(data) { return data?.stat_data?.领地; }
   function storeOf(domain) {
     if (!record(domain.物资库)) domain.物资库 = {};
@@ -259,6 +414,7 @@
     const slot = domain?.格子?.[slotKey];
     if (!slot) return;
     if (usedLabor(domain, slotKey) + slotLabor(slot, domain.等级) > population(domain)) slot.开工 = false;
+    else if (number(slot.等级) > 0) slot.开工 = true;
   }
   function goldCost(domainLevel, index) {
     const values = stageConfig(domainLevel)?.金镑;
@@ -382,12 +538,14 @@
     let completed = 0;
     SLOT_KEYS.forEach(key => {
       const slot = domain.格子[key];
-      if (!slot?.施工动作 || number(slot.完工时刻) > number(nowMin)) return;
+      if (!slot?.施工动作 || !number(slot.完工时刻) || number(slot.完工时刻) > number(nowMin)) return;
       const action = slot.施工动作;
-      slot.等级 = action === '新建' ? 1 : Math.min(3, number(slot.等级) + 1);
+      if (['新建', '1→2', '2→3'].includes(action)) slot.等级 = { 新建: 1, '1→2': 2, '2→3': 3 }[action];
       slot.施工动作 = '';
       slot.完工时刻 = 0;
       reconcileSlot(domain, key);
+      const name = buildingLabel(buildingOf(domain, slot.建筑), domain.线路) || slot.建筑;
+      pushLedger(domain, action === '新建' ? `${name}落成，已开工` : `${name}扩建完毕，升至 Lv${slot.等级}`, '自动');
       completed += 1;
     });
     return completed;
@@ -507,7 +665,10 @@
     return { ok: true, name };
   }
   function recruitConfig() { return domainConfig().recruit || {}; }
-  function troopDefs() { return Array.isArray(recruitConfig().troops) ? recruitConfig().troops : []; }
+  function troopDefs() {
+    const troops = recruitConfig().troops ?? domainConfig().troops;
+    return Array.isArray(troops) ? troops : [];
+  }
   function findTroop(id) { return troopDefs().find(item => item?.id === id) || null; }
   function troopsOfBranch(branch) { return troopDefs().filter(item => item?.军种 === branch); }
   function eliteScale(elite) {
@@ -543,7 +704,11 @@
     pushLedger(domain, `募${troop.名称 || troop.id} ${count} 人（精锐 ${elite} 级），出饷 ${cost} 金镑，${Math.max(1, Math.round(trainMinutes(elite) / 1440))} 天后成军`);
     return { ok: true, order, cost };
   }
-  function maxDeploy() { return Math.max(1, Math.floor(number(recruitConfig().maxDeploy, number(db().warConfig?.maxPiecesPerSide, 8)))); }
+  function maxDeploy() {
+    const board = warBoard();
+    return Math.max(1, Math.min(board.cols * Math.floor(board.rows / 2),
+      Math.floor(number(db().warConfig?.maxPiecesPerSide, number(recruitConfig().maxDeploy, 8)))));
+  }
   function fieldsOfBranch(branch) {
     return recruitConfig().战场?.[branch] || (branch === '空军' ? ['陆战', '海战'] : branch === '海军' ? ['海战'] : ['陆战']);
   }
@@ -777,6 +942,22 @@
       技能: troop?.技能 || defaults.ability || 'HEAVY_STRIKE',
       taunt: Boolean(troop?.taunt),
       merciless: Boolean(troop?.merciless),
+      ap: number(troop?.ap) || number(defaults.ap),
+      luck: number(troop?.luck) || number(defaults.luck),
+      attackFrames: clone(troop?.attackFrames || defaults.attackFrames || { d: 18, t: 36 }),
+    };
+  }
+  function armyToPiece(army, index, team = 'A') {
+    const q = armyQuality(army);
+    return {
+      id: army.id, troopId: army.主兵种, name: army.名称 || army.id,
+      icon: army.图标 || findTroop(army.主兵种)?.图标 || '',
+      eliteLevel: armyElite(army), count: armyCount(army), ...formationCell(index, team),
+      hp: armyHp(army), atk: armyAtk(army), shield: armyShield(army),
+      range: q.射程, def: q.防御, speDef: q.特防, speed: q.速度,
+      critChance: q.暴击率, critPower: q.暴击倍率, dodge: q.闪避,
+      maxPP: q.maxPP, ap: q.ap, luck: q.luck, ability: q.技能,
+      taunt: q.taunt, merciless: q.merciless, attackFrames: q.attackFrames,
     };
   }
   function mainTypeRatio(army) {
@@ -991,7 +1172,8 @@
     return { ok: true };
   }
   function sweepCoreConstruction(domain, nowMin) {
-    if (!domain?.已建立 || !domain.核心?.施工动作 || number(domain.核心.完工时刻) > number(nowMin)) return 0;
+    if (!domain?.已建立 || !domain.核心?.施工动作 || !number(domain.核心.完工时刻) ||
+      number(domain.核心.完工时刻) > number(nowMin)) return 0;
     domain.核心.等级 = domain.核心.施工动作 === '1→2' ? 2 : 3;
     domain.核心.施工动作 = '';
     domain.核心.完工时刻 = 0;
@@ -1030,7 +1212,7 @@
   }
   function peerRoster(level) {
     const index = Number(level) || 1;
-    const list = window.DOMAIN_PEER_ROSTER?.[index] ?? modules['cryptLord.domainDefaults']?.roster?.[index];
+    const list = scopedRules?.domainRoster?.[index] ?? window.DOMAIN_PEER_ROSTER?.[index] ?? modules['cryptLord.domainDefaults']?.roster?.[index];
     return Array.isArray(list) ? list : [];
   }
   function peersOf(domain) {
@@ -1058,9 +1240,7 @@
   function peerPieces(domain, id) {
     const peer = findPeer(domain, id);
     return (peer?.军队 || []).map((army, index) => ({
-      id: `peer-${peer.id}-${index}`, troopId: army.主兵种, name: army.名称 || army.id,
-      eliteLevel: armyElite(army), count: armyCount(army), x: index % 8, y: Math.floor(index / 8),
-      hp: armyHp(army), atk: armyAtk(army),
+      ...armyToPiece(army, index, 'B'), id: `peer-${peer.id}-${index}`,
     }));
   }
   function annexPopGain(domain) { return Math.round(1.5 * number(stageConfig(domain?.等级)?.用工?.[2])); }
@@ -1223,55 +1403,118 @@
     return { winner: result?.winner || 'draw', casualties, annexed, popGain, canPromote: canPromote(domain), spoils };
   }
   function buildRegionOverview(domain) {
-    if (!domain?.已建立) return '';
-    const names = [];
+    if (!domain) return '';
+    const parts = [], finished = new Map(), building = [];
+    const core = domain.核心 || {}, level = coreLevelOf(domain);
+    if (core.名称) parts.push(['1→2', '2→3'].includes(core.施工动作)
+      ? `${core.名称} Lv${level}→${core.施工动作 === '1→2' ? 2 : 3}（施工中）`
+      : `${core.名称} Lv${level}`);
     SLOT_KEYS.forEach(key => {
-      const slot = domain.格子[key];
+      const slot = domain.格子?.[key];
       if (!slot?.建筑 || (!slot.施工动作 && number(slot.等级) < 1)) return;
-      const building = buildingOf(domain, slot.建筑);
-      names.push(`${building?.名称 || slot.建筑}${slot.施工动作 ? '（施工中）' : ''}`);
+      const name = buildingLabel(buildingOf(domain, slot.建筑), domain.线路) || slot.建筑;
+      if (slot.施工动作) building.push(`${name}（施工中）`);
+      else finished.set(name, (finished.get(name) || 0) + 1);
     });
-    const core = domain.核心?.名称 ? `${domain.核心.名称} Lv${coreLevelOf(domain)}` : '';
-    return [core, names.length ? `现有：${names.join('、')}` : ''].filter(Boolean).join('；');
+    for (const [name, count] of finished) parts.push(count > 1 ? `${name}×${count}` : name);
+    parts.push(...building);
+    return parts.length ? `现有：${parts.join('；')}` : '';
   }
   function buildPeerOverview(domain) {
     const peers = peersOf(domain);
     if (!peers.length) return '';
-    const names = peers.map(peer => peer.状态 === '已吞并'
-      ? `${peer.名称 || peer.id}（${peer.完成方式 || '已完成'}）`
-      : `${peer.名称 || peer.id}（存续）`);
-    return `【邻境】周围有${peers.length}个同级领地，领主分别是${names.join('、')}`;
+    const level = clamp(number(domain.等级, 1), 1, 8);
+    const total = peers.filter(peer => !peer.战利品?.名称).length;
+    let index = 0;
+    const names = peers.map(peer => {
+      const name = peer.名称 || peer.id || '未知', boss = Boolean(peer.战利品?.名称);
+      const i = boss ? -1 : index++;
+      if (peer.状态 === '已吞并') return `${name}（${peer.完成方式 === '正文结盟' ? '已与<User>结盟'
+        : peer.完成方式 === '正文吞并' ? '已并入<User>领地' : '已被<User>击败'}）`;
+      if (level < 4) return name;
+      const count = boss ? 1 : Math.min(3, 1 + Math.floor(i * 3 / Math.max(1, total)));
+      const rank = boss ? { 4: 8, 5: 7, 6: 5, 7: 4, 8: 2 }[level]
+        : level === 4 ? 9 : level === 5 ? 8 : level === 6 ? i < Math.ceil(total / 2) ? 7 : 6
+          : level === 7 ? 5 : 3;
+      return name + (rank <= 4 ? `（处于${count}名序列${rank}非凡者的保护下，若有危险，保护者随时能赶到现场）`
+        : `（有${count}名序列${rank}的非凡者保镖随身保护）`);
+    });
+    return `【邻境】周围有${peers.length}个${ladderName(domain.线路, domain.等级) || '领地'}，领主分别是${names.join('、')}`;
+  }
+  function buildAffairOverview(domain) {
+    const todos = Array.isArray(domain?.事务?.待办) ? domain.事务.待办 : [];
+    const active = todos.filter(todo => todo && ['待指派', '玩家进行中', '已搁置'].includes(todo.状态));
+    if (!active.length) return '';
+    const safe = value => String(value).replace(/玩家/g, '<User>');
+    const lines = active.slice(0, 6).map(todo => {
+      const title = String(todo.标题 || '未命名').trim() || '未命名';
+      const handler = String(todo.处理者 || '').trim();
+      const who = !handler ? '未指派' : handler === '玩家' || handler === '<User>' ? '<User>' : handler;
+      const methods = Array.isArray(todo.推荐方法)
+        ? todo.推荐方法.map(value => String(value || '').trim()).filter(Boolean).join('、') : '';
+      const passage = String(todo.经过 || '').trim();
+      const brief = passage.length > 40 ? passage.slice(0, 40) + '…' : passage;
+      return `《${safe(title)}》｜承办:${safe(who)}｜推荐解决方法:${safe(methods || '无')}｜经过:${safe(brief)}`;
+    });
+    if (active.length > 6) lines.push(`…另有${active.length - 6}项`);
+    return `【事务】\n${lines.join('\n')}`;
   }
   function buildFactionOverview(domain) {
-    return [buildPeerOverview(domain), buildCoreHousingOverview(domain)].filter(Boolean).join('\n');
+    return [buildPeerOverview(domain), buildCoreHousingOverview(domain), buildAffairOverview(domain)].filter(Boolean).join('\n');
   }
   function localTroops(domain) {
-    const rows = [];
+    const rows = new Map();
     const push = stack => {
       if (!record(stack) || stack.来源 === '势力' || stack.势力键 || number(stack.数量) <= 0 || !stack.兵种) return;
-      rows.push({
+      const row = {
         军种: stack.军种 || '陆军',
         兵种: stack.兵种,
         精锐等级: Math.max(1, Math.min(5, Math.floor(number(stack.精锐等级, 1)))),
         数量: Math.floor(number(stack.数量)),
-      });
+      };
+      const key = `${row.军种}|${row.兵种}|${row.精锐等级}`;
+      if (rows.has(key)) rows.get(key).数量 += row.数量;
+      else rows.set(key, row);
     };
     domain.驻军.散兵.forEach(push);
     domain.驻军.军队.forEach(army => (Array.isArray(army?.编成) ? army.编成 : []).forEach(push));
-    return rows;
+    return [...rows.values()];
   }
-  function syncProjection(data) {
+  function renameDomain(data, value) {
+    const domain = domainOf(data), name = String(value || '').trim();
+    if (!domain?.已建立 || !name || ['$meta', '__proto__', 'constructor', 'prototype'].includes(name))
+      return { ok: false, reason: '领地名称无效' };
+    const old = String(domain.领地名 || '').trim();
+    if (name === old) return { ok: true, name };
+    if (record(data.stat_data?.势力?.[name]) && !data.stat_data.势力[name].$投影)
+      return { ok: false, reason: '已有同名势力，请使用其他领地名' };
+    domain.领地名 = name;
+    pushLedger(domain, `领地由「${old}」改名为「${name}」`, '决策');
+    syncProjection(data, { prevKey: old });
+    return { ok: true, name };
+  }
+  function syncProjection(data, opts = {}) {
     const domain = domainOf(data);
-    const factions = data?.stat_data?.势力;
-    if (!record(domain) || !record(factions)) return false;
+    if (!record(domain)) return false;
+    const factions = data.stat_data.势力 ||= { $meta: { extensible: true } };
+    if (!record(factions)) return false;
     const name = String(domain.领地名 || '').trim();
+    const stale = { gods: null, anchor: undefined };
     Object.keys(factions).forEach(key => {
-      if (key !== '$meta' && factions[key]?.$投影 && key !== name) delete factions[key];
+      if (key === '$meta' || key === name || !record(factions[key]) ||
+        !factions[key].$投影 && key !== opts.prevKey) return;
+      stale.gods ??= factions[key]['直辖的半神和真神信息'];
+      if (stale.anchor === undefined) stale.anchor = factions[key]['锚的需求'];
+      delete factions[key];
     });
     if (!domain.已建立 || !name) return false;
     const previous = record(factions[name]) ? factions[name] : {};
+    const ladder = ladderName(domain.线路, domain.等级);
+    const regionName = ladder ? `${name}（${ladder}）` : name;
     const projected = {
       ...previous,
+      直辖的半神和真神信息: stale.gods ?? previous.直辖的半神和真神信息 ?? { $meta: { extensible: true } },
+      锚的需求: stale.anchor ?? previous.锚的需求 ?? '',
       $投影: true,
       势力名: name,
       势力类型: '世俗领地',
@@ -1280,33 +1523,48 @@
       人口数量: Math.max(0, Math.floor(number(domain.人口))),
       锚的供给量: Math.max(0, Math.floor(number(domain.人口))),
       实控区域: {
-        [name]: {
-          区域名: name,
+        ...(previous.实控区域?.$meta !== undefined ? { $meta: clone(previous.实控区域.$meta) } : {}),
+        [regionName]: {
+          区域名: regionName,
           区域类型: '世俗领地',
           区域核心: String(domain.地点 || ''),
           区域人口: Math.max(0, Math.floor(number(domain.人口))),
           区域面积: number(domainConfig().areaKm2?.[domain.线路]?.[Math.max(0, Math.floor(number(domain.等级, 1)) - 1)]),
+          区域概述: buildRegionOverview(domain),
         },
       },
-      世俗军队: { 陆军: {}, 海军: {}, 空军: {} },
+      世俗军队: {
+        ...(previous.世俗军队?.$meta !== undefined ? { $meta: clone(previous.世俗军队.$meta) } : {}),
+        ...Object.fromEntries(BRANCHES.map(branch => [branch,
+          previous.世俗军队?.[branch]?.$meta !== undefined
+            ? { $meta: clone(previous.世俗军队[branch].$meta) } : {}])),
+      },
     };
-    localTroops(domain).forEach((row, index) => {
-      projected.世俗军队[row.军种][`${row.兵种}-${index + 1}`] = {
-        部队名: row.兵种,
+    localTroops(domain).forEach(row => {
+      const troop = findTroop(row.兵种), bag = projected.世俗军队[row.军种];
+      if (!troop || !bag) return;
+      const label = troop.名称 || row.兵种;
+      let key = label;
+      if (bag[key]) key = `${label}${row.精锐等级}级`;
+      if (bag[key]) key = `${label}-${row.兵种}`;
+      bag[key] = {
+        部队名: label,
         部队类型: row.军种,
         部队精锐等级: `${row.精锐等级}级`,
         部队数量: row.数量,
+        部队概述: troop.描述 || '',
       };
     });
-    projected.实控区域.总面积 = projected.实控区域[name].区域面积;
-    projected.实控区域.实控区域汇总名单 = name;
+    projected.实控区域.总面积 = projected.实控区域[regionName].区域面积;
+    projected.实控区域.实控区域汇总名单 = regionName;
     factions[name] = projected;
     return true;
   }
-  function weeklySettle(data, cycles, pathways = {}) {
+  function weeklySettle(data, cycles, pathways = {}, industryConfig) {
     const domain = ensureDomain(domainOf(data));
     if (!domain || !domain.已建立) return Object.freeze({ settled: false, buildings: 0, upkeep: {}, zeroed: [], housed: 0, stewards: 0, projected: false });
     const output = weeklyProduce(domain, cycles, data, pathways);
+    if (industryConfig) industryState.applyIndustryProduce(data, cycles, industryConfig);
     const cost = upkeep(domain, cycles);
     const zeroed = refreshZeroed(domain);
     const housed = tickCoreHousingAffinity(domain, data, cycles);
@@ -1320,6 +1578,8 @@
   }
 
   function nowMinutes(mvuState) {
+    const native = modules['cryptLord.nativeSettlement'];
+    if (native?.gameMinutes) return native.gameMinutes(mvuState?.world_data?.当前时间纪元) ?? 0;
     const era = mvuState?.world_data?.当前时间纪元;
     if (!era) return 0;
     if (typeof window !== "undefined" && window.TimePassageEngine?._parseEra) {
@@ -1339,15 +1599,20 @@
   }
 
   function getWarSim() {
+    if (scopedRules?.warConfig) return modules['cryptLord.warSim'] || null;
     if (typeof window !== "undefined") {
       if (window.cryptLord?.warSim) return window.cryptLord.warSim;
-      if (window.WarSim) return { simulate: window.WarSim.simulate, settlement: window.WarReport?.settlement };
+      if (modules['cryptLord.warSim']) return modules['cryptLord.warSim'];
+      if (!scopedRules?.warConfig && window.WarSim) return {
+        simulate: window.WarSim.simulate, settlement: window.WarReport?.settlement, buildReport: window.WarReport?.build,
+      };
     }
     return null;
   }
 
   function runDrill(domain, armyIds) {
     const warEngine = getWarSim();
+    if (!warEngine?.simulate || !warEngine?.buildReport) throw Error('战争引擎尚未就绪，军演未执行');
     const lv = clamp(Math.floor(number(domain?.等级, 1)), 1, MAX_DOMAIN_LEVEL);
     let deployedArmies = [];
     if (Array.isArray(armyIds) && armyIds.length) {
@@ -1355,32 +1620,19 @@
     } else {
       deployedArmies = deployListOf(domain).map(id => findArmy(domain, id)).filter(Boolean);
     }
-    if (!deployedArmies.length) {
-      deployedArmies = (domain?.驻军?.军队 || []).slice(0, 4);
-    }
-    const teamA = deployedArmies.map((army, idx) => ({
-      id: army.id,
-      name: army.名称 || ("第" + (idx + 1) + "联队"),
-      troopId: army.主兵种,
-      x: idx % 8,
-      y: 4 + Math.floor(idx / 8),
-      hp: Math.max(100, armyHp(army)),
-      atk: Math.max(10, armyAtk(army)),
-      range: Number(findTroop(army.主兵种)?.射程) || 1,
-    }));
-    if (!teamA.length) {
-      teamA.push({ id: "guard-a1", name: "守备卫队", x: 2, y: 4, hp: 1500, atk: 150, range: 1 });
-    }
+    if (!deployedArmies.length || deployedArmies.length > maxDeploy() ||
+      new Set(deployedArmies.map(army => army.id)).size !== deployedArmies.length ||
+      deployedArmies.some(army => !canDeploy(domain, army).ok) ||
+      armyIds?.some(id => !findArmy(domain, id))) throw Error('请先选择有效且不重复的出战部队');
+    const teamA = deployedArmies.map((army, index) => armyToPiece(army, index));
     const teamB = [
       { id: "drill-b1", name: "假想敌先锋", x: 2, y: 1, hp: 1400 * lv, atk: 140 * lv, range: 1 },
       { id: "drill-b2", name: "假想敌重步兵", x: 3, y: 1, hp: 1700 * lv, atk: 130 * lv, range: 1 },
       { id: "drill-b3", name: "假想敌弓弩手", x: 2, y: 0, hp: 1000 * lv, atk: 190 * lv, range: 3 },
       { id: "drill-b4", name: "假想敌游击队", x: 4, y: 0, hp: 1100 * lv, atk: 150 * lv, range: 2 },
-    ];
-    const simResult = warEngine?.simulate
-      ? warEngine.simulate({ seed: Date.now(), teams: { A: teamA, B: teamB } })
-      : { winner: "A", reason: "wipeout", ticks: 40, units: [...teamA, ...teamB] };
-    const report = warEngine?.settlement ? warEngine.settlement(simResult) : { winner: simResult.winner, units: simResult.units };
+    ].slice(0, maxDeploy()).map((piece, index) => ({ ...piece, ...formationCell(index, 'B') }));
+    const simResult = warEngine.simulate({ seed: Date.now(), config: clone(db().warConfig), teams: { A: teamA, B: teamB } });
+    const report = warEngine.buildReport(simResult);
     const winMsg = simResult.winner === "A" ? "我军获胜" : simResult.winner === "B" ? "假想敌获胜" : "双方战平";
     pushLedger(domain, "举行沙盘军演，" + winMsg + "。", "决策");
     return {
@@ -1388,12 +1640,13 @@
       winner: simResult.winner,
       result: simResult,
       settlement: report,
-      summary: "沙盘军演演练完毕：" + (simResult.winner === "A" ? "红方（我军）战胜" : "蓝方（假想敌）取胜"),
+      summary: "沙盘军演演练完毕：" + winMsg,
     };
   }
 
   function runPeerBattle(domain, peerId, armyIds, mvuState, formation = {}) {
     const warEngine = getWarSim();
+    if (!warEngine?.simulate || !warEngine?.buildReport) return { ok: false, reason: '战争引擎尚未就绪，未结算战损' };
     const peer = findPeer(domain, peerId);
     if (!peer) return { ok: false, reason: "未找到指定邻境领地" };
     if (peer.状态 === "已吞并") return { ok: false, reason: "该邻境已被吞并" };
@@ -1403,37 +1656,19 @@
     } else {
       deployedArmies = deployListOf(domain).map(id => findArmy(domain, id)).filter(Boolean);
     }
-    if (!deployedArmies.length) {
-      deployedArmies = (domain?.驻军?.军队 || []).slice(0, 4);
-    }
-    if (!deployedArmies.length) {
-      return { ok: false, reason: "领地尚未编成出战部队" };
-    }
-    const teamA = deployedArmies.map((army, idx) => ({
-      id: army.id,
-      name: army.名称 || ("第" + (idx + 1) + "联队"),
-      troopId: army.主兵种,
-      x: Number.isInteger(formation[army.id]?.x) ? formation[army.id].x : idx % 8,
-      y: Number.isInteger(formation[army.id]?.y) ? formation[army.id].y : 4 + Math.floor(idx / 8),
-      hp: Math.max(100, armyHp(army)),
-      atk: Math.max(10, armyAtk(army)),
-      range: Number(findTroop(army.主兵种)?.射程) || 1,
+    if (!deployedArmies.length || deployedArmies.length > maxDeploy() ||
+      new Set(deployedArmies.map(army => army.id)).size !== deployedArmies.length ||
+      deployedArmies.some(army => !canDeploy(domain, army, peer.战场 === '海战' ? '海战' : '陆战').ok) ||
+      armyIds?.some(id => !findArmy(domain, id)))
+      return { ok: false, reason: '出战名单包含无效或重复部队' };
+    const teamA = deployedArmies.map((army, index) => ({
+      ...armyToPiece(army, index), ...(formation[army.id] || {}),
     }));
     const piecesB = peerPieces(domain, peerId);
-    const teamB = piecesB.length ? piecesB.map((p, idx) => ({
-      id: p.id,
-      name: p.name,
-      troopId: p.troopId,
-      x: p.x,
-      y: p.y,
-      hp: p.hp,
-      atk: p.atk,
-      range: Number(findTroop(p.troopId)?.射程) || 1,
-    })) : [{ id: "peer-" + peer.id + "-1", name: peer.名称 + "护卫队", x: 2, y: 1, hp: 1600, atk: 150, range: 1 }];
-    const simResult = warEngine?.simulate
-      ? warEngine.simulate({ seed: Date.now(), teams: { A: teamA, B: teamB } })
-      : { winner: "A", reason: "wipeout", ticks: 45, units: [...teamA, ...teamB] };
-    const report = warEngine?.settlement ? warEngine.settlement(simResult) : { winner: simResult.winner, units: simResult.units };
+    if (!piecesB.length) return { ok: false, reason: '邻境军队为空，不能虚构敌军结算' };
+    const simResult = warEngine.simulate({ seed: Date.now(), config: clone(db().warConfig), teams: { A: teamA, B: piecesB } });
+    const report = warEngine.buildReport(simResult);
+    domain.出战名单 = deployedArmies.map(army => army.id);
     const battleSettlement = settlePeerBattle(domain, peerId, simResult);
     return { ok: true, isDrill: false, peer, winner: simResult.winner, result: simResult, settlement: report, battleSettlement };
   }
@@ -1583,9 +1818,18 @@
     buildPeerOverview,
     buildFactionOverview,
     weeklySettle,
+    loadRules,
+    withRules,
+    assertWarRules,
+    withWarRules,
+    warBoard,
+    formationCell,
+    armyToPiece,
     refreshZeroed,
     syncProjection,
+    renameDomain,
     dispose() {
+      disposed = true; epoch++; subscriptions.forEach(item => item?.stop?.());
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];
       return true;
@@ -1593,4 +1837,16 @@
   });
   modules[KEY] = api;
   contract.initializeGlobal(KEY, api);
+  const after = modules['cryptLord.afterNativeHost'], events = after?.tavernEvents?.() || {};
+  const subscriptions = [];
+  if (events.CHAT_CHANGED) subscriptions.push(after.bindEvent(events.CHAT_CHANGED, () => { epoch++; generating = false; }));
+  if (events.GENERATION_STARTED) subscriptions.push(after.bindEvent(events.GENERATION_STARTED, (info, options, dryRun) => {
+    const type = typeof info === 'string' ? info : options?.type ?? info?.type;
+    if (['quiet', 'quiet_prompt', 'dryRun'].includes(type) || dryRun || options?.dryRun || info?.dryRun ||
+      options?.quiet_prompt || info?.quiet_prompt || options?.options?.quiet_prompt || info?.options?.quiet_prompt ||
+      options?.options?.dryRun || info?.options?.dryRun) return;
+    epoch++; generating = true;
+  }));
+  for (const event of new Set([events.GENERATION_ENDED, events.GENERATION_STOPPED].filter(Boolean)))
+    subscriptions.push(after.bindEvent(event, () => { generating = false; }));
 })();

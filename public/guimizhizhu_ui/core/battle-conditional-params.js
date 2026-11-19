@@ -104,7 +104,13 @@
             expect('('); const argument = parse(); expect(')');
             left = () => {
               const tags = context[token.value]?.tags || [];
-              const tag = tags.find(row => (typeof row === 'string' ? row : row.name) === argument());
+              const tagName = argument();
+              const tag = tags.find(row => (typeof row === 'string' ? row : row.name) === tagName);
+              const service = modules['cryptLord.battleTags'];
+              if (service?.hasTag && service?.getTagStacks && service?.getTagDuration) {
+                const method = name.value;
+                return service[method](context[token.value], tagName);
+              }
               if (name.value === 'hasTag') return Boolean(tag);
               return tag && typeof tag === 'object'
                 ? Number(tag[name.value === 'getTagStacks' ? 'stacks' : 'duration']) || 0 : 0;

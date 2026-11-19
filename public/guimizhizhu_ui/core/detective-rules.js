@@ -1718,6 +1718,145 @@ const GUIMI_TAG_THINK = "think";
 </${GUIMI_TAG_THINK}>`;
   }
 
-const api = Object.freeze({ prompts: DCW_PROMPTS, defaultCotIntro: defaultCotIntro(), defaultCotPlay: defaultCotPlay(), trickPool: DCW_TRICK_POOL, draw: dcwDraw, formatDraw: dcwFormatDraw, formatAxes: dcwFormatAxes, fillPrompt: dcwFillPrompt, status: () => ({ ready: true }), dispose() { contract.releaseGlobal(KEY, api); if (modules[KEY] === api) delete modules[KEY]; } });
+// BEGIN ORIGINAL DETECTIVE
+class DetectiveCaseWindow {
+static GEN_STEPS = [
+    { key: 'gen1', label: '① 核诡骨架（基线）', block: '事件真相_基线', store: '基线' },
+    { key: 'gen2', label: '② 嫌疑与人设', block: '事件真相_嫌疑', store: '嫌疑' },
+    { key: 'gen3', label: '③ 全员时间轴', block: '事件真相_时间轴', store: '时间轴' },
+    { key: 'gen4', label: '④ 线索系统', block: '事件真相_线索', store: '线索' },
+    { key: 'gen5', label: '⑤ 自检与汇编', block: '事件真相_成稿', store: '成稿' },
+  ];
+static RESERVED_TAGS = new Set([
+    '世界正文', '解锁线索', '结案报告', '自检', '线索',
+    '事件真相_基线', '事件真相_嫌疑', '事件真相_时间轴', '事件真相_线索', '事件真相_成稿',
+  ]);
+static get DEFAULT_FOLD_TAGS() { return ['reasoning', 'danmaku_raw', 'thinking', 'think', 'action']; }
+normalizeFoldTags(list) {
+    const arr = Array.isArray(list) ? list : [];
+    const seen = new Set();
+    const out = [];
+    for (const raw of arr) {
+      let t = String(raw || '').trim()
+        .replace(/^<\//, '')
+        .replace(/^</, '')
+        .replace(/>$/, '')
+        .replace(/\//g, '')
+        .trim();
+      if (!t || DetectiveCaseWindow.RESERVED_TAGS.has(t)) continue;
+      if (seen.has(t)) continue;
+      seen.add(t);
+      out.push(t);
+    }
+    return out;
+  }
+escapeTagName(tag) {
+    return String(tag || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+stripCustomFolds(worldText, rawForExtract) {
+    const foldBlocks = [];
+    const source = String(rawForExtract || worldText || '');
+    let text = String(worldText || '');
+    for (const tag of this.customFoldTags || []) {
+      const t = this.escapeTagName(tag);
+      if (!t) continue;
+      const reExtract = new RegExp(`<${t}>[\\s\\S]*?<\\/${t}>`, 'gi');
+      let m;
+      while ((m = reExtract.exec(source)) !== null) {
+        foldBlocks.push({ tag, xml: m[0] });
+      }
+      text = text.replace(new RegExp(`<${t}>[\\s\\S]*?<\\/${t}>`, 'gi'), '');
+    }
+    return { text: text.trim(), foldBlocks };
+  }
+packWorldRecord(raw, fallbackRaw = true) {
+    let world = this.parseBlock(raw, '世界正文');
+    if (!world) world = fallbackRaw ? String(raw || '').trim() : '';
+    const { text, foldBlocks } = this.stripCustomFolds(world, raw);
+    return { role: 'world', text, foldBlocks };
+  }
+getCustomPromptForStage(stage) {
+    if (stage === 'gen') return (this.customPromptGen || '').trim();
+    if (stage === 'intro') return (this.customPromptIntro || '').trim();
+    if (stage === 'play') return (this.customPromptPlay || '').trim();
+    return '';
+  }
+parseBlock(text, tag) {
+    const re = new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i');
+    const m = String(text || '').match(re);
+    return m ? m[1].trim() : '';
+  }
+buildGenVars(idx) {
+    const c = this.currentCase;
+    const draw = c.draw;
+    const base = { '题材模式': c.mode, '角色数': c.roleCount };
+    if (idx === 0) return { ...base, '抽取结果': dcwFormatDraw(draw) };
+    if (idx === 1) return { ...base, '四轴抽卡结果': dcwFormatAxes(draw), '基线': c.truth['基线'] || '' };
+    if (idx === 2) return { ...base, '基线': c.truth['基线'] || '', '阶段3产出': c.truth['嫌疑'] || '' };
+    if (idx === 3) return { ...base, '基线': c.truth['基线'] || '', '时间轴': c.truth['时间轴'] || '' };
+    if (idx === 4) return { ...base, '基线': c.truth['基线'] || '', '阶段3产出': c.truth['嫌疑'] || '', '时间轴': c.truth['时间轴'] || '', '线索表': c.truth['线索'] || '' };
+    return base;
+  }
+parseClues(lineText) {
+    const clues = [];
+    const re = /<线索\s+([^>]*)>([\s\S]*?)<\/线索>/gi;
+    let m;
+    while ((m = re.exec(lineText)) !== null) {
+      const attrs = m[1]; const inner = m[2];
+      const id = (attrs.match(/编号="([^"]+)"/) || [])[1] || '';
+      // 前端阈值一律强制为 1（原：从 触发阈值="N" 解析；暂关闭二次闸门，便于验证解锁链路）
+      const th = 1;
+      const phenom = ((inner.match(/<现象>([\s\S]*?)<\/现象>/i) || [])[1] || '').trim();
+      if (id) clues.push({ id, threshold: th, count: 0, unlocked: false, phenom });
+    }
+    return clues;
+  }
+unlockedText() {
+    if (!this.currentCase || !this.currentCase.clues) return '（暂无已解锁线索）';
+    const u = this.currentCase.clues.filter(c => c.unlocked);
+    return u.length ? u.map(c => `- ${c.id}｜${c.phenom}`).join('\n') : '（暂无已解锁线索）';
+  }
+applyUnlock(raw) {
+    const txt = this.parseBlock(raw, '解锁线索');
+    if (!txt) return;
+    const ids = txt.split(/[,，、\s]+/).map(s => s.trim()).filter(x => x && x !== '无');
+    ids.forEach(id => {
+      const c = this.currentCase.clues.find(x => x.id === id);
+      if (c && !c.unlocked) { c.count++; if (c.count >= c.threshold) c.unlocked = true; }
+    });
+  }
+truthFull() {
+    const t = this.currentCase.truth || {};
+    if (t['成稿']) return t['成稿'];
+    return ['基线', '嫌疑', '时间轴', '线索'].map(k => t[k] || '').filter(Boolean).join('\n\n');
+  }
+recentText() {
+    // 只发成功的世界正文：不发历史玩家输入/结案报告/演绎失败报错；当前行动仅由【玩家行动】单独提供
+    const worldRecs = (this.currentCase.records || []).filter(r => {
+      if (!r || r.role !== 'world') return false;
+      const t = String(r.text || '').trim();
+      if (!t) return false;
+      if (t.startsWith('（本回合演绎失败') || t.includes('本回合演绎失败')) return false;
+      return true;
+    });
+    const recs = worldRecs.slice(-this.dialogCount);
+    return recs.map(r => r.text).join('\n\n') || '（尚无对话）';
+  }
+wrapRecent(tag = '探案剧情') {
+    const body = this.recentText();
+    return `<${tag}>\n${body}\n</${tag}>`;
+  }
+}
+function createRules(currentCase, options = {}) {
+  return Object.assign(Object.create(DetectiveCaseWindow.prototype), {
+    currentCase, dialogCount: options.dialogCount ?? 200,
+    customFoldTags: Object.create(DetectiveCaseWindow.prototype).normalizeFoldTags(
+      options.folds ?? DetectiveCaseWindow.DEFAULT_FOLD_TAGS),
+    customPromptGen: options.gen || '', customPromptIntro: options.intro || '',
+    customPromptPlay: options.play || '',
+  });
+}
+// END ORIGINAL DETECTIVE
+const api = Object.freeze({ createRules, steps: DetectiveCaseWindow.GEN_STEPS, prompts: DCW_PROMPTS, defaultCotIntro: defaultCotIntro(), defaultCotPlay: defaultCotPlay(), trickPool: DCW_TRICK_POOL, draw: dcwDraw, formatDraw: dcwFormatDraw, formatAxes: dcwFormatAxes, fillPrompt: dcwFillPrompt, status: () => ({ ready: true }), dispose() { contract.releaseGlobal(KEY, api); if (modules[KEY] === api) delete modules[KEY]; } });
 modules[KEY] = api; contract.initializeGlobal(KEY, api);
 })();

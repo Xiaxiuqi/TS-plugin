@@ -6,6 +6,7 @@
   if (!contract) throw new Error(`[${KEY}] contract missing`);
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   if (modules[KEY]) { contract.initializeGlobal(KEY, modules[KEY]); return; }
+  let disposed = false;
 
   function narrative(message) {
     const raw = String(message || '');
@@ -26,13 +27,38 @@
     if (!decision || !reason) throw new Error('验收回复格式不正确，请重新验收');
     return { ok: decision[1] === '通过', reason: reason.slice(0, 160) };
   }
-  async function verify(place, messages, targetId) {
+  async function requestVerdict(config, options = {}) {
+    const active = () => {
+      if (disposed || modules[KEY] !== api || options.guard && !options.guard())
+        throw Error('领地认定已取消，请重新读取');
+    };
+    active();
+    const settlement = await contract.waitGlobalInitialized('cryptLord.variableSettlementApi', { timeoutMs: 10000 });
+    active();
+    const settings = await settlement.readSettings();
+    active();
+    if (modules['cryptLord.variableSettlementApi'] !== settlement) throw Error('系统副 API 已重新加载');
+    if (settings.useCustomApi) {
+      if (!settings.apiUrl || !settings.model) throw new Error('系统副 API 尚未填写 URL 或模型名');
+      config.custom_api = { apiurl: settings.apiUrl, key: settings.apiKey, model: settings.model, source: 'openai' };
+    }
+    const host = await contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 });
+    active();
+    await options.beforeRequest?.();
+    active();
+    if (modules['cryptLord.hostApi'] !== host || modules['cryptLord.variableSettlementApi'] !== settlement)
+      throw Error('领地认定依赖已重新加载');
+    const response = await host.generateRaw(config);
+    active();
+    if (modules['cryptLord.hostApi'] !== host || modules['cryptLord.variableSettlementApi'] !== settlement)
+      throw Error('领地认定依赖已重新加载');
+    return parseVerdict(typeof response === 'string' ? response : response?.content || '');
+  }
+  async function verify(place, messages, targetId, options = {}) {
     const location = String(place || '').trim();
     if (!location) throw new Error('请先保存目标地点');
     const story = evidence(messages, targetId);
     if (!story) throw new Error('没有可供验收的原生 assistant 正文');
-    const settlement = await contract.waitGlobalInitialized('cryptLord.variableSettlementApi', { timeoutMs: 10000 });
-    const settings = await settlement.readSettings();
     const config = {
       should_silence: true, should_stream: false, max_chat_history: 0,
       use_mes_examples: false, use_story_string: false, use_authors_note: false, use_persona: false,
@@ -44,18 +70,13 @@
 只输出 <裁定>通过或未通过</裁定><理由>一句话</理由>。`,
       }, { role: 'user', content: `【原生剧情】\n${story}\n\n请裁定我是否已取得【${location}】的所有权或永久实际控制权。` }],
     };
-    if (settings.useCustomApi) {
-      if (!settings.apiUrl || !settings.model) throw new Error('系统副 API 尚未填写 URL 或模型名');
-      config.custom_api = { apiurl: settings.apiUrl, key: settings.apiKey, model: settings.model, source: 'openai' };
-    }
-    const host = await contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 });
-    const response = await host.generateRaw(config);
-    return parseVerdict(typeof response === 'string' ? response : response?.content || '');
+    return requestVerdict(config, options);
   }
   const api = Object.freeze({
     status() { return Object.freeze({ key: KEY, ready: true }); },
-    narrative, evidence, parseVerdict, verify,
+    narrative, evidence, parseVerdict, verify, requestVerdict,
     dispose() {
+      disposed = true;
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];
       return true;

@@ -50,8 +50,8 @@
     throw new Error(`[${KEY}] 宿主 API 不可用: ${name}`);
   }
 
-  function getChatMessages(range = '0-{{lastMessageId}}') {
-    return Promise.resolve(findMethod('getChatMessages')(range));
+  function getChatMessages(range = '0-{{lastMessageId}}', options) {
+    return Promise.resolve(findMethod('getChatMessages')(range, options));
   }
 
   async function getLatestAssistantMessage() {
@@ -83,6 +83,10 @@
     return findMethod('generateRaw')(config);
   }
 
+  function injectPrompts(prompts, options) {
+    return findMethod('injectPrompts')(prompts, options);
+  }
+
   function getModelList(customApi) {
     return Promise.resolve(findMethod('getModelList')(customApi));
   }
@@ -93,6 +97,10 @@
 
   function replaceVariables(variables, options) {
     return findMethod('replaceVariables')(variables, options);
+  }
+
+  function updateVariablesWith(updater, options) {
+    return findMethod('updateVariablesWith')(updater, options);
   }
 
   function scriptIdFromElement(element) {
@@ -205,9 +213,11 @@
     deleteChatMessages,
     generate,
     generateRaw,
+    injectPrompts,
     getModelList,
     getVariables,
     replaceVariables,
+    updateVariablesWith,
     getScriptId,
     scriptVariableOptions,
     getCharWorldbookNames,

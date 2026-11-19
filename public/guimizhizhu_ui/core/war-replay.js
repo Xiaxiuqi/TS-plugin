@@ -128,8 +128,12 @@
       ...result.units.map(unit => `${unit.team === 'A' ? '我方' : '敌方'}·${unit.name} ${unit.alive ? `存续，余 ${Math.round(100 * unit.hp / (unit.initialHp || 1))}%` : '已打垮'}`),
     ].join('\n');
     const maxTick = Math.max(0, Number(result.ticks) || 0);
+    const recorded = result.conf?.rules?.recordEvents !== false;
     const settlement = report?.settlement || modules['cryptLord.warSim']?.settlement(result);
     function at(value) {
+      if (!recorded) return {
+        tick: maxTick, units: result.units.map(unit => ({ ...unit, maxHp: unit.initialHp })), recent: [],
+      };
       const tick = Math.max(0, Math.min(maxTick, Number(value) || 0));
       const state = new Map(units.map(unit => [unit.id, { ...unit }]));
       const recent = [];
@@ -158,7 +162,7 @@
       }
       return { tick, units: [...state.values()], recent: recent.slice(-8) };
     }
-    return Object.freeze({ result, report, settlement, events, highlights, picks, digest, maxTick, at });
+    return Object.freeze({ result, report, settlement, events, highlights, picks, digest, maxTick, recorded, at });
   }
   const api = Object.freeze({
     status: () => Object.freeze({ key: KEY, ready: true }),

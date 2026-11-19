@@ -24,9 +24,10 @@ window.WarSim = (function () {
 
   // 一场战斗开始时解析一次，之后全程用这份快照，避免中途配置变动导致结算不自洽
   function resolveConf(override) {
-    const c = Object.assign({}, rawConf(), override || {});
-    const d = Object.assign({}, (rawConf().defaults || {}), (c.defaults || {}));
-    const pp = Object.assign({}, (rawConf().pp || {}), (c.pp || {}));
+    const base = override ? {} : rawConf();
+    const c = Object.assign({}, base, override || {});
+    const d = Object.assign({}, (base.defaults || {}), (c.defaults || {}));
+    const pp = Object.assign({}, (base.pp || {}), (c.pp || {}));
     return {
       cols: (c.board && c.board.cols) ?? 8,
       rows: (c.board && c.board.rows) ?? 6,
@@ -2373,6 +2374,8 @@ window.WarSim = (function () {
           battleSecondsPerTick: this.conf.battleSecondsPerTick,
           cols: this.conf.cols,
           rows: this.conf.rows,
+          reportMaxDamageSources: this.conf.reportMaxDamageSources,
+          rules: JSON.parse(JSON.stringify(this.conf)),
         },
         units: this.units.map((u) => ({
           id: u.id, name: u.name, icon: u.icon, team: u.team,
@@ -2797,9 +2800,7 @@ window.WarReport = (function () {
 
   function build(result, options) {
     const opts = options || {};
-    const maxSources = opts.maxDamageSources
-      ?? ((typeof GameDBManager !== 'undefined' && GameDBManager.DB && GameDBManager.DB.warConfig
-        && GameDBManager.DB.warConfig.reportMaxDamageSources) || 3);
+    const maxSources = opts.maxDamageSources ?? result.conf?.reportMaxDamageSources ?? 3;
 
     const agg = aggregate(result);
     const segments = agg.segments.map((seg) => ({
@@ -2850,6 +2851,7 @@ window.WarReport = (function () {
 })();
 
 
+  const engine = window.WarSim, report = window.WarReport;
   const api = Object.freeze({
     status() {
       return Object.freeze({
@@ -2858,12 +2860,12 @@ window.WarReport = (function () {
         handlers: Object.freeze(["war-simulation", "war-report"]),
       });
     },
-    simulate: (...args) => window.WarSim.simulate(...args),
-    demo: (...args) => window.WarSim.demo(...args),
-    buildReport: (...args) => window.WarReport.build(...args),
-    settlement: (...args) => window.WarReport.settlement(...args),
-    WarSim: window.WarSim,
-    WarReport: window.WarReport,
+    simulate: (...args) => engine.simulate(...args),
+    demo: (...args) => engine.demo(...args),
+    buildReport: (...args) => report.build(...args),
+    settlement: (...args) => report.settlement(...args),
+    WarSim: engine,
+    WarReport: report,
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }
       if (modules[KEY] === api) delete modules[KEY];

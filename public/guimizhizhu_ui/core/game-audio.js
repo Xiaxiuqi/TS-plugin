@@ -13,6 +13,10 @@
     prep: ['bgm-prep-1.m4a', 'bgm-prep-2.m4a', 'bgm-prep-3.m4a', 'bgm-prep-4.m4a'],
     battle: Array.from({ length: 10 }, (_, i) => `bgm-battle-${i + 1}.m4a`),
   };
+  const CAMPAIGN_GROUPS = {
+    return: 'prep', muster: 'prep', march: 'prep', parley: 'prep',
+    battle: 'battle', aftermath: null,
+  };
   const SFX = {
     melee: 3, gun: 4, autogun: 3, cannon: 3, bomb: 4, hit: 1,
   };
@@ -57,13 +61,24 @@
   let nextDeck = null;
   let leaveTimer = null;
   let watchTimer = null;
-  let replayTimers = [];
+  let disposed = false;
+  let owner = null;
+  let order = 0;
+  let hiddenTicks = 0;
+  let gesture = null;
+  let controller = null;
+  let loadingTimer = null;
+  const scenes = new Map();
+  const legacyScene = {};
+  const documents = new Set();
+  const soundTimers = new Set();
   let failures = 0;
   let voices = [];
   const buffers = new Map();
   const lastFire = new Map();
   const listeners = new Set();
   const cfg = () => configs[scope];
+  const currentDocument = () => scenes.get(owner)?.document || document;
   const storage = () => {
     try { return window.localStorage; } catch { return null; }
   };
@@ -77,16 +92,20 @@
         if (saved && 'muted' in saved) configs[name].muted = Boolean(saved.muted);
       } catch { /* Invalid local preferences fall back to defaults. */ }
     }
+    applyVolume();
+    notify();
   }
   function notify() { listeners.forEach(fn => fn()); }
   function get(name = scope) { return { ...configs[name] || cfg() }; }
   function set(patch, name = scope) {
+    if (disposed) return;
     if (!configs[name]) throw new Error('未知音频作用域');
     if (typeof patch?.bgm === 'number') configs[name].bgm = clamp(patch.bgm);
     if (typeof patch?.sfx === 'number') configs[name].sfx = clamp(patch.sfx);
     if (patch && 'muted' in patch) configs[name].muted = Boolean(patch.muted);
     try { storage()?.setItem(KEYS[name], JSON.stringify(configs[name])); } catch { /* Playback remains available. */ }
     if (scope === name) applyVolume();
+    if (scope === name && (cfg().muted || !cfg().sfx)) stopVoices();
     notify();
   }
   function applyVolume() {
@@ -96,6 +115,7 @@
     if (bus) bus.gain.value = cfg().muted ? 0 : cfg().sfx;
   }
   function audioContext() {
+    if (disposed) return null;
     if (ctx) return ctx;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return null;
@@ -109,7 +129,32 @@
   }
   function unlock() {
     const context = audioContext();
-    if (context?.state === 'suspended') void context.resume().catch(() => {});
+    if (context?.state === 'suspended') void context.resume().catch(() => hookGesture());
+    if (group && deck?.paused && !currentDocument().hidden) play(deck);
+  }
+  function clearGesture() {
+    if (gesture) gesture.document.removeEventListener('pointerdown', gesture.retry, true);
+    gesture = null;
+  }
+  function hookGesture() {
+    if (disposed || !group || gesture) return;
+    const doc = currentDocument();
+    const retry = () => {
+      clearGesture();
+      if (disposed || !group || doc.hidden) return;
+      const context = audioContext();
+      if (context?.state === 'suspended') void context.resume().catch(() => {});
+      if (deck?.src) void deck.play().catch(() => {});
+    };
+    gesture = { document: doc, retry };
+    doc.addEventListener('pointerdown', retry, true);
+  }
+  function stopVoices() {
+    soundTimers.forEach(clearTimeout);
+    soundTimers.clear();
+    voices.forEach(voice => { try { voice.source.stop(); } catch { /* Already ended. */ } });
+    voices = [];
+    lastFire.clear();
   }
   function shuffle(items) {
     const copy = items.slice();
@@ -148,11 +193,16 @@
     return audio;
   }
   function play(audio, file) {
-    audio.src = BASE + file;
-    void audio.play().catch(() => {});
+    if (disposed || !group) return;
+    if (file) audio.src = BASE + file;
+    if (currentDocument().hidden) return;
+    const source = audio.src;
+    void audio.play().catch(() => {
+      if (!disposed && audio === deck && audio.src === source && group) hookGesture();
+    });
   }
   function advance(audio, failed) {
-    if (audio !== deck || !group) return;
+    if (disposed || audio !== deck || !group) return;
     failures = failed ? failures + 1 : 0;
     if (failures >= TRACKS[group].length) return;
     const file = takeNext();
@@ -169,13 +219,15 @@
     fade(audio, 1, 700);
     if (old) fade(old, 0, 700, () => old.pause());
   }
-  function stop() {
+  function stopPlayback() {
+    if (disposed) return;
     clearTimeout(leaveTimer);
     leaveTimer = null;
-    replayTimers.forEach(clearTimeout);
-    replayTimers = [];
     clearInterval(watchTimer);
     watchTimer = null;
+    clearGesture();
+    stopVoices();
+    owner = null;
     group = null;
     queue = [];
     for (const audio of [deck, nextDeck]) {
@@ -183,34 +235,134 @@
     }
     notify();
   }
-  function leave() {
-    clearTimeout(leaveTimer);
-    leaveTimer = setTimeout(stop, 400);
+  function stop() {
+    if (disposed) return;
+    scenes.clear();
+    stopPlayback();
   }
-  function enter(nextGroup, nextScope) {
-    if (!configs[nextScope]) throw new Error('音频作用域必须为 war 或 duel');
-    replayTimers.forEach(clearTimeout);
-    replayTimers = [];
+  function visible(scene) {
+    if (!scene.element) return true;
+    const node = scene.element();
+    return Boolean(node?.isConnected && node.dataset.open === 'true' &&
+      node.getClientRects().length && node.ownerDocument.defaultView.getComputedStyle(node).visibility !== 'hidden');
+  }
+  function selectScene() {
+    const candidates = [...scenes.entries()].filter(([, scene]) => visible(scene));
+    const selected = candidates.sort((a, b) => b[1].order - a[1].order)[0];
+    if (!selected) {
+      stopVoices();
+      clearGesture();
+      owner = null;
+      clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(stopPlayback, 400);
+      return;
+    }
+    activate(selected[0], selected[1]);
+  }
+  function releaseScene(id, immediate = false) {
+    scenes.delete(id);
+    if (owner !== id) return;
+    if (immediate && !scenes.size) stopPlayback();
+    else selectScene();
+  }
+  function leave() {
+    releaseScene(legacyScene);
+  }
+  function activate(id, scene) {
+    if (disposed) return;
     clearTimeout(leaveTimer);
     leaveTimer = null;
-    scope = nextScope;
+    const resuming = !owner;
+    if (owner !== id) { stopVoices(); clearGesture(); }
+    owner = id;
+    scope = scene.scope;
+    watchDocument(scene.document);
     applyVolume();
-    if (!TRACKS[nextGroup]) { stop(); return; }
-    unlock();
-    if (group !== nextGroup) {
-      group = nextGroup;
+    if (group !== scene.group) {
+      stopVoices();
+      group = scene.group;
       queue = shuffle(TRACKS[group]);
       failures = 0;
       crossfade();
-    } else if (deck?.paused && !document.hidden) void deck.play().catch(() => {});
+    } else {
+      if (failures >= TRACKS[group].length) {
+        failures = 0;
+        queue = shuffle(TRACKS[group]);
+        play(deck, takeNext());
+      }
+      if (deck && (resuming || !deck._fade && deck._level < 1)) fade(deck, 1, 700);
+    }
+    unlock();
     if (!watchTimer) {
       watchTimer = setInterval(() => {
-        if (group && !document.hidden && !document.querySelector(
-          '.crypt-lord-game-shell__modal[data-open="true"][data-audio-active="true"], .crypt-lord-domain-console[data-open="true"]'
-        )) stop();
-      }, 2000);
+        if (disposed || !group || currentDocument().hidden) { hiddenTicks = 0; return; }
+        const scene = scenes.get(owner);
+        const active = scene && visible(scene) && (owner !== legacyScene || document.querySelector(
+          '.crypt-lord-game-shell__modal[data-open="true"][data-audio-active="true"], .crypt-lord-war-replay[data-open="true"], .crypt-lord-campaign[data-open="true"], .crypt-lord-war-sandbox[data-open="true"]'));
+        if (active) { hiddenTicks = 0; return; }
+        if (++hiddenTicks >= 2) {
+          hiddenTicks = 0;
+          if (owner) releaseScene(owner);
+        }
+      }, 1000);
     }
     notify();
+  }
+  function enterScene(id, nextGroup, nextScope, element) {
+    if (disposed) return false;
+    if (!configs[nextScope]) throw new Error('音频作用域必须为 war 或 duel');
+    if (!TRACKS[nextGroup]) { releaseScene(id); return false; }
+    const node = element?.();
+    const previous = scenes.get(id);
+    const scene = { group: nextGroup, scope: nextScope, element,
+      document: node?.ownerDocument || document, order: previous?.order || ++order };
+    if (!visible(scene)) return false;
+    scenes.set(id, scene);
+    if (!previous || owner === id || !owner) activate(id, scene);
+    return true;
+  }
+  function enter(nextGroup, nextScope) { return enterScene(legacyScene, nextGroup, nextScope); }
+  function createScene(element) {
+    const id = {};
+    let released = false;
+    return Object.freeze({
+      enter(nextGroup, nextScope) { return !released && enterScene(id, nextGroup, nextScope, element); },
+      leave() { releaseScene(id); },
+      stop() { releaseScene(id, true); },
+      fireVolley(...args) { return !released && owner === id && fireVolley(...args); },
+      playHits(before, after) {
+        if (released || owner !== id || !before || !after) return;
+        const units = battle => battle.units || ['player', 'enemy']
+          .filter(key => battle[key]).map(key => ({ ...battle[key], id: key }));
+        const old = new Map(units(before).map(unit => [unit.id, unit]));
+        const current = units(after);
+        let hits;
+        if (after.units && Array.isArray(after.log) && Array.isArray(before.log)) {
+          // Native combat logs are bounded; align their overlapping records before selecting new hits.
+          let overlap = Math.min(before.log.length, after.log.length);
+          while (overlap && !after.log.slice(0, overlap).every((row, i) =>
+            JSON.stringify(row) === JSON.stringify(before.log[before.log.length - overlap + i]))) overlap--;
+          hits = after.log.slice(overlap).filter(row => row.target && Number(row.damage) > 0)
+            .map(row => {
+              const unit = current.find(item => item.id === row.target);
+              const maximum = row.calculation?.attribute === 'sanity' ? unit?.maxSanity : unit?.maxHp;
+              return unit ? { unit, ratio: row.damage / Math.max(1, maximum) } : null;
+            }).filter(Boolean);
+        } else hits = current.filter(unit => old.has(unit.id) && unit.hp < old.get(unit.id).hp)
+          .map(unit => ({ unit, ratio: (old.get(unit.id).hp - unit.hp) / Math.max(1, unit.maxHp) }));
+        hits.forEach(({ unit, ratio }, index) => {
+          const rate = 1.12 - .30 * Math.max(0, Math.min(1, ratio / .25));
+          const fire = () => !released && owner === id &&
+            fireVolley('hit', 1, unit.x ?? 0, after.board?.cols || 12, rate, .85, 1);
+          if (!index) fire();
+          else {
+            const timer = setTimeout(() => { soundTimers.delete(timer); fire(); }, index * 100);
+            soundTimers.add(timer);
+          }
+        });
+      },
+      dispose() { released = true; releaseScene(id, true); },
+    });
   }
   function useScope(nextScope) {
     if (!configs[nextScope]) throw new Error('未知音频作用域');
@@ -218,28 +370,39 @@
     applyVolume();
     notify();
   }
-  function decode(buffer) {
+  function decode(context, buffer) {
     return new Promise((resolve, reject) => {
-      const promise = ctx.decodeAudioData(buffer, resolve, reject);
+      const promise = context.decodeAudioData(buffer, resolve, reject);
       if (promise?.then) promise.then(resolve, reject);
     });
   }
   function preload() {
+    if (disposed) return Promise.resolve();
     if (loading) return loading;
-    if (!audioContext()) return Promise.resolve();
+    const context = audioContext();
+    if (!context) return Promise.resolve();
+    controller = new window.AbortController();
+    const signal = controller.signal;
+    loadingTimer = setTimeout(() => controller?.abort(), 15000);
     const files = Object.entries(SFX).flatMap(([kind, count]) =>
       Array.from({ length: count }, (_, i) => `sfx-${kind}-${i + 1}.m4a`));
     loading = Promise.all(files.map(async file => {
       if (buffers.has(file)) return;
       try {
-        const response = await fetch(BASE + file);
-        if (response.ok) buffers.set(file, await decode(await response.arrayBuffer()));
+        const response = await fetch(BASE + file, { signal });
+        if (!response.ok || disposed || signal.aborted) return;
+        const buffer = await decode(context, await response.arrayBuffer());
+        if (!disposed && !signal.aborted) buffers.set(file, buffer);
       } catch { /* Audio CDN failure must not block gameplay. */ }
-    })).then(() => { if (!buffers.size) loading = null; });
+    })).then(() => {
+      clearTimeout(loadingTimer);
+      loadingTimer = null; loading = null; controller = null;
+    });
     return loading;
   }
   function fireVolley(kind, count = 1, x = 0, columns = 8, rate = 1, gain = .8, speed = 1) {
-    if (!SFX[kind] || cfg().muted || !cfg().sfx || ctx?.state !== 'running') return false;
+    if (disposed || !owner || currentDocument().hidden || !SFX[kind] ||
+      cfg().muted || !cfg().sfx || ctx?.state !== 'running') return false;
     const now = ctx.currentTime * 1000;
     if (now - (lastFire.get(kind) ?? -Infinity) < 70 * Math.max(1, speed)) return false;
     const index = Math.floor(Math.random() * SFX[kind]);
@@ -263,7 +426,7 @@
       volume.connect(pan);
       pan.connect(bus);
     } else volume.connect(bus);
-    source.start();
+    try { source.start(); } catch { return false; }
     voices.push({ source, until: now + buffer.duration * 1000 / source.playbackRate.value });
     return true;
   }
@@ -284,48 +447,68 @@
     return 'gun';
   }
   function weightOf(troopId) { return TROOP_WEIGHT[troopId] || [1, .8]; }
-  async function playWarReplay(result) {
-    if (!Array.isArray(result?.events) || !result.events.length) return false;
-    enter('battle', 'war');
-    await preload();
-    if (group !== 'battle' || scope !== 'war') return false;
+  function createReplay(result, scene) {
     const units = new Map((result.units || []).map(unit => [unit.id, unit]));
-    const attacks = result.events.filter(event => event.type === 'attack_start' || event.type === 'hit');
-    if (!attacks.length) { leave(); return true; }
-    const first = Number(attacks[0].tick) || 0;
-    const last = Number(attacks.at(-1).tick) || first;
-    const scale = Math.min(120, 6500 / Math.max(1, last - first));
-    attacks.forEach(event => {
-      const delay = Math.max(0, (Number(event.tick) - first) * scale);
-      replayTimers.push(setTimeout(() => {
-        if (group !== 'battle' || scope !== 'war' || document.hidden) return;
-        const unit = units.get(event.id || event.attackerId || event.byId);
-        const category = event.type === 'hit' ? 'hit' : categoryOf(unit);
-        const [rate, gain] = weightOf(unit?.troopId);
-        fireVolley(category, 1, Number(event.from?.x ?? event.x ?? unit?.x) || 0, Number(result.conf?.cols) || 8, rate, gain);
-      }, delay));
+    const attacks = (result.events || []).filter(event => event.type === 'attack_start')
+      .slice().sort((a, b) => a.tick - b.tick);
+    let tick = 0, index = 0;
+    return Object.freeze({
+      seek(value) {
+        tick = Math.floor(Number(value) || 0);
+        index = 0;
+        while (index < attacks.length && attacks[index].tick <= tick) index++;
+      },
+      advance(value, speed = 1) {
+        const next = Math.floor(Number(value) || 0);
+        if (next <= tick) { this.seek(next); return; }
+        const buckets = new Map();
+        while (index < attacks.length && attacks[index].tick <= next) {
+          const event = attacks[index++];
+          if (event.tick <= tick) continue;
+          const unit = units.get(event.id), category = categoryOf(unit);
+          const [rate, gain] = weightOf(unit?.troopId);
+          const x = Number(event.from?.x) || 0;
+          const bucket = buckets.get(category);
+          if (!bucket) buckets.set(category, { count: 1, x, rate, gain });
+          else {
+            bucket.count++; bucket.x += x;
+            if (gain > bucket.gain) { bucket.rate = rate; bucket.gain = gain; }
+          }
+        }
+        tick = next;
+        for (const [category, bucket] of buckets)
+          scene.fireVolley(category, bucket.count, bucket.x / bucket.count,
+            Number(result.conf?.cols) || 8, bucket.rate, bucket.gain, speed);
+      },
     });
-    replayTimers.push(setTimeout(() => {
-      replayTimers = [];
-      leave();
-    }, Math.max(400, (last - first) * scale + 500)));
-    return true;
   }
   function onVisibility() {
-    if (!deck || !group) return;
-    if (document.hidden) deck.pause();
-    else void deck.play().catch(() => {});
+    if (disposed || !group) return;
+    if (currentDocument().hidden) {
+      for (const audio of [deck, nextDeck]) audio?.pause();
+      stopVoices();
+    } else if (deck) play(deck);
+  }
+  function watchDocument(doc) {
+    if (documents.has(doc)) return;
+    documents.add(doc);
+    doc.addEventListener('visibilitychange', onVisibility);
   }
   load();
-  document.addEventListener('visibilitychange', onVisibility);
+  watchDocument(document);
   const api = Object.freeze({
-    status() { return Object.freeze({ key: KEY, ready: true, group, scope }); },
-    get, set, load, unlock, preload, enter, useScope, leave, stop, fireVolley, categoryOf, weightOf, playWarReplay,
+    status() { return Object.freeze({ key: KEY, ready: !disposed, group, scope, scenes: scenes.size }); },
+    get, set, load, unlock, preload, enter, useScope, leave, stop, fireVolley, categoryOf, weightOf,
+    createScene, createReplay, campaignGroup: stage => CAMPAIGN_GROUPS[stage] || null,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     dispose() {
+      if (disposed) return true;
+      disposed = true;
       clearTimeout(leaveTimer);
-      replayTimers.forEach(clearTimeout);
-      replayTimers = [];
+      controller?.abort();
+      clearTimeout(loadingTimer);
+      scenes.clear();
+      clearGesture();
       clearInterval(watchTimer);
       for (const audio of [deck, nextDeck]) {
         if (!audio) continue;
@@ -333,12 +516,16 @@
         audio.pause();
         audio.removeAttribute('src');
       }
-      voices.forEach(voice => { try { voice.source.stop(); } catch { /* Already ended. */ } });
-      void ctx?.close?.();
-      document.removeEventListener('visibilitychange', onVisibility);
+      stopVoices();
+      buffers.clear();
+      group = null; owner = null;
+      void ctx?.close?.().catch(() => {});
+      documents.forEach(doc => doc.removeEventListener('visibilitychange', onVisibility));
+      documents.clear();
       listeners.clear();
       contract.releaseGlobal(KEY, api);
       if (modules[KEY] === api) delete modules[KEY];
+      return true;
     },
   });
   modules[KEY] = api;

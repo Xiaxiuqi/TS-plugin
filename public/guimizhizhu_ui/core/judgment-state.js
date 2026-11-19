@@ -8,6 +8,15 @@
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   if (modules[KEY]) { contract.initializeGlobal(KEY, modules[KEY]); return; }
 
+  function createClasses(hostWindow = window, options = {}) {
+    const document = hostWindow.document;
+    const navigator = hostWindow.navigator || {};
+    const localStorage = hostWindow.localStorage;
+    const IntersectionObserver = hostWindow.IntersectionObserver;
+    const MutationObserver = hostWindow.MutationObserver;
+    const requestAnimationFrame = hostWindow.requestAnimationFrame?.bind(hostWindow);
+    const console = options.console || globalThis.console;
+    const setTimeout = options.setTimeout || hostWindow.setTimeout?.bind(hostWindow);
   class JudgmentParser {
         constructor() {
           console.log('[JudgmentParser] 解析器已创建');
@@ -2770,7 +2779,87 @@
 
       // ===== 全局实例化 =====
 
-      window.JudgmentBeautifier = JudgmentBeautifier;
+    return { JudgmentParser, JudgmentRenderer, JudgmentInteractor, JudgmentBeautifier };
+  }
+
+  const { JudgmentParser, JudgmentRenderer, JudgmentInteractor, JudgmentBeautifier } = createClasses();
+  function logs(text) {
+    const source = String(text || '').replace(/<(think|thinking|UpdateVariable|JSONPatch)\b[^>]*>[\s\S]*?(?:<\/\1>|$)/gi, '');
+    const marker = /【判定请求\s*\|[^】]+】|判定请求\s*\|[^>\n]+/g;
+    const starts = [...source.matchAll(marker)].map(match => match.index);
+    return starts.map((start, index) => source.slice(start, starts[index + 1] ?? source.length).trim());
+  }
+  function createSession(hostWindow = window, options = {}) {
+    let disposed = false, simplified = Boolean(options.simplified);
+    const timers = new Set();
+    const classes = createClasses(hostWindow, {
+      console: options.console || { log() {}, warn(...args) { globalThis.console.warn(...args); },
+        error(...args) { globalThis.console.error(...args); } },
+      setTimeout(fn, delay) {
+        const timer = hostWindow.setTimeout(() => {
+          timers.delete(timer);
+          if (!disposed) fn();
+        }, delay);
+        timers.add(timer);
+        return timer;
+      },
+    });
+    const parser = new classes.JudgmentParser(), renderer = new classes.JudgmentRenderer();
+    const interactor = new classes.JudgmentInteractor();
+    const initialized = new WeakSet();
+    const checker = Object.create(classes.JudgmentBeautifier.prototype);
+    // Use original completeness rules without starting its gametxt observer or global body preferences.
+    const complete = text => checker.isJudgmentComplete(String(text)
+      .replace(/类型([：:]\s*)非凡对抗/g, '类型$1对抗'));
+    const reveal = interactor.triggerRevealEffect.bind(interactor);
+    interactor.triggerRevealEffect = (block, event) => { if (!simplified) reveal(block, event); };
+    for (const method of ['expand', 'collapse']) {
+      const original = interactor[method].bind(interactor);
+      interactor[method] = (block, event) => {
+        if (disposed) return;
+        original(block, event);
+        const collapsed = block.dataset.collapsed === 'true';
+        block.querySelector('.judgment-header')?.setAttribute('aria-expanded', String(!collapsed));
+        block.querySelector('.judgment-details')?.setAttribute('aria-hidden', String(collapsed));
+      };
+    }
+    function initialize(block) {
+      if (initialized.has(block)) return;
+      initialized.add(block);
+      interactor.initialize(block);
+      block.removeAttribute('tabindex');
+      const header = block.querySelector('.judgment-header');
+      header?.setAttribute('role', 'button');
+      header?.setAttribute('tabindex', '0');
+      header?.setAttribute('aria-expanded', String(block.dataset.collapsed !== 'true'));
+      block.querySelector('.judgment-details')?.setAttribute('aria-hidden', String(block.dataset.collapsed === 'true'));
+      block.addEventListener('keydown', event => {
+        if (event.target !== header && event.target !== block) event.stopPropagation();
+      }, true);
+    }
+    return {
+      parser, complete, initialize,
+      render(text) {
+        if (disposed || !complete(text)) return null;
+        const data = parser.parse(text), block = renderer.render(data);
+        if (!block) return null;
+        initialize(block);
+        const raw = hostWindow.document.createElement('details');
+        raw.className = 'crypt-lord-judgment-raw';
+        const summary = hostWindow.document.createElement('summary');
+        summary.textContent = '判定原文';
+        const content = hostWindow.document.createElement('pre');
+        content.textContent = text;
+        raw.append(summary, content);
+        block.querySelector('.judgment-details')?.append(raw);
+        return block;
+      },
+      expand(block) { interactor.expand(block); },
+      collapse(block) { interactor.collapse(block); },
+      setSimplified(value) { simplified = Boolean(value); },
+      dispose() { disposed = true; timers.forEach(timer => hostWindow.clearTimeout(timer)); timers.clear(); },
+    };
+  }
 
   const api = Object.freeze({
     status() { return Object.freeze({ key: KEY, ready: true }); },
@@ -2778,6 +2867,7 @@
     JudgmentRenderer,
     JudgmentInteractor,
     JudgmentBeautifier,
+    logs, createClasses, createSession,
     createBeautifier() { return new JudgmentBeautifier(); },
     dispose() {
       try { contract.releaseGlobal(KEY, api); } catch { /* Loader owns final cleanup. */ }

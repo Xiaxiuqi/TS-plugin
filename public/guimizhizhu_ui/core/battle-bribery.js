@@ -58,7 +58,7 @@
     return use(battle, data, random, rt => {
       const outcomes = [];
       for (const hero of rt.heroes.filter(row => row.controller !== 'player' &&
-        row.unit.hp > 0 && !row.unit.offField && !row.unit.activeLeaving &&
+        row.unit.hp > 0 && !row.unit.offField && !row.unit.activeLeaving && !row.unit.exiled && !row.unit.possessedHidden &&
         !excluded.includes(row.heroId))) {
         const choices = rt.bribery.subtypes().filter(subtype =>
           rt.bribery.targets(rt.bm, hero, subtype, true).length);

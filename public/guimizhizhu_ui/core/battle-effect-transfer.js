@@ -11,7 +11,7 @@
   const defaults = reference.create({}).transfer.SUBTYPES;
   const clone = value => structuredClone(value);
   const alive = unit => Boolean(unit && unit.hp > 0);
-  const onField = unit => alive(unit) && !unit.offField && !unit.activeLeaving;
+  const onField = unit => alive(unit) && !unit.offField && !unit.activeLeaving && !unit.exiled && !unit.possessedHidden;
   const use = (battle, data, random, operation) => fields.withRuntime(battle, data, random, operation);
   const log = (battle, message) => {
     battle.log.push({ round: battle.round, message, at: Date.now(), effectTransfer: true });

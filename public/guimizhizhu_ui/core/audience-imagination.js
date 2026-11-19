@@ -23,6 +23,9 @@
   const pure = value => String(value || '').replace(/^序列\s*\d+(?:\.\d+)?[-—\s]*/, '').trim();
   const normalizedKey = value => String(value || '').replace(/\s+/g, '').replace(/序列0([0-9])/g, '序列$1');
   const sequences = (pool, pathway) => Array.isArray(pool?.pathways?.[pathway]) ? pool.pathways[pathway] : [];
+  const reference = (pool, options = {}) => modules['cryptLord.audienceImaginationReference']
+    ?.create({ pool, ...options });
+  const ownerView = value => ({ ...value, rank: value.projectionRank });
 
   function pathwayFor(pool, fragment) {
     for (const [pathway, entries] of Object.entries(pool?.pathways || {})) {
@@ -37,6 +40,8 @@
   }
 
   function gate(pool, sequence) {
+    const original = reference(pool);
+    if (original) return ownerView(original.core.resolveOwnerSequence(sequence));
     const source = String(sequence || '');
     if (source.includes('上帝')) return { unlocked: true, rank: 0, slots: 2 };
     const audience = fragments(source).filter(fragment => pathwayFor(pool, fragment) === PATH);
@@ -47,6 +52,8 @@
   }
 
   function canonical(pool, pathway, rank) {
+    const original = reference(pool);
+    if (original) return original.core.canonicalSequenceOf(pathway, rank);
     return sequences(pool, pathway).find(value => rankOf(value) === rank) || '';
   }
 
@@ -105,6 +112,14 @@
   }
 
   function resolve(pool, data, override = null) {
+    const original = reference(pool);
+    if (original) {
+      const snapshot = original.resolver.resolve(data, { imaginationSlots: override });
+      return { ...snapshot, real: snapshot.realSequence,
+        directImaginationGate: ownerView(snapshot.directImaginationGate),
+        imaginationGate: ownerView(snapshot.imaginationGate),
+        imagined: snapshot.imaginedSelections, grazed: snapshot.grazedSelections };
+    }
     const real = String(data?.stat_data?.当前序列 || '').trim();
     const slots = override || stored(data).slots;
     const directGate = gate(pool, real);
@@ -150,6 +165,13 @@
 
   function save(data, pool, values, locked = false) {
     validate(pool, data, values);
+    const original = reference(pool, { locked });
+    if (original) {
+      const next = copy(data);
+      original.core.savePlayerSlots(next, values);
+      original.sync.syncAll(next, locked);
+      return next;
+    }
     const next = copy(data);
     const stat = next.stat_data;
     const rootPlay = stat.$专属玩法 || (stat.$专属玩法 = {});
@@ -168,6 +190,13 @@
     const owner = resolve(pool, data).imaginationGate;
     if (!owner.unlocked || owner.rank !== 0) throw new Error('序列0或“上帝”才能分离作家特性。');
     if (stored(data).used >= 2) throw new Error('两次永久额度已用尽。');
+    const original = reference(pool);
+    if (original) {
+      const next = copy(data);
+      const result = original.core.separateWriterTrait(next, original.resolver.resolve(next));
+      if (!result.ok) throw Error(result.reason);
+      return next;
+    }
     const next = copy(data);
     const stat = next.stat_data;
     const rootPlay = stat.$专属玩法 || (stat.$专属玩法 = {});
@@ -203,6 +232,19 @@
 
   function sync(data, pool, locked = false) {
     if (!record(data?.stat_data)) return false;
+    const original = reference(pool, { locked });
+    if (original) {
+      const snapshot = original.resolver.resolve(data);
+      const stat = data.stat_data;
+      const hasProjection = snapshot.imaginedSelections.length || snapshot.grazedSelections.length ||
+        Object.keys(original.grazing.soulsOfState(data)).length ||
+        Object.keys(stat.序列能力列表 || {}).some(key => key.startsWith(PREFIX) || key.startsWith(GRAZE_PREFIX)) ||
+        stat.辅助能力列表?.['#空想'] || stat.辅助能力列表?.['#放牧'] ||
+        stat.$专属玩法?.观众途径?.空想玩法;
+      if (!hasProjection) return false;
+      original.sync.syncAll(data, locked, snapshot);
+      return true;
+    }
     const stat = data.stat_data;
     const snapshot = resolve(pool, data);
     const soulCount = Object.keys(data?.stat_data?.$专属玩法?.秘祈人途径?.放牧玩法?.灵魂列表 || {})
@@ -254,6 +296,13 @@
   }
 
   function npcProjection(pool, sequence, random = Math.random) {
+    const original = reference(pool, { random });
+    if (original) {
+      const cache = new Map();
+      const projection = original.core.buildNpcBattleProjection({ 当前序列: sequence }, 'npc', cache);
+      return projection ? { imagined: projection.imaginedPathways,
+        effectiveSequence: projection.effectiveSequence, abilities: projection.data.能力清单 } : null;
+    }
     const owner = gate(pool, sequence);
     if (!owner.unlocked) return null;
     const occupied = owned(pool, sequence);
