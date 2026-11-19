@@ -324,6 +324,16 @@
 
   function bindEvent(name, handler) {
     if (!name || typeof handler !== 'function') return null;
+    // Side requests (hostApi.generateRaw) re-emit generation start events with the same args as a
+    // real turn. Drop them here so no module mistakes a side request for a new native turn.
+    const events = tavernEvents();
+    if (events && (name === events.GENERATION_STARTED || name === events.GENERATION_AFTER_COMMANDS)) {
+      const inner = handler;
+      handler = (...args) => {
+        if (modules[HOST_API_KEY]?.sideRequestActive?.()) return undefined;
+        return inner(...args);
+      };
+    }
     // Bind SillyTavern's own eventSource first; a page-level window.eventOn may be a
     // third-party shim that never receives host events.
     for (const owner of owners()) {

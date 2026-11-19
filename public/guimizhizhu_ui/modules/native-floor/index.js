@@ -41,10 +41,8 @@
     abortController: new AbortController(),
     disposed: false,
     epoch: 1,
-    nativeObserver: null,
     nativeObserverHost: null,
     nativeMessageReceivedHandle: null,
-    nativeScanQueued: false,
     observedAssistantId: null,
     processedNativeAssistantIds: new Set(),
     subscriptions: [],
@@ -155,17 +153,19 @@
       debugEvent('refusal', 'native-assistant-stale', `messageId=${id}; last=${floors.at(-1)?.message_id}`, 'warn');
       return false;
     }
-    // The host and context-trimming extensions keep updating floor metadata (extra, is_hidden) after receive;
-    // guard only the content we settle from.
-    const fingerprint = list => JSON.stringify(list.map(row => [row?.message_id, row?.role, row?.message, row?.data]));
+    // Only the floor count and the last user/assistant pair feed this settlement; metadata on older
+    // floors (is_hidden, extra) changes freely while extensions run.
+    const fingerprint = list => JSON.stringify([list.length,
+      ...list.slice(-2).map(row => [row?.message_id, row?.role, row?.message, row?.swipe_id ?? null, row?.data])]);
     const source = fingerprint(floors);
     const beforeWrite = async () => {
       if (!valid()) throw new DOMException('原生生成来源已变化', 'AbortError');
       const latest = await snapshotFloors();
       if (fingerprint(latest) !== source || !valid()) {
-        const before = JSON.parse(source), now = JSON.parse(fingerprint(latest));
-        const changed = before.length !== now.length ? `length ${before.length}->${now.length}` :
-          before.flatMap((row, i) => row.map((v, k) => JSON.stringify(v) !== JSON.stringify(now[i][k]) ? `${i}:${['id', 'role', 'message', 'data'][k]}` : '').filter(Boolean)).join(',');
+        const [beforeLength, ...before] = JSON.parse(source), [nowLength, ...now] = JSON.parse(fingerprint(latest));
+        const changed = beforeLength !== nowLength ? `length ${beforeLength}->${nowLength}` :
+          before.flatMap((row, i) => row.map((v, k) => JSON.stringify(v) !== JSON.stringify(now[i]?.[k])
+            ? `${i ? 'assistant' : 'user'}:${['id', 'role', 'message', 'swipe', 'data'][k]}` : '').filter(Boolean)).join(',');
         debugEvent('refusal', 'native-source-changed', `messageId=${id}; ${changed}`, 'warn');
         throw new DOMException('原生生成来源已变化', 'AbortError');
       }
@@ -245,25 +245,15 @@
     return settled;
   }
 
-  function queueNativeAssistantScan() {
-    if (state.nativeScanQueued || state.disposed) return;
-    state.nativeScanQueued = true;
-    Promise.resolve().then(scanNativeAssistantFloors).catch(error => {
-      debugEvent('failure', 'native-observer-scan-failure', error?.message || error, 'error');
-    }).finally(() => { state.nativeScanQueued = false; });
-  }
-
+  // Settlement is driven only by MESSAGE_RECEIVED. At install we recover the latest floor once
+  // in case a reply landed while the script was not loaded.
   async function installNativeObserver() {
     const afterNative = modules[AFTER_NATIVE_HOST_KEY];
     const host = afterNative?.getHost?.();
-    if (!host?.document || !host?.window?.MutationObserver || state.disposed || state.nativeObserver) return false;
+    if (!host?.document || state.disposed || state.nativeObserverHost) return false;
+    state.nativeObserverHost = host;
     await scanNativeAssistantFloors({ recoverLatest: true });
     if (state.disposed) return false;
-    const target = host.document.querySelector?.('#chat') || host.document.body || host.document.documentElement;
-    if (!target) return false;
-    state.nativeObserver = new host.window.MutationObserver(queueNativeAssistantScan);
-    state.nativeObserver.observe(target, { childList: true, subtree: true });
-    state.nativeObserverHost = host;
     const events = afterNative?.tavernEvents?.();
     if (events?.MESSAGE_RECEIVED && !state.nativeMessageReceivedHandle) {
       state.nativeMessageReceivedHandle = afterNative.bindEvent?.(events.MESSAGE_RECEIVED, (messageId, type) => {
@@ -807,12 +797,9 @@
     if (generationId) stopOwnedGeneration(generationId);
     closeTurn();
     state.retiredGenerationIds.clear();
-    state.nativeObserver?.disconnect?.();
-    state.nativeObserver = null;
     state.nativeObserverHost = null;
     state.nativeMessageReceivedHandle?.stop?.();
     state.nativeMessageReceivedHandle = null;
-    state.nativeScanQueued = false;
     state.observedAssistantId = null;
     state.processedNativeAssistantIds.clear();
     try { contract.releaseGlobal(KEY, api); } catch { /* loader releases exact ownership too */ }

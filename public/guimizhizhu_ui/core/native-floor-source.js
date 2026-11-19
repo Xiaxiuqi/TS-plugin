@@ -76,8 +76,10 @@
   }
   function floorSignature(source, messageId, guard) {
     receipt(source, guard);
-    return signature([source.rows.find(row => row.message_id === messageId),
-      source.swipes.find(row => row.message_id === messageId)]);
+    // Context extensions toggle is_hidden/extra on old floors; that is not a branch change.
+    const strip = row => row && typeof row === 'object' ? { ...row, is_hidden: undefined, extra: undefined } : row;
+    return signature([strip(source.rows.find(row => row.message_id === messageId)),
+      strip(source.swipes.find(row => row.message_id === messageId))]);
   }
   function writeDependencies(keys = []) {
     return Object.fromEntries([...new Set([KEY, 'cryptLord.hostApi', 'cryptLord.afterNativeHost',

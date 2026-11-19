@@ -271,8 +271,11 @@
   }
 
   async function writeAssistantMessage(messageId, message, data, options = {}) {
-    // Hide/unhide by context extensions is not a content change; compare only settlement inputs.
-    const sourceKey = rows => JSON.stringify((rows || []).map(row => row && typeof row === 'object' ? { ...row, is_hidden: undefined, extra: undefined } : row));
+    // Settlement reads the floor count and the last user/assistant pair; hide/unhide and other metadata
+    // on older floors are not content changes.
+    const pick = row => row && typeof row === 'object'
+      ? [row.message_id, row.role, row.message, row.swipe_id ?? null, row.swipes ?? null, row.data] : row;
+    const sourceKey = rows => JSON.stringify([(rows || []).length, ...(rows || []).slice(-2).map(pick)]);
     if (!options.preserveData && !options.npcOnly && !options.itemOnly && !options.skipDynamicStatus) {
       const guard = modules['cryptLord.dynamicStatus']?.createGuard?.(options.guard);
       if (guard) options = { ...options, guard };

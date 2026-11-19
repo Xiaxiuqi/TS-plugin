@@ -191,7 +191,8 @@
     ].join('\n');
   }
 
-  async function originalVariableTemplate(host, name, guard) {
+  // revisionOnly: return only the raw entry revision, skipping JSON parsing and template merging.
+  async function originalVariableTemplate(host, name, guard, revisionOnly = false) {
     const binding = clone(await host.getCharWorldbookNames('current'));
     check(guard);
     const primary = binding?.primary || '1源堡';
@@ -221,6 +222,7 @@
       }
     }
     if (!same(binding, await host.getCharWorldbookNames('current'))) throw Error('变量模板世界书绑定已变化，未请求模型');
+    if (revisionOnly) return { revision };
     let templates = {};
     // Worldbook templates are hand-written; allow raw line breaks inside string literals.
     const escapeControls = text => {
@@ -376,14 +378,17 @@
     if (requestPolicy && !same(requestPolicy, policySnapshot)) throw Error('变量可见性或锁定设置已变化，未请求模型');
     const provenance = { settingsRevision: captured.revision, template, templateName, epoch: token, source: capturedSource,
       policy: clone(policySnapshot), policyService, patchService };
-    async function beforeRequest() {
+    // The template was read just above; re-read it only before retries, where time has passed.
+    async function beforeRequest(attempt) {
       current();
       checkSource(provenance.source, guard);
       if (modules[VARIABLE_PATCH_KEY] !== patchService) throw Error('变量指令解析服务已变化，未请求模型');
       const latest = await snapshot(host, guard);
       if (!same(latest.revision, captured.revision)) throw Error('变量结算设置已变化，未请求模型');
-      const latestTemplate = await originalVariableTemplate(host, templateName, guard);
-      if (!same(latestTemplate.revision, template.revision)) throw Error('变量模板来源已变化，未请求模型');
+      if (attempt > 0) {
+        const latestTemplate = await originalVariableTemplate(host, templateName, guard, true);
+        if (!same(latestTemplate.revision, template.revision)) throw Error('变量模板来源已变化，未请求模型');
+      }
       if (modules[CONTEXT_CONFIG_KEY] !== policyService || !same(policySnapshot, await policyService.readConfig()))
         throw Error('变量可见性或锁定设置已变化，未请求模型');
       await assertInput?.();
@@ -411,7 +416,7 @@
     let lastError = null;
     for (let attempt = 0; attempt <= settings.retryLimit; attempt += 1) {
       try {
-        await beforeRequest();
+        await beforeRequest(attempt);
         const response = responseText(await host.generateRaw(config));
         current();
         if (!response.trim()) throw new Error('变量副 API 返回空内容。');

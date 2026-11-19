@@ -12,7 +12,7 @@
   let queue = Promise.resolve(), unregister = null;
   const subscriptions = [];
   const revisions = new WeakMap(), baselines = new WeakMap(), sources = new WeakMap(), turns = new Map();
-  let generating = false, turnPrepared = false, manualEpoch = 0, receiptId = 0;
+  let generating = false, manualEpoch = 0, receiptId = 0;
   const clone = value => value === undefined ? undefined : structuredClone(value);
   const canonical = value => {
     if (Object.prototype.toString.call(value) === '[object Date]') return ['Date', value.toISOString()];
@@ -372,15 +372,11 @@
     promptEpoch++;
     const active = injection; injection = null; active?.uninject();
   }
-  function cancel() { epoch++; manualEpoch++; generating = false; turnPrepared = false; nativeTurn = null; turns.clear(); clearPrompt(); }
+  function cancel() { epoch++; manualEpoch++; generating = false; nativeTurn = null; turns.clear(); clearPrompt(); }
   const quiet = (type, options, dryRun) => dryRun || ['quiet', 'quiet_prompt'].includes(type) ||
     options?.dryRun || options?.params?.dryRun || options?.quiet_prompt || options?.params?.quiet_prompt;
   async function beforeGeneration(type, options, dryRun) {
     if (disposed || quiet(type, options, dryRun)) return;
-    // Side requests (variable settlement via generateRaw) emit a second plain 'normal' AFTER_COMMANDS
-    // while the native turn is still open; treating it as a new turn would cancel the turn being settled.
-    if (turnPrepared && (type || 'normal') === 'normal') return;
-    turnPrepared = true;
     clearPrompt(); nativeTurn = null; turns.clear(); turnSequence++;
     if (!['normal', 'continue', 'regenerate', 'swipe', 'append', '', undefined, null].includes(type)) return;
     const token = epoch, request = promptEpoch;
@@ -420,10 +416,10 @@
     const after = modules['cryptLord.afterNativeHost'], events = after?.tavernEvents();
     for (const [name, handler] of [[events?.GENERATION_AFTER_COMMANDS, beforeGeneration], [events?.CHAT_CHANGED, cancel],
       [events?.GENERATION_STOPPED, (type, options, dryRun) => { if (!quiet(type, options, dryRun)) cancel(); }],
-      [events?.GENERATION_ENDED, (type, options, dryRun) => { if (!quiet(type, options, dryRun)) { generating = false; turnPrepared = false; clearPrompt(); } }],
+      [events?.GENERATION_ENDED, (type, options, dryRun) => { if (!quiet(type, options, dryRun)) { generating = false; clearPrompt(); } }],
       [events?.GENERATION_STARTED, (type, options, dryRun) => {
         if (quiet(type, options, dryRun)) return;
-        generating = true; turnPrepared = false; manualEpoch++;
+        generating = true; manualEpoch++;
       }]]) {
       if (name) subscriptions.push(after.bindEvent(name, handler));
     }

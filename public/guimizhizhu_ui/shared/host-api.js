@@ -79,8 +79,16 @@
     return findMethod('generate')(config);
   }
 
-  function generateRaw(config) {
-    return findMethod('generateRaw')(config);
+  // Side requests re-emit GENERATION_STARTED/AFTER_COMMANDS with the same args as a real turn.
+  // Modules check sideRequestActive() to tell them apart.
+  let sideRequests = 0;
+  async function generateRaw(config) {
+    sideRequests += 1;
+    try { return await findMethod('generateRaw')(config); }
+    finally { sideRequests -= 1; }
+  }
+  function sideRequestActive() {
+    return sideRequests > 0;
   }
 
   function injectPrompts(prompts, options) {
@@ -213,6 +221,7 @@
     deleteChatMessages,
     generate,
     generateRaw,
+    sideRequestActive,
     injectPrompts,
     getModelList,
     getVariables,
