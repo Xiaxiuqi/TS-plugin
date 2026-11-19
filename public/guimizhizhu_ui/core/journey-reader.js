@@ -187,12 +187,12 @@ ChronicleCore.DICT.ALIAS_MAP = Object.assign(Object.create(null), ChronicleCore.
     const after = modules['cryptLord.afterNativeHost'], surface = after?.getHost();
     const dependencies = Object.fromEntries(['cryptLord.nativeFloorSource', 'cryptLord.responseNormalizer']
       .map(key => [key, modules[key]]));
-    const script = signature(host.scriptVariableOptions?.()), chat = surface?.window?.SillyTavern?.getCurrentChatId?.();
+    const script = signature(host.scriptVariableOptions?.()), chat = (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.());
     const valid = () => (!guard || guard()) && host === modules['cryptLord.hostApi'] &&
       after === modules['cryptLord.afterNativeHost'] && surface?.document === after?.getHost()?.document &&
       surface?.window === after?.getHost()?.window && script === signature(host.scriptVariableOptions?.()) &&
       Object.entries(dependencies).every(([key, value]) => modules[key] === value) &&
-      chat === surface?.window?.SillyTavern?.getCurrentChatId?.();
+      chat === (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.());
     const [nativeResult, booksResult] = await Promise.allSettled([native(host, messageId, valid, token), books(host, valid, token)]);
     check(valid, token);
     return {

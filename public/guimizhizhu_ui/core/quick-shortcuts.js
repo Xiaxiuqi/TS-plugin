@@ -27,7 +27,7 @@
   function scope() {
     const service = modules['cryptLord.hostApi'], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { service, after, document: surface?.document, window: surface?.window, epoch,
-      script: signature(service?.scriptVariableOptions?.()), chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      script: signature(service?.scriptVariableOptions?.()), chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function scopedGuard(guard) {
     const expected = scope();
@@ -137,8 +137,8 @@ _normalizeQuickShortcutState(rawState) {
   }
   function normalizeCommands(commands) {
     if (!Array.isArray(commands)) throw Error('快捷指令必须是列表');
-    const result = commands.map(command => String(command ?? '').trim()).filter(Boolean);
-    if (new Set(result).size !== result.length) throw Error('快捷指令内容不能重复，否则无法区分补充勾选');
+    // Original parser keeps duplicates; supplementary picks are keyed by text, so keep the first copy.
+    const result = [...new Set(commands.map(command => String(command ?? '').trim()).filter(Boolean))];
     if (result.some(command => /<\/?cmd>/i.test(command))) throw Error('快捷指令正文不能包含 cmd 分隔标签');
     return result;
   }

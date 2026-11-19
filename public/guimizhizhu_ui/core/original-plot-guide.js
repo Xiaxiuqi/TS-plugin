@@ -21,7 +21,7 @@
     const host = modules['cryptLord.hostApi'], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { host, after, document: surface?.document, window: surface?.window,
       source: modules['cryptLord.nativeFloorSource'], epoch, script: signature(host?.scriptVariableOptions?.()),
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function scopedGuard(guard) {
     const expected = scope();

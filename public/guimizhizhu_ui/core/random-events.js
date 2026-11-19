@@ -123,7 +123,8 @@
   function chatId() {
     for (const owner of [window, window.parent, window.top]) {
       try {
-        const id = owner?.SillyTavern?.getCurrentChatId?.();
+        const st = owner?.SillyTavern;
+        const id = st?.getCurrentChatId?.() ?? st?.getContext?.()?.getCurrentChatId?.();
         if (id != null && String(id).trim()) return String(id);
       } catch { /* Cross-origin host. */ }
     }

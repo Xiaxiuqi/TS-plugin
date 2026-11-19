@@ -284,7 +284,7 @@
     return { host, after, document: surface?.document, window: surface?.window, library,
       get: library.get, has: library.has, isEmpty: library.isEmpty,
       script: JSON.stringify(canonical(host?.scriptVariableOptions?.() ?? host?.getScriptId?.())),
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function assertScope(scope, guard, token) {
     check(guard, token);

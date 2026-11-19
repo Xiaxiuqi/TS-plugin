@@ -22,7 +22,7 @@
     const host = modules['cryptLord.hostApi'], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { host, after, document: surface?.document, window: surface?.window,
       script: signature(host?.scriptVariableOptions?.() ?? host?.getScriptId?.()),
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.(), industry: modules['cryptLord.industryState'],
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()), industry: modules['cryptLord.industryState'],
       domain: modules['cryptLord.domainState'] };
   }
   function check(identity, guard, token = epoch) {

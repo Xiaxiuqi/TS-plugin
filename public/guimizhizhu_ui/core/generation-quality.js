@@ -38,7 +38,7 @@
   function sourceFor(host) {
     const after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { host, after, document: surface?.document, window: surface?.window,
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.(), options: clone(scriptOptions(host)), epoch };
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()), options: clone(scriptOptions(host)), epoch };
   }
   function checkSource(source, guard) {
     check({ guard });

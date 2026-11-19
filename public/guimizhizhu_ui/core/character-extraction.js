@@ -29,7 +29,7 @@
   function scope(host) {
     const after = modules['cryptLord.afterNativeHost'], surface = after?.getHost();
     return { host, after, document: surface?.document, window: surface?.window,
-      script: JSON.stringify(optionsFor(host)), chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      script: JSON.stringify(optionsFor(host)), chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function assertScope(expected, guard, token) {
     check(guard, token);

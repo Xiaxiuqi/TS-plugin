@@ -44,14 +44,14 @@
   async function captureVariable({ messageId, message, response = '', purpose = 'turn-settlement', guard }) {
     const token = epoch; check(guard, token);
     const host = modules['cryptLord.hostApi'], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
-    const script = JSON.stringify(host?.scriptVariableOptions?.()), chat = surface?.window?.SillyTavern?.getCurrentChatId?.();
+    const script = JSON.stringify(host?.scriptVariableOptions?.()), chat = (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.());
     if (!Number.isInteger(messageId) || messageId < 0) throw Error('变量思维链楼层编号无效');
     const sourceHash = await hash(message);
     check(guard, token);
     const current = after?.getHost?.();
     if (host !== modules['cryptLord.hostApi'] || after !== modules['cryptLord.afterNativeHost'] ||
       surface?.document !== current?.document || surface?.window !== current?.window ||
-      script !== JSON.stringify(host?.scriptVariableOptions?.()) || chat !== current?.window?.SillyTavern?.getCurrentChatId?.())
+      script !== JSON.stringify(host?.scriptVariableOptions?.()) || chat !== (current?.window?.SillyTavern?.getCurrentChatId?.() ?? current?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()))
       throw new DOMException('变量思维链来源宿主已变化', 'AbortError');
     return { version: 1, messageId, sourceHash, variableThinking: thoughts(response).at(-1) || '', purpose };
   }

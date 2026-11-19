@@ -12,6 +12,8 @@
     Array.isArray(value) ? value.map(canonical) : record(value) ?
       Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
   const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+  // Other extensions toggle is_hidden/extra on old floors; that is not a source change.
+  const stable = row => row && typeof row === 'object' ? { ...row, is_hidden: undefined, extra: undefined } : row;
   const revisions = new WeakMap(), turns = new Map(), subscriptions = [];
   let disposed = false, epoch = 0, manualEpoch = 0, turnEpoch = 0, sequence = 0, queue = Promise.resolve(), nativePending = null, generating = false;
   const hostApi = () => contract.waitGlobalInitialized('cryptLord.hostApi', { timeoutMs: 10000 });
@@ -33,14 +35,16 @@
   }
   function select(entries) {
     if (!Array.isArray(entries)) throw Error('主要世界书不可读取');
-    return names.map(name => {
+    // Only the battle rule is mandatory; optional companions absent from this card's book are skipped.
+    return names.flatMap((name, position) => {
       const list = entries.filter(row => String(row.name ?? row.comment ?? '').trim() === name);
+      if (!list.length && position > 0) return [];
       if (list.length !== 1) throw Error(`「${name}」${list.length ? '重名' : '缺失'}`);
       const row = list[0];
       if (!Number.isSafeInteger(row.uid) || row.uid < 0 || entries.filter(item => item.uid === row.uid).length !== 1)
         throw Error(`「${name}」UID 缺失或重复`);
       if (typeof row.enabled !== 'boolean') throw Error(`「${name}」启用状态无效`);
-      return clone(row);
+      return [clone(row)];
     });
   }
   function describe(rows) {
@@ -261,9 +265,9 @@
         throw Error('战斗提示回合身份或末楼已变化');
       if (['continue', 'append'].includes(turn.type)) {
         if (loaded.floor.message_id !== turn.origin?.message_id || !same(user, turn.user)) throw Error('续写来源已变化');
-      } else if (!same(rows.filter(row => row.role === 'assistant' && row.message_id < user.message_id).at(-1), turn.previous))
+      } else if (!same(stable(rows.filter(row => row.role === 'assistant' && row.message_id < user.message_id).at(-1)), stable(turn.previous)))
         throw Error('回合前状态已变化');
-      if (turn.user && !same(user, turn.user)) throw Error('回合 user 来源已变化');
+      if (turn.user && !same(stable(user), stable(turn.user))) throw Error('回合 user 来源已变化');
       for (const row of issued.baseline.native.rows) {
         if (row.message_id === loaded.floor.message_id) continue;
         if (baseline.reader.floorSignature(issued.baseline.native, row.message_id, guard) !==

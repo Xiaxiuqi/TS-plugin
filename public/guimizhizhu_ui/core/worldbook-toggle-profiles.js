@@ -30,7 +30,7 @@
   function identity() {
     const service = modules[HOST_KEY], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { service, after, document: surface?.document, window: surface?.window,
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.(),
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()),
       script: signature(service?.scriptVariableOptions?.()), token: epoch };
   }
   function check(scope, guard) {

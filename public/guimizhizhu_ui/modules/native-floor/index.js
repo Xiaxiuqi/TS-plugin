@@ -53,7 +53,7 @@
   function hostIdentity() {
     const host = modules[HOST_API_KEY], after = modules[AFTER_NATIVE_HOST_KEY], surface = after?.getHost?.();
     return { host, after, document: surface?.document, window: surface?.window,
-      script: JSON.stringify(host?.scriptVariableOptions?.()), chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      script: JSON.stringify(host?.scriptVariableOptions?.()), chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
 
   function sameHost(identity) {
@@ -158,8 +158,9 @@
     const fingerprint = list => JSON.stringify([list.length,
       ...list.slice(-2).map(row => [row?.message_id, row?.role, row?.message, row?.swipe_id ?? null, row?.data])]);
     const source = fingerprint(floors);
+    let abortReason = '';
     const beforeWrite = async () => {
-      if (!valid()) throw new DOMException('原生生成来源已变化', 'AbortError');
+      if (!valid()) { abortReason = 'context'; throw new DOMException('原生生成来源已变化', 'AbortError'); }
       const latest = await snapshotFloors();
       if (fingerprint(latest) !== source || !valid()) {
         const [beforeLength, ...before] = JSON.parse(source), [nowLength, ...now] = JSON.parse(fingerprint(latest));
@@ -167,6 +168,7 @@
           before.flatMap((row, i) => row.map((v, k) => JSON.stringify(v) !== JSON.stringify(now[i]?.[k])
             ? `${i ? 'assistant' : 'user'}:${['id', 'role', 'message', 'swipe', 'data'][k]}` : '').filter(Boolean)).join(',');
         debugEvent('refusal', 'native-source-changed', `messageId=${id}; ${changed}`, 'warn');
+        abortReason = 'source';
         throw new DOMException('原生生成来源已变化', 'AbortError');
       }
     };
@@ -207,8 +209,13 @@
     } catch (error) {
       if (epoch === state.epoch) state.processedNativeAssistantIds.delete(id);
       if (error?.name === 'AbortError') {
-        if (epoch === state.epoch && !state.disposed && !controller.signal.aborted)
-          window.toastr?.warning?.('原生正文来源已变化，本次检修未覆盖外部修改。');
+        if (epoch === state.epoch && !state.disposed && !controller.signal.aborted) {
+          const message = abortReason === 'source' ? '原生正文来源已变化，本次检修未覆盖外部修改。'
+            : abortReason === 'context' ? '聊天或脚本状态已切换，本次结算已放弃。'
+            : `本次结算已取消：${String(error.message || '未知原因')}`;
+          debugEvent('refusal', 'native-assistant-aborted', `messageId=${id}; reason=${abortReason || 'module'}; ${error.message}`, 'warn');
+          window.toastr?.warning?.(message);
+        }
         return false;
       }
       throw error;

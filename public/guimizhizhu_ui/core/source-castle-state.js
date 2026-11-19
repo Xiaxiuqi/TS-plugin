@@ -13,7 +13,7 @@
     return { host, after, document: surface?.document, window: surface?.window, epoch,
       source: modules['cryptLord.nativeFloorSource'], shortcuts: modules['cryptLord.quickShortcuts'],
       script: JSON.stringify(host?.scriptVariableOptions?.()),
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function check(scope, guard) {
     if (disposed || modules[KEY] !== api || generating || guard?.() === false)

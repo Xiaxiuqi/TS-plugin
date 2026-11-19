@@ -15,6 +15,8 @@
     return record(value) ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
   };
   const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+  // Other extensions toggle is_hidden/extra on old floors; that is not a source change.
+  const stable = row => row && typeof row === 'object' ? { ...row, is_hidden: undefined, extra: undefined } : row;
   const tickets = new WeakMap(), revisions = new WeakMap(), turns = new Map(), subscriptions = [];
   let disposed = false, epoch = 0, manualEpoch = 0, generating = false, sequence = 0;
   let queue = Promise.resolve(), nativePending = null, nativeSequence = 0;
@@ -26,7 +28,7 @@
   function scope(host) {
     const after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { host, after, document: surface?.document, window: surface?.window,
-      script: JSON.stringify(optionsFor(host)), chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      script: JSON.stringify(optionsFor(host)), chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function assertScope(identity, guard, token) {
     check(guard, token);
@@ -320,7 +322,7 @@
       const previous = rows.filter(row => row.role === 'assistant' && row.message_id < user.message_id).at(-1);
       if (turn.continuing) {
         if (floor.message_id !== turn.origin?.message_id || !same(user, turn.userSource)) throw Error('归档续写来源已变化');
-      } else if (!same(previous, turn.source) || turn.userSource && !same(user, turn.userSource)) throw Error('归档回合前状态已变化');
+      } else if (!same(stable(previous), stable(turn.source)) || turn.userSource && !same(stable(user), stable(turn.userSource))) throw Error('归档回合前状态已变化');
       if (!turn.continuing && turn.source) {
         const pages = await host.getChatMessages(String(turn.source.message_id), { include_swipes: true });
         check(guard, token);

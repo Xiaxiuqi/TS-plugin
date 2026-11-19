@@ -32,7 +32,7 @@
   function scope() {
     const api = modules['cryptLord.hostApi'], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost?.();
     return { api, after, document: surface?.document, window: surface?.window, epoch,
-      script: signature(api?.scriptVariableOptions?.()), chat: surface?.window?.SillyTavern?.getCurrentChatId?.(),
+      script: signature(api?.scriptVariableOptions?.()), chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()),
       parser: modules['cryptLord.randomEvents'], parse: modules['cryptLord.randomEvents']?.parseEntry,
       normalizer: modules['cryptLord.responseNormalizer'] };
   }

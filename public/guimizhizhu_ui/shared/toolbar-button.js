@@ -19,6 +19,16 @@
 
   const bindingOwner = `crypt-lord-${root.loader?.instanceId || 'standalone'}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const localBindings = new Map();
+  // Script-button APIs live in the helper iframe of this script, not on the Tavern page.
+  function buttonHost() {
+    const id = String(modules['cryptLord.hostApi']?.getScriptId?.() || '').trim();
+    if (typeof window.replaceScriptButtons === 'function' || !id) return window;
+    for (const frame of document.querySelectorAll('iframe[id^="TH-script--"]')) {
+      try { if (frame.id.endsWith('--' + id) && typeof frame.contentWindow?.replaceScriptButtons === 'function') return frame.contentWindow; }
+      catch { /* cross-origin frame */ }
+    }
+    return window;
+  }
   let disposed = false;
   let registered = false;
   let registrationMethod = null;
@@ -155,14 +165,14 @@
     if (registered) return true;
     const descriptor = [{ name: BUTTON_NAME, visible: true }];
     try {
-      if (typeof window.replaceScriptButtons === 'function') {
-        window.replaceScriptButtons(descriptor);
+      if (typeof buttonHost().replaceScriptButtons === 'function') {
+        buttonHost().replaceScriptButtons(descriptor);
         registered = true;
         registrationMethod = 'replaceScriptButtons';
         return true;
       }
-      if (typeof window.appendInexistentScriptButtons === 'function') {
-        window.appendInexistentScriptButtons(descriptor);
+      if (typeof buttonHost().appendInexistentScriptButtons === 'function') {
+        buttonHost().appendInexistentScriptButtons(descriptor);
         registered = true;
         registrationMethod = 'appendInexistentScriptButtons';
         return true;
@@ -186,14 +196,14 @@
   function bindButton() {
     let nextEventName = null;
     try {
-      if (typeof window.getButtonEvent === 'function') nextEventName = window.getButtonEvent(BUTTON_NAME) || null;
+      if (typeof buttonHost().getButtonEvent === 'function') nextEventName = buttonHost().getButtonEvent(BUTTON_NAME) || null;
     } catch (error) {
       lastError = `读取原生按钮事件失败：${safeMessage(error)}`;
       directConsole('error', 'native-event-binding-failure', lastError);
       debugEvent('button-event-binding-failure', lastError, 'error');
     }
 
-    if (nextEventName && typeof window.eventOn === 'function') {
+    if (nextEventName && typeof buttonHost().eventOn === 'function') {
       removeLocalBindings();
       if (eventName === nextEventName && eventHandler) {
         bindingMethod = 'eventOn';
@@ -206,7 +216,7 @@
         return openPanel();
       };
       try {
-        window.eventOn(nextEventName, handler);
+        buttonHost().eventOn(nextEventName, handler);
       } catch (error) {
         eventName = null;
         eventHandler = null;

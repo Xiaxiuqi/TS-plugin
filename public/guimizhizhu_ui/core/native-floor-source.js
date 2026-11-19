@@ -19,7 +19,7 @@
     const host = modules['cryptLord.hostApi'], after = modules['cryptLord.afterNativeHost'], surface = after?.getHost();
     return { host, after, document: surface?.document, window: surface?.window, epoch,
       script: signature(host?.scriptVariableOptions?.()),
-      chat: surface?.window?.SillyTavern?.getCurrentChatId?.() };
+      chat: (surface?.window?.SillyTavern?.getCurrentChatId?.() ?? surface?.window?.SillyTavern?.getContext?.()?.getCurrentChatId?.()) };
   }
   function check(scope, guard) {
     if (disposed || modules[KEY] !== api || guard?.() === false)

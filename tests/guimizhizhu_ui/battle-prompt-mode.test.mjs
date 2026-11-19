@@ -147,7 +147,7 @@ test('完整原版模式独立对照与安全手动/设置事务：原条目开�
     await assert.rejects(g.api.setMode(baseline, true), /变化|读取/); assert.equal(g.state.bookWrites.length, 0);
   }
   for (const mutate of [
-    s => s.books['角色主书'].pop() && s.books['角色主书'].pop(),
+    s => s.books['角色主书'].shift(),
     s => s.books['角色主书'].push(structuredClone(s.books['角色主书'][0])),
     s => { s.books['角色主书'][1].uid = 10; },
     s => { s.binding.primary = ''; },
@@ -156,6 +156,12 @@ test('完整原版模式独立对照与安全手动/设置事务：原条目开�
     assert.equal(baseline.editable, false); await assert.rejects(g.api.setMode(baseline, true));
     assert.equal((await g.api.saveAutomatic(baseline, false)).loaded.config.automatic, false);
     assert.equal(g.state.bookWrites.length, 0);
+  }
+  {
+    const g = fixture(); g.state.books['角色主书'].splice(1, 1);
+    const loaded = await g.api.load();
+    assert.equal(loaded.entries.length, names.length - 1);
+    assert.equal(loaded.mode, 'normal');
   }
   const final = fixture(), finalBaseline = await final.api.load();
   final.state.hook = kind => { if (kind === 'book-write') final.state.books['角色主书'][0].custom.keep = false; };
