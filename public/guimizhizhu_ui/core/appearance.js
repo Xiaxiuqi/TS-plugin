@@ -6,8 +6,8 @@
   const modules = (root.__stage1Modules = root.__stage1Modules || Object.create(null));
   if (modules[KEY]) { contract.initializeGlobal(KEY, modules[KEY]); return; }
   const DEFAULTS = Object.freeze({ theme: 'dark', font: 'font-noto-serif-sc', fontSize: 14,
-    disableAnimations: false, background: 'default', customBackgrounds: [], opacity: 0.5, blur: 3,
-    autoRandom: false, interval: 10, fullWidth: false, width: 900, height: 600, mobileScale: 75 });
+    disableAnimations: false, fullWidth: false, width: 900, height: 600, mobileScale: 75 });
+  const LEGACY_KEYS = Object.freeze(['background', 'customBackgrounds', 'opacity', 'blur', 'autoRandom', 'interval']);
   const FONTS = {
     'font-serif': { name: '系统衬线体', css: '"Noto Serif SC", "Source Han Serif SC", STSong, serif', isArt: false },
     'font-sans': { name: '系统无衬线', css: '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif', isArt: false },
@@ -32,30 +32,24 @@
     if (!Number.isFinite(n)) return 75;
     return Math.max(60, Math.min(100, Math.round(n / 5) * 5));
   }
-  function imageUrl(raw, custom = false) {
+  // Only font stylesheet URLs remain; background images were removed with the native-floor design.
+  function resourceUrl(raw) {
     const value = String(raw || '').trim();
-    if (custom) {
-      if (!/^data:image\/(?:png|jpeg|webp|gif|avif);base64,[A-Za-z0-9+/]+=*$/.test(value)) throw Error('背景必须是位图图片');
-      const encoded = value.slice(value.indexOf(',') + 1);
-      if (encoded.length % 4 || encoded.length / 4 * 3 - (encoded.match(/=+$/)?.[0].length || 0) > 5 * 1024 * 1024)
-        throw Error('单张背景图片不能超过 5 MB');
-      return value;
-    }
     const url = new URL(value);
-    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw Error('图片地址无效');
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw Error('资源地址无效');
     return url.href;
   }
   function normalizeSettings(value = {}) {
     if (!record(value)) throw Error('外观配置格式损坏，请重新读取或显式恢复默认');
     const next = clone(DEFAULTS);
-    for (const key of ['disableAnimations', 'autoRandom', 'fullWidth']) {
+    for (const key of ['disableAnimations', 'fullWidth']) {
       if (value[key] !== undefined && typeof value[key] !== 'boolean') throw Error('外观开关格式无效');
       next[key] = value[key] ?? next[key];
     }
     if (value.theme !== undefined && !['dark', 'light'].includes(value.theme)) throw Error('主题无效');
     next.theme = value.theme || next.theme;
-    for (const [key, min, max, integral] of [['fontSize', 12, 40, true], ['opacity', 0, 1, false],
-      ['blur', 0, 20, true], ['interval', 1, 1440, true], ['width', 800, 2500, true], ['height', 600, 1200, true]]) {
+    for (const [key, min, max, integral] of [['fontSize', 12, 40, true],
+      ['width', 800, 2500, true], ['height', 600, 1200, true]]) {
       const raw = value[key] ?? next[key], n = Number(raw);
       if (typeof raw === 'boolean' || raw === '' || !Number.isFinite(n) || n < min || n > max || integral && !Number.isInteger(n))
         throw Error(`${key} 超出范围（${min} - ${max}）`);
@@ -64,18 +58,6 @@
     next.mobileScale = clampMainUiScale(value.mobileScale ?? next.mobileScale);
     next.font = value.font ?? next.font;
     if (typeof next.font !== 'string' || !/^[\w-]+$/.test(next.font)) throw Error('字体标识无效');
-    const backgrounds = value.customBackgrounds ?? [];
-    if (!Array.isArray(backgrounds)) throw Error('自定义图库格式损坏');
-    next.customBackgrounds = backgrounds.map(bg => {
-      if (!record(bg) || typeof bg.id !== 'string' || !/^bg_[\w-]+$/.test(bg.id) || typeof bg.name !== 'string')
-        throw Error('自定义背景记录无效');
-      return { id: bg.id, name: bg.name, data: imageUrl(bg.data, true) };
-    });
-    if (new Set(next.customBackgrounds.map(bg => bg.id)).size !== next.customBackgrounds.length) throw Error('自定义背景标识重复');
-    next.background = value.background ?? next.background;
-    if (typeof next.background !== 'string') throw Error('背景标识无效');
-    if (next.background !== 'default' && !next.customBackgrounds.some(bg => bg.id === next.background))
-      next.background = imageUrl(next.background);
     return next;
   }
   function options(host) {
@@ -127,7 +109,9 @@
       const host = await hostApi(), current = await snapshot(host, guard, true);
       checkSource(proof.source, guard);
       if (!same(baseline, current.revision)) throw Error('外观设置已被外部修改，请重新读取');
+      // Drop legacy background keys from old saves instead of carrying them forward.
       const stored = { ...(record(baseline.raw) ? clone(baseline.raw) : {}), ...next };
+      for (const key of LEGACY_KEYS) delete stored[key];
       if (baseline.exists && same(stored, baseline.raw)) return { ...current, unchanged: true };
       let attempted = false, failure;
       try { await host.updateVariablesWith(variables => {
@@ -161,13 +145,13 @@
     checkSource(source, guard);
     const primary = bound?.primary || '1源堡';
     const books = [...new Set(['2历史孔隙', ...(bound?.additional || [])].filter(book => book !== primary)), primary];
-    const fonts = clone(FONTS), backgrounds = [], warnings = [];
+    const fonts = clone(FONTS), warnings = [];
     const parser = modules['cryptLord.abilityState']?.parseWorldbookJson;
     if (!parser) throw Error('世界书配置解析器尚未加载');
     const entriesByName = new Map(), versions = new Map();
     const select = entries => entries.filter(entry => {
       const name = String(entry.name || entry.comment || '');
-      return name.includes('【配置') && /背景图库|字体配置/.test(name);
+      return name.includes('【配置') && name.includes('字体配置');
     });
     for (const book of books) {
       try {
@@ -192,24 +176,14 @@
       const name = String(entry.name || entry.comment);
       try {
         const parsed = parser(entry.content);
-        if (name.includes('背景图库')) {
-          if (!Array.isArray(parsed)) throw Error('背景图库不是列表');
-          for (const url of parsed) {
-            try {
-              const id = imageUrl(url);
-              if (!backgrounds.some(bg => bg.id === id)) backgrounds.push({ id, data: id, name: `系统背景 ${backgrounds.length + 1}`, source: book });
-            } catch { warnings.push(`${name}：跳过无效图片地址`); }
+        if (!record(parsed)) throw Error('字体配置不是字典');
+        for (const [id, font] of Object.entries(parsed)) {
+          if (!/^[\w-]+$/.test(id) || ['__proto__', 'constructor', 'prototype'].includes(id) ||
+            !record(font) || typeof font.css !== 'string' || /[{};<>\\]|url\s*\(/i.test(font.css)) {
+            warnings.push(`${name}：跳过无效字体 ${id}`); continue;
           }
-        } else {
-          if (!record(parsed)) throw Error('字体配置不是字典');
-          for (const [id, font] of Object.entries(parsed)) {
-            if (!/^[\w-]+$/.test(id) || ['__proto__', 'constructor', 'prototype'].includes(id) ||
-              !record(font) || typeof font.css !== 'string' || /[{};<>\\]|url\s*\(/i.test(font.css)) {
-              warnings.push(`${name}：跳过无效字体 ${id}`); continue;
-            }
-            fonts[id] = { name: String(font.name || id), css: font.css, isArt: font.isArt === true,
-              url: font.url ? imageUrl(font.url) : '', customCSS: String(font.customCSS || '') };
-          }
+          fonts[id] = { name: String(font.name || id), css: font.css, isArt: font.isArt === true,
+            url: font.url ? resourceUrl(font.url) : '', customCSS: String(font.customCSS || '') };
         }
       } catch (error) { warnings.push(`${name}：${error.message}`); }
     }
@@ -221,11 +195,11 @@
         entries = select(rows);
       } catch (error) { if (expected !== null) throw error; }
       checkSource(source, guard);
-      if (!same(entries, expected)) throw Error('外观图库或字体配置已变化，请重新读取');
+      if (!same(entries, expected)) throw Error('外观字体配置已变化，请重新读取');
     }
     if (parser !== modules['cryptLord.abilityState']?.parseWorldbookJson ||
       !same(bound, await host.getCharWorldbookNames('current'))) throw Error('外观世界书绑定或解析器已变化，请重新读取');
-    checkSource(source, guard); return { fonts, backgrounds, warnings };
+    checkSource(source, guard); return { fonts, warnings };
   }
   async function readFloors(guard) {
     check(guard);
@@ -237,27 +211,9 @@
     if (modules['cryptLord.nativeFloorSource'] !== source) throw Error('原生楼层来源已变化');
     return context.rows.filter(row => row.role === 'assistant' && !row.is_hidden);
   }
-  function backgroundPool(settings, catalog) {
-    return [...catalog.backgrounds, ...settings.customBackgrounds.map(bg => ({ ...bg, source: 'custom' }))];
-  }
-  function randomBackground(pool, current, random = Math.random) {
-    if (!pool.length) return null;
-    let selected;
-    for (let count = 0; count < 5; count++) {
-      selected = pool[Math.min(pool.length - 1, Math.max(0, Math.floor(random() * pool.length)))];
-      if (pool.length === 1 || selected.id !== current) break;
-    }
-    return selected;
-  }
-  function deleteBackground(settings, id) {
-    if (!settings.customBackgrounds.some(bg => bg.id === id)) throw Error('只能删除自行导入的背景');
-    return normalizeSettings({ ...settings, customBackgrounds: settings.customBackgrounds.filter(bg => bg.id !== id),
-      background: settings.background === id ? 'default' : settings.background });
-  }
   const api = Object.freeze({
     defaults: () => clone(DEFAULTS), fallbackFonts: () => clone(FONTS), status: () => ({ key: KEY, ready: !disposed }),
-    normalizeSettings, clampMainUiScale, imageUrl, readSnapshot, saveSettings, loadCatalog, readFloors,
-    backgroundPool, randomBackground, deleteBackground,
+    normalizeSettings, clampMainUiScale, readSnapshot, saveSettings, loadCatalog, readFloors,
     dispose() {
       disposed = true; epoch++; subscriptions.splice(0).forEach(item => item?.stop());
       contract.releaseGlobal(KEY, api); if (modules[KEY] === api) delete modules[KEY]; return true;

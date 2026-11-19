@@ -64,38 +64,23 @@ function fixture() {
   return { state, books, modules, floors, pages, surface, emit: name => listeners.get(name)?.forEach(fn => fn()),
     api: modules[KEY], untouched: () => JSON.stringify(books) === protectedBooks };
 }
-test('原版外观默认值、缩放和随机规则独立对照，图库与字体只读及安全边界', async () => {
+test('原版外观默认值和缩放独立对照，字体只读及安全边界', async () => {
   const { api, books, state, untouched } = fixture(), reference = oracle('clampMainUiScale');
   for (const input of [undefined, null, '', 59, 61, 72, 77, 100, 123, '65', 'broken', Infinity])
     assert.equal(api.clampMainUiScale(input), reference.clampMainUiScale(input));
   const initial = await api.readSnapshot();
-  assert.equal(initial.settings.fontSize, 14); assert.equal(initial.settings.opacity, .5);
-  assert.equal(initial.settings.blur, 3); assert.equal(initial.settings.interval, 10);
+  assert.equal(initial.settings.fontSize, 14); assert.equal('background' in initial.settings, false);
   assert.equal(initial.settings.width, 900); assert.equal(initial.settings.height, 600);
   assert.equal(initial.settings.mobileScale, 75); assert.equal(state.writes, 0);
   const catalog = await api.loadCatalog(); assert.equal(catalog.fonts['font-test'].name, '正本');
-  assert.equal(catalog.backgrounds.length, 2); assert.equal(state.writes, 0); assert.equal(untouched(), true);
-  const pool = catalog.backgrounds;
-  assert.equal(api.randomBackground([], ''), null);
-  assert.equal(api.randomBackground(pool, pool[0].id, () => .75).id, pool[1].id);
-  let draws = 0;
-  assert.equal(api.randomBackground(pool, pool[0].id, () => { draws++; return 0; }).id, pool[0].id); assert.equal(draws, 5);
-  const data = 'data:image/png;base64,AQID';
-  const settings = api.normalizeSettings({ customBackgrounds: [{ id: 'bg_1', name: '<img>', data }], background: 'bg_1' });
-  assert.equal(api.backgroundPool(settings, catalog).length, 3);
-  const removed = api.deleteBackground(settings, 'bg_1'); assert.equal(removed.background, 'default');
-  assert.equal(removed.customBackgrounds.length, 0);
-  assert.throws(() => api.deleteBackground(settings, pool[0].id), /只能删除/);
-  for (const value of ['javascript:alert(1)', 'file:///private.png', 'https://user:pass@example.test/a'])
-    assert.throws(() => api.imageUrl(value));
-  assert.throws(() => api.imageUrl('data:image/svg+xml;base64,AQID', true), /位图/);
-  for (const bad of [{ fontSize: 41 }, { opacity: 1.1 }, { blur: -1 }, { interval: 0 }, { width: 799 },
-    { height: 599 }, { font: 'a;b' }, { theme: 'foreign' }, { autoRandom: 'true' }, { opacity: '' }])
+  assert.equal('backgrounds' in catalog, false); assert.equal(state.writes, 0); assert.equal(untouched(), true);
+  // 旧存档里的背景字段被忽略，不再报错。
+  assert.equal('background' in api.normalizeSettings({ background: 'bg_1', customBackgrounds: 'junk', opacity: 9 }), false);
+  for (const bad of [{ fontSize: 41 }, { width: 799 }, { height: 599 }, { font: 'a;b' }, { theme: 'foreign' }, { fullWidth: 'true' }])
     assert.throws(() => api.normalizeSettings(bad));
   books['1源堡'][0].content = '{"bad":{"css":"serif; color:red"},"safe":{"name":"<img src=x>","css":"serif","customCSS":"body{display:none}"}}';
   const safe = await api.loadCatalog(); assert.equal(safe.fonts.bad, undefined);
   assert.equal(safe.fonts.safe.name, '<img src=x>'); assert.ok(safe.warnings.length);
-  books['1源堡'][1].content = 'damaged'; assert.ok((await api.loadCatalog()).warnings.some(text => text.includes('背景图库')));
   books.extra = [{ name: '【配置】字体配置', content: '{"font-test":{"css":"serif","name":"附加库"}}' }];
   state.additional = ['1源堡', 'extra'];
   books['1源堡'][0].content = '{"font-test":{"css":"sans-serif","name":"主库"}}';

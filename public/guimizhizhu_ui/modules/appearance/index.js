@@ -6,11 +6,11 @@
   if (!service || !host) throw Error('外观模块依赖尚未加载');
   if (modules[KEY]) { contract.initializeGlobal(KEY, modules[KEY]); return; }
   const state = { settings: service.defaults(), saved: service.defaults(), revision: null,
-    catalog: { fonts: service.fallbackFonts(), backgrounds: [], warnings: [] }, section: null, fields: {},
-    disposed: false, editing: false, dirty: false, busy: false, epoch: 0, imageToken: 0, fontToken: 0,
-    currentBackground: null, image: null, timer: null, observer: null, scanTimer: null,
+    catalog: { fonts: service.fallbackFonts(), warnings: [] }, section: null, fields: {},
+    disposed: false, editing: false, dirty: false, busy: false, epoch: 0, fontToken: 0,
+    observer: null, scanTimer: null,
     scanning: false, rescan: false, subscriptions: [], touched: new Map(), fontAbort: null, faces: [],
-    fontAliases: new Map(), fontSignature: '', fontWait: null, reader: null };
+    fontAliases: new Map(), fontSignature: '', fontWait: null };
   const ownedDocument = host.getHost()?.document || document;
   const doc = () => ownedDocument;
   const win = () => doc().defaultView || window;
@@ -31,8 +31,8 @@
   function message(text) { const target = state.section?.querySelector('[data-appearance-status]'); if (target) target.textContent = text; }
   function remember(element, reading = false) {
     if (state.touched.has(element)) return;
-    const variables = ['--cl-appearance-font', '--cl-appearance-display-font', '--cl-appearance-size', '--cl-appearance-image',
-      '--cl-appearance-opacity', '--cl-appearance-blur', '--cl-appearance-width', '--cl-appearance-height', '--cl-appearance-scale'];
+    const variables = ['--cl-appearance-font', '--cl-appearance-display-font', '--cl-appearance-size',
+      '--cl-appearance-width', '--cl-appearance-height', '--cl-appearance-scale'];
     state.touched.set(element, { reading, variables: variables.map(key => [key, element.style.getPropertyValue(key),
       element.style.getPropertyPriority(key)]), theme: element.getAttribute('data-theme'),
     full: element.getAttribute('data-cl-appearance-full'), motion: element.getAttribute('data-cl-appearance-motion'),
@@ -51,8 +51,6 @@
     if (!original.hadClass) element.classList.remove(original.className);
   }
   function paint(element) {
-    // Assistant reading text never gets a background image; only owned surfaces do.
-    const reading = state.touched.get(element)?.reading;
     const settings = state.settings, font = state.catalog.fonts[settings.font] || state.catalog.fonts['font-serif'];
     const display = font.isArt ? font : Object.values(state.catalog.fonts).find(value => value.isArt) || font;
     const scopedFont = css => css.replace(/"[^"]*"|'[^']*'|[^,]+/g, part => {
@@ -60,8 +58,6 @@
       return state.fontAliases.has(family) ? JSON.stringify(state.fontAliases.get(family)) : part;
     });
     const values = { font: scopedFont(font.css), 'display-font': scopedFont(display.css), size: `${settings.fontSize}px`,
-      image: !reading && state.currentBackground ? `url(${JSON.stringify(state.currentBackground.data)})` : 'none',
-      opacity: String(settings.opacity), blur: `${settings.blur}px`,
       width: `${settings.width}px`, height: `${settings.height}px`,
       scale: String(win().innerWidth <= 768 ? settings.mobileScale / 100 : 1) };
     for (const [key, value] of Object.entries(values)) element.style.setProperty(`--cl-appearance-${key}`, value);
@@ -112,37 +108,6 @@
   function scheduleScan() {
     if (state.disposed || state.scanTimer) return;
     state.scanTimer = win().setTimeout(() => { state.scanTimer = null; void scan(); }, 80);
-  }
-  function stopImage() {
-    state.imageToken++;
-    state.reader?.abort(); state.reader = null;
-    if (state.image) { state.image.cancel(); state.image = null; }
-  }
-  function loadImage(url, token) {
-    return new Promise((resolve, reject) => {
-      const image = new (win().Image)(), timer = win().setTimeout(() => finish(Error('图片加载超时')), 10000);
-      const finish = error => {
-        win().clearTimeout(timer); image.onload = null; image.onerror = null;
-        if (state.image?.image === image) state.image = null;
-        if (error) reject(error); else resolve(image);
-      };
-      state.image = { image, cancel: () => { finish(new DOMException('图片加载已取消', 'AbortError')); image.src = ''; } };
-      image.onload = () => finish(token === state.imageToken ? null : new DOMException('图片加载已取消', 'AbortError'));
-      image.onerror = () => finish(Error('图片无法加载，保留当前背景')); image.src = url;
-    });
-  }
-  async function setBackground(id, random = false) {
-    const pool = service.backgroundPool(state.settings, state.catalog);
-    const target = random || id === 'default' ? service.randomBackground(pool, state.currentBackground?.id) : pool.find(bg => bg.id === id);
-    stopImage(); const token = state.imageToken;
-    if (!target) {
-      if (id !== 'default' && pool.length) return setBackground('default', true);
-      state.currentBackground = null; repaint(); return null;
-    }
-    if (target.data === state.currentBackground?.data) { state.currentBackground = target; repaint(); return target; }
-    await loadImage(target.data, token);
-    if (!valid(state.epoch) || token !== state.imageToken) throw new DOMException('图片操作已取消', 'AbortError');
-    state.currentBackground = target; repaint(); return target;
   }
   function clearFonts() {
     state.fontToken++; state.fontAbort?.abort(); state.fontAbort = null;
@@ -210,30 +175,8 @@
       }
     }
   }
-  function timer() {
-    if (state.timer) win().clearInterval(state.timer);
-    state.timer = null;
-    if (!state.saved.autoRandom || !state.revision || state.disposed || state.editing) return;
-    state.timer = win().setInterval(async () => {
-      if (doc().hidden || state.busy || state.editing) return;
-      const token = state.epoch; state.busy = true; controls();
-      try {
-        const selected = await setBackground('default', true);
-        if (!selected || !valid(token)) return;
-        const saved = await service.saveSettings({ ...state.saved, background: selected.id }, state.revision, () => valid(token) && !state.editing);
-        if (!valid(token)) return;
-        state.revision = saved.revision;
-        if (!saved.settings) { timer(); message(saved.warning); return; }
-        state.saved = clone(saved.settings); state.settings = clone(saved.settings);
-      } catch (error) {
-        if (valid(token)) { state.saved.autoRandom = false; timer(); message(`自动换图已暂停：${error.message}`); }
-      } finally { if (valid(token)) { state.busy = false; controls(); } }
-    }, state.saved.interval * 60000);
-  }
   function fillSelection() {
     if (!state.section) return;
-    state.section.querySelectorAll('[data-background]').forEach(button =>
-      button.setAttribute('aria-pressed', String(button.dataset.background === state.currentBackground?.id)));
     state.section.querySelectorAll('[data-theme-choice]').forEach(button =>
       button.setAttribute('aria-pressed', String(button.dataset.themeChoice === state.settings.theme)));
     for (const key of ['width', 'height']) {
@@ -262,19 +205,6 @@
       if (input.type === 'checkbox') input.checked = state.settings[key]; else input.value = state.settings[key];
       const range = state.section.querySelector(`[data-range="${key}"]`); if (range) range.value = input.value;
     }
-    const gallery = state.section.querySelector('[data-appearance-gallery]'); gallery.replaceChildren();
-    for (const background of service.backgroundPool(state.settings, state.catalog)) {
-      const button = tool(background.name, 'image', () => void choose(background.id));
-      button.replaceChildren(); button.dataset.background = background.id;
-      const image = node('img'); image.src = background.data; image.alt = background.name; image.loading = 'lazy';
-      image.addEventListener('error', () => {
-        button.dataset.failed = 'true'; button.title = `${background.name}：无法加载`; image.hidden = true;
-        const icon = node('i', 'fa-solid fa-triangle-exclamation'); icon.setAttribute('aria-hidden', 'true'); button.append(icon);
-      });
-      button.append(image, node('span', '', background.source === 'custom' ? background.name : '系统背景'));
-      gallery.append(button);
-    }
-    if (!gallery.children.length) gallery.append(node('span', '', '图库为空'));
     controls();
   }
   function values() {
@@ -285,21 +215,10 @@
     try { state.settings = values(); state.dirty = true; repaint(); controls(); message('外观有未保存的修改。'); void loadFont(); }
     catch (error) { state.dirty = true; controls(); message(error.message); }
   }
-  async function choose(id, random = false) {
-    if (state.busy || !state.revision) return;
-    const token = state.epoch; state.busy = true; controls();
-    try {
-      const selected = await setBackground(id, random);
-      if (!valid(token)) return;
-      state.settings.background = selected?.id || 'default'; state.dirty = true;
-      message('背景已预览，尚未保存。');
-    } catch (error) { if (valid(token) && error.name !== 'AbortError') message(error.message); }
-    finally { if (valid(token)) { state.busy = false; controls(); } }
-  }
   async function reload(repair = false) {
     if (state.busy || !valid(state.epoch)) return false;
     if (state.editing && state.dirty && !repair && !win().confirm('放弃未保存的外观修改，重新读取？')) return false;
-    const token = ++state.epoch; stopImage(); state.busy = true; controls();
+    const token = ++state.epoch; state.busy = true; controls();
     try {
       const [snapshot, catalog] = await Promise.all([service.readSnapshot(() => valid(token), repair), service.loadCatalog(() => valid(token))]);
       if (!valid(token)) return false;
@@ -307,13 +226,9 @@
       state.saved = clone(snapshot.settings); state.settings = clone(snapshot.settings); state.dirty = false;
       if (repair) { state.settings = service.defaults(); state.dirty = true; }
       fill(); repaint(); void scan();
-      let imageWarning = '';
-      try { await setBackground(state.settings.background); }
-      catch (error) { imageWarning = error.message; }
-      if (!valid(token)) return false;
-      message(imageWarning || snapshot.warning || catalog.warnings.join('；') || (repair ? '默认外观已预览，尚未保存。' : '外观设置已读取。'));
+      message(snapshot.warning || catalog.warnings.join('；') || (repair ? '默认外观已预览，尚未保存。' : '外观设置已读取。'));
       void loadFont();
-      timer(); return true;
+      return true;
     } catch (error) { if (valid(token)) { state.revision = null; message(error.message); } return false; }
     finally { if (valid(token)) { state.busy = false; controls(); } }
   }
@@ -325,47 +240,11 @@
       const saved = await service.saveSettings(next, state.revision, () => valid(token) && state.editing);
       if (!valid(token)) return false;
       state.revision = saved.revision;
-      if (!saved.settings) { message(saved.warning); timer(); return false; }
+      if (!saved.settings) { message(saved.warning); return false; }
       state.settings = clone(saved.settings); state.saved = clone(saved.settings);
       state.revision = saved.revision; state.dirty = false; repaint(); message(saved.warning || '外观设置已保存。'); return true;
     } catch (error) { if (valid(token)) message(error.message); return false; }
-    finally { if (valid(token)) { state.busy = false; controls(); timer(); } }
-  }
-  async function importImage(file) {
-    if (!file || state.busy || !state.revision) return;
-    if (file.size > 5 * 1024 * 1024) { message('单张背景图片不能超过 5 MB'); return; }
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'].includes(file.type)) { message('背景必须是 PNG、JPEG、WebP、GIF 或 AVIF 位图'); return; }
-    const token = state.epoch; state.busy = true; controls();
-    try {
-      const data = await new Promise((resolve, reject) => {
-        const reader = new (win().FileReader)(); state.reader = reader;
-        const finish = error => {
-          if (state.reader === reader) state.reader = null;
-          reader.onload = null; reader.onerror = null; reader.onabort = null;
-          if (error) reject(error); else resolve(reader.result);
-        };
-        reader.onload = () => finish(); reader.onerror = () => finish(Error('图片读取失败'));
-        reader.onabort = () => finish(new DOMException('图片读取已取消', 'AbortError')); reader.readAsDataURL(file);
-      });
-      if (!valid(token)) return;
-      const background = { id: `bg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, name: file.name, data: service.imageUrl(data, true) };
-      stopImage(); await loadImage(data, state.imageToken);
-      if (!valid(token)) return;
-      state.settings = service.normalizeSettings({ ...state.settings, background: background.id,
-        customBackgrounds: [...state.settings.customBackgrounds, background] });
-      state.currentBackground = { ...background, source: 'custom' }; state.dirty = true;
-      fill(); repaint(); message('图片已导入预览，尚未保存。');
-    } catch (error) { if (valid(token) && error.name !== 'AbortError') message(error.message); }
     finally { if (valid(token)) { state.busy = false; controls(); } }
-  }
-  async function removeImage() {
-    const id = state.currentBackground?.id;
-    if (state.busy || !state.revision) return;
-    if (!state.settings.customBackgrounds.some(bg => bg.id === id)) { message('只能删除自行导入的背景'); return; }
-    if (!win().confirm('删除当前自定义背景？')) return;
-    state.settings = service.deleteBackground(state.settings, id); state.dirty = true;
-    state.currentBackground = null; fill(); repaint();
-    await choose('default', true);
   }
   function mount(parent) {
     if (state.disposed || state.section) return state.section;
@@ -396,15 +275,6 @@
     }
     input('font', '字体', 'select'); input('fontSize', '正文字号', 'number', 12, 40, 1);
     input('disableAnimations', '禁用视觉特效', 'checkbox');
-    const gallery = node('div', 'crypt-lord-appearance-gallery'); gallery.dataset.appearanceGallery = ''; fieldset.append(gallery);
-    const imageTools = node('div', 'crypt-lord-appearance-actions'), file = node('input');
-    file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif,image/avif'; file.hidden = true;
-    file.addEventListener('change', () => { const selected = file.files[0]; file.value = ''; void importImage(selected); });
-    imageTools.append(tool('随机背景', 'shuffle', () => void choose('default', true)),
-      tool('导入背景', 'image', () => file.click()), tool('删除当前自定义背景', 'trash-can', () => void removeImage()), file);
-    fieldset.append(imageTools);
-    input('opacity', '阅读区不透明度', 'number', 0, 1, 0.05); input('blur', '背景模糊', 'number', 0, 20, 1);
-    input('autoRandom', '自动随机背景', 'checkbox'); input('interval', '换图间隔（分钟）', 'number', 1, 1440, 1);
     const layout = node('details', 'crypt-lord-appearance-layout');
     layout.append(node('summary', '', '布局与尺寸'),
       input('fullWidth', '工具窗口铺满', 'checkbox'),
@@ -414,21 +284,19 @@
     fieldset.append(layout);
     const actions = node('div', 'crypt-lord-appearance-actions'), status = node('span');
     status.dataset.appearanceStatus = ''; status.setAttribute('role', 'status');
-    const reset = tool('恢复默认外观', 'rotate-left', () => { if (win().confirm('恢复默认外观并清空自定义图库？保存后生效。')) void reload(true); });
+    const reset = tool('恢复默认外观', 'rotate-left', () => { if (win().confirm('恢复默认外观？保存后生效。')) void reload(true); });
     reset.dataset.appearanceReset = '';
     const reread = tool('重新读取外观', 'rotate-right', () => void reload()); reread.dataset.appearanceReload = '';
     const commit = tool('保存外观', 'floppy-disk', () => void save(), '保存外观');
     commit.dataset.appearanceSave = ''; commit.className = 'is-primary';
     actions.append(status, reset, reread, commit); section.append(fieldset, actions); parent.append(section); fill(); return section;
   }
-  async function open() { state.editing = true; timer(); return reload(); }
+  async function open() { state.editing = true; return reload(); }
   function close() {
     const reread = !state.revision;
-    state.editing = false; state.epoch++; stopImage(); state.busy = false; state.dirty = false;
+    state.editing = false; state.epoch++; state.busy = false; state.dirty = false;
     state.settings = clone(state.saved); fill(); repaint(); void loadFont();
     if (!valid(state.epoch)) return;
-    void setBackground(state.saved.background).catch(error => { if (!state.disposed && error.name !== 'AbortError') message(error.message); });
-    timer();
     if (reread && !state.disposed) void reload();
   }
   function start() {
@@ -443,8 +311,7 @@
     win().addEventListener('resize', repaint);
     const events = host.tavernEvents();
     if (events?.CHAT_CHANGED) state.subscriptions.push(host.bindEvent(events.CHAT_CHANGED, () => {
-      close(); state.epoch++; stopImage(); clearFonts(); state.fontSignature = '';
-      state.currentBackground = null;
+      close(); state.epoch++; clearFonts(); state.fontSignature = '';
       for (const [element, original] of state.touched) if (original.reading) { restore(element, original); state.touched.delete(element); }
       void reload();
     }));
@@ -454,11 +321,11 @@
     void reload(); scheduleScan();
   }
   const api = Object.freeze({
-    status: () => ({ key: KEY, ready: !state.disposed, dirty: state.dirty, busy: state.busy, background: state.currentBackground?.id }),
+    status: () => ({ key: KEY, ready: !state.disposed, dirty: state.dirty, busy: state.busy }),
     current: () => clone(state.settings), mount, open, close, reload, save, start,
     dispose() {
-      state.disposed = true; state.epoch++; stopImage(); clearFonts();
-      win().clearInterval(state.timer); win().clearTimeout(state.scanTimer); state.observer?.disconnect();
+      state.disposed = true; state.epoch++; clearFonts();
+      win().clearTimeout(state.scanTimer); state.observer?.disconnect();
       win().removeEventListener('resize', repaint); state.subscriptions.splice(0).forEach(subscription => subscription?.stop?.());
       for (const [element, original] of state.touched) restore(element, original);
       state.touched.clear(); state.section?.remove(); state.section = null;

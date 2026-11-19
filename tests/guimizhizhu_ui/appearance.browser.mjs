@@ -1,12 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import os from 'node:os';
-import path from 'node:path';
 const require = createRequire(import.meta.url);
 const { chromium } = require('C:/Users/ROG/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
-const image = await readFile(new URL('../../数据库前端/d745e5301a83fcaf.png', import.meta.url));
 try {
   for (const width of [1280, 390]) {
     const page = await browser.newPage({ viewport: { width, height: 880 } });
@@ -28,9 +24,11 @@ try {
     await size.fill('18');
     await appearance.getByRole('button', { name: '浅色', exact: true }).click();
     await appearance.getByRole('combobox', { name: '字体', exact: true }).selectOption('font-preview');
-    await appearance.locator('[data-background]').first().click(); await idle();
     assert.equal(await page.locator('[mesid="2"] .mes_text').evaluate(node => getComputedStyle(node).fontSize), '18px');
-    assert.match(await page.locator('[mesid="2"] .mes_text').evaluate(node => getComputedStyle(node, '::before').backgroundImage), /d745e530/);
+    // 原生正文不铺背景图，也没有深色遮罩。
+    assert.deepEqual(await page.locator('[mesid="2"] .mes_text').evaluate(node => [getComputedStyle(node).backgroundImage,
+      getComputedStyle(node, '::after').content, getComputedStyle(node).backgroundColor]), ['none', 'none', 'rgba(0, 0, 0, 0)']);
+    assert.equal(await appearance.locator('[data-background], input[type="file"]').count(), 0);
     assert.equal(await page.locator('[mesid="2"] .mes_text').getAttribute('data-theme'), 'light');
     assert.equal(await page.evaluate(() => preview.writes), 0);
     await appearance.getByRole('combobox', { name: '字体', exact: true }).selectOption('font-local');
@@ -50,27 +48,10 @@ try {
     const layout = await panel.evaluate(element => {
       const rect = element.getBoundingClientRect();
       return { fits: rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight,
-        overflow: element.querySelector('main').scrollWidth > element.querySelector('main').clientWidth,
-        images: [...element.querySelectorAll('[data-appearance-gallery] img')].filter(img => img.naturalWidth > 0).length };
+        overflow: element.querySelector('main').scrollWidth > element.querySelector('main').clientWidth };
     });
-    assert.equal(layout.fits, true); assert.equal(layout.overflow, false); assert.equal(layout.images, 1);
-    await appearance.locator('[data-background]').nth(1).click(); await idle();
-    await status.filter({ hasText: '图片无法加载' }).waitFor();
-    assert.match(await page.locator('[mesid="2"] .mes_text').evaluate(node => getComputedStyle(node, '::before').backgroundImage), /d745e530/);
-    const file = appearance.locator('input[type="file"]');
-    await file.setInputFiles({ name: 'oversize.png', mimeType: 'image/png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
-    await status.filter({ hasText: '不能超过 5 MB' }).waitFor();
-    await file.setInputFiles({ name: 'vector.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg/>') });
-    await status.filter({ hasText: '位图' }).waitFor();
-    await file.setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
-    await idle(); await status.filter({ hasText: '无法加载' }).waitFor();
-    await file.setInputFiles({ name: '自定义背景.png', mimeType: 'image/png', buffer: image });
-    await idle(); await status.filter({ hasText: '已导入' }).waitFor();
-    assert.equal(await appearance.locator('[data-background]').count(), 3);
-    await appearance.getByRole('checkbox', { name: '自动随机背景', exact: true }).check();
-    await appearance.getByRole('spinbutton', { name: '换图间隔（分钟）', exact: true }).fill('1');
+    assert.equal(layout.fits, true); assert.equal(layout.overflow, false);
     await appearance.getByRole('checkbox', { name: '禁用视觉特效', exact: true }).check();
-    assert.equal(await page.locator('[mesid="2"] .mes_text').evaluate(node => getComputedStyle(node, '::before').filter), 'none');
     await appearance.locator('summary').click();
     await appearance.getByRole('checkbox', { name: '工具窗口铺满', exact: true }).check();
     assert.equal(await appearance.getByRole('spinbutton', { name: '工具窗口高度', exact: true }).isDisabled(), true);
@@ -79,11 +60,7 @@ try {
     await appearance.getByRole('spinbutton', { name: '移动端工具缩放', exact: true }).fill('65');
     await save.click(); await idle();
     await panel.getByRole('button', { name: '关闭', exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => preview.timers), [60000]);
-    const beforeTimer = await page.evaluate(() => preview.writes);
-    await page.evaluate(async () => { Math.random = () => 0; await preview.tick(); });
-    assert.equal(await page.evaluate(() => preview.writes), beforeTimer + 1);
-    assert.equal(await page.evaluate(() => preview.variables['cryptLord.appearance'].background.startsWith('http')), true);
+    assert.deepEqual(await page.evaluate(() => preview.timers), []);
     await page.evaluate(() => { document.querySelector('.crypt-lord-game-shell').hidden = false; });
     assert.equal(await page.locator('.crypt-lord-game-shell__dialog-body').evaluate(node => getComputedStyle(node).zoom), width <= 768 ? '0.65' : '1');
     const dialogSize = await page.locator('.crypt-lord-game-shell__dialog').evaluate(node => {
@@ -92,14 +69,6 @@ try {
     assert.equal(dialogSize.height, 750); assert.ok(dialogSize.width <= width - 16);
     await page.evaluate(() => { document.querySelector('.crypt-lord-game-shell').hidden = true; });
     await page.getByRole('button', { name: '系统设置', exact: true }).click(); await idle();
-    assert.deepEqual(await page.evaluate(() => preview.timers), []);
-    await appearance.locator('[data-background]').last().click(); await idle();
-    await appearance.getByRole('button', { name: '删除当前自定义背景' }).click(); await idle();
-    assert.equal(await appearance.locator('[data-background]').count(), 2);
-    await save.click(); await idle();
-    assert.equal(await page.evaluate(() => preview.variables['cryptLord.appearance'].customBackgrounds.length), 0);
-    await appearance.getByRole('button', { name: '删除当前自定义背景' }).click();
-    await status.filter({ hasText: '只能删除' }).waitFor();
     await size.fill('22'); await page.evaluate(() => { preview.failed = true; });
     await save.click(); await idle(); await status.filter({ hasText: '模拟保存失败' }).waitFor();
     assert.equal(await size.inputValue(), '22');
@@ -120,7 +89,7 @@ try {
     await page.getByRole('button', { name: '系统设置', exact: true }).click(); await idle();
     await appearance.getByRole('button', { name: '恢复默认外观' }).click(); await idle();
     assert.equal(await size.inputValue(), '14'); await save.click(); await idle();
-    assert.equal(await page.evaluate(() => preview.variables['cryptLord.appearance'].autoRandom), false);
+    assert.equal(await page.evaluate(() => 'autoRandom' in preview.variables['cryptLord.appearance']), false);
     await size.fill('19'); await page.evaluate(() => { preview.lostResponse = true; });
     const beforeRecovered = await page.evaluate(() => preview.writes);
     await save.click(); await idle(); await status.filter({ hasText: '已确认保存' }).waitFor();
