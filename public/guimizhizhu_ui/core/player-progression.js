@@ -211,16 +211,11 @@
         const title = String(entry?.name || entry?.comment || '');
         const key = Object.entries(CONFIGS).find(([label]) => title.includes(label))?.[1]; if (!key) continue;
         relevant.push(clone(entry));
+        // Titles match by substring like the original; unparseable or mis-shaped entries are skipped, not fatal.
         let parsed;
-        try { parsed = parser.parseWorldbookJson(entry.content); }
-        catch { throw Error(`世界书「${name}」的「${title}」格式损坏，未按默认规则覆盖`); }
-        if (key === 'divinityConfig') {
-          if (!Array.isArray(parsed)) throw Error('神性数据库须为区间列表');
-          rules[key].push(...parsed);
-        } else {
-          if (!record(parsed)) throw Error(`「${title}」须为字典`);
-          rules[key] = { ...rules[key], ...Object.fromEntries(entries(parsed)) };
-        }
+        try { parsed = parser.parseWorldbookJson(entry.content); } catch { continue; }
+        if (key === 'divinityConfig') { if (Array.isArray(parsed)) rules[key].push(...parsed); }
+        else if (record(parsed)) rules[key] = { ...rules[key], ...Object.fromEntries(entries(parsed)) };
       }
       books.push({ name, entries: relevant });
     }

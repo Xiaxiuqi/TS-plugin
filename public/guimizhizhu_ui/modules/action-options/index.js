@@ -29,10 +29,36 @@
 
   function remove(messageId) {
     const id = Number(messageId);
+    showNativeList(id);
     if (!mounted.has(id)) return false;
     afterNative.unmount(id, MODULE_ID);
     mounted.delete(id);
     return true;
+  }
+
+  // The native <action> block renders as a bare list inside .mes_text; hide it (display only)
+  // so the styled options at the floor end are the single visible copy.
+  const HIDDEN_ATTR = 'data-crypt-lord-native-actions-hidden';
+  function nativeText(messageId) {
+    return afterNative.getDisplayedMessageElement?.(Number(messageId))?.querySelector?.('.mes_text') || null;
+  }
+  function hideNativeList(messageId, actions) {
+    const text = nativeText(messageId);
+    if (!text || !actions.length) return;
+    const norm = value => String(value || '').replace(/^\s*\d+[.、)]\s*/, '').replace(/\s+/g, '');
+    const wanted = actions.map(norm);
+    for (const list of Array.from(text.querySelectorAll('ol, ul')).reverse()) {
+      const items = Array.from(list.children).map(item => norm(item.textContent));
+      if (items.length && items.every(item => wanted.includes(item))) {
+        list.setAttribute(HIDDEN_ATTR, ''); list.style.display = 'none';
+        return;
+      }
+    }
+  }
+  function showNativeList(messageId) {
+    for (const list of nativeText(messageId)?.querySelectorAll?.(`[${HIDDEN_ATTR}]`) || []) {
+      list.removeAttribute(HIDDEN_ATTR); list.style.removeProperty('display');
+    }
   }
 
   async function fillAction(field, source, reader, token, section, button, guard) {
@@ -125,6 +151,7 @@
     const section = createSection(messageId, actions, source, reader, token);
     if (!afterNative.mount(Number(messageId), MODULE_ID, section)) return false;
     mounted.set(Number(messageId), section);
+    hideNativeList(messageId, actions);
     return true;
   }
 

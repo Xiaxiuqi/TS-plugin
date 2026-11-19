@@ -51,6 +51,8 @@
     if (!original.hadClass) element.classList.remove(original.className);
   }
   function paint(element) {
+    // Assistant reading text never gets a background image; only owned surfaces do.
+    const reading = state.touched.get(element)?.reading;
     const settings = state.settings, font = state.catalog.fonts[settings.font] || state.catalog.fonts['font-serif'];
     const display = font.isArt ? font : Object.values(state.catalog.fonts).find(value => value.isArt) || font;
     const scopedFont = css => css.replace(/"[^"]*"|'[^']*'|[^,]+/g, part => {
@@ -58,7 +60,7 @@
       return state.fontAliases.has(family) ? JSON.stringify(state.fontAliases.get(family)) : part;
     });
     const values = { font: scopedFont(font.css), 'display-font': scopedFont(display.css), size: `${settings.fontSize}px`,
-      image: state.currentBackground ? `url(${JSON.stringify(state.currentBackground.data)})` : 'none',
+      image: !reading && state.currentBackground ? `url(${JSON.stringify(state.currentBackground.data)})` : 'none',
       opacity: String(settings.opacity), blur: `${settings.blur}px`,
       width: `${settings.width}px`, height: `${settings.height}px`,
       scale: String(win().innerWidth <= 768 ? settings.mobileScale / 100 : 1) };

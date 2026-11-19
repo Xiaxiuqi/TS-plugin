@@ -175,16 +175,11 @@
         if (!kind && !key) continue;
         relevant.push(clone(entry));
         if (kind) { selected.set(title, { entry, kind, name }); continue; }
+        // Same as the original: skip unparseable or mis-shaped config entries.
         let parsed;
-        try { parsed = parser.parseWorldbookJson(entry.content); }
-        catch { throw Error(`世界书「${name}」的「${title}」格式损坏，未按默认规则覆盖`); }
-        if (key === 'divinityConfig') {
-          if (!Array.isArray(parsed)) throw Error('神性数据库须为区间列表');
-          rules[key].push(...parsed);
-        } else {
-          if (!record(parsed)) throw Error(`「${title}」须为字典`);
-          rules[key] = { ...rules[key], ...Object.fromEntries(entries(parsed)) };
-        }
+        try { parsed = parser.parseWorldbookJson(entry.content); } catch { continue; }
+        if (key === 'divinityConfig') { if (Array.isArray(parsed)) rules[key].push(...parsed); }
+        else if (record(parsed)) rules[key] = { ...rules[key], ...Object.fromEntries(entries(parsed)) };
       }
       books.push({ name, entries: relevant });
     }

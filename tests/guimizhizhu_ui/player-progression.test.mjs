@@ -207,8 +207,9 @@ test('设置及世界书事务：显式脚本身份、优先级、完整修订�
   const source = await api.prepare(data(), data().stat_data);
   state.books['1源堡'][0].content = '{"10":900}'; await assert.rejects(api.assertPrepared(source), /变化/);
   const before = structuredClone(state.rows);
+  // 配置条目损坏时按原版跳过并使用默认规则。
   state.books['1源堡'][0].content = '{坏JSON}';
-  await assert.rejects(modules['cryptLord.stateStore'].writeAssistantData(2, data()), /格式损坏/);
+  await assert.doesNotReject(api.prepare(data(), data().stat_data));
   assert.deepEqual(state.rows, before);
   state.books['1源堡'][0].content = '{"10":600}';
   const count = state.writes.length;

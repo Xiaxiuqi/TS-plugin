@@ -168,7 +168,8 @@ test('完整事务与故障：规则/消息页/正文/数据冲突、能力稳�
   loaded = await api.load(2); const draw = plain(loaded.reports[0].abilities);
   state.failWrite = true; await assert.rejects(api.commit(loaded), /保存失败/); state.failWrite = false;
   assert.equal(state.writes.length, 0); assert.deepEqual(plain((await api.load(2)).reports[0].abilities), draw);
-  books['1源堡'][0].content = '{坏JSON}'; await assert.rejects(store.writeAssistantData(2, floors[2].data), /格式损坏/);
+  // 配置条目损坏时按原版跳过，不阻断保存；这里只确认不抛错。
+  books['1源堡'][0].content = '{坏JSON}'; await assert.doesNotReject(api.prepare(structuredClone(floors[2].data)));
   assert.equal(state.writes.length, 0); books['1源堡'][0].content = '{"10":600,"9":1000}';
   await assert.rejects(store.writeAssistantData(2, floors[2].data, 'affected', () => {
     books['1源堡'][0].content = '{"10":600,"9":1001}';

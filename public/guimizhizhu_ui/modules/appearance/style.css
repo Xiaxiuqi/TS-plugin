@@ -3,21 +3,12 @@
 .crypt-lord-reading-appearance {
   position: relative; isolation: isolate; overflow: hidden; box-sizing: border-box;
   width: 100%; max-width: min(var(--cl-appearance-width), 100%); margin-inline: auto;
-  padding: 16px !important; border-radius: 4px;
+  border-radius: 4px;
   font-family: var(--cl-appearance-font) !important; font-size: var(--cl-appearance-size) !important;
-  line-height: 1.8; overflow-wrap: anywhere; color: #f0f3f1; background: #222927;
+  line-height: 1.8; overflow-wrap: anywhere;
 }
-.crypt-lord-reading-appearance[data-theme="light"] { background: #f6f8f7; color: #232c27; }
 .crypt-lord-reading-appearance[data-cl-appearance-full="true"] { max-width: 100%; }
-.crypt-lord-reading-appearance::before, .crypt-lord-reading-appearance::after {
-  content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
-}
-.crypt-lord-reading-appearance::before {
-  background-image: var(--cl-appearance-image); background-position: center; background-size: cover;
-  filter: blur(var(--cl-appearance-blur)); transform: scale(1.03);
-}
-.crypt-lord-reading-appearance::after { background: #151d18; opacity: var(--cl-appearance-opacity); }
-.crypt-lord-reading-appearance[data-theme="light"]::after { background: #fff; }
+/* Native floor text keeps the host's own background and colors; no image or overlay. */
 .crypt-lord-appearance-surface :is(.crypt-lord-game-shell__dialog, .crypt-lord-game-shell__command-panel) {
   width: min(var(--cl-appearance-width), 100%, calc(100vw - 36px));
   height: min(var(--cl-appearance-height), calc(100dvh - 36px));
