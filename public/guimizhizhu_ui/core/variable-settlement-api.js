@@ -222,12 +222,27 @@
     }
     if (!same(binding, await host.getCharWorldbookNames('current'))) throw Error('变量模板世界书绑定已变化，未请求模型');
     let templates = {};
+    // Worldbook templates are hand-written; allow raw line breaks inside string literals.
+    const escapeControls = text => {
+      let out = '', quoted = false, escaped = false;
+      for (const char of String(text || '')) {
+        if (quoted && !escaped && (char === '\n' || char === '\r' || char === '\t')) {
+          out += char === '\n' ? '\\n' : char === '\r' ? '\\r' : '\\t'; continue;
+        }
+        out += char;
+        if (escaped) escaped = false;
+        else if (quoted && char === '\\') escaped = true;
+        else if (char === '"') quoted = !quoted;
+      }
+      return out;
+    };
     for (const { book, entry } of selected.values()) {
       let parsed;
       try {
         const parser = modules['cryptLord.industryState']?.parseWorldbookJson || modules['cryptLord.abilityState']?.parseWorldbookJson;
-        parsed = parser ? parser(entry.content) :
-          JSON.parse(String(entry.content || '').replace(/^\s*```(?:jsonc|json)?\s*/i, '').replace(/\s*```\s*$/, '').trim());
+        const content = escapeControls(entry.content);
+        parsed = parser ? parser(content) :
+          JSON.parse(content.replace(/^\s*```(?:jsonc|json)?\s*/i, '').replace(/\s*```\s*$/, '').trim());
         if (!record(parsed)) throw Error('模板集合必须是对象');
       } catch { throw Error(`世界书「${book}」的变量提示词模板 JSON 损坏，未请求模型`); }
       templates = { ...templates, ...parsed };

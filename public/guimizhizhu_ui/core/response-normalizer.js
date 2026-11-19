@@ -134,7 +134,9 @@
       values.push(match[1].trim());
       match = numbered.exec(visibleText);
     }
-    if (values.length) return [...new Set(values)].slice(0, 8);
+    // A lone numbered narrative line is prose, not an option list.
+    if (new Set(values).size >= 2) return [...new Set(values)].slice(0, 8);
+    values.length = 0;
     // A hidden-only native response must not be resurrected from stale rendered HTML.
     if (clean !== raw) return [];
     const lists = Array.from(messageElement?.querySelectorAll?.('ol, ul') || [])
