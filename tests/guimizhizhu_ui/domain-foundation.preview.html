@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>领地管理整链隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/domain-console/style.css">
+  <style>
+    body { margin: 0; background: #252a27; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    nav { display: flex; gap: 10px; padding: 16px; }
+    textarea { margin: 16px; width: 260px; height: 64px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">独立领地</button><button id="history">历史楼层</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <output id="status"></output>
+  <script src="world-settlement.fixture.js"></script>
+  <script>
+    const modules = preview.modules, floor = preview.floors[2];
+    floor.data.stat_data.领地 = { 已建立: false, 待建目标: { 地点: '', 线路: '乡村' } };
+    floor.data.stat_data.货币.鲁恩王国.金镑 = 100000;
+    floor.data.stat_data.产业 = { $meta: { keep: true } };
+    floor.message = '<gametxt>廷根领主正式签字，将庄园永久转让给玩家。邻境已正式签署联盟，白塔领已永久转让。</gametxt>';
+    floor.swipe_id = 0;
+    floor.swipes = [floor.message, '<gametxt>另一正文分支</gametxt>'];
+    floor.swipes_data = [structuredClone(floor.data), { otherPlugin: { untouched: true } }];
+    preview.initial = structuredClone(preview.floors);
+    preview.notices = []; preview.calls = []; preview.updates = [];
+    preview.chat = 'domain'; preview.script = 'domain';
+    window.SillyTavern = { getCurrentChatId: () => preview.chat };
+    modules['cryptLord.hostApi'].scriptVariableOptions = () => ({ type: 'script', script_id: preview.script });
+    preview.verdict = '<裁定>通过</裁定><理由>正式产权已落实</理由>';
+    window.toastr = Object.fromEntries(['error', 'warning', 'success', 'info'].map(level => [level, text => {
+      preview.notices.push(text); document.querySelector('#status').textContent = text;
+    }]));
+    const read = modules['cryptLord.hostApi'].getChatMessages;
+    modules['cryptLord.hostApi'].getChatMessages = async (range, options) => {
+      const rows = await read(range, options);
+      return options?.include_swipes ? rows.map(row => {
+        const original = preview.floors.find(item => item.message_id === row.message_id);
+        if (!original.swipes) return row;
+        return { message_id: original.message_id, name: original.name, role: original.role,
+          is_hidden: original.is_hidden, swipe_id: original.swipe_id,
+          swipes: structuredClone(original.swipes),
+          swipes_data: original.swipes_data.map((data, index) =>
+            index === original.swipe_id ? structuredClone(original.data) : structuredClone(data)),
+          swipes_info: [{ timestamp: new Date('2026-10-28T00:00:00Z') }, {}] };
+      }) : rows;
+    };
+    const write = modules['cryptLord.hostApi'].setChatMessages;
+    modules['cryptLord.hostApi'].setChatMessages = async rows => {
+      if (preview.flags.noWrite) return;
+      await write(rows);
+      await preview.afterWrite?.();
+      if (preview.flags.lostReceipt) throw Error('模拟回执丢失');
+    };
+    preview.derivations = 0;
+    modules['cryptLord.itemDerivation'] = {
+      async prepare(data) { preview.derivations++; return { data }; }, async assertPrepared() {}, settle: data => ({ data }),
+    };
+    modules['cryptLord.hostApi'].generateRaw = async config => {
+      preview.calls.push(structuredClone(config));
+      await preview.waitModel?.();
+      return preview.verdict;
+    };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() {
+      await preview.waitSettings?.(); return { useCustomApi: false };
+    } };
+    modules['cryptLord.variableWorkbench'] = { notifyUpdate(update) { preview.updates.push(update); } };
+    preview.advance = async day => {
+      const next = structuredClone(floor.data);
+      next.world_data.当前时间纪元 = `第五纪1350年2月${day}日星期一0:00`;
+      floor.data = await modules['cryptLord.stateStore'].writeAssistantData(2, next);
+    };
+    window.confirm = () => preview.confirm !== false;
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-defaults.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/industry-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/cashflow.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/faction-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-foundation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-recognition.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/domain-console/index.js"></script>
+  <script>
+    document.querySelector('#open').onclick = () => modules['cryptLord.domainConsole'].open(2);
+    document.querySelector('#history').onclick = () => modules['cryptLord.domainConsole'].open(0);
+    window.ready = true;
+  </script>
+</body>
+</html>

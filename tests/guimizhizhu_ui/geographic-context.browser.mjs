@@ -1,0 +1,87 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+const require=createRequire(import.meta.url);
+const {chromium}=require('C:/Users/ROG/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+try{
+  for(const width of [1280,390]){
+    const page=await browser.newPage({viewport:{width,height:844}}),errors=[];
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.goto('http://127.0.0.1:8791/tests/guimizhizhu_ui/geographic-context.preview.html');
+    await page.waitForFunction(()=>preview.modules['cryptLord.geographicContext']?.status().nativeReady);
+    const send=()=>page.getByRole('button',{name:'模拟原生生成',exact:true}).click();
+    const prompt=page.locator('#prompt');
+    await send();
+    await page.getByRole('status').filter({hasText:'有效地理注入：1'}).waitFor();
+    assert.match(await prompt.innerText(),/坐标: \(0.00, 0.00\)/);
+    assert.match(await prompt.innerText(),/廷根（坐标：\(0.00, 5.14\)/);
+    assert.match(await prompt.innerText(),/区域面积: 约/);
+    assert.match(await prompt.innerText(),/40075公里/);
+    assert.equal(await page.evaluate(()=>preview.requests.length),1);
+    await page.getByRole('combobox').selectOption('quiet');await send();
+    assert.equal(await page.evaluate(()=>preview.requests.length),1);
+    await page.getByRole('button',{name:'停止生成'}).click();
+    assert.equal(await prompt.innerText(),'');
+    for(const type of ['regenerate','swipe']){
+      await page.getByRole('combobox').selectOption(type);await send();
+      await page.waitForFunction(()=>document.querySelector('#prompt').textContent.includes('区域: 鲁恩 / 开场'));
+    }
+    await page.getByRole('combobox').selectOption('continue');await send();
+    await page.waitForFunction(()=>document.querySelector('#prompt').textContent.includes('区域: 鲁恩 / 廷根'));
+    await page.getByRole('combobox').selectOption('append');await send();
+    await page.waitForFunction(()=>document.querySelector('#prompt').textContent.includes('区域: 鲁恩 / 廷根'));
+    const beforeDry=await page.evaluate(()=>preview.requests.length);
+    await page.evaluate(()=>preview.emit('start','normal',{dryRun:true},false));
+    assert.equal(await page.evaluate(()=>preview.requests.length),beforeDry);
+    assert.equal(await page.evaluate(()=>preview.requests.filter(row=>row.active).length),1);
+    await page.screenshot({path:path.join(os.tmpdir(),`geographic-context-${width}.png`)});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.getByLabel('模拟读取失败').check();
+    await send();await page.locator('#error').filter({hasText:'模拟世界书读取失败'}).waitFor();
+    assert.equal(await prompt.innerText(),'');
+    await page.getByLabel('模拟读取失败').uncheck();await send();
+    await page.waitForFunction(()=>document.querySelector('#prompt').textContent.includes('区域: 鲁恩 / 廷根'));
+    await page.getByRole('button',{name:'切换聊天'}).click();assert.equal(await prompt.innerText(),'');
+    await page.getByRole('button',{name:'模拟脚本请求'}).click();
+    await page.getByRole('status').filter({hasText:'脚本地理注入：1'}).waitFor();
+    assert.match(await prompt.innerText(),/0.00, 0.00/);
+    assert.equal(await page.evaluate(()=>preview.requests.filter(row=>row.active).length),0);
+    const count=await page.evaluate(()=>preview.requests.length);
+    await page.evaluate(()=>preview.conflict());await send();
+    await page.locator('#error').filter({hasText:/原生楼层.*已变化/}).waitFor();
+    assert.equal(await page.evaluate(()=>preview.requests.length),count);
+    await page.evaluate(()=>{preview.hold();void preview.emit('start','normal',{},false)});
+    await page.waitForFunction(()=>preview.waiting===1);
+    await page.getByRole('button',{name:'停止生成'}).click();
+    await page.evaluate(()=>preview.release());await page.waitForFunction(()=>preview.waiting===0);
+    assert.equal(await page.evaluate(()=>preview.requests.length),count);
+    await page.evaluate(()=>{preview.hold();void preview.emit('start','normal',{},false)});
+    await page.waitForFunction(()=>preview.waiting===1);
+    await page.getByRole('button',{name:'切换聊天'}).click();
+    await page.evaluate(()=>preview.release());await page.waitForFunction(()=>preview.waiting===0);
+    assert.equal(await page.evaluate(()=>preview.requests.length),count);
+    assert.deepEqual(await page.evaluate(()=>preview.floors[0]),await page.evaluate(()=>preview.initial[0]));
+    assert.deepEqual(await page.evaluate(()=>preview.floors[2].data.otherPlugin),{保留:true});
+    assert.equal(await page.getByRole('textbox',{name:'本回合输入'}).inputValue(),'调查港口');
+    assert.deepEqual(await page.evaluate(()=>preview.writes),[]);
+    await page.evaluate(()=>{preview.floors[2].is_hidden=true;return preview.emit('start','normal',{},false)});
+    await page.locator('#error').filter({hasText:'隐藏'}).waitFor();
+    assert.equal(await page.evaluate(()=>preview.requests.length),count);
+    await page.evaluate(()=>{delete preview.floors[2].is_hidden;preview.hold();void preview.emit('start','normal',{},false)});
+    await page.waitForFunction(()=>preview.waiting===1);
+    await page.evaluate(async()=>{
+      const page=(await preview.modules['cryptLord.hostApi'].getChatMessages('',{include_swipes:true}))[0];
+      page.swipes_info[1].external=true;preview.pages.set(0,page);preview.release();
+    });
+    await page.locator('#error').filter({hasText:/原生楼层.*已变化/}).waitFor();
+    assert.equal(await page.evaluate(()=>preview.requests.length),count);
+    await page.evaluate(()=>preview.pages.clear());
+    await send();await page.waitForFunction(()=>preview.requests.filter(row=>row.active).length===1);
+    await page.evaluate(()=>preview.modules['cryptLord.geographicContext'].dispose());
+    assert.equal(await page.evaluate(()=>preview.modules['cryptLord.contextBuilder'].status().providerIds.length),0);
+    assert.deepEqual(errors,[]);
+    await page.close();console.log(`地理提示整链通过：${width}px，原生/脚本请求、重生成/续写、失败恢复与跨聊天取消。`);
+  }
+}finally{await browser.close()}

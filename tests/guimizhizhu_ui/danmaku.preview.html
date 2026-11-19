@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生楼层弹幕预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/danmaku/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/system-settings/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #edf1ee; color: #26372e; font: 15px/1.8 sans-serif; }
+    body > header { border-bottom: 1px solid #cdd9d1; display: flex; gap: 12px; padding: 12px 20px; align-items: center; background: #fff; }
+    #chat { max-width: 820px; margin: 32px auto; padding: 0 20px; }
+    .mes { border-bottom: 1px solid #d3ddd6; padding: 18px 0; }
+    .mes > small { color: #688071; } .mes_text { padding-top: 8px; } .mes_text p { margin: 12px 0; }
+    #send_textarea { display: block; width: calc(100% - 40px); max-width: 800px; margin: 24px auto; box-sizing: border-box; padding: 12px; font: inherit; }
+    body > header button { border: 1px solid #b9cdc0; background: #fff; border-radius: 4px; padding: 6px 12px; color: inherit; }
+  </style>
+</head>
+<body>
+  <header><strong>廷根 · 雨夜调查</strong><button id="open">楼层弹幕</button><button id="settings">系统设置</button></header>
+  <div id="chat">
+    <div class="mes" mesid="1" is_user="true"><small>#1 · 玩家</small><div class="mes_text">我翻开档案，寻找信件里提到的名字。</div></div>
+    <div class="mes" mesid="2" is_user="false"><small>#2 · 叙事</small><div class="mes_text">
+      <p>雨声压过了街道的脚步。煤气灯在玻璃上投下微弱的光，你认出了信封上熟悉的徽记。</p>
+      <p>档案员将册子推过来：“登记人在三天前来过这里。名字是真的，地址却是假的。”</p>
+      <p>你摸到纸页间的一张车票，目的地是贝克兰德。车票背面，只留着一行匆匆写下的文字。</p>
+      <button id="native-action">原生行动按钮</button>
+    </div></div>
+    <div class="mes" mesid="3" is_user="false"><small>#3 · 叙事</small><div class="mes_text">
+      <p>钟声从远处传来。你回头时，档案室门口已经没有人了。那盏煤气灯却仍在晃动。</p>
+    </div></div>
+  </div>
+  <textarea id="send_textarea" aria-label="原生输入框">保留输入草稿，不发送</textarea>
+  <script>
+    const names = ['【系统】弹幕风格', '【系统】弹幕框架', '【系统】弹幕触发', '【系统】格式要求-弹幕', '【系统】格式要求'];
+    const entries = names.map((name, uid) => ({ uid, name, content: `原版提示词 ${uid}`,
+      enabled: uid === 4, strategy: { type: 'constant', keys: [] }, position: { type: 'at_depth', depth: 2, order: 100 },
+      extra: { protected: true } }));
+    entries.push({ uid: 90, name: '其他条目', enabled: true, content: '保持不变' });
+    const comments = ['档案员这句话值得记下来。', '地址是假的，车票却是真的。', '这封信的主人到底是谁？',
+      '先查登记簿，不要急着上火车。', '煤气灯又晃了一下。', '廷根的雨夜从不缺少秘密。'];
+    const floors = [{ message_id: 1, role: 'user', message: '<dm>用户伪造弹幕不显示</dm>', data: {} },
+      { message_id: 2, role: 'assistant', message: `<thinking><dm>隐藏示例</dm></thinking><gametxt>原生正文</gametxt>${comments.map(text => `<dm>${text}</dm>`).join('')}`, swipe_id: 0, data: { keep: true } },
+      { message_id: 3, role: 'assistant', message: '<gametxt>下一层正文</gametxt><dm>新的线索出现了。</dm><dm><img src=x onerror="window.injected=true">不是 HTML</dm>', swipe_id: 0, data: {} }];
+    const pages = new Map();
+    const protectedContent = JSON.stringify(entries.map(({ enabled, ...entry }) => entry));
+    const protectedFloors = JSON.stringify(floors);
+    let writes = 0, primary = '1源堡', failed = false, readFailed = false, postFailed = false, lostResponse = false, discard = false;
+    let hook = null, release = null, waiting = false, clicked = 0, floorReadHook = null;
+    const listeners = new Map(), modules = {
+      'cryptLord.hostApi': {
+        getCharWorldbookNames: () => ({ primary, additional: [] }),
+        getWorldbook: () => { if (readFailed) throw Error('模拟读取失败'); return structuredClone(entries); },
+        async updateWorldbookWith(book, fn) {
+          await hook?.(); const next = await fn(structuredClone(entries)); if (failed) throw Error('模拟保存失败');
+          if (!discard) { entries.splice(0, entries.length, ...next); writes++; }
+          if (postFailed) readFailed = true;
+          if (lostResponse) throw Error('模拟响应丢失');
+          return structuredClone(entries);
+        },
+        async getChatMessages(_, options) {
+          const rows = structuredClone(options?.include_swipes ? floors.map(row => {
+            if (pages.has(row.message_id)) return pages.get(row.message_id);
+            const selected = row.swipe_id || 0, swipes = Array.from({ length: selected + 2 }, () => '旧分支');
+            const swipes_data = swipes.map(() => ({})), swipes_info = swipes.map(() => ({ keep: true }));
+            swipes[selected] = row.message; swipes_data[selected] = row.data;
+            return { ...row, swipe_id: selected, swipes, swipes_data, swipes_info };
+          }) : floors);
+          await floorReadHook?.(); return rows;
+        },
+        scriptVariableOptions: () => ({ type: 'script', script_id: 'danmaku-preview' }),
+        getVariables: () => ({}), updateVariablesWith: () => { throw Error('弹幕不得写变量'); },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document, window }),
+        async listAssistantMessages() { const rows = structuredClone(floors); await floorReadHook?.(); return rows.filter(row => row.role === 'assistant'); },
+        getDisplayedMessageElement: id => document.querySelector(`.mes[mesid="${id}"]`),
+        tavernEvents: () => Object.fromEntries(['CHAT_CHANGED', 'MESSAGE_RECEIVED', 'MESSAGE_UPDATED', 'MESSAGE_SWIPED',
+          'MESSAGE_DELETED', 'CHARACTER_MESSAGE_RENDERED', 'GENERATION_STARTED', 'GENERATION_ENDED',
+          'WORLDINFO_UPDATED', 'GENERATION_STOPPED'].map(name => [name, name])),
+        bindEvent(name, fn) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn);
+          return { stop() { listeners.get(name).delete(fn); } }; },
+      },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) { return modules[key]; }
+    } };
+    function emit(name, ...args) { listeners.get(name)?.forEach(fn => fn(...args)); }
+    window.preview = {
+      get ui() { return modules['cryptLord.danmakuUi']; }, get engine() { return modules['cryptLord.danmakuEngine']; },
+      get writes() { return writes; }, get entries() { return entries; }, get floors() { return floors; },
+      get waiting() { return waiting; }, get clicked() { return clicked; },
+      get clean() { return JSON.stringify(entries.map(({ enabled, ...entry }) => entry)) === protectedContent &&
+        JSON.stringify(floors) === protectedFloors && document.querySelector('#send_textarea').value === '保留输入草稿，不发送'; },
+      set failed(value) { failed = value; }, set postFailed(value) { postFailed = value; },
+      set readFailed(value) { readFailed = value; },
+      set lostResponse(value) { lostResponse = value; }, set discard(value) { discard = value; },
+      conflict() { entries[0].extra.foreign = true; emit('WORLDINFO_UPDATED'); },
+      mutateInCallback() { hook = () => { entries[1].content += '外部改动'; hook = null; }; },
+      holdMode() { hook = async () => { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; hook = null; }; },
+      holdFloor() { floorReadHook = async () => { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; floorReadHook = null; }; },
+      release() { release?.(); },
+      event: emit,
+      swipe() { floors[1].message = '<dm>切换后的新弹幕</dm>'; floors[1].swipe_id++; emit('MESSAGE_SWIPED'); },
+      role() { floors[1].role = 'user'; document.querySelector('[mesid="2"]').setAttribute('is_user', 'true'); emit('MESSAGE_UPDATED'); },
+      hidden(value) { if (value) floors[1].is_hidden = true; else delete floors[1].is_hidden; emit('MESSAGE_UPDATED'); },
+      remove() { floors.splice(2, 1); document.querySelector('[mesid="3"]').remove(); emit('MESSAGE_DELETED'); },
+      chat() { primary = '其他角色'; emit('CHAT_CHANGED'); },
+      resetBinding() { primary = '1源堡'; emit('CHAT_CHANGED'); },
+      get subscriptions() { return [...listeners.values()].reduce((sum, set) => sum + set.size, 0); },
+    };
+    document.querySelector('#open').onclick = () => preview.ui.open(2);
+    document.querySelector('#settings').onclick = () => modules['cryptLord.systemSettingsUi'].open();
+    document.querySelector('#native-action').onclick = () => clicked++;
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/danmaku.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/danmaku-engine.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/danmaku/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/system-settings/index.js"></script>
+</body>
+</html>

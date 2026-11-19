@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生快捷指令中心预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/game-shell/style.css">
+  <style>
+    body { margin: 0; background: #22282a; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #send_form { position: fixed; left: 12px; bottom: 12px; display: flex; gap: 8px; z-index: 10001; }
+    #send_textarea { width: min(300px, 70vw); min-height: 54px; }
+  </style>
+</head>
+<body>
+  <form id="send_form">
+    <textarea id="send_textarea" aria-label="原生输入框">原生输入草稿</textarea>
+    <button id="send_but" type="button">原生发送</button>
+  </form>
+  <script>
+    const modules = {};
+    const BOOK = '【源堡】玩家自建内容';
+    const books = new Map([
+      [BOOK, [
+        { uid: 1, name: '[快捷指令]', content: '<cmd>\n调查现场\n</cmd>\n\n<cmd>\n休息一小时\n</cmd>', enabled: false },
+        { uid: 2, name: '[快捷指令状态]', content: JSON.stringify({ version: 1, isKeepShortcutsEnabled: false, pendingSupplementary: [] }), enabled: false },
+        { uid: 9, name: '其他插件', content: '不改其他插件', enabled: true },
+      ]],
+      ['1源堡', [{ uid: 8, name: '[快捷指令]', content: '<cmd>原版备用指令</cmd>' }]],
+      ['当前主书', [{ uid: 18, name: '[快捷指令]', content: '<cmd>当前角色备用指令</cmd>' }]],
+    ]);
+    const opening = { message_id: 0, role: 'assistant', message: '开场正文', data: { opening: '不改开场变量' } };
+    const floor = { message_id: 2, role: 'assistant', message: '正文', data: { stat_data: { 名称: '克莱恩', 当前序列: '普通人' } } };
+    const floors = [structuredClone(opening), structuredClone(floor)];
+    const handlers = new Map();
+    const events = { CHAT_CHANGED: 'chat', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_AFTER_COMMANDS: 'before', GENERATION_STOPPED: 'stop' };
+    const injected = new Map();
+    let nextUid = 10;
+    const preview = window.preview = {
+      chat: 'shortcuts-preview',
+      books, floors, opening, writes: 0, floorWrites: 0, sends: 0, inputEvents: 0, requests: [], readFail: false, commitFail: false,
+      async emit(name, ...args) { for (const fn of handlers.get(events[name]) || []) await fn(...args); },
+      hold() { this.gate = new Promise(resolve => { this.release = () => { resolve(); this.gate = null; }; }); },
+      async wait() { if (this.gate) { this.waiting = true; await this.gate; this.waiting = false; } },
+      async chatChanged() { await this.emit('CHAT_CHANGED'); },
+      get ui() { return modules['cryptLord.gameShell']; },
+      get api() { return modules['cryptLord.quickShortcuts']; },
+      pending() { return JSON.parse(books.get(BOOK).find(row => row.name === '[快捷指令状态]').content).pendingSupplementary; },
+    };
+    window.SillyTavern = { getCurrentChatId: () => preview.chat };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; },
+      releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { return modules[key]; },
+    } };
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), createElement: tag => document.createElement(tag),
+      listAssistantMessages: async () => structuredClone(floors.filter(row => row.role === 'assistant')),
+      tavernEvents: () => events,
+      bindEvent(name, fn) {
+        if (!handlers.has(name)) handlers.set(name, new Set());
+        handlers.get(name).add(fn);
+        return { stop() { handlers.get(name)?.delete(fn); } };
+      },
+    };
+    modules['cryptLord.lifecycle'] = { createScope() {
+      const cleanups = [];
+      return { addCleanup(fn) { cleanups.push(fn); }, dispose() { cleanups.forEach(fn => fn()); } };
+    } };
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: 'shortcuts-preview' }),
+      async getWorldbook(book) {
+        if (preview.readFail) throw Error('模拟读取失败');
+        if (!books.has(book)) throw Error('世界书不存在');
+        return structuredClone(books.get(book));
+      },
+      async getChatMessages(range, options = {}) {
+        const rows = range === -1 ? floors.slice(-1) : floors;
+        if (!options.include_swipes) return structuredClone(rows);
+        return rows.map(row => ({ message_id: row.message_id, role: row.role, is_hidden: Boolean(row.is_hidden),
+          ...(row.message_id === 2 ? {
+            swipe_id: 1, swipes: ['未选的旧正文', row.message],
+            swipes_data: [{ old: true }, structuredClone(row.data || {})], swipes_info: [{ old: true }, {}],
+          } : {
+            swipe_id: 0, swipes: [row.message], swipes_data: [structuredClone(row.data || {})], swipes_info: [{}],
+          }),
+          ...structuredClone(preview.pages?.[row.message_id] || {}),
+        }));
+      },
+      async getCharWorldbookNames() { return { primary: '当前主书', additional: [] }; },
+      async createWorldbook(book) { if (books.has(book)) throw Error('世界书已存在'); books.set(book, []); },
+      async updateWorldbookWith(book, updater) {
+        await preview.wait();
+        const result = await updater(structuredClone(books.get(book)));
+        if (preview.commitFail) throw Error('模拟提交失败');
+        books.set(book, structuredClone(result).map(entry => ({ ...entry, uid: entry.uid ?? nextUid++ })));
+        preview.writes++;
+        if (preview.failReadAfterWrite) preview.readFail = true;
+        if (preview.lostResponse) throw Error('模拟响应丢失');
+      },
+      injectPrompts(prompts, options) {
+        prompts.forEach(prompt => injected.set(prompt.id, { ...structuredClone(prompt), once: options.once }));
+        return { uninject() { prompts.forEach(prompt => injected.delete(prompt.id)); } };
+      },
+    };
+    modules['cryptLord.stateStore'] = {
+      async readAssistantData() { return structuredClone(floors.filter(row => row.role === 'assistant').at(-1).data); },
+      async readMessage(id) { return structuredClone(floors.find(row => row.message_id === id)); },
+      async writeAssistantMessage(id, message, data) {
+        if (preview.floorFail) throw Error('模拟楼层保存失败');
+        if (id === 0) throw Error('不允许写入开场楼层');
+        const target = floors.find(row => row.message_id === id);
+        Object.assign(target, { message, data: structuredClone(data) });
+        preview.floorWrites++;
+      },
+    };
+    modules['cryptLord.equipmentState'] = { lists: [] };
+    modules['cryptLord.inventoryState'] = { giftLists: [] };
+    modules['cryptLord.abilityState'] = { loadPool: async () => ({ pathways: {} }) };
+    modules['cryptLord.relationshipState'] = {};
+    modules['cryptLord.personalBattleState'] = {};
+    modules['cryptLord.contextBuilder'] = { build: async () => [] };
+    modules['cryptLord.generationQuality'] = { readSnapshot: async () => ({ settings: {} }) };
+    modules['cryptLord.responseNormalizer'] = { normalize: text => ({ raw: text, message: text }), extractActions: () => [] };
+    modules['cryptLord.variablePatch'] = { apply: () => ({ applied: false }), updateTag: () => '', embedUpdate: text => text };
+    modules['cryptLord.nativeSettlement'] = { apply() {} };
+    modules['cryptLord.variableSettlementApi'] = { async settle() {
+      await preview.emit('GENERATION_AFTER_COMMANDS', 'quiet', { quiet_prompt: '副模型结算' }, false);
+      return { skipped: true };
+    } };
+    document.getElementById('send_textarea').addEventListener('input', () => { preview.inputEvents++; });
+    document.getElementById('send_form').addEventListener('submit', event => { event.preventDefault(); preview.sends++; });
+    document.getElementById('send_but').addEventListener('click', async () => {
+      preview.sends++;
+      const userText = document.getElementById('send_textarea').value;
+      const userMessageId = floors.at(-1).message_id + 1;
+      floors.push({ message_id: userMessageId, role: 'user', message: userText, data: {} });
+      await preview.emit('GENERATION_STARTED', 'normal', {}, false);
+      await preview.emit('GENERATION_AFTER_COMMANDS', 'normal', {}, false);
+      preview.requests.push([...injected.values()].map(row => row.content));
+      for (const [id, row] of injected) if (row.once) injected.delete(id);
+      if (preview.cancelGeneration) { await preview.emit('GENERATION_STOPPED'); return; }
+      const assistantMessageId = userMessageId + 1;
+      floors.push({ message_id: assistantMessageId, role: 'assistant', message: '本轮原生正文', data: structuredClone(floor.data) });
+      try {
+        await modules['cryptLord.nativeFloorBridge'].completeNarrative('本轮原生正文', {
+          userMessageId, assistantMessageId, generationId: `native-host-${assistantMessageId}`, userText, narrativeText: '本轮原生正文',
+        });
+      } catch (error) { preview.error = error.message; }
+      await preview.emit('GENERATION_ENDED');
+    });
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/character-panel-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/quick-shortcuts.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/input-adapter/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/game-shell/index.js"></script>
+</body>
+</html>

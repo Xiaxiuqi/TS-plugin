@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>人物关系完整流程验收</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/relationships/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/game-shell/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body{margin:16px;background:#192024;color:#eee;font:14px/1.6 "Microsoft YaHei",sans-serif}.preview-tools{display:flex;gap:8px}button{padding:8px}#native-input{position:fixed;bottom:8px;left:8px;width:180px}</style>
+</head>
+<body>
+  <div class="preview-tools"><button id="open">人物关系</button><button id="history">历史关系</button></div>
+  <input id="native-input" aria-label="原生输入" value="保留输入草稿">
+  <script>
+    const modules={},handlers=new Map(),writes=[],notices=[],reads=[];
+    const floors=[
+      {message_id:0,role:'assistant',message:'<UpdateVariable>开场不初始化</UpdateVariable>',data:{stat_data:{人物关系列表:{旧友:{名称:'过去的朋友'}}},opening:true}},
+      {message_id:1,role:'user',message:'行动',data:{keep:true}},
+      {message_id:2,role:'assistant',message:'本轮原生正文\n<UpdateVariable>保持原标签</UpdateVariable>',swipe_id:1,
+        data:{stat_data:{名称:'克莱恩',当前序列:'普通人',人物关系列表:{
+          $meta:{extensible:true},
+          伦纳德:{名称:'伦纳德',身份:'安保公司同事',当前序列:'普通人',关系:'朋友',好感度:80,isImportant:true,
+            '对<User>的称呼':'克莱恩',所处地点:'廷根',外貌:'墨绿眼睛的青年。'},
+          神秘访客:{名称:'未知的旅人',身份:'商人',当前序列:'未知',关系:'陌生人',好感度:15},
+          自主甲:{名称:'机械甲',关系:'自主造物',好感度:100},
+          旧友:{名称:'旧友',关系:'旧识',好感度:20,当前序列:'序列9',灵性:20,当前灵性:0}
+        },辅助能力列表:{$meta:{extensible:false},'#制造造物':{描述:'旧计数'},'#其他':{名称:'保留能力'}},
+          $专属玩法:{通识者途径:{制造玩法:{版本:1,造物列表:{自主甲:{$造物类型:'机械奇物',$成品位阶:4,当前活力:30}}}}}},
+          npc_data:{$meta:{extensible:true},
+            伦纳德:{名称:'伦纳德',身份:'值夜者',当前序列:'序列7-梦魇',isImportant:false,活力:50,当前活力:35,
+              灵性:60,当前灵性:10,理智:50,当前理智:45,人性:30,当前人性:25,敏捷:50,当前敏捷:40,运气:5,
+              当前状态:{受伤:{程度:'轻微',持续:0}},近期打算:'调查教堂周围的异常。\n留意陌生访客。',长期目标:'守护廷根',
+              能力清单:[{名称:'灵视',描述:'看见灵体。\n观察身体与灵性。'},{名称:'梦境行走',描述:'进入梦境。'}],
+              关键记忆:{秘密:'不得显示秘密'},事件历史:{日期:'不得显示历史'},自定义数值:0,自定义开关:false},
+            神秘访客:{名称:'真实身份',身份:'隐秘组织成员',当前序列:'序列4',所处地点:'码头',isImportant:false},
+            自主甲:{名称:'机械甲',当前序列:'序列6',$完全自主造物:true,$造物类型:'机械奇物',$成品位阶:6},
+            客观孤儿:{名称:'未曾相识的人',身份:'隐秘身份',当前序列:'序列5'}
+          },world_data:{天气:'晴'},otherPlugin:{keep:true},
+          cryptLord:{teamComposition:{version:1,allyTeam:[{name:'<User>',dataSource:'player'},{name:'自主甲',dataSource:'npc'},
+            {name:'自主甲',dataSource:'savant-construct'},{name:'自主甲',dataSource:'clone'}],enemyTeam:[{name:'神秘访客',dataSource:'npc'}]}}}
+      }
+    ],initial=structuredClone(floors);
+    let readFail=false,writeFail=false,postFail=false,gate=null,release=null,waiting=false,page=0;
+    let lostReceipt=false,noWrite=false,conflictAfterWrite=false,derivations=0,script='relationships',chat='fixture';
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]}
+    }};
+    const events={CHAT_CHANGED:'chat',MESSAGE_UPDATED:'update',MESSAGE_DELETED:'delete',MESSAGE_SWIPED:'swipe',CHARACTER_MESSAGE_RENDERED:'render',
+      GENERATION_STARTED:'start',GENERATION_ENDED:'end',GENERATION_STOPPED:'stop'};
+    modules['cryptLord.afterNativeHost']={
+      getHost:()=>({window,document}),createElement:tag=>document.createElement(tag),
+      listAssistantMessages:async()=>structuredClone(floors.filter(row=>row.role==='assistant')),tavernEvents:()=>events,
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}}
+    };
+    modules['cryptLord.hostApi']={
+      scriptVariableOptions:()=>({type:'script',script_id:script}),
+      async getChatMessages(range,options){reads.push(range);if(readFail)throw Error('模拟读取失败');
+        const rows=range==='{{lastMessageId}}'?floors.slice(-1):range==='0-{{lastMessageId}}'?floors:floors.filter(row=>row.message_id===Number(range));
+        return structuredClone(options?.include_swipes?rows.map(({message,data,...row})=>({...row,page,swipe_id:row.swipe_id??1,
+          swipes:['另一正文页',message],swipes_data:[{保留:1},data],
+          swipes_info:[{send_date:new Date('2026-10-27'),extra:{保留:true}},{}]})):rows)},
+      async setChatMessages(rows){
+        if(writeFail)throw Error('模拟保存失败');
+        writes.push(structuredClone(rows));if(noWrite)return;
+        for(const row of rows)Object.assign(floors.find(item=>item.message_id===row.message_id),structuredClone(row));
+        if(conflictAfterWrite)page++;
+        if(postFail)readFail=true;
+        if(lostReceipt)throw Error('模拟保存回执丢失');
+      }
+    };
+    modules['cryptLord.dynamicStatus']={async load(){if(gate){waiting=true;await gate;waiting=false}return{rules:[]}},
+      async assertLoaded(){},apply(){derivations++}};
+    window.SillyTavern={getCurrentChatId:()=>chat};
+    modules['cryptLord.personalBattleState']={};modules['cryptLord.inventoryState']={};
+    modules['cryptLord.abilityState']={loadPool:async()=>({pathways:{},abilities:{}})};
+    modules['cryptLord.variableWorkbench']={notifyUpdate:entry=>notices.push(entry)};
+    modules['cryptLord.responseNormalizer']={extractActions:()=>[]};
+    async function emit(name,...args){for(const fn of handlers.get(events[name]||name)||[])await fn(...args)}
+    window.preview={modules,floors,initial,writes,notices,reads,emit,
+      set readFail(value){readFail=value},set writeFail(value){writeFail=value},
+      set lostReceipt(value){lostReceipt=value},set noWrite(value){noWrite=value},get derivations(){return derivations},
+      set conflictAfterWrite(value){conflictAfterWrite=value},changeScript(){script+='new'},changeChat(){chat+='new'},
+      hold(){gate=new Promise(resolve=>release=()=>{gate=null;resolve()})},release(){release?.()},get waiting(){return waiting},
+      postFail(){postFail=true},recover(){readFail=false;postFail=false},
+      conflict(){floors[2].message+='\n外部修改'},chatChanged(){return emit('CHAT_CHANGED')},
+      branch(){page++},start(...args){return emit('GENERATION_STARTED',...args)},stop(){return emit('GENERATION_STOPPED')},
+      end(){return emit('GENERATION_ENDED')}
+    };
+    document.querySelector('#open').onclick=()=>modules['cryptLord.relationshipsUi'].open(2);
+    document.querySelector('#history').onclick=()=>modules['cryptLord.relationshipsUi'].open(0);
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-units.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-team-builder.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/relationship-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/character-panel-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/relationships/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/game-shell/index.js"></script>
+</body>
+</html>

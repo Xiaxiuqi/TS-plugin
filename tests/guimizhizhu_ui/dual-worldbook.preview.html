@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>双库世界书管理预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/dual-worldbook/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #11181b; color: white; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">世界书管控中枢</button>
+  <script>
+    const books = new Map([
+      ['当前角色主书', [
+        { uid: 1, name: '塔罗会', content: '灰雾之上的聚会。', enabled: true },
+        { uid: 2, name: '贝克兰德', content: '繁忙的城市与错综复杂的线索。', enabled: true },
+        { uid: 6, name: '灰雾笔记', content: '完整记录：\n' + '钟楼的线索仍在延伸。\n'.repeat(25) + '<img src=x onerror=alert(1)> 仅显示文本',
+          enabled: true, strategy: { type: 'selective', keys: ['钟楼'] }, position: { type: 'at_depth', role: 'system', depth: 2 } },
+        { uid: 8, name: '重复条目', content: '重复甲', enabled: false },
+        { uid: 9, name: '重复条目', content: '重复乙', enabled: true },
+        { uid: 10, name: '其他插件条目', content: '保留其他插件原内容', enabled: true },
+      ]],
+      ['1源堡', [{ uid: 99, name: '旧固定书', content: '不可修改', enabled: true }]],
+      ['2历史孔隙', [
+        { uid: 3, name: '塔罗会', content: '灰雾之上的聚会。', enabled: true },
+        { uid: 4, name: '贝克兰德', content: '旧版本的城市记录。', enabled: false },
+        { uid: 5, name: '廷根', content: '一段存放在孔隙中的旧记录。', enabled: false },
+      ]],
+    ]);
+    let uid = 20;
+    let writes = 0, failBook = '', readFail = false, failReadAfterWrite = false, deleteFail = false, responseLost = false;
+    let primary = '当前角色主书', additional = [];
+    let pause = false, release, waiting = false;
+    const methods = {
+      getCharWorldbookNames() { return { primary, additional: structuredClone(additional) }; },
+      async getWorldbook(name) {
+        if (readFail) throw Error('模拟读取失败');
+        return structuredClone(books.get(name));
+      },
+      async updateWorldbookWith(name, updater) {
+        if (pause) {
+          waiting = true;
+          await new Promise(resolve => { release = resolve; });
+          waiting = false;
+        }
+        const original = structuredClone(books.get(name));
+        const next = await updater(original);
+        if (failBook === name || deleteFail && next.length < original.length) throw Error('模拟写入失败');
+        books.set(name, structuredClone(next).map(row => ({ ...row, uid: row.uid ?? uid++ })));
+        writes++;
+        if (failReadAfterWrite) readFail = true;
+        if (responseLost) throw Error('模拟保存响应丢失');
+        return structuredClone(books.get(name));
+      },
+      async createWorldbookEntries(name, entries) { books.get(name).push(...entries.map(entry => ({ ...structuredClone(entry), uid: uid++ }))); },
+      async deleteWorldbookEntries(name, predicate) { books.set(name, books.get(name).filter(entry => !predicate(structuredClone(entry)))); },
+    };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.afterNativeHost': {
+          getHost() { return { window, document }; },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-start',
+            GENERATION_ENDED: 'generation-end', GENERATION_STOPPED: 'generation-stop' }; },
+          bindEvent(name, callback) {
+            const listener = event => callback(...(event.detail || []));
+            window.addEventListener(name, listener);
+            return { stop() { window.removeEventListener(name, listener); } };
+          },
+        },
+      },
+      contract: {
+        initializeGlobal() {},
+        releaseGlobal() {},
+        async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+      },
+    };
+    window.preview = {
+      books,
+      get api() { return window.cryptLord.__stage1Modules['cryptLord.dualWorldbookUi']; },
+      get writes() { return writes; },
+      get waiting() { return waiting; },
+      set failBook(value) { failBook = value; },
+      set deleteFail(value) { deleteFail = value; },
+      set readFail(value) { readFail = value; },
+      set failReadAfterWrite(value) { failReadAfterWrite = value; },
+      set responseLost(value) { responseLost = value; },
+      set primary(value) { primary = value; },
+      set additional(value) { additional = value; },
+      hold() { pause = true; },
+      release() { pause = false; release?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      generation(type, options = {}, dryRun = false) { window.dispatchEvent(new CustomEvent('generation-start', { detail: [type, options, dryRun] })); },
+      stop() { window.dispatchEvent(new Event('generation-stop')); },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/dual-worldbook.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/dual-worldbook/index.js"></script>
+  <script>window.cryptLord.__stage1Modules['cryptLord.dualWorldbookUi'].open();</script>
+</body>
+</html>

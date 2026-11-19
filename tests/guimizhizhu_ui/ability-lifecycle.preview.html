@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>能力与晋升整链隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/abilities/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body{margin:16px;background:#202625;color:#edf0ef;font:14px/1.6 "Microsoft YaHei",sans-serif}
+    nav{display:flex;flex-wrap:wrap;gap:8px}button{padding:8px}
+    #send_textarea{display:block;margin-top:16px;max-width:100%;box-sizing:border-box}
+  </style>
+</head>
+<body>
+  <nav><button id="open">序列能力</button><button id="promote">晋升小丑</button></nav>
+  <textarea id="send_textarea" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script src="ability-lifecycle.fixture.js"></script>
+  <script>
+    window.preview = installAbilityLifecycleFixture();
+    window.previewReady = false;
+    document.querySelector('#open').onclick = () => preview.modules['cryptLord.abilitiesUi'].open(2);
+    document.querySelector('#promote').onclick = async () => {
+      const draft = structuredClone(preview.floors[2].data); draft.stat_data.当前序列 = '序列8-小丑';
+      await preview.modules['cryptLord.stateStore'].writeAssistantData(2, draft);
+      await preview.modules['cryptLord.abilitiesUi'].open(2);
+    };
+    const names = [
+      'ability-state', 'audience-imagination', 'marionette-reference', 'marionette-state',
+      'audience-imagination-reference', 'audience-imagination-state', 'reader-reference', 'reader-roster-state',
+      'reader-mystic', 'mystery-roster-reference', 'mystery-roster-state', 'mystery-reenactment-reference',
+      'mystery-reenactment', 'scroll-workshop-reference', 'scroll-workshop-state',
+      'battle-experience', 'battle-life-save', 'battle-tags', 'battle-terrain-presets',
+      'natural-environment', 'battlefield-painter', 'grazing-state', 'shaman-picture',
+      'battle-conditional-params', 'personal-battle-state', 'battle-formulas', 'battle-auras',
+      'battle-field-effect-reference', 'battle-effect-reference', 'battle-effects', 'battle-field-effects',
+      'battle-effect-transfer', 'battle-bribery', 'battle-balance', 'battle-punishment', 'battle-mythic-form',
+      'battle-exile', 'battle-active-leave', 'battle-events', 'battle-rewind', 'battle-extra-action',
+      'battle-hard-control', 'battle-mind-deprive', 'battle-temp-control', 'battle-permanent-control',
+      'battle-possession', 'battle-rule-change', 'battle-environment', 'battle-fundamental', 'battle-summon',
+      'battle-ability-borrow', 'battle-tactic-cpu', 'battle-team-conditions', 'battle-action-cpu',
+      'battle-terrain-effects', 'battle-resource-status', 'battle-auto-pilot', 'battle-skill-control',
+      'battle-report', 'team-battle-state', 'battle-session', 'attribute-recalculation', 'player-progression',
+      'native-settlement', 'variable-patch', 'response-normalizer', 'state-store', 'generation-bridge',
+      'variable-workbench-state',
+    ];
+    (async () => {
+      for (const name of names) await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `../../public/guimizhizhu_ui/core/${name}.js`;
+        script.onload = resolve; script.onerror = reject; document.body.append(script);
+      });
+      for (const path of ['abilities', 'pathway-roster-window', 'reader-mystic', 'scroll-workshop']) await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `../../public/guimizhizhu_ui/modules/${path}/index.js`;
+        script.onload = resolve; script.onerror = reject; document.body.append(script);
+      });
+      window.previewReady = true;
+    })();
+  </script>
+</body>
+</html>

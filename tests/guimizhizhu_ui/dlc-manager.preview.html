@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DLC 管理器预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/dlc-manager/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #161c19; color: white; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">DLC 管理器</button>
+  <script>
+    const books = new Map([
+      ['主世界书', [
+        { uid: 1, name: '【DLC】灰雾舞会', enabled: false, content: '穿越门后的邀请函。\n' + '钟楼的线索仍在延伸。\n'.repeat(25) + '<img src=x onerror=alert(1)>',
+          strategy: { type: 'selective', keys: ['舞会'] }, position: { type: 'at_depth', depth: 2, role: 'system' }, extra: { preserved: true } },
+        { uid: 2, name: '【DLC】海上航行', enabled: true, content: '沿着海岸航行，港口的委托与传说正等待探索。' },
+        { uid: 3, name: '【DLC】海上航行', enabled: false, content: '同名的另一条独立配置。' },
+        { uid: 4, name: '普通配置', enabled: true, content: '保留其他插件原文' },
+        { uid: 5, name: '[DLC]其他格式', enabled: false, content: '不按原版识别' },
+      ]],
+      ['副世界书', [{ uid: 6, name: '【DLC】不可扫描', enabled: true, content: '不改副书' }]],
+    ]);
+    const original = structuredClone(books);
+    let primary = '主世界书', writes = 0, readFail = false, writeFail = false, afterWriteFail = false, responseLost = false;
+    let pause = false, release, waiting = false;
+    const methods = {
+      getCharWorldbookNames() { return { primary }; },
+      async getWorldbook(book) { if (readFail) throw Error('模拟读取失败'); return structuredClone(books.get(book)); },
+      async updateWorldbookWith(book, updater) {
+        if (pause) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+        const next = await updater(structuredClone(books.get(book)));
+        if (writeFail) throw Error('模拟保存失败');
+        books.set(book, structuredClone(next));
+        writes++;
+        if (afterWriteFail) readFail = true;
+        if (responseLost) throw Error('模拟保存响应丢失');
+        return structuredClone(next);
+      },
+    };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.afterNativeHost': {
+          getHost() { return { document, window }; },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-start',
+            GENERATION_ENDED: 'generation-end', GENERATION_STOPPED: 'generation-stop' }; },
+          bindEvent(name, fn) {
+            const listener = event => fn(...(event.detail || []));
+            window.addEventListener(name, listener);
+            return { stop() { window.removeEventListener(name, listener); } };
+          },
+        },
+      },
+      contract: { initializeGlobal() {}, releaseGlobal() {} },
+    };
+    window.preview = {
+      books, original,
+      get api() { return cryptLord.__stage1Modules['cryptLord.dlcManager']; },
+      get writes() { return writes; },
+      get waiting() { return waiting; },
+      set primary(value) { primary = value; },
+      set readFail(value) { readFail = value; },
+      set writeFail(value) { writeFail = value; },
+      set afterWriteFail(value) { afterWriteFail = value; },
+      set responseLost(value) { responseLost = value; },
+      hold() { pause = true; },
+      release() { pause = false; release?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      generation(type, options = {}, dryRun = false) { window.dispatchEvent(new CustomEvent('generation-start', { detail: [type, options, dryRun] })); },
+      stop() { window.dispatchEvent(new Event('generation-stop')); },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/dlc-manager.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/dlc-manager/index.js"></script>
+  <script>preview.api.open();</script>
+</body>
+</html>

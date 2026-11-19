@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>当前线索完整流程验收</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/current-clues/style.css">
+  <style>
+    body{margin:0;background:#171c20;color:#e9eaeb;font:14px/1.6 "Microsoft YaHei",sans-serif}
+    .controls{padding:16px;display:flex;flex-wrap:wrap;gap:8px}
+    button,select{font:inherit;background:#3c5149;color:inherit;border:1px solid #839a90;border-radius:4px;padding:6px 10px}
+    .controls label{display:flex;gap:6px;align-items:center}
+    #prompt{padding:16px;white-space:pre-wrap;overflow-wrap:anywhere}
+  </style>
+</head>
+<body>
+  <div class="controls"><button id="open">当前线索</button><button id="native">模拟原生请求</button><button id="complete">模拟原生结算</button>
+    <button id="stop">停止生成</button><button id="chat">切换聊天</button>
+    <select aria-label="生成类型"><option value="normal">新回合</option><option value="regenerate">重生成</option><option value="continue">续写</option><option value="quiet">副模型</option></select>
+    <label><input id="read-fail" type="checkbox">读取失败</label><label><input id="write-fail" type="checkbox">归档失败</label>
+  </div>
+  <pre id="prompt"></pre>
+  <script>
+    const modules={},handlers=new Map(),writes=[],floorWrites=[],prompts=[],warnings=[];
+    const clue='<thinking><当前线索>思维里的伪线索</当前线索></thinking><gametxt>门后的钟声停了。</gametxt>\n<当前线索 lang="zh">\n钟楼地下室的门在午夜打开。\n守夜人携带的银钥匙缺了一枚。\n<img src=x onerror="window.clueUnsafe=true">\n</当前线索>';
+    const floors=[{message_id:0,role:'assistant',message:'原始开场',data:{stat_data:{姓名:'玩家'},otherPlugin:{保留:true}}},
+      {message_id:1,role:'user',message:'检查钟楼'},
+      {message_id:2,role:'assistant',message:clue,data:{stat_data:{姓名:'玩家'},npc_data:{$meta:{保留:true}}}}];
+    const books={'1源堡':[{uid:7,name:'当前线索',content:'旧待办：寻找银钥匙。',enabled:false,
+      strategy:{type:'selective',keys:['银钥匙']},position:{type:'at_depth',role:'system',depth:0,order:123},extra:{保留:true}},
+      {uid:8,name:'其他插件',content:'不要改动'}],
+      '2历史孔隙':[{uid:5,name:'当前线索',content:'副库原文不要改动'}]};
+    const initial=structuredClone({floors,books});
+    let values={otherPlugin:{保留:true}},readFail=false,writeFail=false,hold=false,waiting=0,releases=[],hook=null,postFail=false;
+    let primary='1源堡',lostResponse=false,alternate='备用正文';
+    const flags={configPostFail:false,configReadFail:false,configNoWrite:false,bookNoWrite:false,surfaceChanged:false};
+    const detachedDocument=document.implementation.createHTMLDocument('隔离替换宿主');
+    window.cryptLord={__stage1Modules:modules,contract:{initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]}}};
+    modules['cryptLord.hostApi']={
+      getScriptId:()=> 'clue-preview',
+      getCharWorldbookNames:()=>({primary,additional:['2历史孔隙']}),
+      getVariables:()=>{if(flags.configReadFail)throw Error('模拟配置读取失败');return structuredClone(values)},
+      async updateVariablesWith(fn){
+        if(writeFail)throw Error('模拟配置保存失败');const next=await fn(structuredClone(values));
+        if(flags.configNoWrite)return;values=next;if(flags.configPostFail)flags.configReadFail=true;
+      },
+      async getWorldbook(name){
+        if(hold){waiting++;await new Promise(resolve=>releases.push(resolve));waiting--}
+        if(readFail)throw Error('模拟世界书读取失败');
+        return structuredClone(books[name]);
+      },
+      async updateWorldbookWith(name,fn){
+        if(writeFail)throw Error('模拟世界书归档失败');
+        if(hook){const action=hook;hook=null;await action()}
+        const next=structuredClone(await fn(structuredClone(books[name])));if(flags.bookNoWrite)return;
+        books[name]=next;writes.push({name,entries:structuredClone(books[name])});
+        if(postFail)readFail=true;
+        if(lostResponse)throw Error('模拟已归档响应丢失');
+      },
+      async getChatMessages(range,options){
+        const rows=(range==='0-{{lastMessageId}}'?floors:floors.filter(row=>row.message_id===Number(range))).map(row=>({...row,data:row.data||{}}));
+        return structuredClone(options?.include_swipes?rows.map(row=>({
+          message_id:row.message_id,role:row.role,name:row.name,is_hidden:row.is_hidden,swipe_id:1,
+          swipes:[alternate,row.message],swipes_data:[{},row.data],swipes_info:[{keep:true},{keep:true}],
+        })):rows);
+      },
+      async setChatMessages(rows){for(const row of rows){Object.assign(floors.find(item=>item.message_id===row.message_id),structuredClone(row));floorWrites.push(structuredClone(row))}},
+      injectPrompts(items,options){const row={items:structuredClone(items),options,active:true};prompts.push(row);
+        document.querySelector('#prompt').textContent=items[0].content;return{uninject(){row.active=false;document.querySelector('#prompt').textContent=''}}},
+    };
+    modules['cryptLord.afterNativeHost']={getHost:()=>({window,document:flags.surfaceChanged?detachedDocument:document}),
+      tavernEvents:()=>({GENERATION_AFTER_COMMANDS:'start',GENERATION_STARTED:'generating',CHAT_CHANGED:'chat',GENERATION_STOPPED:'stop',GENERATION_ENDED:'end'}),
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}}};
+    modules['cryptLord.nativeHistoryPolicy']={createInjection:()=>({content:'无自定义记忆策略'})};
+    modules['cryptLord.nativeSettlement']={apply(){}};
+    modules['cryptLord.variablePatch']={apply:(_text,data)=>({applied:true,data:structuredClone(data)}),updateTag:()=>'',embedUpdate:text=>text};
+    modules['cryptLord.variableSettlementApi']={settle:async()=>({skipped:true})};
+    const warning=console.warn.bind(console);console.warn=(...args)=>{warnings.push(args.map(String).join(' '));warning(...args)};
+    async function emit(name,...args){for(const fn of handlers.get(name)||[])await fn(...args)}
+    async function complete(){
+      const id=floors.at(-1).message_id+1;
+      floors.push({message_id:id,role:'user',message:'再次查看钟楼'},{message_id:id+1,role:'assistant',message:'本回合成功正文',data:{}});
+      await modules['cryptLord.nativeFloorBridge'].completeNarrative('<gametxt>本回合成功正文</gametxt><当前线索>本回合的新线索：钟声来自地下。</当前线索>',
+        {userMessageId:id,assistantMessageId:id+1,userText:'再次查看钟楼',narrativeText:'本回合成功正文'});
+    }
+    document.querySelector('#open').onclick=()=>modules['cryptLord.currentCluesUi'].open(2);
+    document.querySelector('#native').onclick=()=>emit('start',document.querySelector('select').value,{},false);
+    document.querySelector('#complete').onclick=complete;
+    document.querySelector('#stop').onclick=()=>emit('stop');
+    document.querySelector('#chat').onclick=()=>emit('chat');
+    document.querySelector('#read-fail').onchange=event=>readFail=event.target.checked;
+    document.querySelector('#write-fail').onchange=event=>writeFail=event.target.checked;
+    window.preview={modules,floors,books,initial,writes,floorWrites,prompts,warnings,emit,complete,flags,get values(){return values},
+      get waiting(){return waiting},hold(){hold=true},release(){hold=false;releases.splice(0).forEach(resolve=>resolve())},
+      conflict(){hook=()=>{books['1源堡'].find(row=>row.name==='当前线索').content='外部新线索'}},
+      changeFloor(){hook=()=>{floors[2].message+='外部修改'}},
+      postFail(){postFail=true},recover(){postFail=false;readFail=false},
+      realPrimary(){primary='角色真实主库';books[primary]=[{...structuredClone(books['1源堡'][0]),content:'角色真实待办'}]},
+      loseResponse(value=true){lostResponse=value},changeAlternate(){alternate='未选分支被改变'},
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/prompts/context-builder.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/shared/save-recovery.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/current-clues.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/current-clues/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>观众空想原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>
+    body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 10px; }
+    #send_textarea { width: calc(100% - 24px); margin: 12px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <button id="open">打开空想管理</button>
+  <textarea id="send_textarea" aria-label="原生输入框" rows="3">保留玩家的正文草稿</textarea>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; }, releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error('Missing ' + key); return modules[key]; },
+    } };
+    const pool = { pathways: {
+      观众途径: ['序列9-观众', '序列1-作家', '序列0.5-半位阶观众', '序列0-空想家'],
+      秘祈人途径: ['序列9-秘祈人', '序列1-暗天使', '序列0-倒吊人'],
+      占卜家途径: ['序列9-占卜家', '序列1-诡秘侍者', '序列0-愚者'],
+      阅读者途径: ['序列9-阅读者', '序列1-全知之眼', '序列0-白塔'],
+      缺阶途径: ['序列9-测试'],
+    }, abilities: {
+      '占卜家途径-序列9': [{ name: '占卜', range: 0 }],
+      '占卜家途径-序列1': [{ name: '诡秘法术', range: 'global', power: 15, effects: [] }],
+      '占卜家途径-序列0': [{ name: '愚者权柄', power: 20 }],
+      '秘祈人途径-序列1': [{ name: '放牧', power: 15 }],
+      '秘祈人途径-序列0': [{ name: '倒吊人权柄', power: 20 }],
+    } };
+    let stored = { stat_data: { 名称: '玩家', 当前序列: '序列1-作家',
+      活力: 100, 当前活力: 80, 灵性: 100, 当前灵性: 80, 敏捷: 100, 当前敏捷: 80,
+      理智: 100, 当前理智: 80, 人性: 100, 当前人性: 80, 运气: 100,
+      序列能力列表: { 真实组: [{ 名称: '真实能力' }] },
+      其他列表: { 作家特性: '保留原有同名物品' },
+      $专属玩法: { 观众途径: { 空想玩法: { 版本: 2, 空想栏位: {
+        栏位1: { 途径: '' }, 栏位2: { 途径: '秘祈人途径' },
+      } } } } },
+      world_data: { 当前时间纪元: '第五纪1352年1月1日星期一12:00' },
+      npc_data: { 老师: { 活力: 100, 事件历史: { 一: '原记录' } } }, cryptLord: {} };
+    const initial = structuredClone(stored);
+    const opening = { message_id: 0, role: 'assistant',
+      message: '<gametxt>原生开场正文</gametxt>', data: { preserved: true } };
+    let id = 2, text = '<gametxt>玩家选择自己空想的途径。</gametxt>';
+    const writes = [];
+    let models = 0, writeFailure = false, confirmHook = '', writeHook = '', chatHandler, poolHook = '';
+    const nativeConfirm = window.confirm.bind(window);
+    window.confirm = text => {
+      const result = nativeConfirm(text);
+      if (result && confirmHook === 'variables') stored.stat_data.当前灵性 = 55;
+      if (result && confirmHook === 'floor') id = 4;
+      if (result && confirmHook === 'chat') chatHandler?.();
+      confirmHook = ''; return result;
+    };
+    const message = () => ({ message_id: id, role: 'assistant', message: text, data: structuredClone(stored) });
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed' }),
+      bindEvent: (_event, handler) => { chatHandler = handler; return { stop() { chatHandler = null; } }; },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    modules['cryptLord.abilityState'] = { async loadPool() {
+      if (poolHook === 'variables') stored.stat_data.当前灵性 = 44;
+      poolHook = ''; return structuredClone(pool);
+    } };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages(range) {
+        if (range === '0') return [structuredClone(opening)];
+        if (range === String(id)) return [message()];
+        if (writeHook === 'variables') { stored.stat_data.当前灵性 = 66; writeHook = ''; }
+        return [structuredClone(opening), message()];
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟写入失败');
+        for (const row of rows) {
+          if (row.message_id !== id || row.message_id === 0 || 'message' in row) throw Error('错误的原生楼层写入');
+          stored = structuredClone(row.data); writes.push(row.message_id);
+        }
+      },
+      async generateRaw() { models++; throw Error('空想不应调用模型'); },
+    };
+    modules['cryptLord.responseNormalizer'] = { normalize: value => ({
+      message: String(value).replace(/<\/?gametxt>/g, ''),
+    }) };
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get writes() { return [...writes]; }, get models() { return models; },
+      get opening() { return structuredClone(opening); }, get initial() { return structuredClone(initial); },
+      set writeFailure(value) { writeFailure = value; }, set confirmHook(value) { confirmHook = value; },
+      set writeHook(value) { writeHook = value; }, set poolHook(value) { poolHook = value; },
+      async normalizeSave(sequence) {
+        const data = structuredClone(stored); data.stat_data.当前序列 = sequence;
+        return modules['cryptLord.stateStore'].writeAssistantData(id, data);
+      },
+    };
+  </script>
+  <script src="./pathway-roster.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/audience-imagination/index.js"></script>
+  <script>
+    document.querySelector('#open').onclick = () => modules['cryptLord.audienceImaginationUi'].open();
+  </script>
+</body>
+</html>

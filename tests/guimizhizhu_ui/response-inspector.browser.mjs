@@ -1,0 +1,191 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('C:/Users/ROG/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
+let currentPage;
+try {
+  for (const width of [1280, 390]) {
+    const page = await browser.newPage({ viewport: { width, height: 820 } }); currentPage = page;
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    let confirmAction = 'accept';
+    page.on('dialog', dialog => { const action = confirmAction; confirmAction = 'accept'; return dialog[action](); });
+    await page.goto('http://127.0.0.1:8791/tests/guimizhizhu_ui/response-inspector.preview.html');
+    await page.evaluate(() => document.fonts.ready);
+    const panel = page.getByRole('dialog', { name: '提取内容', exact: true });
+    const idle = () => page.waitForFunction(() => preview.api.status().open && !preview.api.status().busy);
+    const open = async (id = 2, category = 'thinking') => {
+      await page.evaluate(([id, category]) => preview.api.open(id, category), [id, category]); await idle();
+    };
+    const command = async name => { await panel.getByRole('button', { name, exact: true }).click(); await idle(); };
+    const status = text => panel.getByRole('status').filter({ hasText: text }).waitFor();
+    const content = () => panel.locator('[data-inspect-text]').textContent();
+    const category = name => panel.getByRole('tab', { name, exact: true }).click();
+    const bookWrites = () => page.evaluate(() => preview.bookWrites.length);
+    await idle();
+    const baseline = await page.evaluate(() => JSON.stringify({ floors: preview.floors, secondary: preview.books['2历史孔隙'], other: preview.books['1源堡'][1] }));
+    assert.equal(await page.locator('.crypt-lord-inspector-floor-tool').count(), 3);
+    assert.equal(await page.locator('.mes[is_user="true"] .crypt-lord-inspector-floor-tool').count(), 0);
+    assert.match(await content(), /正文模型：核对/);
+    await category('变量模型'); assert.match(await content(), /变量模型：核对/);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await command('复制当前分区');
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), await content());
+    for (const [name, expected] of [['变量变化', '"value":12'], ['本周目经历', '序号|2'], ['正文', '<img src=x onerror=alert(1)>'],
+      ['提取角色', '姓名|伦纳德'], ['提取物品', '名称|档案登记簿'], ['当前线索', '编号|档案室'],
+      ['世界日志', '时间|雨夜'], ['行动选项', '1|调查登记簿'], ['弹幕', '先查登记簿'], ['完整原文', '<thinking>']]) {
+      await category(name); assert.ok((await content()).includes(expected));
+    }
+    assert.equal(await panel.locator('img').count(), 0);
+    await category('变量变化'); assert.doesNotMatch(await content(), /Analysis|JSONPatch|隐藏的补丁说明/);
+    await category('模型思维链'); await category('正文模型');
+    await panel.getByRole('tab', { name: '正文模型', exact: true }).press('ArrowRight');
+    assert.match(await content(), /变量模型：核对/);
+    assert.equal(await panel.getByRole('tab', { name: '变量模型', exact: true }).evaluate(item => document.activeElement === item), true);
+    assert.equal(await bookWrites(), 0);
+    assert.equal(await page.evaluate(() => preview.writes.length), 0);
+    assert.equal(await page.evaluate(() => JSON.stringify({ floors: preview.floors, secondary: preview.books['2历史孔隙'], other: preview.books['1源堡'][1] })), baseline);
+
+    await panel.getByRole('button', { name: '关闭提取内容', exact: true }).click();
+    const actions = page.locator('.mes[mesid="2"] [data-crypt-lord-action-options]');
+    await actions.waitFor();
+    await actions.getByRole('textbox', { name: '行动选项 1', exact: true }).fill('调查门锁与登记簿');
+    await actions.getByRole('button', { name: '填入行动 1', exact: true }).click();
+    await page.waitForFunction(() => document.getElementById('native-draft').value.endsWith('\n调查门锁与登记簿'));
+    assert.equal(await page.locator('#native-draft').inputValue(), '保留原生草稿\n调查门锁与登记簿');
+    await page.evaluate(() => { document.getElementById('native-draft').value = '保留原生草稿'; preview.hold('read'); });
+    await actions.getByRole('button', { name: '填入行动 1', exact: true }).click();
+    await page.waitForFunction(() => preview.waiting === 'read');
+    await page.evaluate(() => { preview.floors[1].data.conflict = true; preview.release(); });
+    await page.waitForFunction(() => !document.querySelector('.mes[mesid="2"] [aria-label="填入行动 1"]').disabled);
+    assert.equal(await page.locator('#native-draft').inputValue(), '保留原生草稿');
+    await actions.getByRole('button', { name: '删除行动 1', exact: true }).click();
+    assert.equal(await actions.getByRole('textbox').count(), 0);
+    await page.evaluate(async () => {
+      delete preview.floors[1].data.conflict;
+      const service = cryptLord.__stage1Modules['cryptLord.actionOptions'];
+      const menu = await service.createList(2);
+      menu.id = 'fixture-action-menu'; document.body.append(menu);
+    });
+    assert.equal(await page.locator('#fixture-action-menu').getByRole('textbox').count(), 0);
+    await page.evaluate(async () => {
+      document.getElementById('fixture-action-menu').remove();
+      preview.floors[2].message = '<gametxt>公开正文</gametxt><action>1. 调查现场\n2. 询问值夜者</action>' +
+        '<thinking><thinking>内部</thinking><action>隐藏假行动</action></thinking>';
+      await cryptLord.__stage1Modules['cryptLord.actionOptions'].refresh(2);
+    });
+    assert.equal(await actions.getByRole('textbox').count(), 2);
+    assert.equal(await actions.getByRole('textbox', { name: '行动选项 1', exact: true }).inputValue(), '调查现场');
+    const actionOverflow = await actions.evaluate(root => [...root.querySelectorAll('button,textarea')].filter(item =>
+      item.getBoundingClientRect().right > root.getBoundingClientRect().right + 1).map(item => item.outerHTML));
+    assert.deepEqual(actionOverflow, []);
+    await page.evaluate(() => preview.emit('GENERATION_STARTED', 'normal', {}, false));
+    assert.equal(await actions.count(), 0);
+    await page.evaluate(async () => {
+      preview.emit('GENERATION_STOPPED'); await preview.verified();
+      await cryptLord.__stage1Modules['cryptLord.actionOptions'].refresh(2);
+    });
+    assert.equal(await page.evaluate(() => preview.writes.length), 0);
+    await open(2);
+
+    await panel.getByRole('combobox', { name: '提取内容楼层' }).selectOption('0'); await idle(); await status('原版标签规则推断');
+    assert.match(await content(), /旧版变量思考/);
+    await panel.getByRole('combobox', { name: '提取内容楼层' }).selectOption('3'); await idle();
+    assert.equal(await content(), '公开原生思维链');
+    await open(1); await status('不存在'); assert.equal(await content(), '');
+    await open(2, 'journey');
+    confirmAction = 'dismiss'; await command('同步本周目经历'); await status('已取消');
+    assert.equal(await bookWrites(), 0);
+    await command('同步本周目经历'); await status('已同步'); assert.equal(await bookWrites(), 1);
+    assert.equal(await page.evaluate(() => preview.books['1源堡'][0].uid), 4);
+    assert.equal(await page.evaluate(() => preview.books['1源堡'][0].custom.keep), true);
+    assert.equal(await page.evaluate(() => preview.books['1源堡'][0].enabled), true);
+    await command('同步本周目经历'); await status('未写入'); assert.equal(await bookWrites(), 1);
+    await panel.getByRole('spinbutton', { name: '经历索引' }).fill('2');
+    await command('同步本周目经历'); await status('本周目经历(2)'); assert.equal(await bookWrites(), 2);
+    const created = await page.evaluate(() => preview.books['1源堡'].at(-1));
+    assert.equal(created.enabled, false); assert.equal(created.position.role, 'system');
+    assert.equal(created.position.depth, 0); assert.equal(created.position.order, 5000); assert.equal(created.strategy.type, 'selective');
+    await panel.getByRole('spinbutton', { name: '经历索引' }).fill('0');
+    await command('同步本周目经历'); await status('正整数'); assert.equal(await bookWrites(), 2);
+    await panel.getByRole('spinbutton', { name: '经历索引' }).fill('3');
+    await page.evaluate(() => { preview.flags.bookFail = true; });
+    await command('同步本周目经历'); await status('模拟世界书读取失败');
+    await page.evaluate(() => { preview.flags.bookFail = false; preview.hold('book'); });
+    await panel.getByRole('button', { name: '同步本周目经历', exact: true }).click();
+    await page.waitForFunction(() => preview.waiting === 'book');
+    assert.equal(await panel.getByRole('spinbutton', { name: '经历索引' }).isDisabled(), true);
+    await page.evaluate(() => { preview.books['1源堡'].push({ uid: 11, name: '本周目经历(3)', content: '外部修改' }); preview.release(); });
+    await idle(); await status('已变化'); assert.equal(await bookWrites(), 2);
+    await panel.getByRole('spinbutton', { name: '经历索引' }).fill('5');
+    await page.evaluate(() => { preview.flags.bookPostFail = true; });
+    await command('同步本周目经历'); await status('待核对'); assert.equal(await bookWrites(), 3);
+    assert.equal(await panel.getByRole('button', { name: '同步本周目经历', exact: true }).isDisabled(), true);
+    await page.evaluate(() => { preview.flags.bookPostFail = false; preview.flags.bookFail = false; });
+    await command('重新读取提取内容');
+    await panel.getByRole('spinbutton', { name: '经历索引' }).fill('1');
+    await panel.getByRole('button', { name: '编辑楼层正文', exact: true }).click();
+    const editor = page.getByRole('dialog', { name: '剧情文本编辑器', exact: true });
+    await editor.waitFor(); assert.equal(await panel.isVisible(), false);
+    assert.equal(await page.evaluate(() => cryptLord.__stage1Modules['cryptLord.nativeFloorEditorUi'].status().messageId), 2);
+    await editor.getByRole('button', { name: '关闭', exact: true }).click(); await open(2);
+    await page.evaluate(() => { preview.floors[2].message += '\n外部编辑'; preview.emit('MESSAGE_EDITED'); });
+    await status('已变化'); assert.equal(await content(), '');
+    await command('重新读取提取内容'); await status('未展示旧记录');
+    await category('变量模型'); assert.doesNotMatch(await content(), /变量模型：核对/);
+    await page.evaluate(() => preview.verified()); await command('重新读取提取内容');
+    await page.evaluate(() => { preview.floors[2].role = 'user'; document.querySelector('.mes[mesid="2"]').setAttribute('is_user', 'true'); });
+    await page.waitForFunction(() => !document.querySelector('.mes[mesid="2"] .crypt-lord-inspector-floor-tool'));
+    await status('已变化'); assert.equal(await content(), '');
+    await page.evaluate(() => { preview.floors[2].role = 'assistant'; document.querySelector('.mes[mesid="2"]').setAttribute('is_user', 'false'); });
+    await command('重新读取提取内容');
+    await page.evaluate(() => preview.emit('GENERATION_STARTED')); await status('已变化');
+    assert.equal(await panel.getByRole('button', { name: '重新读取提取内容', exact: true }).isDisabled(), true);
+    await page.evaluate(() => preview.emit('GENERATION_ENDED')); await command('重新读取提取内容');
+    await page.evaluate(() => { preview.flags.readFail = true; }); await command('重新读取提取内容'); await status('读取失败');
+    await page.evaluate(() => { preview.flags.readFail = false; }); await command('重新读取提取内容');
+    await page.evaluate(() => preview.hold('read'));
+    await panel.getByRole('button', { name: '重新读取提取内容', exact: true }).click();
+    await page.waitForFunction(() => preview.waiting === 'read');
+    await panel.getByRole('button', { name: '关闭提取内容', exact: true }).click();
+    await page.evaluate(() => preview.release()); assert.equal(await panel.isVisible(), false);
+    await open(2);
+    await page.evaluate(() => preview.hold('read'));
+    await panel.getByRole('button', { name: '重新读取提取内容', exact: true }).click();
+    await page.waitForFunction(() => preview.waiting === 'read');
+    await page.evaluate(() => { preview.emit('CHAT_CHANGED'); preview.release(); });
+    assert.equal(await panel.isVisible(), false); await open(2);
+    assert.equal(await panel.getByRole('spinbutton', { name: '经历索引', includeHidden: true }).inputValue(), '1');
+    await category('正文');
+    const overflow = await panel.evaluate(root => [...root.querySelectorAll('button,input,select,pre')].filter(item => {
+      if (!item.getClientRects().length || item.closest('[data-inspect-tabs]')) return false;
+      return item.getBoundingClientRect().right > root.getBoundingClientRect().right + 1;
+    }).map(item => item.outerHTML));
+    assert.deepEqual(overflow, []);
+    const geometry = await panel.boundingBox();
+    assert.ok(geometry.x >= 0 && geometry.y >= 0 && geometry.x + geometry.width <= width && geometry.y + geometry.height <= 820);
+    assert.ok(await panel.locator('.fa-solid').first().evaluate(icon => getComputedStyle(icon, '::before').content.length > 2));
+    await panel.getByRole('button', { name: '关闭提取内容', exact: true }).click();
+    await page.locator('.mes[mesid="0"] .crypt-lord-inspector-floor-tool').click(); await idle();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.mes[mesid="0"] .crypt-lord-inspector-floor-tool').evaluate(item => document.activeElement === item), true);
+    assert.equal(await page.evaluate(() => preview.writes.length), 0);
+    assert.equal(await page.locator('#native-draft').inputValue(), '保留原生草稿');
+    assert.equal(await page.evaluate(() => JSON.stringify({ floors: preview.floors, secondary: preview.books['2历史孔隙'], other: preview.books['1源堡'][1] })), baseline);
+    await open(2, 'journey'); await panel.getByRole('spinbutton', { name: '经历索引' }).fill('4');
+    await page.evaluate(() => preview.hold('book'));
+    await panel.getByRole('button', { name: '同步本周目经历', exact: true }).click();
+    await page.waitForFunction(() => preview.waiting === 'book');
+    await page.evaluate(() => { preview.api.dispose(); preview.release(); });
+    await page.waitForFunction(() => preview.waiting === null);
+    assert.equal(await bookWrites(), 3); assert.equal(await panel.count(), 0);
+    assert.equal(await page.locator('.crypt-lord-inspector-floor-tool').count(), 0);
+    assert.deepEqual(errors, []); await page.close();
+  }
+  console.log('提取内容浏览器：桌面/手机完整查看、双模型来源、原生编辑入口、显式经历同步和生命周期通过');
+} catch (error) {
+  await currentPage?.screenshot({ path: path.join(os.tmpdir(), 'response-inspector-failure.png') });
+  throw error;
+} finally { await browser.close(); }

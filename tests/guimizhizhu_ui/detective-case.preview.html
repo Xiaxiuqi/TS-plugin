@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>事件真相隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/detective-case/style.css">
+  <style>
+    body { margin: 0; background: #252c29; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open, #status { position: fixed; z-index: 100; left: 12px; }
+    #open { top: 12px; }
+    #status { bottom: 12px; }
+    #send_textarea { position: fixed; bottom: 45px; left: 12px; width: min(460px, 90vw); }
+  </style>
+</head>
+<body>
+  <button id="open">打开事件真相</button>
+  <output id="status"></output>
+  <form id="send_form">
+    <textarea id="send_textarea" aria-label="原生输入框">原生输入草稿</textarea>
+    <button id="send_but" type="button" hidden>发送</button>
+  </form>
+  <script>
+    let stored = { stat_data: { 名称: '侦探' }, world_data: {} };
+    let writes = 0;
+    let response = '';
+    let pending = null;
+    let requests = 0;
+    let text = '开场正文<reasoning>原生隐藏分析</reasoning><UpdateVariable>隐藏变量</UpdateVariable>';
+    let floorId = 2;
+    let settings = { useCustomApi: false };
+    let writeFailure = false, bookFailure = false, bookWrites = 0, sends = 0, inputEvents = 0;
+    const listeners = new Map();
+    let branch = '其他正文页', latestUser = false, hidden = false, onlyOpening = false;
+    let lostWriteResponse = false, lostBookResponse = false, readFailure = false, readFailureAfterWrite = false;
+    let settingsPending = null, settingsReads = 0;
+    const responses = [];
+    let conflictOnSettlement = false;
+    const requestConfigs = [], entries = [];
+    const opening = { message_id: 0, role: 'assistant', message: '开场', data: { preserved: '开场变量' } };
+    const message = () => ({ message_id: floorId, role: 'assistant', is_hidden: hidden, message: text,
+      data: structuredClone(stored), extra: { preserved: '插件字段' } });
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; },
+      releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { return modules[key]; },
+    } };
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }),
+      tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed', GENERATION_STARTED: 'generation_started',
+        GENERATION_ENDED: 'generation_ended', GENERATION_STOPPED: 'generation_stopped' }),
+      bindEvent: (event, callback) => {
+        const list = listeners.get(event) || new Set(); list.add(callback); listeners.set(event, list);
+        return { stop() { list.delete(callback); } };
+      },
+    };
+    modules['cryptLord.lifecycle'] = {
+      createScope() { return { addCleanup() {}, dispose() {} }; },
+    };
+    modules['cryptLord.shamanTerritory'] = { syncRadius(data) {
+      if (conflictOnSettlement) { conflictOnSettlement = false; stored.stat_data.外部变更 = true; }
+      data.stat_data.保存派生 = writes + 1;
+    } };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() {
+      settingsReads++;
+      if (settingsPending) await settingsPending.promise;
+      return structuredClone(settings);
+    } };
+    modules['cryptLord.hostApi'] = { async generateRaw(config) {
+      requests++;
+      requestConfigs.push(config);
+      if (pending) return pending.promise;
+      if (responses.length) return responses.shift();
+      return response;
+    },
+      async getChatMessages(range, options = {}) {
+        if (readFailure) { readFailure = false; throw Error('模拟楼层读取失败'); }
+        if (range === '0') return structuredClone([opening]);
+        if (range === String(floorId)) return [message()];
+        const rows = onlyOpening ? [opening] : [opening, message()];
+        if (latestUser) rows.push({ message_id: floorId + 1, role: 'user', message: '新用户回合', data: {} });
+        if (options.include_swipes) return rows.map(({ data, message, ...row }) => ({ ...row, swipe_id: 0,
+          swipes: [message, branch], swipes_data: [{ data: structuredClone(data) }, { data: { preserved: '其他分支' } }] }));
+        return structuredClone(rows);
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟楼层写入失败');
+        if (rows.length !== 1 || rows[0].message_id !== floorId || 'message' in rows[0]) throw Error('wrong floor or text write');
+        stored = structuredClone(rows[0].data); writes++;
+        if (readFailureAfterWrite) { readFailureAfterWrite = false; readFailure = true; }
+        if (lostWriteResponse) { lostWriteResponse = false; throw Error('模拟保存响应丢失'); }
+      },
+      async getWorldbook() { return structuredClone(entries); },
+      async updateWorldbookWith(_book, update) {
+        if (bookFailure) throw Error('模拟配置保存失败');
+        const next = update(structuredClone(entries));
+        next.forEach((row, index) => { row.uid ??= index + 1; });
+        entries.splice(0, entries.length, ...next); bookWrites++;
+        if (lostBookResponse) { lostBookResponse = false; throw Error('模拟配置响应丢失'); }
+      },
+    };
+    document.getElementById('send_form').onsubmit = event => { event.preventDefault(); sends++; };
+    document.getElementById('send_but').onclick = () => { sends++; };
+    document.getElementById('send_textarea').oninput = () => { inputEvents++; };
+    window.preview = {
+      get data() { return structuredClone(stored); },
+      get writes() { return writes; },
+      get requests() { return requests; },
+      get settingsReads() { return settingsReads; },
+      get bookWrites() { return bookWrites; },
+      get sends() { return sends; },
+      get inputEvents() { return inputEvents; },
+      get opening() { return structuredClone(opening); },
+      entries, requestConfigs,
+      set settings(value) { settings = value; },
+      set writeFailure(value) { writeFailure = value; },
+      set bookFailure(value) { bookFailure = value; },
+      set conflictOnSettlement(value) { conflictOnSettlement = value; },
+      set text(value) { text = value; },
+      set floorId(value) { floorId = value; },
+      chatChange() { this.emit('chat_changed'); },
+      emit(event, ...args) { listeners.get(event)?.forEach(callback => callback(...args)); },
+      set branch(value) { branch = value; },
+      set latestUser(value) { latestUser = value; },
+      set hidden(value) { hidden = value; },
+      set onlyOpening(value) { onlyOpening = value; },
+      set lostWriteResponse(value) { lostWriteResponse = value; },
+      set lostBookResponse(value) { lostBookResponse = value; },
+      set readFailure(value) { readFailure = value; },
+      set readFailureAfterWrite(value) { readFailureAfterWrite = value; },
+      responses,
+      holdSettings() {
+        let resolve;
+        settingsPending = { promise: new Promise(done => { resolve = done; }), resolve };
+      },
+      releaseSettings() { settingsPending?.resolve(); settingsPending = null; },
+      set response(value) { response = value; },
+      set data(value) { stored = value; },
+      hold() {
+        let resolve;
+        const promise = new Promise(done => { resolve = done; });
+        pending = { promise, resolve };
+      },
+      release(value) { pending?.resolve(value); pending = null; },
+      get panel() { return document.querySelector('.crypt-lord-detective-case'); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.detectiveCaseUi'].open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/input-adapter/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/detective-rules.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/detective-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/detective-case/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生楼层判定预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/judgment/style.css">
+  <style>
+    body { margin: 0; background: #25282a; color: #e4e9e6; font: 14px/1.5 "Microsoft YaHei", sans-serif; }
+    #chat { max-width: 960px; margin: auto; padding: 12px; }
+    .mes { border-bottom: 1px solid #536058; padding: 12px 0; }
+    .mes_text { overflow-wrap: anywhere; }
+    blockquote { margin: 8px 0; white-space: pre-wrap; }
+    iframe { display: none; }
+    #send_textarea { margin: 12px; max-width: calc(100% - 24px); }
+  </style>
+</head>
+<body>
+  <textarea id="send_textarea">保留原生输入</textarea>
+  <div id="other-plugin"><span class="info-label">其他插件</span><svg id="other-svg" width="0" height="0"><symbol id="rune-seal"></symbol></svg></div>
+  <div id="chat">
+    <div class="mes" mesid="0" is_user="false"><div class="mes_text"><p>开场正文</p></div></div>
+    <div class="mes" mesid="1" is_user="true"><div class="mes_text"></div></div>
+    <div class="mes" mesid="2" is_user="false"><div class="mes_text"><p>克莱恩走进大厅。</p><blockquote id="ability"></blockquote><p>正文后续仍然保留。</p><blockquote id="combat"></blockquote></div></div>
+    <div class="mes" mesid="4" is_user="false"><div class="mes_text"><blockquote id="stream"></blockquote></div></div>
+    <div class="mes" mesid="6" is_user="false"><div class="mes_text"><blockquote id="same"></blockquote></div></div>
+  </div>
+  <script type="module">
+    import { ability, combat, critical } from './judgment.fixtures.mjs';
+    const events = new Map();
+    window.JudgmentBeautifier = { otherPlugin: true };
+    window.judgmentBeautifierInstance = { otherPlugin: true };
+    document.body.classList.add('other-plugin-class');
+    document.getElementById('ability').textContent = ability;
+    document.getElementById('combat').textContent = combat;
+    document.getElementById('stream').textContent = ability.replace(/【判定结果[^】]+】/, '');
+    document.getElementById('same').textContent = ability.replace('[35]', '[50]');
+    document.querySelector('[mesid="1"] .mes_text').textContent = ability;
+    window.preview = { events, ability, combat, critical, writes: 0, api: null,
+      emit(name) { for (const handler of events.get(name) || []) handler(); } };
+    const runtime = document.createElement('iframe');
+    runtime.srcdoc = `<!doctype html><html><body>
+      <script>
+        const modules = {};
+        window.cryptLord = { __stage1Modules: modules, contract: {
+          initializeGlobal(key, api) { modules[key] = api; },
+          releaseGlobal(key) { delete modules[key]; },
+        } };
+        modules['cryptLord.afterNativeHost'] = {
+          getHost: () => ({ document: parent.document, window: parent }),
+          tavernEvents: () => Object.fromEntries(['MESSAGE_RECEIVED','MESSAGE_UPDATED',
+            'MESSAGE_EDITED','MESSAGE_DELETED','CHAT_CHANGED'].map(key => [key, key])),
+          bindEvent(name, handler) {
+            const handlers = parent.preview.events.get(name) || new Set();
+            handlers.add(handler); parent.preview.events.set(name, handlers);
+            return { stop() { handlers.delete(handler); } };
+          },
+        };
+        window.JudgmentBeautifier = { otherIframePlugin: true };
+        window.judgmentBeautifierInstance = { otherIframePlugin: true };
+        window.setChatMessages = () => { parent.preview.writes++; throw Error('禁止写入'); };
+      <\/script>
+      <script src="/public/guimizhizhu_ui/core/judgment-state.js"><\/script>
+      <script src="/public/guimizhizhu_ui/modules/judgment/index.js"><\/script>
+      <script>
+        parent.preview.api = modules['cryptLord.judgmentUi'];
+        parent.preview.state = modules['cryptLord.judgmentState'];
+        parent.preview.runtime = window;
+      <\/script>
+    </body></html>`;
+    document.body.append(runtime);
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生世界联动结算隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/floating-variable-workbench/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202426; color: #eef1ef; font: 14px "Microsoft YaHei", sans-serif; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px; }
+    #native-draft { display: block; width: 240px; height: 70px; margin: 20px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">变量修改器</button><button id="history">历史楼层</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script src="world-settlement.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-defaults.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/industry-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/cashflow.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/faction-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/world-map.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-workbench-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/floating-variable-workbench/index.js"></script>
+  <script>
+    document.querySelector('#open').onclick = () => preview.ui.open(2);
+    document.querySelector('#history').onclick = () => preview.ui.open(0);
+    preview.ui.open(2).then(() => { window.ready = true; });
+  </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>系统独立 API 配置预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/system-settings/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body { margin: 0; background: #1d2321; color: #eef1ef; font: 14px sans-serif; } #open { margin: 20px; }</style>
+</head>
+<body>
+  <button id="open">系统设置</button>
+  <script>
+    const KEY = 'cryptLord.variableSettlement';
+    let variables = { otherPlugin: { preserved: true }, [KEY]: { retryLimit: 3, futureOption: { keep: true } } };
+    const protectedData = { floors: [{ message_id: 2, data: { stat_data: { 活力: 100 } } }], worldbook: [{ uid: 1, content: '原版内容' }] };
+    const original = JSON.stringify(protectedData);
+    let writes = 0, failed = false, responseLost = false, readFail = false, afterFail = false, pause = false, release, waiting = false;
+    let listPause = false, listRelease, listWaiting = false, listFailed = false, emptyList = false, theme = 'dark';
+    const modules = {
+      'cryptLord.hostApi': {
+        scriptVariableOptions: () => ({ type: 'script', script_id: 'preview-settings' }),
+        getVariables() { if (readFail) throw Error('模拟读取失败'); return structuredClone(variables); },
+        async updateVariablesWith(updater) {
+          if (pause) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+          const next = await updater(structuredClone(variables));
+          if (failed) throw Error('模拟保存失败');
+          variables = structuredClone(next); writes++;
+          if (afterFail) readFail = true;
+          if (responseLost) throw Error('模拟保存响应丢失');
+        },
+        async getModelList(config) {
+          if (listPause) { listWaiting = true; await new Promise(resolve => { listRelease = resolve; }); listWaiting = false; }
+          if (listFailed) throw Error(`模拟模型列表失败 ${config.key}`);
+          return emptyList ? [] : [' alpha ', 'alpha', 'beta', ''];
+        },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document, window }),
+        tavernEvents: () => ({ CHAT_CHANGED: 'chat-changed' }),
+        bindEvent(name, fn) { window.addEventListener(name, fn); return { stop() { window.removeEventListener(name, fn); } }; },
+      },
+    };
+    window.cryptLord = { __stage1Modules: modules,
+      contract: { initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) { return modules[key]; } } };
+    window.preview = {
+      get api() { return modules['cryptLord.systemSettingsUi']; },
+      get variables() { return variables; }, get writes() { return writes; }, get waiting() { return waiting; },
+      get listWaiting() { return listWaiting; }, get theme() { return theme; },
+      get untouched() { return JSON.stringify(protectedData) === original && variables.otherPlugin.preserved && variables[KEY].futureOption.keep; },
+      set failed(value) { failed = value; }, set readFail(value) { readFail = value; }, set afterFail(value) { afterFail = value; },
+      set responseLost(value) { responseLost = value; },
+      set listFailed(value) { listFailed = value; }, set emptyList(value) { emptyList = value; },
+      hold() { pause = true; }, release() { pause = false; release?.(); },
+      holdList() { listPause = true; }, releaseList() { listPause = false; listRelease?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      open() { return preview.api.open({ get: () => theme, set: value => { theme = value; } }); },
+    };
+    document.getElementById('open').onclick = () => preview.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/system-settings/index.js"></script>
+  <script>preview.open();</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>外观与原生阅读预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/system-settings/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/appearance/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202623; color: #f0f2f0; font: 14px/1.6 sans-serif; }
+    #open { margin: 16px; } #chat { max-width: 860px; padding: 16px; }
+    .mes { margin-bottom: 24px; } .mes_text { padding: 12px; }
+    #send_textarea { box-sizing: border-box; width: calc(100% - 32px); margin: 16px; }
+    .crypt-lord-game-shell { position: fixed; right: 8px; bottom: 8px; width: calc(100vw - 16px); pointer-events: none; }
+    .crypt-lord-game-shell__dialog { display: flex; flex-direction: column; box-sizing: border-box; background: #2c3530; }
+    .crypt-lord-game-shell__dialog-body { padding: 12px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <button id="open">系统设置</button>
+  <div id="chat">
+    <div class="mes" mesid="1" is_user="true"><div class="mes_text">我沿着廷根的街道继续调查。</div></div>
+    <div class="mes" mesid="2" is_user="false"><div class="mes_text" style="--cl-appearance-size: 17px" data-theme="native">
+      <p>煤气灯已经点亮。你停在报社门口，听见雨滴敲打车棚的声音。</p>
+      <p>侦探递来一封信，封蜡上印着一个陌生的徽记。信件没有署名，只留下明天正午的约定。</p>
+    </div></div>
+  </div>
+  <textarea id="send_textarea" aria-label="原生输入框">保留原生输入草稿</textarea>
+  <div class="crypt-lord-game-shell crypt-lord-original-ui" hidden>
+    <div class="crypt-lord-game-shell__dialog"><div class="crypt-lord-game-shell__dialog-body">档案详情</div></div>
+  </div>
+  <script>
+    const KEY = 'cryptLord.appearance';
+    const image = new URL('../../数据库前端/d745e5301a83fcaf.png', location.href).href;
+    const books = { '1源堡': [
+      { uid: 1, name: '【配置】背景图库', content: JSON.stringify([image, new URL('missing-image.png', location.href).href]) },
+      { uid: 2, name: '【配置】字体配置', content: JSON.stringify({
+        'font-preview': { name: '系统黑体', css: '"Microsoft YaHei", sans-serif' },
+        'font-local': { name: '隔离载入字体', css: '"Preview Font", sans-serif',
+          customCSS: '@font-face{font-family:"Preview Font";src:local("Arial")}body{display:none}' },
+        'font-safe': { name: '只读字体安全检查', css: 'sans-serif', customCSS: 'body{display:none}textarea{color:red}' }
+      }) }], '2历史孔隙': [],
+      'second-card': [{ name: '【配置】字体配置',
+        content: '{"font-preview":{"name":"当前卡字体","css":"sans-serif"}}' }] };
+    const protectedBooks = JSON.stringify(books);
+    const floors = [{ message_id: 1, role: 'user', message: '调查', data: {} }, { message_id: 2, role: 'assistant', message: '正文', data: { keep: true } }];
+    const pages = new Map();
+    const protectedFloors = JSON.stringify(floors);
+    let variables = { otherPlugin: { preserved: true } }, writes = 0, hold = false, release, waiting = false, failed = false;
+    let readFail = false, postFail = false, lostResponse = false, discard = false, scriptId = 'appearance-preview', primary = '1源堡';
+    const intervals = new Map(), nativeInterval = window.setInterval, nativeClearInterval = window.clearInterval;
+    window.setInterval = (fn, delay) => { const id = nativeInterval(fn, delay); intervals.set(id, { fn, delay }); return id; };
+    window.clearInterval = id => { intervals.delete(id); return nativeClearInterval(id); };
+    const modules = {
+      'cryptLord.hostApi': {
+        scriptVariableOptions: () => ({ type: 'script', script_id: scriptId }),
+        getVariables() { if (readFail) throw Error('模拟读取失败'); return structuredClone(variables); },
+        async updateVariablesWith(fn) {
+          if (hold) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+          const next = await fn(structuredClone(variables)); if (failed) throw Error('模拟保存失败');
+          if (!discard) { variables = next; writes++; }
+          if (postFail) readFail = true;
+          if (lostResponse) throw Error('模拟响应丢失');
+        },
+        getCharWorldbookNames: () => ({ primary, additional: [] }),
+        getWorldbook: name => structuredClone(books[name] || []),
+        getChatMessages(_, options) { return structuredClone(options?.include_swipes ? floors.map(row => pages.get(row.message_id) ||
+          ({ ...row, swipe_id: 0, swipes: [row.message, '旧分支'], swipes_data: [row.data, {}], swipes_info: [{}, { keep: true }] })) : floors); },
+        getModelList: () => ['alpha', 'beta'],
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document, window }),
+        listAssistantMessages: () => floors.filter(row => row.role === 'assistant'),
+        getDisplayedMessageElement: id => document.querySelector(`.mes[mesid="${id}"]`),
+        tavernEvents: () => ({ CHAT_CHANGED: 'chat-changed', MESSAGE_UPDATED: 'message-updated' }),
+        bindEvent(name, fn) { window.addEventListener(name, fn); return { stop() { window.removeEventListener(name, fn); } }; },
+      },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) { return modules[key]; }
+    } };
+    window.preview = {
+      get ui() { return modules['cryptLord.appearanceUi']; },
+      get settings() { return modules['cryptLord.systemSettingsUi']; },
+      get variables() { return variables; }, get writes() { return writes; }, get waiting() { return waiting; },
+      get timers() { return [...intervals.values()].map(item => item.delay); },
+      get untouched() { return JSON.stringify(books) === protectedBooks && JSON.stringify(floors) === protectedFloors &&
+        variables.otherPlugin.preserved && document.getElementById('send_textarea').value === '保留原生输入草稿'; },
+      set failed(value) { failed = value; }, set readFail(value) { readFail = value; }, set postFail(value) { postFail = value; },
+      set lostResponse(value) { lostResponse = value; }, set discard(value) { discard = value; },
+      hold() { hold = true; }, release() { hold = false; release?.(); },
+      async tick() { for (const { fn } of [...intervals.values()]) await fn(); },
+      conflict() { variables[KEY].fontSize = 25; },
+      chatChanged() { primary = 'second-card'; window.dispatchEvent(new Event('chat-changed')); },
+      roleChanged() { floors[1].role = 'user'; document.querySelector('[mesid="2"]').setAttribute('is_user', 'true'); },
+      hidden(value) { if (value) floors[1].is_hidden = true; else delete floors[1].is_hidden; window.dispatchEvent(new Event('message-updated')); },
+      open() { return preview.settings.open(); },
+    };
+    document.getElementById('open').onclick = () => preview.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/appearance.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/appearance/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/system-settings/index.js"></script>
+</body>
+</html>

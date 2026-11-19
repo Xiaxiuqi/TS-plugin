@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生剧情文本编辑器预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/native-floor-editor/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; color: #edf1ef; background: #202426; font: 14px "Microsoft YaHei", sans-serif; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; padding: 20px; }
+    #native-draft { display: block; width: 250px; height: 70px; margin: 20px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">剧情文本编辑器</button><button id="history">历史楼层</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script>
+    const event = (id, title) => `序号|${id}\n日期|第五纪1349年9月1日\n时间|12:00\n标题|${title}\n地点|廷根\n描述|第一行\n第二行|原版续行\n标签|调查|城市`;
+    const message = title => `前置协议<gametxt data-view="original">\n<style>.plot { color: red; }</style>\n${title}\n<details open><summary>自动化</summary>\n<Auto data-key="keep">隐藏命令</Auto>\n💠识别的核心活跃NPC:伦纳德\n提示|保留内容\n</details>\n</gametxt>\n<本周目经历>\n${event(2, '发现线索')}\n</本周目经历>\n<UpdateVariable>原版变量命令</UpdateVariable>\n<未知协议>原样保留</未知协议>`;
+    const sample = () => ({ stat_data: { 活力: 10, 已接受任务: { 保留任务: { 领奖状态: true } } },
+      world_data: { 星界之门: '文本保存不做变量清洗' }, cryptLord: { rewards: { astralDust: 2 } },
+      stat_data_for_ai: { 原文: '非编辑快照' }, otherPlugin: { keep: true } });
+    const floors = [
+      { message_id: 0, role: 'assistant', message: message('开场'), data: sample() },
+      { message_id: 1, role: 'user', message: '调查', data: { keep: true } },
+      { message_id: 2, role: 'assistant', message: message('原生正文\n<img src=x onerror=alert(1)>'), data: sample(), swipe_id: 0 },
+    ];
+    const books = { '1源堡': [
+      { uid: 4, name: '本周目经历', content: event(1, '开场'), enabled: true, custom: { keep: true }, strategy: { keys: ['廷根'] } },
+      { uid: 7, name: '其他条目', content: '不变', enabled: false },
+    ], '2历史孔隙': [{ uid: 4, name: '本周目经历', content: '副库不变' }] };
+    const protectedSource = JSON.stringify({ floors: floors.slice(0, 2), data: floors[2].data, secondary: books['2历史孔隙'], other: books['1源堡'][1] });
+    const writes = [], bookWrites = [], updates = [], redirects = [], refreshes = [], pages = {}, branches = new Map();
+    const flags = { readFail: false, writeFail: false, bookFail: false, postFail: false, bookPostFail: false,
+      responseLost: false, bookResponseLost: false, noWrite: false, noBookWrite: false, attempts: 0, bookAttempts: 0 };
+    const identity = { chat: 'editor-chat', script: 'editor-preview' }, binding = { primary: '1源堡', additional: ['2历史孔隙'] };
+    window.SillyTavern = { getCurrentChatId: () => identity.chat };
+    let surface = { document, window };
+    const events = { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-start',
+      GENERATION_ENDED: 'generation-end', GENERATION_STOPPED: 'generation-stop' };
+    let hold = null, waiting = null, release = null;
+    async function pause(kind) {
+      if (hold !== kind) return;
+      waiting = kind; await new Promise(resolve => { release = resolve; }); waiting = null;
+    }
+    const modules = {
+      'cryptLord.hostApi': {
+        scriptVariableOptions: () => ({ type: 'script', script_id: identity.script }),
+        getVariables: () => ({}),
+        getCharWorldbookNames: () => structuredClone(binding),
+        async getChatMessages(range, options) {
+          await pause('read');
+          if (flags.readFail) throw Error('模拟读取失败');
+          const rows = range === '0-{{lastMessageId}}' ? floors : range === '{{lastMessageId}}' ? floors.slice(-1) :
+            floors.filter(row => row.message_id === Number(range));
+          return structuredClone(options?.include_swipes ? rows.map(row => {
+            const { message, data, extra, ...rest } = row, selected = row.swipe_id || 0;
+            const page = branches.get(row.message_id) || { swipes: [], swipes_data: [], swipes_info: [] };
+            for (let index = 0; index <= selected; index++) if (page.swipes[index] === undefined) {
+              page.swipes[index] = message; page.swipes_data[index] = structuredClone(data); page.swipes_info[index] = structuredClone(extra || {});
+            }
+            page.swipes[selected] = message; page.swipes_data[selected] = structuredClone(data);
+            page.swipes_info[selected] = structuredClone(extra || {}); branches.set(row.message_id, page);
+            return { ...rest, swipe_id: selected, ...page, ...pages[row.message_id] };
+          }) : rows);
+        },
+        async setChatMessages(rows) {
+          flags.attempts++;
+          if (flags.writeFail) throw Error('模拟保存失败');
+          if (flags.noWrite) { if (flags.postFail) flags.readFail = true; return; }
+          if (rows.some(row => row.message_id !== 2)) throw Error('预览禁止修改保护楼层');
+          writes.push(structuredClone(rows));
+          rows.forEach(row => Object.assign(floors.find(item => item.message_id === row.message_id), structuredClone(row)));
+          if (flags.postFail) flags.readFail = true;
+          if (flags.responseLost) throw Error('模拟保存响应丢失');
+        },
+        async getWorldbook(name) {
+          if (flags.bookFail) throw Error('模拟世界书读取失败');
+          return structuredClone(books[name]);
+        },
+        async updateWorldbookWith(name, updater) {
+          flags.bookAttempts++;
+          await pause('book');
+          if (flags.bookFail) throw Error('模拟世界书保存失败');
+          const next = await updater(structuredClone(books[name]));
+          if (flags.noBookWrite) { if (flags.bookPostFail) flags.bookFail = true; return; }
+          bookWrites.push(name); books[name] = structuredClone(next);
+          if (flags.bookPostFail) flags.bookFail = true;
+          if (flags.bookResponseLost) throw Error('模拟同步响应丢失');
+        },
+        generateRaw() { throw Error('文本编辑器不得请求模型'); },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => surface,
+        tavernEvents: () => events,
+        bindEvent(name, handler) {
+          const callback = event => handler(...(event.detail || []));
+          window.addEventListener(name, callback); return { stop() { window.removeEventListener(name, callback); } };
+        },
+      },
+      'cryptLord.gameShell': { refresh(id) { refreshes.push(id); } },
+      'cryptLord.nativeFloorStatusBar': { refresh(id) { refreshes.push(id); } },
+      'cryptLord.dynamicStatus': { load() { throw Error('文本保存不得重新派生变量'); } },
+      'cryptLord.variableWorkbench': { open(id) { redirects.push(id); return true; } },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) {
+        if (key === 'cryptLord.stateStore') await pause('save');
+        if (!modules[key]) throw Error(`缺少模块 ${key}`); return modules[key];
+      },
+    } };
+    window.addEventListener('cryptLord:message-edited', event => updates.push(structuredClone(event.detail)));
+    window.preview = {
+      floors, books, writes, bookWrites, updates, redirects, refreshes, flags, message, pages, identity, binding,
+      get api() { return modules['cryptLord.nativeFloorEditorUi']; },
+      get waiting() { return waiting; },
+      get untouched() {
+        return protectedSource === JSON.stringify({ floors: floors.slice(0, 2), data: floors[2].data,
+          secondary: books['2历史孔隙'], other: books['1源堡'][1] }) &&
+          document.getElementById('native-draft').value === '保留原生输入草稿';
+      },
+      hold(kind) { hold = kind; }, release() { hold = null; release?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      emit(name, ...args) { window.dispatchEvent(new CustomEvent(events[name], { detail: args })); },
+      notify() { window.dispatchEvent(new CustomEvent('cryptLord:variables-updated', { detail: { messageId: 2 } })); },
+      replaceService() { modules['cryptLord.nativeEditor'] = { ...modules['cryptLord.nativeEditor'] }; },
+      replaceSurface() { surface = { document: document.implementation.createHTMLDocument('另一个宿主'), window: {} }; },
+    };
+    document.getElementById('open').onclick = () => preview.api.open(2);
+    document.getElementById('history').onclick = () => preview.api.open(0);
+  </script>
+  <script src="../../public/guimizhizhu_ui/shared/save-recovery.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/journey-reader.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-editor.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-inspector.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/story-archive.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor-editor/index.js"></script>
+  <script>document.getElementById('open').click();</script>
+</body>
+</html>

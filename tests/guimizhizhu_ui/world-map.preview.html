@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>双世界地图预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/world-map/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #161c19; color: white; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">世界地图</button>
+  <script>
+    const mapData = {
+      mainRegions: [
+        { name: '因蒂斯共和国', points: { outer: [{x:38.93,y:8.88},{x:48.82,y:10.99},{x:49.97,y:13.04},{x:48.99,y:14.19},{x:47.85,y:13.22},{x:44.59,y:16.39},{x:39.73,y:13.04},{x:38.76,y:10.87}] } },
+        { name: '鲁恩王国', points: { outer: [{x:52,y:10},{x:60,y:10},{x:60,y:19},{x:52,y:19}] } },
+      ],
+      landmarks: [{ name:'廷根', marker:{left:'55.36%',top:'26.34%'}, mainRegionName:'鲁恩王国', description:'鲁恩王国的重要城市' }],
+    };
+    const books = new Map([
+      ['1源堡', []],
+      ['2历史孔隙', []], ['角色世界书', [
+        {uid:1,name:'【配置】地图数据',content:JSON.stringify(mapData),enabled:false}, {uid:2,name:'其他插件',content:'保留原文'}]],
+    ]);
+    const original = structuredClone(books);
+    let floor = { stat_data: { 当前区域:'鲁恩王国', 当前地标:'廷根', 当前坐标:{x:55.36,y:13.52559} } };
+    let readFail = false, pause = false, waiting = 0, releases = [], writes = 0,page=0,hidden=false,mismatch=false;
+    async function gate() {
+      if (pause) { waiting++; await new Promise(resolve => releases.push(resolve)); waiting--; }
+      if (readFail) throw Error('模拟读取失败');
+    }
+    const modules = {
+      'cryptLord.hostApi': {
+        getCharWorldbookNames() { return { primary:'角色世界书',additional:[] }; },
+        async getWorldbook(name) {
+          await gate();if(!books.has(name))throw Error('世界书不存在');return structuredClone(books.get(name));
+        },
+        async getChatMessages(_range,options) {
+          await gate();
+          return structuredClone(options?.include_swipes ? [{message_id:2,role:'assistant',is_hidden:hidden,
+            swipe_id:page,swipes:['原生正文','原生正文'],swipes_data:[mismatch?{}:floor,floor],swipes_info:[{},{}]}] :
+            [{message_id:2,role:'assistant',message:'原生正文',is_hidden:hidden,data:floor}]);
+        },
+        updateWorldbookWith() { writes++; throw Error('地图不允许写世界书'); },
+      },
+      'cryptLord.stateStore': {
+        async readAssistantData() { writes++; throw Error('不能使用带开场写入的状态读取接口'); },
+        writeAssistantMessage() { writes++; throw Error('地图不允许写楼层'); },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost() { return { document,window }; },
+        tavernEvents() { return { CHAT_CHANGED:'chat-changed',GENERATION_STARTED:'generation-start',
+          GENERATION_ENDED:'generation-end',GENERATION_STOPPED:'generation-stop' }; },
+        bindEvent(name,fn) {
+          const listener=event=>fn(...(event.detail||[]));
+          window.addEventListener(name,listener);return {stop(){window.removeEventListener(name,listener);}};
+        },
+      },
+    };
+    window.cryptLord = {__stage1Modules:modules,contract:{
+      initializeGlobal(key,api) { modules[key]=api; },releaseGlobal() {},
+      async waitGlobalInitialized(key) { return modules[key]; },
+    }};
+    window.preview = {
+      books,original,
+      get api() { return modules['cryptLord.worldMap']; },
+      get writes() { return writes; },
+      get waiting() { return waiting; },
+      get floor() { return floor; },
+      set readFail(value) { readFail=value; },
+      set page(value) { page=value; },set hidden(value){hidden=value;},set mismatch(value){mismatch=value;},
+      generation(type='normal',options={},dryRun=false) {
+        window.dispatchEvent(new CustomEvent('generation-start',{detail:[type,options,dryRun]}));
+      },
+      stop(){window.dispatchEvent(new Event('generation-stop'));},
+      hold() { pause=true; },
+      release() { pause=false; releases.splice(0).forEach(resolve=>resolve()); },
+      update(x,y,label='廷根') {
+        floor.stat_data.当前坐标={x,y};
+        floor.stat_data.当前地标=label;
+        window.dispatchEvent(new CustomEvent('cryptLord:variables-updated'));
+      },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+    };
+    document.getElementById('open').onclick=()=>preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/world-map.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/world-map/index.js"></script>
+  <script>preview.api.open();</script>
+</body>
+</html>

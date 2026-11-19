@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>音频控件回归</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/game-audio.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; padding: 20px; color: #f5deb3; background: #17191d; font: 14px/1.5 sans-serif; }
+    main { display: grid; gap: 160px; max-width: 680px; margin: 0 auto; }
+    section { padding: 12px; border: 1px solid #765b37; background: #261e16; }
+    header { display: flex; align-items: center; gap: 12px; min-height: 38px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section><header><strong>个人战斗</strong><div id="duel"></div></header></section>
+    <section><header><strong>驻军与编成</strong><div id="war"></div></header></section>
+    <section><header><strong>领地战役</strong><div id="campaign"></div></header></section>
+  </main>
+  <script>
+    window.cryptLord = {
+      __stage1Modules: {},
+      contract: { initializeGlobal() {}, releaseGlobal() {} },
+    };
+  </script>
+  <script src="./game-audio.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/game-audio.js"></script>
+  <script src="../../public/guimizhizhu_ui/shared/game-audio-control.js"></script>
+  <script>
+    const controls = cryptLord.__stage1Modules['cryptLord.gameAudioControl'];
+    document.querySelector('#duel').appendChild(controls.create(document, 'duel'));
+    document.querySelector('#war').appendChild(controls.create(document, 'war'));
+    document.querySelector('#campaign').appendChild(controls.create(document, 'war'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原著剧情指引隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/original-plot-guide/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/native-floor-status-bar/style.css">
+  <style>
+    body { margin: 0; background: #252c29; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 12px; }
+  </style>
+</head>
+<body>
+  <button id="open">打开原著剧情指引</button>
+  <div id="floor"></div>
+  <script>
+    let floor = { message_id: 2, role: 'assistant', message: '当前正文', data: { world_data: { 当前时间纪元: '第五纪1349年6月28日' } } };
+    const previous = { message_id: 0, role: 'assistant', message: '历史正文', data: { stat_data: { 当前时间纪元: '1349年7月10日' } } };
+    const bars = new Map();
+    const entries = [
+      { name: '1349年6月28日（原著）', content: '廷根的清晨。\n线索仍在延伸。' },
+      { name: '1349年6月25日—7月2日', content: '<img src=x onerror=alert(1)> 仅展示文本' },
+      { name: '1349年7月', content: '未到日期' },
+    ];
+    const handlers = new Map();
+    let reads = 0;
+    let fail = false;
+    let release;
+    let pause = false;
+    let branch = false;
+    let badPage = false;
+    let chat = 'plot-chat';
+    window.SillyTavern = { getCurrentChatId: () => chat };
+    const emit = async (event, ...args) => { for (const fn of handlers.get(event) || []) await fn(...args); };
+    window.cryptLord = { __stage1Modules: {}, contract: {
+      initializeGlobal(key, api) { this.registry[key] = api; },
+      releaseGlobal(key) { delete this.registry[key]; },
+      async waitGlobalInitialized(key) { return this.registry[key]; },
+      registry: null,
+    } };
+    const modules = window.cryptLord.__stage1Modules;
+    window.cryptLord.contract.registry = modules;
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }),
+      status: () => ({ ready: true }),
+      createElement: tag => document.createElement(tag),
+      listAssistantMessages: async () => [structuredClone(previous), structuredClone(floor)],
+      mountTop: (id, _, bar) => { bars.set(id, bar); document.getElementById('floor').append(bar); return true; },
+      unmountTop: id => { bars.get(id)?.remove(); bars.delete(id); },
+      getDisplayedMessageElement: () => document.getElementById('floor'),
+      getMessageTextElement: () => null,
+      tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' }),
+      bindEvent: (event, fn) => {
+        if (!handlers.has(event)) handlers.set(event, new Set());
+        handlers.get(event).add(fn);
+        return { stop() { handlers.get(event)?.delete(fn); } };
+      },
+    };
+    modules['cryptLord.stateStore'] = {
+      async findLatestAssistant() { return structuredClone(floor); },
+    };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages(range, options) {
+        const rows = range === '0-{{lastMessageId}}' ? [previous, floor] : range === '0' ? [previous] : range === String(floor.message_id) ? [floor] : [];
+        if (!options?.include_swipes) return structuredClone(rows);
+        return rows.map(({ message, data, ...row }) => ({
+          ...row, swipe_id: 0, swipes: branch && row.message_id === 0 ? [message, '历史分支修改'] : [message],
+          swipes_data: [badPage ? { world_data: { 当前时间纪元: '另一分支纪元' } } : structuredClone(data)], swipes_info: [{}],
+        }));
+      },
+      async getWorldbookNames() { return ['1源堡', '原著剧情卷一']; },
+      async getWorldbook() {
+        reads++;
+        if (pause) await new Promise(resolve => { release = resolve; });
+        if (fail) throw Error('读取失败');
+        return structuredClone(entries);
+      },
+    };
+    window.preview = {
+      entries,
+      get reads() { return reads; },
+      set fail(value) { fail = value; },
+      get api() { return modules['cryptLord.originalPlotGuideUi']; },
+      set floor(value) { floor = { message: '当前正文', ...value }; },
+      set branch(value) { branch = value; },
+      set badPage(value) { badPage = value; },
+      set chat(value) { chat = value; },
+      emit,
+      chatChanged() { handlers.get('chat_changed')?.forEach(fn => fn()); },
+      hold() { pause = true; },
+      release() { pause = false; release?.(); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.originalPlotGuideUi'].open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/original-plot-guide.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/original-plot-guide/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor-status-bar/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>地理上下文链路验收</title>
+  <style>
+    *{box-sizing:border-box;letter-spacing:0}
+    body{margin:0;background:#202326;color:#e6e9eb;font:14px/1.6 "Microsoft YaHei",sans-serif}
+    main{max-width:1050px;margin:auto;padding:20px}h1{font-size:20px;color:#efd285}
+    form,.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+    input{flex:1;min-width:180px}button,input,select{font:inherit;color:inherit;background:#151b1e;border:1px solid #69777c;border-radius:4px;padding:8px}
+    pre{white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid #48535a;padding:14px 0;font:inherit}
+    #status{color:#9bd8cb}#error{color:#f0a6a0}label{display:flex;align-items:center;gap:6px}
+    label input{min-width:0}small{color:#b9c2c7}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>地理上下文链路验收</h1>
+    <small>隔离测试数据</small>
+    <form id="request"><input aria-label="本回合输入" value="调查港口"><button type="submit">模拟原生生成</button></form>
+    <div class="controls">
+      <select aria-label="生成类型"><option value="normal">新回合</option><option value="regenerate">重生成</option><option value="swipe">切页</option><option value="continue">续写</option><option value="append">追加续写</option><option value="quiet">副模型</option></select>
+      <label><input id="fail" type="checkbox">模拟读取失败</label>
+      <button id="stop">停止生成</button><button id="chat">切换聊天</button><button id="script">模拟脚本请求</button>
+    </div>
+    <p id="status" role="status">等待请求</p><p id="error"></p><pre id="prompt"></pre>
+  </main>
+  <script>
+    const modules={},handlers=new Map(),writes=[],requests=[],warnings=[];
+    const data={mainRegions:[{name:'鲁恩',points:{outer:[{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}]}}],
+      landmarks:[{name:'廷根',mainRegionName:'鲁恩',marker:{left:'0%',top:'10%'}}]};
+    const floors=[
+      {message_id:0,role:'assistant',message:'开场',data:{stat_data:{当前区域:'鲁恩',当前地标:'开场',当前坐标:{x:1,y:1}}}},
+      {message_id:1,role:'user',message:'前往廷根',data:{}},
+      {message_id:2,role:'assistant',message:'已到港口',data:{stat_data:{当前区域:'鲁恩',当前地标:'廷根',当前坐标:{x:0,y:0}},otherPlugin:{保留:true}}},
+    ];
+    const initial=structuredClone(floors),pages=new Map();
+    let fail=false,held=false,waiting=0,releases=[],hook=null;
+    const ui={status:document.querySelector('#status'),prompt:document.querySelector('#prompt'),error:document.querySelector('#error')};
+    function render(){const active=requests.filter(row=>row.active);ui.status.textContent=`有效地理注入：${active.length}`;ui.prompt.textContent=active.at(-1)?.items[0].content||''}
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]},
+    }};
+    const warn=console.warn.bind(console);console.warn=(...args)=>{warnings.push(args.map(String).join(' '));ui.error.textContent=String(args.at(-1)?.message||args.at(-1));warn(...args)};
+    modules['cryptLord.hostApi']={
+      scriptVariableOptions:()=>({type:'script',script_id:'geography-preview'}),
+      getCharWorldbookNames:()=>({primary:null,additional:[]}),
+      async getWorldbook(name){
+        if(held){waiting++;await new Promise(resolve=>releases.push(resolve));waiting--}
+        if(hook){const current=hook;hook=null;current()}
+        if(fail)throw Error('模拟世界书读取失败');
+        return name==='1源堡'?[{name:'【配置】地图数据',content:JSON.stringify(data)}]:[];
+      },
+      async getChatMessages(range,options){return structuredClone(options?.include_swipes?floors.map(row=>{
+        if(pages.has(row.message_id))return pages.get(row.message_id);
+        const {message,data,...metadata}=row,old=initial.find(item=>item.message_id===row.message_id);
+        return {...metadata,swipe_id:0,swipes:[message,old?.message||'旧分支'],
+          swipes_data:[data,old?.data||{}],swipes_info:[{}, {keep:true}]};
+      }):floors)},
+      injectPrompts(items,options){const row={items:structuredClone(items),options,active:true};requests.push(row);render();return{uninject(){row.active=false;render()}}},
+      setChatMessages(){writes.push('楼层')},replaceWorldbook(){writes.push('世界书')},
+    };
+    modules['cryptLord.afterNativeHost']={
+      getHost:()=>({document}),tavernEvents:()=>({GENERATION_AFTER_COMMANDS:'start',GENERATION_STOPPED:'stop',CHAT_CHANGED:'chat',GENERATION_ENDED:'end'}),
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}},
+    };
+    modules['cryptLord.nativeHistoryPolicy']={createInjection:()=>({content:'原生历史策略'})};
+    modules['cryptLord.stateStore']={readAssistantData:async()=>structuredClone(floors.at(-1).data)};
+    modules['cryptLord.generationQuality']={readSnapshot:async()=>({settings:{retryLimit:0,streamTimeoutSeconds:0,noStreamTimeoutSeconds:0}})};
+    for(const key of ['responseNormalizer','nativeSettlement','variablePatch','variableSettlementApi'])modules[`cryptLord.${key}`]={};
+    async function emit(name,...args){for(const fn of handlers.get(name)||[])await fn(...args)}
+    document.querySelector('#request').onsubmit=async event=>{event.preventDefault();ui.error.textContent='';await emit('start',document.querySelector('select').value,{},false);render()};
+    document.querySelector('#fail').onchange=event=>fail=event.target.checked;
+    document.querySelector('#stop').onclick=()=>emit('stop');
+    document.querySelector('#chat').onclick=()=>emit('chat');
+    document.querySelector('#script').onclick=async()=>{
+      modules['cryptLord.nativeFloor']={hasActiveTurn:()=>true};
+      try{
+        const result=await modules['cryptLord.nativeFloorBridge'].buildGenerationConfig(document.querySelector('input').value);
+        await emit('start','normal',{},false);
+        ui.prompt.textContent=result.config.injects.filter(row=>row.content.includes('<地图地理总览>')).map(row=>row.content).join('\n');
+        ui.status.textContent=`脚本地理注入：${result.config.injects.filter(row=>row.content.includes('<地图地理总览>')).length}`;
+      }finally{delete modules['cryptLord.nativeFloor']}
+    };
+    window.preview={modules,requests,warnings,writes,initial,floors,pages,emit,get waiting(){return waiting},
+      hold(){held=true},release(){held=false;releases.splice(0).forEach(resolve=>resolve())},
+      conflict(){hook=()=>floors[2].data.stat_data.当前地标='外部修改'},
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/world-map.js"></script>
+  <script src="../../public/guimizhizhu_ui/prompts/context-builder.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/geographic-context.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>变量 AI 配置预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/ai-context-config/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #151d18; color: white; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">变量 AI 配置</button>
+  <script>
+    const KEY = 'cryptLord.aiContextConfig';
+    let variables = {
+      [KEY]: { mode: 'blacklist', version: '1.0', hiddenFields: ['stat_data.旧字段', 'world_data.旧地点'],
+        lockedFields: ['stat_data.人物.活力', '**.initialized', 'npc_data.*.未来秘密'] },
+      otherPlugin: { preserved: true },
+    };
+    const data = {
+      stat_data: { 人物: { 活力: 10, 暗号: '灰雾', initialized: true, '长名称测试字段不会溢出容器': 12 }, 地点: '廷根', 背包: [{ 名称: '信件', 内容: '线索' }] },
+      npc_data: { 伦纳德: { 好感度: 3 } }, world_data: { 时间: '上午' },
+    };
+    const originalData = structuredClone(data);
+    let writes = 0, failed = false, responseLost = false, readFail = false, afterFail = false, pause = false, release, waiting = false;
+    const methods = {
+      scriptVariableOptions() { return { type: 'script', script_id: 'preview-script' }; },
+      getVariables() { if (readFail) throw Error('模拟读取失败'); return structuredClone(variables); },
+      async getChatMessages(range, options = {}) {
+        if (options.include_swipes) return [{ message_id: 2, role: 'assistant', swipe_id: 1, swipes: ['未选正文', '公开正文'],
+          swipes_data: [{ stat_data: { 错误分支: 1 } }, structuredClone(data)], swipes_info: [{}, {}] }];
+        return [{ message_id: 2, role: 'assistant', message: '公开正文', data: structuredClone(data), extra: {} }];
+      },
+      async updateVariablesWith(updater) {
+        if (pause) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+        const next = await updater(structuredClone(variables));
+        if (failed) throw Error('模拟保存失败');
+        variables = structuredClone(next);
+        writes++;
+        if (afterFail) readFail = true;
+        if (responseLost) throw Error('模拟保存响应丢失');
+        return structuredClone(next);
+      },
+    };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.stateStore': { async readAssistantData() { return structuredClone(data); } },
+        'cryptLord.afterNativeHost': {
+          getHost() { return { document, window }; },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed' }; },
+          bindEvent(name, fn) { window.addEventListener(name, fn); return { stop() { window.removeEventListener(name, fn); } }; },
+        },
+      },
+      contract: { initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) { return cryptLord.__stage1Modules[key]; } },
+    };
+    window.preview = {
+      get api() { return cryptLord.__stage1Modules['cryptLord.aiContextConfigUi']; },
+      get variables() { return variables; },
+      get writes() { return writes; },
+      get waiting() { return waiting; },
+      get untouched() { return JSON.stringify(data) === JSON.stringify(originalData) && variables.otherPlugin.preserved; },
+      set failed(value) { failed = value; }, set readFail(value) { readFail = value; }, set afterFail(value) { afterFail = value; },
+      set responseLost(value) { responseLost = value; },
+      hold() { pause = true; }, release() { pause = false; release?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/ai-context-config.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/ai-context-config/index.js"></script>
+  <script>preview.api.open();</script>
+</body>
+</html>

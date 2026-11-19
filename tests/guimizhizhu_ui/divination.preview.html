@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>占卜工作流隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/divination/style.css">
+  <style>
+    body { margin: 0; background: #252c29; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { position: fixed; top: 12px; left: 12px; }
+    #send_textarea { position: fixed; bottom: 12px; left: 12px; width: min(460px, 90vw); }
+  </style>
+</head>
+<body>
+  <button id="open">打开占卜</button>
+  <form id="send_form">
+    <textarea id="send_textarea" aria-label="原生输入框">原生输入草稿</textarea>
+    <button id="send_but" type="button" hidden>发送</button>
+  </form>
+  <script>
+    let floor = { message_id: 2, role: 'assistant', message: '廷根的夜色安静。', data: {
+      stat_data: { 名称: '占卜者', 当前灵性: 10, 运气: 4 },
+    } };
+    const responses = [];
+    const requests = [];
+    const entries = [];
+    let nextUid = 1;
+    let delayed = null;
+    const opening = { message_id: 0, role: 'assistant', message: '原生开场',
+      data: { preserved: '开场变量' } };
+    let writes = 0, sends = 0, inputEvents = 0, bookWrites = 0;
+    let writeFailure = false;
+    let settings = { useCustomApi: false };
+    const listeners = new Map();
+    let pages = [];
+    let settingsRelease = null, afterWriteFailure = false, readFailure = false, updateHook = null;
+    document.getElementById('send_form').addEventListener('submit', event => { event.preventDefault(); sends++; });
+    document.getElementById('send_but').addEventListener('click', () => { sends++; });
+    document.getElementById('send_textarea').addEventListener('input', () => { inputEvents++; });
+    window.cryptLord = { __stage1Modules: {}, contract: {
+      initializeGlobal(key, api) { this.registry[key] = api; },
+      releaseGlobal(key) { delete this.registry[key]; },
+      async waitGlobalInitialized(key) { return this.registry[key]; },
+      registry: null,
+    } };
+    const modules = window.cryptLord.__stage1Modules;
+    window.cryptLord.contract.registry = modules;
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }),
+      tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed', GENERATION_STARTED: 'started', GENERATION_ENDED: 'ended', GENERATION_STOPPED: 'stopped' }),
+      bindEvent(event, callback) {
+        if (!listeners.has(event)) listeners.set(event, new Set());
+        listeners.get(event).add(callback);
+        return { stop() { listeners.get(event)?.delete(callback); } };
+      },
+    };
+    modules['cryptLord.lifecycle'] = {
+      createScope() {
+        const callbacks = [];
+        return { addCleanup(fn) { callbacks.push(fn); }, dispose() { callbacks.forEach(fn => fn()); } };
+      },
+    };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() {
+      if (settingsRelease) await settingsRelease.promise;
+      return structuredClone(settings);
+    } };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages(range, options) {
+        return structuredClone(range === '0' ? [opening] : options?.include_swipes ? [opening, floor, ...pages] : [opening, floor]);
+      },
+      async setChatMessages() { writes++; throw Error('占卜不能写入原生楼层'); },
+      async getWorldbook() { if (readFailure) throw Error('模拟方案复核失败'); return structuredClone(entries); },
+      async createWorldbookEntries(_book, rows) {
+        if (writeFailure) throw Error('模拟方案保存失败');
+        bookWrites++;
+        entries.push(...rows.map(row => ({ ...row, uid: nextUid++ })));
+      },
+      async updateWorldbookWith(_book, update) {
+        if (updateHook) { const hook = updateHook; updateHook = null; hook(); }
+        if (writeFailure) throw Error('模拟方案保存失败');
+        bookWrites++;
+        entries.splice(0, entries.length, ...update(structuredClone(entries)).map(row =>
+          row.uid == null ? { ...row, uid: nextUid++ } : row));
+        if (afterWriteFailure) throw Error('模拟保存响应丢失');
+      },
+      async generateRaw(config) {
+        requests.push(config);
+        if (delayed) return delayed.promise;
+        if (!responses.length) throw Error('没有排队的模型回复');
+        return responses.shift();
+      },
+    };
+    window.preview = {
+      responses, requests, entries,
+      get opening() { return structuredClone(opening); },
+      get writes() { return writes; },
+      get sends() { return sends; },
+      get inputEvents() { return inputEvents; },
+      get bookWrites() { return bookWrites; },
+      set writeFailure(value) { writeFailure = value; },
+      set settings(value) { settings = value; },
+      chatChange() { listeners.get('chat_changed')?.forEach(fn => fn()); },
+      emit(event, ...args) { listeners.get(event)?.forEach(fn => fn(...args)); },
+      pages,
+      set afterWriteFailure(value) { afterWriteFailure = value; },
+      set readFailure(value) { readFailure = value; },
+      set updateHook(value) { updateHook = value; },
+      holdSettings() {
+        let resolve;
+        const promise = new Promise(done => { resolve = done; });
+        settingsRelease = { promise, resolve };
+      },
+      releaseSettings() { settingsRelease?.resolve(); settingsRelease = null; },
+      set floor(value) { floor = value; },
+      get floor() { return structuredClone(floor); },
+      hold() {
+        let resolve;
+        const promise = new Promise(done => { resolve = done; });
+        delayed = { promise, resolve };
+      },
+      release(value) { delayed?.resolve(value); delayed = null; },
+      get api() { return modules['cryptLord.divinationUi']; },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.divinationUi'].open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/input-adapter/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/divination-presets.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/divination-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/divination/index.js"></script>
+</body>
+</html>

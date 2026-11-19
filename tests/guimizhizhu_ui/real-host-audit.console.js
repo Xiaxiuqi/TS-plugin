@@ -42,12 +42,15 @@
   function uiSnapshot() {
     const input = nativeInput();
     const actionButtons = Array.from(document.querySelectorAll('[data-crypt-lord-action-options] button'));
-    const stateCards = Array.from(document.querySelectorAll('[data-crypt-lord-floating-variable-editor-card]'));
+    const statusBars = Array.from(document.querySelectorAll('[data-crypt-lord-after-native-mount="status-bar"]'));
+    // The old floating state card was replaced by the status bar; keep the field name for existing checklists.
+    const stateCards = statusBars;
     return Object.freeze({
       nativeInputPresent: !!input,
       nativeInputText: String(input?.value || ''),
       actionOptions: actionButtons.map(button => String(button.textContent || '').trim()).filter(Boolean),
       stateCardMessageIds: stateCards.map(card => card.getAttribute('data-crypt-lord-message-id')).filter(Boolean),
+      statusBarMessageIds: statusBars.map(bar => bar.getAttribute('data-crypt-lord-message-id')).filter(Boolean),
     });
   }
 
@@ -109,6 +112,7 @@
       latestAssistantActionCount: result.latestAssistant.actions,
       actionOptions: result.ui.actionOptions.length,
       stateCards: result.ui.stateCardMessageIds.length,
+      statusBars: result.ui.statusBarMessageIds.length,
     });
     console.groupEnd();
     return result;
@@ -128,9 +132,9 @@
 
   function installObservers() {
     bind(document, 'click', event => {
-      const target = event.target?.closest?.('#send_but, #btn-quick-send, [data-crypt-lord-action-options] button');
+      const target = event.target?.closest?.('#send_but, [data-crypt-lord-action-options] button');
       if (!target) return;
-      log('click', { selector: target.matches('#send_but') ? '#send_but' : target.matches('#btn-quick-send') ? '#btn-quick-send' : 'action-option' });
+      log('click', { selector: target.matches('#send_but') ? '#send_but' : 'action-option' });
     }, true);
     bind(document, 'submit', event => {
       if (event.target?.matches?.('#send_form')) log('native-form-submit');

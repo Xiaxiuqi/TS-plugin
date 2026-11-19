@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多人战斗隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/game-shell/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/game-audio.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; min-height: 100vh; background: #242925; color: #eee; font-family: "Microsoft YaHei", sans-serif; }
+    #open { position: fixed; top: 12px; left: 12px; z-index: 12000; }
+  </style>
+</head>
+<body>
+  <button id="open">打开战斗系统</button>
+  <form id="send_form" hidden>
+    <textarea id="send_textarea" aria-label="原生输入框"></textarea>
+    <button id="send_but" type="button">发送</button>
+  </form>
+  <script>
+    const modules = {};
+    let stored;
+    let writes = 0;
+    let tacticalResponse = '';
+    let requests = 0;
+    let openingPrompt = '';
+    let lifeEntries = [];
+    let lifeReads = 0;
+    let tagEntries = [];
+    let writeFailure = false;
+    let deferredScene = null;
+    let releaseScene = null;
+    let swipes = ['未选正文', '测试楼层正文'];
+    let swipeId = 1;
+    const transactionFlags = {};
+    let apiSettings = { useCustomApi: false };
+    let chatId = 'battle-preview';
+    let scriptId = 'battle-preview-script';
+    const metadata = { created: new Date('2026-10-16T00:00:00Z'), preserved: true };
+    const eventHandlers = {};
+    const opening = { message_id: 0, role: 'assistant', message: '开场正文',
+      data: { preserved: '开场变量' } };
+    let sceneResponse = JSON.stringify({ 场景: '废弃仓库', 基底: { 名称: '石板路', 分级: 0 },
+      笔刷: [{ 形状: 'cells', 格子: [[8, 5]], 地形: 'fireSurface', 存在回合: 3 }],
+      自然环境: { 地貌: '森林', 天气: '阴', 时间: '下午' },
+      可互动物品: [
+      { 名称: '货箱', 描述: '堆在墙边', 数量: 3 },
+      { 名称: '油灯', 描述: '挂在墙上', 数量: 1 },
+    ] });
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; },
+      releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { return modules[key]; },
+    } };
+    window.toastr = Object.fromEntries(['success', 'error', 'warning', 'info']
+      .map(level => [level, text => { document.body.dataset.notice = `${level}: ${text}`; }]));
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), createElement: tag => document.createElement(tag),
+      listAssistantMessages: async () => [message()], tavernEvents: () => ({
+        CHAT_CHANGED: 'chat', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop',
+      }),
+      bindEvent: (name, fn) => {
+        if (name) (eventHandlers[name] ||= []).push(fn);
+        return { stop() { eventHandlers[name] = (eventHandlers[name] || []).filter(handler => handler !== fn); } };
+      },
+    };
+    let sends = 0, inputEvents = 0;
+    document.getElementById('send_but').addEventListener('click', () => { sends++; });
+    document.getElementById('send_form').addEventListener('submit', event => {
+      event.preventDefault(); sends++;
+    });
+    document.getElementById('send_textarea').addEventListener('input', () => { inputEvents++; });
+    modules['cryptLord.lifecycle'] = {
+      createScope: () => ({ addCleanup() {}, dispose() {} }),
+    };
+    modules['cryptLord.equipmentState'] = { lists: [] };
+    modules['cryptLord.inventoryState'] = { giftLists: [] };
+    modules['cryptLord.abilityState'] = {
+      loadPool: async () => ({ pathways: {} }), locked: () => Boolean(transactionFlags.locked),
+    };
+    modules['cryptLord.relationshipState'] = {};
+    window.SillyTavern = { getCurrentChatId: () => chatId };
+    const message = () => ({ message_id: 2, role: 'assistant', message: swipes[swipeId],
+      swipe_id: swipeId, is_hidden: Boolean(transactionFlags.hidden),
+      data: structuredClone(stored) });
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: scriptId }),
+      async getChatMessages(range, options = {}) {
+        if (transactionFlags.readFailure) throw Error('模拟回读失败');
+        const latest = message();
+        const rows = range === '0' ? [opening] : range === '2' ? [latest] : [opening, latest];
+        if (range !== '0' && range !== '2' && transactionFlags.user)
+          rows.push({ message_id: 3, role: 'user', message: '等待回复', data: {} });
+        return structuredClone(options.include_swipes ? rows.map(row => {
+          const { message: text, data, ...rest } = row;
+          const branches = row.message_id === 2 ? swipes : [text];
+          const selected = row.message_id === 2 ? swipeId : 0;
+          return { ...rest, swipe_id: selected, swipes: branches,
+            swipes_data: branches.map((_, index) => index === selected ? data : { alternate: transactionFlags.branch || '保留' }),
+            swipes_info: branches.map(() => ({ ...metadata, revision: transactionFlags.metadata || 0 })) };
+        }) : rows);
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟写入失败');
+        if (rows.length !== 1 || rows[0].message_id !== 2 || Object.keys(rows[0]).some(key =>
+          !['message_id', 'data'].includes(key))) throw Error('必须只更新当前楼层变量');
+        if (transactionFlags.noWrite) return;
+        stored = structuredClone(rows[0].data); writes++;
+        if (transactionFlags.conflictAfterWrite) stored.external = '外部保存';
+        if (transactionFlags.failReadAfterWrite) transactionFlags.readFailure = true;
+        if (transactionFlags.lostReceipt) throw Error('模拟保存回执丢失');
+      },
+      async getWorldbookNames() { return ['保命测试库', '标签测试库']; },
+      async getWorldbook(book) {
+        if (book === '保命测试库') { lifeReads++; return structuredClone(lifeEntries); }
+        return structuredClone(tagEntries);
+      },
+      async generateRaw(config) {
+        requests++;
+        if (config.ordered_prompts[0].content.includes('战场设计师'))
+          openingPrompt = config.ordered_prompts[0].content;
+        if (deferredScene && config.ordered_prompts[0].content.includes('战场设计师')) await deferredScene;
+        return config.ordered_prompts[0].content.includes('战场设计师')
+          ? sceneResponse : tacticalResponse;
+      },
+    };
+    modules['cryptLord.variableSettlementApi'] = {
+      async readSettings() { return structuredClone(apiSettings); },
+    };
+    window.preview = {
+      get data() { return structuredClone(stored); },
+      get writes() { return writes; },
+      get requests() { return requests; },
+      get sends() { return sends; },
+      get inputEvents() { return inputEvents; },
+      get opening() { return structuredClone(opening); },
+      set writeFailure(value) { writeFailure = value; },
+      get openingPrompt() { return openingPrompt; },
+      get lifeReads() { return lifeReads; },
+      set lifeEntries(value) { lifeEntries = value; },
+      set tagEntries(value) { tagEntries = value; },
+      set data(value) { stored = structuredClone(value); },
+      set tacticalResponse(value) { tacticalResponse = value; },
+      set sceneResponse(value) { sceneResponse = value; },
+      holdScene() { deferredScene = new Promise(resolve => { releaseScene = resolve; }); },
+      releaseScene() { releaseScene?.(); deferredScene = null; },
+      switchSwipe() { swipes.push('另一个分支'); swipeId++; },
+      transaction: { flags: transactionFlags,
+        settings(value) { apiSettings = value; },
+        chat(value) { chatId = value; }, script(value) { scriptId = value; },
+        listeners() { return Object.values(eventHandlers).reduce((sum, rows) => sum + rows.length, 0); } },
+      emit(name, ...args) { for (const handler of eventHandlers[name] || []) handler(...args); },
+      async refresh() { await modules['cryptLord.gameShell'].refresh(); },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/character-panel-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/pathway-play-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/shaman-territory.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-life-save.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-tags.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-terrain-presets.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/natural-environment.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/savant-material.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/savant-enhancement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/weapon-classifier.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/npc-weapon-assigner.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battlefield-painter.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-conditional-params.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/personal-battle-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/team-battle-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-team-builder.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-session.js"></script>
+  <script src="./game-audio.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/game-audio.js"></script>
+  <script src="../../public/guimizhizhu_ui/shared/game-audio-control.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/game-shell/index.js"></script>
+  <script type="module">
+    const params = new URL(location.href).searchParams;
+    const personalPreview = params.get('personal') === '1';
+    if (personalPreview) { params.set('skillControl', '1'); params.set('report', '1'); }
+    if (personalPreview || params.get('tags') === '1' || params.get('effects') === '1' || params.get('lifeSave') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-field-effect-reference.js');
+      await import('../../public/guimizhizhu_ui/core/battle-report.js');
+      document.title = '原版标签完整链与原生存档隔离预览';
+    }
+    if (personalPreview || params.get('effects') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-effect-reference.js');
+      await import('../../public/guimizhizhu_ui/core/battle-effects.js');
+      document.title = '原版持续效果完整生命周期隔离预览';
+    }
+    const teamBuilderPreview = params.get('teamBuilder') === '1';
+    if (teamBuilderPreview) params.set('playUnits', '1');
+    const playUnitsPreview = params.get('playUnits') === '1';
+    if (playUnitsPreview) params.set('report', '1');
+    const skillControlPreview = params.get('skillControl') === '1';
+    const reportPreview = params.get('report') === '1';
+    if (skillControlPreview || reportPreview) params.set('autoPilot', '1');
+    if (params.get('borrow') === '1' || params.get('grazingSwitch') === '1' || params.get('cpu') === '1' || params.get('actionCpu') === '1' || params.get('terrain') === '1' || params.get('resourceStatus') === '1' || params.get('autoPilot') === '1') {
+      for (const name of ['audience-imagination', 'grazing-state', 'battle-formulas', 'battle-auras', 'battle-field-effect-reference',
+        'battle-field-effects', 'battle-effect-transfer', 'battle-bribery', 'battle-balance',
+        'battle-punishment', 'battle-exile', 'battle-active-leave', 'battle-events',
+        'battle-rewind', 'battle-extra-action', 'battle-hard-control', 'battle-mind-deprive',
+        'battle-temp-control', 'battle-permanent-control', 'battle-possession',
+        'battle-rule-change', 'battle-environment', 'battle-fundamental', 'battle-summon',
+        'battle-ability-borrow'])
+        await import(`../../public/guimizhizhu_ui/core/${name}.js`);
+      document.title = params.get('grazingSwitch') === '1'
+        ? '放牧组合战术切换隔离预览' : '原版能力借用完整链隔离预览';
+    }
+    if (params.get('cpu') === '1' || params.get('actionCpu') === '1' || params.get('terrain') === '1' || params.get('resourceStatus') === '1' || params.get('autoPilot') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-mythic-form.js');
+      await import('../../public/guimizhizhu_ui/core/battle-tactic-cpu.js');
+      document.title = '原版统一战术结算隔离预览';
+    }
+    if (params.get('actionCpu') === '1' || params.get('terrain') === '1' || params.get('resourceStatus') === '1' || params.get('autoPilot') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-team-conditions.js');
+      await import('../../public/guimizhizhu_ui/core/battle-action-cpu.js');
+      document.title = '原版 NPC 移动攻击完整流程预览';
+    }
+    if (params.get('terrain') === '1' || params.get('resourceStatus') === '1' || params.get('autoPilot') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-terrain-effects.js');
+      document.title = '原版危险地形持续结算预览';
+    }
+    if (params.get('resourceStatus') === '1' || params.get('autoPilot') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-resource-status.js');
+      document.title = '原版五维资源衰减状态完整流程预览';
+    }
+    if (params.get('autoPilot') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-auto-pilot.js');
+      document.title = '原版多人战斗托管完整流程预览';
+    }
+    if (skillControlPreview)
+      await import('../../public/guimizhizhu_ui/core/battle-skill-control.js');
+    if (reportPreview) {
+      await import('../../public/guimizhizhu_ui/core/battle-report.js');
+      await import('../../public/guimizhizhu_ui/modules/input-adapter/index.js');
+      await modules['cryptLord.inputAdapter'].install();
+    }
+    if (playUnitsPreview) {
+      await import('../../public/guimizhizhu_ui/core/battle-play-reference.js');
+      await import('../../public/guimizhizhu_ui/core/battle-play-units.js');
+    }
+    if (params.get('balance') === '1' || params.get('punishment') === '1' || params.get('mythic') === '1' || params.get('exile') === '1' || params.get('leave') === '1' || params.get('events') === '1' || params.get('rewind') === '1' || params.get('extra') === '1' || params.get('hard') === '1' || params.get('mind') === '1' || params.get('temp') === '1' || params.get('permanent') === '1' || params.get('possession') === '1' || params.get('rules') === '1' || params.get('environment') === '1' || params.get('fundamental') === '1' || params.get('summon') === '1') {
+      for (const name of ['battle-formulas', 'battle-auras', 'battle-field-effect-reference',
+        'battle-field-effects', 'battle-effect-transfer', 'battle-bribery', 'battle-balance',
+        'battle-team-conditions'])
+        await import(`../../public/guimizhizhu_ui/core/${name}.js`);
+      document.title = '原版平衡权柄完整链隔离预览';
+    }
+    if (params.get('punishment') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-punishment.js');
+      document.title = '原版惩戒完整链隔离预览';
+    }
+    if (params.get('mythic') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-mythic-form.js');
+      document.title = '原版神话生物形态完整链隔离预览';
+    }
+    if (params.get('exile') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-exile.js');
+      document.title = '原版放逐完整链隔离预览';
+    }
+    if (params.get('leave') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-active-leave.js');
+      await import('../../public/guimizhizhu_ui/core/battle-exile.js');
+      document.title = '原版主动离场完整链隔离预览';
+    }
+    if (params.get('events') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-events.js');
+      document.title = '原版雷暴与地震完整链隔离预览';
+    }
+    if (params.get('rewind') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-rewind.js');
+      document.title = '原版回溯完整链隔离预览';
+    }
+    if (params.get('extra') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-extra-action.js');
+      document.title = '原版额外行动与虚影完整链隔离预览';
+    }
+    if (params.get('hard') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-extra-action.js');
+      document.title = '原版硬控五种能力完整链隔离预览';
+    }
+    if (params.get('permanent') === '1' || params.get('possession') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-mind-deprive.js');
+      await import('../../public/guimizhizhu_ui/core/battle-temp-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-permanent-control.js');
+      document.title = '原版永久控制与秘偶完整链隔离预览';
+    }
+    if (params.get('possession') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-possession.js');
+      document.title = '原版附身与夺舍完整链隔离预览';
+    }
+    if (params.get('rules') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-rule-change.js');
+      document.title = '原版规则修改完整链隔离预览';
+    }
+    if (params.get('environment') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-rule-change.js');
+      await import('../../public/guimizhizhu_ui/core/battle-environment.js');
+      document.title = '原版改变环境完整链隔离预览';
+    }
+    if (params.get('fundamental') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-rule-change.js');
+      await import('../../public/guimizhizhu_ui/core/battle-fundamental.js');
+      document.title = '原版底层规则八种能力完整链隔离预览';
+    }
+    if (params.get('summon') === '1') {
+      for (const name of ['audience-imagination', 'grazing-state', 'shaman-picture',
+        'battle-hard-control', 'battle-temp-control', 'battle-permanent-control',
+        'battle-possession', 'battle-summon'])
+        await import(`../../public/guimizhizhu_ui/core/${name}.js`);
+      document.title = '原版六类召唤完整链隔离预览';
+    }
+    if (params.get('temp') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-mind-deprive.js');
+      await import('../../public/guimizhizhu_ui/core/battle-temp-control.js');
+      document.title = '原版五种阵营短控完整链隔离预览';
+    }
+    if (params.get('mind') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-hard-control.js');
+      await import('../../public/guimizhizhu_ui/core/battle-extra-action.js');
+      await import('../../public/guimizhizhu_ui/core/battle-mind-deprive.js');
+      const reference = cryptLord.__stage1Modules['cryptLord.battleFieldEffectReference'];
+      const config = reference.mindConfig();
+      const outcome = params.get('outcome');
+      // Isolated branch fixtures only; ordinary previews keep the original five weighted outcomes.
+      if (config.MIND_DEPRIVE_OUTCOMES.some(row => row.key === outcome))
+        reference.mindConfig = () => structuredClone({ ...config,
+          MIND_DEPRIVE_OUTCOMES: [{ key: outcome, weight: 100 }] });
+      document.title = '原版心智剥夺五档完整链隔离预览';
+    }
+    if (params.get('formulas') === '1' || params.get('auras') === '1' || params.get('fields') === '1' || params.get('transfers') === '1' || params.get('bribery') === '1' || params.get('conditions') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-formulas.js');
+      document.title = '原版战斗数值链隔离预览';
+    }
+    if (params.get('auras') === '1' || params.get('fields') === '1' || params.get('transfers') === '1' || params.get('bribery') === '1' || params.get('conditions') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-auras.js');
+      document.title = '原版光环完整链隔离预览';
+    }
+    if (params.get('fields') === '1' || params.get('transfers') === '1' || params.get('bribery') === '1' || params.get('conditions') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-field-effect-reference.js');
+      await import('../../public/guimizhizhu_ui/core/battle-field-effects.js');
+      document.title = '原版施加效果完整链隔离预览';
+    }
+    if (params.get('transfers') === '1' || params.get('bribery') === '1' || params.get('conditions') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-effect-transfer.js');
+      document.title = '原版效果传递完整链隔离预览';
+    }
+    if (params.get('bribery') === '1' || params.get('conditions') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-bribery.js');
+      document.title = '原版贿赂完整链隔离预览';
+    }
+    if (params.get('conditions') === '1') {
+      await import('../../public/guimizhizhu_ui/core/battle-team-conditions.js');
+      document.title = '原版多人条件技能完整链隔离预览';
+    }
+    if (teamBuilderPreview) document.title = '原版多人战斗组队准备';
+    window.previewModulesReady = true;
+  </script>
+  <script type="module">
+    const teamBuilderPreview = new URL(location.href).searchParams.get('teamBuilder') === '1';
+    const personalPreview = new URL(location.href).searchParams.get('personal') === '1';
+    const playUnitsPreview = teamBuilderPreview || new URL(location.href).searchParams.get('playUnits') === '1';
+    const card = (hp, speed) => ({
+      当前序列: '序列9', 活力: hp, 当前活力: hp, 灵性: 60, 当前灵性: 60,
+      理智: 100, 当前理智: 100,
+      敏捷: speed, 当前敏捷: speed,
+    });
+    stored = {
+      stat_data: { ...card(100, 40), 当前序列: '序列6-仲裁人', 名称: '测试者',
+        消耗品列表: {
+          回灵药: { 名称: '回灵药', 数量: 1, 序列: '序列8',
+            战斗效果: { 基础效果: '灵性恢复', 范围: '单体' } },
+          符咒: { 名称: '火焰符咒', 数量: 2, 序列: '序列8', $卷轴制造: true,
+            战斗效果: { 基础效果: '物理攻击', 范围: '单体' } },
+        }, 辅助能力列表: {
+          火光: { 名称: '群体火光', 序列: '序列8',
+            战斗效果: { 基础效果: '法术攻击', 范围: '全体', 额外效果: '攻击BUFF' } },
+          治疗: { 名称: '同伴治疗', 序列: '序列8',
+            战斗效果: { 基础效果: '活力恢复', 范围: '单体', 额外效果: '防御BUFF' } },
+        }, 序列能力列表: { 能力: [
+        { 名称: '远击', power: 30, 灵性消耗: 2, range: 'global' },
+      ] } },
+      npc_data: { 盟友: card(50, 20), 敌甲: {
+        ...card(40, 25), 序列能力列表: { 能力: [
+          { 名称: '火球', power: 8, range: 'global' },
+          { 名称: '冰锥', power: 6, range: 'global' },
+        ] },
+      }, 敌乙: card(40, 15) },
+    };
+    if (new URL(location.href).searchParams.get('actionCpu') === '1' ||
+      new URL(location.href).searchParams.get('terrain') === '1' ||
+      new URL(location.href).searchParams.get('resourceStatus') === '1' ||
+      new URL(location.href).searchParams.get('autoPilot') === '1') {
+      for (const [id, value] of Object.entries({ player: stored.stat_data, ...stored.npc_data })) {
+        Object.assign(value, { 当前序列: '序列9-猎人',
+          活力: 1000, 当前活力: 1000, 灵性: 100, 当前灵性: 100,
+          敏捷: id === '敌甲' ? 100 : 50, 当前敏捷: id === '敌甲' ? 100 : 50,
+          理智: 100, 当前理智: 100, 人性: 100, 当前人性: 100, 运气: 10,
+          序列能力列表: { 能力: [{ 名称: '近战打击', power: 20, range: 1 }] } });
+      }
+      sceneResponse = JSON.stringify({ 场景: '仓库追击',
+        基底: { 名称: '石板路', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('resourceStatus') === '1') {
+      Object.assign(stored.stat_data, { 当前活力: 290, 敏捷: 100, 当前敏捷: 29,
+        当前灵性: 29, 当前理智: 29, 当前人性: 29,
+        序列能力列表: { 能力: [
+          { 名称: '五维恢复', healAmt: 900, healType: '活力', healValueType: 'fixed',
+            targetType: 'self', range: 0, effects: ['敏捷', '灵性', '理智', '人性'].map(stat =>
+              ({ name: `${stat}恢复`, type: 'regen', stat: `当前${stat}`, power: 100,
+                valueType: 'fixed', duration: 1, triggerTiming: 'turn_start' })) },
+          { 名称: '终结打击', power: 1000000, range: 'global' },
+        ] } });
+      Object.assign(stored.npc_data.敌甲, { 敏捷: 20, 当前敏捷: 20 });
+    }
+    if (new URL(location.href).searchParams.get('autoPilot') === '1') {
+      Object.assign(stored.stat_data, { 敏捷: 100, 当前敏捷: 100,
+        序列能力列表: { 能力: [{ 名称: '远距打击', power: 160, range: 'global' }] } });
+      for (const key of ['敌甲', '敌乙']) Object.assign(stored.npc_data[key], {
+        活力: 600, 当前活力: 600, 敏捷: 20, 当前敏捷: 20,
+        序列能力列表: { 能力: [{ 名称: '远距反击', power: 8, range: 'global' }] } });
+    }
+    if (new URL(location.href).searchParams.get('cpu') === '1') {
+      const paths = ['猎人', '水手', '偷盗者', '萨满', '学徒', '通识者', '观众'];
+      const pathways = Object.fromEntries(paths.map(path => [`${path}途径`,
+        Array.from({ length: 10 }, (_, i) => `序列${9 - i}-${path}${9 - i}`)]));
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways, abilities: {} });
+      for (const [id, value] of Object.entries({ player: stored.stat_data, ...stored.npc_data })) {
+        Object.assign(value, { 当前序列: id === 'player' ? '序列4-水手4'
+          : id === '敌甲' ? '序列1-萨满1/序列4-通识者4/序列1-学徒1'
+          : id === '敌乙' ? '序列5-偷盗者5/序列5-水手5' : '序列9-猎人9',
+        活力: 100000, 当前活力: 100000, 灵性: 100000, 当前灵性: 100000,
+        理智: 100000, 当前理智: 100000, 人性: 100000, 当前人性: 100000,
+        敏捷: 200, 当前敏捷: 200, 运气: 40 });
+      }
+      sceneResponse = JSON.stringify({ 场景: '统一战术战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('grazingSwitch') === '1') {
+      const pathways = {
+        秘祈人途径: ['序列4-黑骑士'],
+        占卜家途径: ['序列7-魔术师'],
+        猎人途径: ['序列6-阴谋家'],
+        刺客途径: ['序列7-女巫'],
+      };
+      const abilities = {
+        '占卜家途径-序列7': [{ 名称: '魂之纸刃', power: 8, range: 'global' }],
+        '猎人途径-序列6': [{ 名称: '魂之火球', power: 10, range: 'global' }],
+        '刺客途径-序列7': [{ 名称: '魂之冰锥', power: 9, range: 'global' }],
+      };
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways, abilities });
+      Object.assign(stored.stat_data, { 当前序列: '序列4-黑骑士',
+        活力: 10000, 当前活力: 10000, 灵性: 100000, 当前灵性: 100000,
+        敏捷: 200, 当前敏捷: 200, 理智: 10000, 当前理智: 10000,
+        人性: 10000, 当前人性: 10000, 运气: 40,
+        $专属玩法: { 秘祈人途径: { 放牧玩法: {
+          灵魂列表: { 纸魂: { ...card(1000, 20), 当前序列: '序列7-魔术师' },
+            火魂: { ...card(1000, 20), 当前序列: '序列6-阴谋家' },
+            冰魂: { ...card(1000, 20), 当前序列: '序列7-女巫' } },
+          激活灵魂: ['纸魂'], 休眠灵魂: ['火魂', '冰魂'],
+        } } } });
+      Object.assign(stored.npc_data.敌甲, { 活力: 10000, 当前活力: 10000 });
+      sceneResponse = JSON.stringify({ 场景: '放牧组合战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('borrow') === '1') {
+      const names = ['律师', '偷盗者', '学徒', '水手', '猎人', '观众', '通识者', '仲裁人', '占卜家'];
+      const pathways = Object.fromEntries(names.map(path => [`${path}途径`,
+        Array.from({ length: 10 }, (_, i) => `序列${9 - i}-${path}${9 - i}`)]));
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways, abilities: {} });
+      Object.assign(stored.stat_data, { 当前序列: '序列0-律师0/序列0-偷盗者0',
+        活力: 10000, 当前活力: 10000, 灵性: 1000000, 当前灵性: 1000000,
+        人性: 1000000, 当前人性: 1000000, 理智: 1000000, 当前理智: 1000000,
+        敏捷: 200, 当前敏捷: 200, 运气: 40 });
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id], {
+        当前序列: id === '敌甲' ? '序列0-学徒0/序列0-水手0/序列0-通识者0' : '序列9-猎人9',
+        活力: 10000, 当前活力: 10000, 灵性: 1000, 当前灵性: 1000,
+        人性: 1000, 当前人性: 1000, 理智: 1000, 当前理智: 1000, 运气: 40 });
+      sceneResponse = JSON.stringify({ 场景: '能力借用战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('fields') === '1') {
+      Object.assign(stored.stat_data, {
+        当前序列: '序列5-天文学家 / 序列4-黑骑士 / 序列6-法官',
+        灵性: 50000, 当前灵性: 50000, 活力: 10000, 当前活力: 10000,
+        人性: 1000, 当前人性: 1000,
+      });
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways: {
+        通识者途径: ['序列5-天文学家'], 秘祈人途径: ['序列4-黑骑士'],
+        律师途径: ['序列6-法官'],
+      } });
+    }
+    if (new URL(location.href).searchParams.get('transfers') === '1') {
+      Object.assign(stored.stat_data, { 当前序列: '序列4-魔鬼 / 序列4-堕落伯爵',
+        灵性: 50000, 当前灵性: 50000, 活力: 10000, 当前活力: 10000,
+        人性: 1000, 当前人性: 1000 });
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways: {
+        囚犯途径: ['序列4-魔鬼'], 律师途径: ['序列4-堕落伯爵'],
+      } });
+    }
+    if (new URL(location.href).searchParams.get('bribery') === '1') {
+      Object.assign(stored.stat_data, { 当前序列: '序列7-贿赂者',
+        灵性: 50000, 当前灵性: 50000, 活力: 10000, 当前活力: 10000,
+        人性: 1000, 当前人性: 1000 });
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways: {
+        律师途径: ['序列7-贿赂者'],
+      } });
+    }
+    if (new URL(location.href).searchParams.get('conditions') === '1') {
+      Object.assign(stored.stat_data, { 活力: 10000, 当前活力: 10000,
+        灵性: 10000, 当前灵性: 10000, 敏捷: 200, 当前敏捷: 200,
+        序列能力列表: { 能力: [
+          { 名称: '条件波动', power: 5, isHeal: false, healAmt: 0,
+            damageType: 'physical', range: 'global', targetType: 'allEnemies',
+            aoeRadius: 1, effects: [], cost: { type: 'currentSanity', amount: 2 },
+            条件参数集: [
+              { 条件: 'target.当前活力 < target.活力 && caster.当前理智 === 98',
+                参数: { isHeal: true, 治疗量: .1, 治疗数值类型: 'percentage', 范围半径: 10 } },
+              { 条件: 'true', 参数: { 威力: 10, 伤害类型: 'mental', 范围半径: 10,
+                效果: [{ 名称: '波动印记', 类型: 'debuff', 属性: 'attack',
+                  威力: 5, 数值类型: 'percentage', 持续时间: 2, 效果目标: 'allEnemies' }] } },
+            ] },
+          { 名称: '终结', power: 5000000, range: 'global' },
+        ] } });
+      for (const [id, speed] of [['敌甲', 20], ['敌乙', 1]])
+        stored.npc_data[id] = { ...card(10000, speed), 当前序列: '普通人', 神性: 1 };
+      stored.npc_data.敌乙.当前活力 = 5000;
+      sceneResponse = JSON.stringify({ 场景: '条件技能战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('balance') === '1' ||
+      new URL(location.href).searchParams.get('punishment') === '1' ||
+      new URL(location.href).searchParams.get('mythic') === '1' ||
+      new URL(location.href).searchParams.get('exile') === '1' ||
+      new URL(location.href).searchParams.get('leave') === '1' ||
+      new URL(location.href).searchParams.get('events') === '1' ||
+      new URL(location.href).searchParams.get('rewind') === '1' ||
+      new URL(location.href).searchParams.get('extra') === '1' ||
+      new URL(location.href).searchParams.get('hard') === '1' ||
+      new URL(location.href).searchParams.get('mind') === '1' ||
+      new URL(location.href).searchParams.get('temp') === '1' ||
+      new URL(location.href).searchParams.get('permanent') === '1') {
+      Object.assign(stored.stat_data, { 当前序列: '序列2-仲裁人',
+        活力: 10000, 当前活力: 10000, 灵性: 10000, 当前灵性: 10000,
+        敏捷: 200, 当前敏捷: 200, 人性: 100, 当前人性: 100, 神性: 1,
+        辅助能力列表: {}, 消耗品列表: {},
+        序列能力列表: { 能力: [
+          { 名称: '位阶打击', power: { '2': 2, '1': 10, default: 2 },
+            range: 'global', cost: { type: 'currentSpirit', amount: 2 } },
+          { 名称: '终结', power: 5000000, range: 'global' },
+        ] } });
+      for (const [id, speed] of [['敌甲', 20], ['敌乙', 1]])
+        stored.npc_data[id] = { ...card(10000, speed), 当前序列: '序列1-猎人', 神性: 2 };
+      sceneResponse = JSON.stringify({ 场景: '平衡权柄战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('punishment') === '1') {
+      stored.stat_data.当前序列 = '序列5-仲裁人';
+      sceneResponse = JSON.stringify({ 场景: '惩戒追击战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('mythic') === '1') {
+      Object.assign(stored.stat_data, { 当前序列: '序列4-窥秘人', 失控进度: 10,
+        $专属玩法: { 窥秘人途径: { 神秘再现玩法: {
+          法术解锁账本: { ugly_duckling: { 名称: '丑小鸭' } }, 法术运行状态: {},
+        } } } });
+      stored.world_data = { 当前时间纪元: '第五纪1350年10月3日星期六12:00' };
+      modules['cryptLord.abilityState'].loadPool = async () => ({
+        pathways: { 窥秘人途径: ['序列4-窥秘人'] },
+      });
+      for (const id of ['敌甲', '敌乙']) stored.npc_data[id].当前序列 = '序列5-猎人';
+      sceneResponse = JSON.stringify({ 场景: '神话形态战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('exile') === '1') {
+      stored.stat_data.当前序列 = '序列4-学徒/序列4-仲裁人/序列4-窥秘人';
+      stored.stat_data.$专属玩法 = { 窥秘人途径: { 神秘再现玩法: {
+        法术解锁账本: { peach_blossom_source: { 名称: '桃花的源头' } },
+      } } };
+      stored.stat_data.当前灵性 = 100000;
+      stored.stat_data.灵性 = 100000;
+      for (const id of ['敌甲', '敌乙']) stored.npc_data[id].当前序列 = '序列5-猎人';
+      sceneResponse = JSON.stringify({ 场景: '放逐战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('leave') === '1') {
+      stored.stat_data.当前序列 = '序列5-萨满/序列3-占卜家';
+      for (const id of ['敌甲', '敌乙']) stored.npc_data[id].当前序列 = '序列5-猎人';
+      sceneResponse = JSON.stringify({ 场景: '维度与历史迷雾战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('events') === '1') {
+      stored.stat_data.当前序列 = '序列4-水手';
+      for (const id of ['敌甲', '敌乙']) stored.npc_data[id].当前序列 = '序列5-猎人';
+      sceneResponse = JSON.stringify({ 场景: '雷暴与地震战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('rewind') === '1') {
+      stored.stat_data.当前序列 = '序列3-占卜家/序列1-偷盗者';
+      stored.stat_data.当前活力 = 10000;
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      for (const id of ['敌甲', '敌乙']) stored.npc_data[id].当前序列 = '序列5-猎人';
+      sceneResponse = JSON.stringify({ 场景: '历史与时间战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('extra') === '1') {
+      stored.stat_data.当前序列 = '序列1-学徒';
+      stored.stat_data.当前活力 = 10000;
+      stored.stat_data.灵性 = 20000;
+      stored.stat_data.当前灵性 = 20000;
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      for (const id of ['敌甲', '敌乙']) stored.npc_data[id].当前序列 = '序列5-猎人';
+      sceneResponse = JSON.stringify({ 场景: '虚影行动战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('hard') === '1') {
+      stored.stat_data.当前序列 = '序列5-偷盗者/序列5-水手/序列5-仲裁人/序列4-仲裁人/序列4-窥秘人';
+      stored.stat_data.灵性 = 50000;
+      stored.stat_data.当前灵性 = 50000;
+      stored.stat_data.$专属玩法 = { 窥秘人途径: { 神秘再现玩法: {
+        法术解锁账本: { sleeping_beauty: {} },
+      } } };
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      for (const id of ['敌甲', '敌乙']) {
+        stored.npc_data[id].当前序列 = '序列5-猎人';
+        stored.npc_data[id].灵性 = 1000;
+        stored.npc_data[id].当前灵性 = 1000;
+      }
+      sceneResponse = JSON.stringify({ 场景: '硬控交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('permanent') === '1') {
+      stored.stat_data.当前序列 = '序列4-占卜家/序列1-猎人/序列1-观众/序列1-收尸人/序列1-药师';
+      stored.stat_data.人性 = 500000;
+      stored.stat_data.当前人性 = 500000;
+      stored.stat_data.灵性 = 400000;
+      stored.stat_data.当前灵性 = 400000;
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      for (const id of ['敌甲', '敌乙']) {
+        stored.npc_data[id].当前序列 = '序列5-猎人';
+        stored.npc_data[id].灵性 = 1000;
+        stored.npc_data[id].当前灵性 = 1000;
+      }
+      sceneResponse = JSON.stringify({ 场景: '永久控制与秘偶交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('environment') === '1') {
+      stored.stat_data.当前序列 = '序列4-歌颂者/序列5-通识者/序列3-观众/序列1-秘祈人/序列4-水手/序列4-窥秘人';
+      Object.assign(stored.stat_data, { 活力: 10000, 当前活力: 10000,
+        人性: 500000, 当前人性: 500000, 灵性: 400000, 当前灵性: 400000,
+        敏捷: 200, 当前敏捷: 200 });
+      stored.stat_data.$专属玩法 = { 窥秘人途径: { 神秘再现玩法: {
+        法术解锁账本: { avalon_utopia: {} },
+      } } };
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      stored.stat_data.序列能力列表.能力[1] =
+        { 名称: '终结打击', power: 5000000, range: 'global' };
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id],
+        { 当前序列: id === '敌甲' ? '序列9-水手' : '序列5-猎人',
+          活力: 10000, 当前活力: 10000, 灵性: 1000, 当前灵性: 1000 });
+      sceneResponse = JSON.stringify({ 场景: '环境交锋战场',
+        自然环境: { 地貌: '海洋', 天气: '小雨', 时间: '深夜' },
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('fundamental') === '1') {
+      stored.stat_data.当前序列 = '序列0-律师/序列0-仲裁人/序列1-占卜家/序列0-偷盗者/序列1-阅读者/序列2-窥秘人/序列2-通识者/序列3-萨满';
+      Object.assign(stored.stat_data, { 活力: 10000, 当前活力: 10000,
+        人性: 500000, 当前人性: 500000, 灵性: 400000, 当前灵性: 400000,
+        理智: 400000, 当前理智: 400000, 敏捷: 200, 当前敏捷: 200 });
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      stored.stat_data.序列能力列表.能力[1] =
+        { 名称: '终结打击', power: 5000000, range: 'global' };
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id],
+        { 当前序列: '序列5-猎人', 活力: 10000, 当前活力: 10000,
+          灵性: 1000, 当前灵性: 1000 });
+      sceneResponse = JSON.stringify({ 场景: '底层公式交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('summon') === '1') {
+      const pathways = Object.fromEntries(['占卜家', '通识者', '萨满', '观众', '秘祈人', '猎人']
+        .map(path => [`${path}途径`, Array.from({ length: 10 }, (_, i) => {
+          const rank = 9 - i, direct = { 占卜家: 3, 通识者: 4, 萨满: 1, 观众: 1, 秘祈人: 4, 猎人: 4 }[path];
+          return `序列${rank}-${path}${rank === direct ? '' : rank}`;
+        })]));
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways,
+        abilities: { '猎人途径-序列4': [{ name: '灵性射击', power: 5, range: 'global' }] } });
+      Object.assign(stored.stat_data, {
+        当前序列: '序列3-占卜家/序列4-通识者/序列1-萨满/序列1-观众/序列4-秘祈人',
+        活力: 10000, 当前活力: 10000, 灵性: 400000, 当前灵性: 400000,
+        人性: 500000, 当前人性: 500000, 理智: 400000, 当前理智: 400000,
+        敏捷: 200, 当前敏捷: 200, 运气: 40,
+        人物关系列表: { 旧友: { 好感度: 200 } },
+      });
+      stored.stat_data.序列能力列表 = { 能力: [
+        { 名称: '试探打击', power: 1, range: 'global' },
+        { 名称: '终结打击', power: 5000000, range: 'global' },
+      ] };
+      const card = { 当前序列: '序列4-猎人', 活力: 1000, 当前活力: 1000,
+        灵性: 500, 当前灵性: 500, 敏捷: 50, 当前敏捷: 50,
+        理智: 200, 当前理智: 200, 人性: 200, 当前人性: 200, 运气: 40,
+        能力清单: [{ 名称: '灵性射击', power: 5, range: 'global' }] };
+      stored.npc_data.旧友 = structuredClone(card);
+      stored.stat_data.$专属玩法 = {
+        萨满途径: { 制造画中人玩法: { 画中人列表: { picture: {
+          名称: '画中猎人', 途径: '猎人途径', 角色卡: structuredClone(card) } } } },
+        秘祈人途径: { 放牧玩法: { 灵魂列表: { 猎魂: structuredClone(card) },
+          激活灵魂: ['猎魂'], 休眠灵魂: [] } },
+      };
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id],
+        { 当前序列: '序列9-猎人', 活力: 10000, 当前活力: 10000,
+          灵性: 1000, 当前灵性: 1000 });
+      sceneResponse = JSON.stringify({ 场景: '召唤交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('rules') === '1') {
+      stored.stat_data.当前序列 = '序列3-偷盗者/序列2-占卜家/序列2-窥秘人/序列3-通识者/序列3-萨满/序列4-律师/序列4-仲裁人';
+      Object.assign(stored.stat_data, { 活力: 10000, 当前活力: 10000,
+        人性: 500000, 当前人性: 500000, 灵性: 400000, 当前灵性: 400000,
+        敏捷: 200, 当前敏捷: 200 });
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      stored.stat_data.序列能力列表.能力[1] =
+        { 名称: '终结打击', power: 5000000, range: 'global' };
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id],
+        { 当前序列: '序列5-猎人', 活力: 10000, 当前活力: 10000,
+          灵性: 1000, 当前灵性: 1000 });
+      sceneResponse = JSON.stringify({ 场景: '规则交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('possession') === '1') {
+      stored.stat_data.当前序列 = '序列5-囚犯/序列2-入门者';
+      Object.assign(stored.stat_data, { 活力: 10000, 当前活力: 10000,
+        人性: 500000, 当前人性: 500000, 灵性: 400000, 当前灵性: 400000,
+        敏捷: 200, 当前敏捷: 200 });
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      stored.stat_data.序列能力列表.能力[1] =
+        { 名称: '终结打击', power: 5000000, range: 'global' };
+      for (const id of ['敌甲', '敌乙']) {
+        Object.assign(stored.npc_data[id], { 当前序列: '序列5-猎人',
+          活力: 10000, 当前活力: 10000, 灵性: 1000, 当前灵性: 1000 });
+      }
+      sceneResponse = JSON.stringify({ 场景: '附身与夺舍交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('temp') === '1') {
+      stored.stat_data.当前序列 = '序列3-律师/序列0-刺客/序列2-水手/序列2-吝啬鬼/序列2-秘祈人';
+      stored.stat_data.人性 = 50000;
+      stored.stat_data.当前人性 = 50000;
+      stored.stat_data.灵性 = 40000;
+      stored.stat_data.当前灵性 = 40000;
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      for (const id of ['敌甲', '敌乙']) {
+        stored.npc_data[id].当前序列 = '序列5-猎人';
+        stored.npc_data[id].灵性 = 1000;
+        stored.npc_data[id].当前灵性 = 1000;
+      }
+      sceneResponse = JSON.stringify({ 场景: '临时阵营交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('mind') === '1') {
+      stored.stat_data.当前序列 = '序列4-观众';
+      stored.stat_data.人性 = 50000;
+      stored.stat_data.当前人性 = 50000;
+      stored.stat_data.序列能力列表.能力[0] =
+        { 名称: '试探打击', power: 1, range: 'global',
+          cost: { type: 'currentSpirit', amount: 30 } };
+      for (const id of ['敌甲', '敌乙']) {
+        stored.npc_data[id].当前序列 = '序列5-猎人';
+        stored.npc_data[id].灵性 = 1000;
+        stored.npc_data[id].当前灵性 = 1000;
+      }
+      sceneResponse = JSON.stringify({ 场景: '心智剥夺交锋战场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('skillControl') === '1') {
+      document.title = '原版禁止、偷窃与复制完整流程预览';
+      Object.assign(stored.stat_data, {
+        当前序列: '序列6-偷盗者/序列6-学徒/序列6-仲裁人',
+        灵性: 2000, 当前灵性: 2000, 敏捷: 100, 当前敏捷: 100,
+        活力: 1000, 当前活力: 1000, 人性: 100, 当前人性: 100,
+        序列能力列表: { 能力: [{ 名称: '自有远击', power: 1, range: 'global' }] },
+      });
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id], {
+        当前序列: '序列9-猎人', 活力: 600, 当前活力: 600,
+        灵性: 100, 当前灵性: 100, 敏捷: 20, 当前敏捷: 20,
+        序列能力列表: { 能力: [{ 名称: '火焰弹', power: 1, range: 'global' },
+          { 名称: '警戒射击', power: 1, range: 'global' }] },
+      });
+      sceneResponse = JSON.stringify({ 场景: '技能干涉训练场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (new URL(location.href).searchParams.get('report') === '1') {
+      document.title = '原版战斗报告完整流程预览';
+      document.getElementById('send_form').hidden = false;
+      Object.assign(stored.stat_data, {
+        当前序列: '序列6-猎人', 活力: 1000, 当前活力: 1000,
+        灵性: 2000, 当前灵性: 2000, 敏捷: 100, 当前敏捷: 100,
+        人性: 100, 当前人性: 100,
+        序列能力列表: { 能力: [{ 名称: '终结远击', power: 10000,
+          灵性消耗: 2, range: 'global' }] },
+      });
+      for (const id of ['敌甲', '敌乙']) Object.assign(stored.npc_data[id], {
+        当前序列: '序列9-猎人', 活力: 100, 当前活力: 100,
+        人性: 100, 当前人性: 100,
+      });
+      sceneResponse = JSON.stringify({ 场景: '战报训练场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+    }
+    if (playUnitsPreview) {
+      document.title = '专属玩法单位参战与战后结算';
+      const pathways = {
+        偷盗者途径: ['序列4-寄生者'], 占卜家途径: ['序列5-秘偶大师'],
+        通识者途径: ['序列6-机械专家'],
+      };
+      modules['cryptLord.abilityState'].loadPool = async () => ({ pathways });
+      const bagCard = (name, hp, speed) => ({ 名称: name, 当前序列: '序列9-猎人',
+        活力: hp, 当前活力: hp, 灵性: 100, 当前灵性: 100,
+        敏捷: speed, 当前敏捷: speed, 理智: 100, 当前理智: 100,
+        人性: 100, 当前人性: 100,
+        能力清单: [{ 名称: `${name}的远击`, power: 1, range: 'global' }] });
+      Object.assign(stored.stat_data, {
+        当前序列: '序列4-寄生者/序列5-秘偶大师/序列6-机械专家',
+        活力: 10000, 当前活力: 10000, 灵性: 10000, 当前灵性: 10000,
+        敏捷: 100, 当前敏捷: 100, 人性: 100, 当前人性: 100,
+        序列能力列表: { 能力: [{ 名称: '终结远击', power: 1000000,
+          range: 'global', 灵性消耗: 2 }] },
+        $专属玩法: {
+          偷盗者途径: { 分身玩法: { 分身列表: { 影一: bagCard('影一', 1, 80) } } },
+          占卜家途径: { 秘偶玩法: { 秘偶列表: { 偶一: bagCard('偶一', 1, 70) } } },
+          通识者途径: { 制造玩法: { 版本: 1, 造物列表: {
+            机关一: { ...bagCard('机关一', 10000, 60), $造物类型: '魔偶', $成品位阶: 6 },
+          } } },
+        },
+      });
+      stored.npc_data = { 敌甲: { ...bagCard('敌甲', 10000, 20),
+        能力清单: [{ 名称: '横扫', power: 100, range: 'global',
+          targetType: 'allEnemies', aoeRadius: 20 }] } };
+      sceneResponse = JSON.stringify({ 场景: '专属单位演练场',
+        基底: { 名称: '平地', 分级: 0 }, 笔刷: [], 可互动物品: [] });
+      document.getElementById('send_form').hidden = false;
+    }
+    if (teamBuilderPreview) {
+      document.title = '原版多人战斗组队准备';
+      const stub = modules['cryptLord.abilityState'];
+      const loadPool = stub.loadPool;
+      delete modules['cryptLord.abilityState'];
+      await import('../../public/guimizhizhu_ui/core/ability-state.js');
+      stub.synchronize = modules['cryptLord.abilityState'].synchronize;
+      modules['cryptLord.abilityState'] = stub;
+      stub.loadPool = async () => ({ ...await loadPool(), abilities: {
+        '偷盗者途径-序列4': [{ name: '编队同步能力', description: '隔离能力库测试', range: 'global', power: 1 }],
+      } });
+      stored.npc_data.影一 = { ...structuredClone(stored.npc_data.敌甲), 名称: '影一' };
+      stored.npc_data.远方记录 = { ...structuredClone(stored.npc_data.敌甲),
+        名称: '贝克兰德东区巡查员的超长显示名称', isImportant: true };
+      stored.npc_data.阵亡者 = { ...structuredClone(stored.npc_data.敌甲),
+        名称: '阵亡者', 当前活力: 0 };
+      stored.stat_data.人物关系列表 = { 远方记录: { isImportant: true, 好感度: 100 } };
+      stored.npc_data.敌甲.活力 = stored.npc_data.敌甲.当前活力 = 10;
+      stored.npc_data.敌甲.能力清单 = [{ 名称: '等待对抗', power: 0, range: 'global' }];
+    }
+    if (personalPreview) {
+      document.title = '原版个人对局完整流程隔离预览';
+      document.getElementById('send_form').hidden = false;
+      Object.assign(stored.stat_data, {
+        当前序列: '序列6-猎人', 活力: 10000, 当前活力: 10000,
+        灵性: 10000, 当前灵性: 10000, 敏捷: 100, 当前敏捷: 100,
+        理智: 10000, 当前理智: 10000, 人性: 10000, 当前人性: 10000,
+        序列能力列表: { 能力: [
+          { 名称: '试探远击', power: 1, cost: { type: 'currentSpirit', amount: 2 }, range: 'global' },
+          { 名称: '终结远击', power: 1000000, cost: { type: 'currentSpirit', amount: 2 }, range: 'global' },
+        ] },
+      });
+      for (const npc of Object.values(stored.npc_data)) Object.assign(npc, {
+        活力: 10000, 当前活力: 10000, 灵性: 100, 当前灵性: 100,
+        人性: 100, 当前人性: 100, 理智: 100, 当前理智: 100,
+        序列能力列表: { 能力: [{ 名称: '试探', power: 1, range: 'global' }] },
+      });
+      sceneResponse = JSON.stringify({ 场景: '个人对局训练场',
+        基底: { 名称: '石板路', 分级: 0 }, 笔刷: [], 可互动物品: [],
+        初始站位: [{ 编号: 'player', x: 2, y: 8 },
+          { 编号: '敌甲', x: 2, y: 2 }, { 编号: '$practice', x: 2, y: 2 }] });
+    }
+    modules['cryptLord.gameShell'].mount();
+    document.getElementById('open').onclick = async () => {
+      await modules['cryptLord.gameShell'].refresh();
+      document.querySelector('.crypt-lord-game-shell__trigger')?.click();
+      [...document.querySelectorAll('.crypt-lord-game-shell__menu-button')]
+        .find(button => button.textContent === '战斗系统')?.click();
+    };
+  </script>
+</body>
+</html>

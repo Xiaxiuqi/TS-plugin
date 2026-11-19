@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>属性上限与重算隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/styles.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/attribute-recalculation/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/native-floor-status-bar/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202625; color: #edf0ef; font: 14px/1.6 "Microsoft YaHei", sans-serif; }
+    body > nav, #send_textarea { margin: 16px; }
+    #chat { max-width: 860px; margin: auto; padding: 12px; }
+    .mes { border-top: 1px solid #7e949060; padding: 12px 0; }
+    .mes_text { white-space: pre-wrap; overflow-wrap: anywhere; }
+    button { cursor: pointer; }
+    body[data-theme="light"] { --SmartThemeBlurTintColor: #f1f5f4; --SmartThemeBodyColor: #24302d; background: #fff; color: #24302d; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">属性上限与重算</button><button id="equip">穿脱短杖</button><button id="theme">切换主题</button></nav>
+  <textarea id="send_textarea" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <div id="chat"></div>
+  <script>
+    const stats = ['活力', '灵性', '理智', '人性', '敏捷', '运气'];
+    const data = { stat_data: { 当前序列: '普通人', 消化进度: 50, 失控进度: 30, $战斗经验等级: 1,
+      ...Object.fromEntries(stats.flatMap(key => [[`基础${key}`, 100], [key, 100], ...(key === '运气' ? [] : [[`当前${key}`, 30]])])),
+      武器列表: { 短杖: { 名称: '短杖', 活力加成: 20, 百分比加成: { 全部属性: '10%' }, isEquipped: true } },
+      非凡特性列表: { 幸运: { 运气加成: 3 } } },
+      npc_data: { 伦纳德: { 身份: '值夜者' } }, world_data: {}, otherPlugin: { keep: true }, cryptLord: { other: { keep: true } } };
+    const floors = [
+      { message_id: 0, role: 'assistant', name: '旧开场', message: '<gametxt>街道上还没有行人。</gametxt>', data: structuredClone(data) },
+      { message_id: 1, role: 'user', message: '核对属性', data: { protected: true } },
+      { message_id: 2, role: 'assistant', name: '本回合', message: '<gametxt>调查：短杖已经拿在手里。</gametxt>', data: structuredClone(data) },
+    ];
+    const protectedValue = JSON.stringify(floors.slice(0, 2)), initial = JSON.stringify(floors);
+    const flags = { failRead: false, failWrite: false, hold: false, waiting: 0, page: 0, writes: [] }, releases = [], handlers = new Map();
+    const events = { CHAT_CHANGED: 'chat', MESSAGE_UPDATED: 'updated', MESSAGE_DELETED: 'deleted', MESSAGE_SWIPED: 'swipe',
+      CHARACTER_MESSAGE_RENDERED: 'render', MESSAGE_RECEIVED: 'receive', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' };
+    window.tavern_events = events;
+    window.eventOn = (event, fn) => {
+      const set = handlers.get(event) || new Set(); handlers.set(event, set); set.add(fn); return { stop: () => set.delete(fn) };
+    };
+    const emit = async (key, ...args) => { for (const fn of handlers.get(events[key]) || []) await fn(...args); };
+    const modules = { 'cryptLord.hostApi': {
+      async getChatMessages(range, options) {
+        if (flags.hold) { flags.waiting++; await new Promise(resolve => releases.push(resolve)); flags.waiting--; }
+        if (flags.failRead) throw Error('模拟读取失败');
+        const selected = range === '0-{{lastMessageId}}' ? floors : floors.filter(row => row.message_id === Number(range));
+        return structuredClone(options?.include_swipes ? selected.map(row => ({ ...row, swipe_id: flags.page,
+          swipes: [row.message, row.message], swipes_data: [row.data, row.data] })) : selected);
+      },
+      async setChatMessages(rows, options) {
+        if (flags.failWrite) throw Error('模拟保存失败');
+        if (rows.length !== 1 || rows[0].message_id !== 2 || options.refresh !== 'affected') throw Error('只能保存目标assistant');
+        Object.assign(floors[2], structuredClone(rows[0])); flags.writes.push(2);
+        queueMicrotask(() => { void emit('MESSAGE_UPDATED', 2); });
+      },
+      getVariables() { throw Error('禁止配置访问'); }, getWorldbook() { throw Error('禁止世界书访问'); },
+      generateRaw() { throw Error('禁止模型请求'); },
+    }, 'cryptLord.contextBuilder': {},
+      'cryptLord.variableSettlementApi': { async settle({ previousData }) { return { skipped: true, data: structuredClone(previousData), response: '' }; } } };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) { if (!modules[key]) throw Error(key); return modules[key]; },
+    } };
+    const renderNative = () => {
+      document.getElementById('chat').replaceChildren(...floors.filter(row => !row.is_hidden).map(row => {
+        const item = document.createElement('div'); item.className = 'mes'; item.setAttribute('mesid', row.message_id);
+        item.setAttribute('is_user', String(row.role === 'user'));
+        const text = document.createElement('div'); text.className = 'mes_text';
+        text.textContent = `#${row.message_id} · ${row.role}\n${row.message.match(/<gametxt>([\s\S]*?)<\/gametxt>/)?.[1] || row.message}`;
+        item.append(text); return item;
+      }));
+    };
+    window.preview = { floors, flags, emit, renderNative,
+      get api() { return modules['cryptLord.attributeRecalculationUi']; }, get service() { return modules['cryptLord.attributeRecalculation']; },
+      get bars() { return modules['cryptLord.nativeFloorStatusBar']; },
+      get untouched() { return JSON.stringify(floors) === initial && flags.writes.length === 0; },
+      get protected() { return JSON.stringify(floors.slice(0, 2)) === protectedValue &&
+        document.getElementById('send_textarea').value === '保留原生输入草稿'; },
+      hold() { flags.hold = true; }, release() { flags.hold = false; releases.splice(0).forEach(resolve => resolve()); },
+      async equip() {
+        const item = floors[2].data.stat_data.武器列表.短杖;
+        const draft = modules['cryptLord.equipmentState'].apply(floors[2].data, '武器列表', '短杖', '短杖', !item.isEquipped);
+        await modules['cryptLord.stateStore'].writeAssistantData(2, draft);
+      },
+      async advance() {
+        const raw = floors[2].message + '<UpdateVariable><JSONPatch>{"stat_data":[{"op":"replace","path":"/消化进度","value":90}]}</JSONPatch></UpdateVariable>';
+        await modules['cryptLord.nativeFloorBridge'].completeNarrative(raw, { userMessageId: 1, assistantMessageId: 2,
+          userText: '核对属性', narrativeText: '正文', floorText: raw, guard: () => true });
+      },
+      dispose() { preview.api.dispose(); preview.bars.dispose(); preview.service.dispose(); },
+    };
+    renderNative();
+    document.getElementById('open').onclick = () => preview.api.open(2);
+    document.getElementById('equip').onclick = () => preview.equip();
+    document.getElementById('theme').onclick = () => { document.body.dataset.theme = document.body.dataset.theme === 'light' ? 'dark' : 'light'; };
+  </script>
+  <script src="../../public/guimizhizhu_ui/shared/after-native-host.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/attribute-recalculation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/mystery-analysis.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor-status-bar/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/attribute-recalculation/index.js"></script>
+</body>
+</html>

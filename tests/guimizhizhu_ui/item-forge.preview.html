@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>装备重铸隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/theater-console/style.css">
+  <style>body { background: #242424; color: #eee; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">诡秘剧场</button><input id="native-input" value="保留输入">
+  <script>
+    const modules = {}, writes = [], notices = [], updates = [];
+    let fail = false, readHook, release;
+    const handlers = new Map(), events = { CHAT_CHANGED: 'changed', GENERATION_STARTED: 'start',
+      GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' };
+    const flags = { page: 0, hold: false, waiting: false, failBook: false, failRead: false,
+      afterWriteFail: false, lostReceipt: false, noWrite: false, conflictWrite: false, derivations: 0,
+      chat: 'forge', script: 'forge', branch: '另一个swipe原文', date: new Date('2026-10-28T00:00:00Z') };
+    window.SillyTavern = { getCurrentChatId: () => flags.chat };
+    const binding = { primary: '本角色规则', additional: [] };
+    const books = {
+      '本角色规则': [{ name: '【配置】序列基准', content: '{"9":400}' },
+        { name: '【配置】物品参数', content: '{"武器":{"p":[0,0],"n":[0,0],"pW":[1,0,0,0,0,0]}}' }],
+      '1源堡': [{ name: '【配置】序列基准', content: '{"9":90000}' }],
+    };
+    const attrs = ['活力', '灵性', '理智', '人性', '敏捷', '运气'];
+    const exact = Object.fromEntries(attrs.map(key => [key, 99]));
+    let floors = [
+      { message_id: 0, role: 'assistant', message: '开场', data: { stat_data: { 剧场点数: 1 } } },
+      { message_id: 1, role: 'user', message: '原生发送', data: {} },
+      { message_id: 2, role: 'assistant', message: '原生正文\n<UpdateVariable>\n保留标签\n</UpdateVariable>',
+        data: { stat_data: { 剧场点数: 200, 武器列表: {
+          $meta: { extensible: true },
+          a: { 名称: '测试短剑', 序列: '序列9', 类型: '武器', 特质: '', isEquipped: true,
+            ...Object.fromEntries(attrs.map(key => [key, 10])) },
+          b: { 名称: '测试短剑', 序列: '序列9', 类型: '武器', isEquipped: false, 级别: '', 编号: '', ...exact },
+          installed: { 名称: '安装中的装备', $强化模块安装: { 模块ID: '模块' } },
+        }, 衣物列表: [{ 名称: '普通长袍', 序列: '普通', 特质: '不可名状' }],
+        装备栏: { 武器: '测试短剑' },
+        ...Object.fromEntries(attrs.flatMap(key => [[`基础${key}`, 100], [key, 110], [`当前${key}`, 50]])),
+        }, npc_data: { 同伴: { 活力: 10 } }, world_data: { 天气: '晴' } } },
+    ];
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; }, releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error(key); return modules[key]; },
+    } };
+    window.toastr = Object.fromEntries(['success', 'error', 'warning', 'info'].map(level =>
+      [level, text => notices.push({ level, text })]));
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => events,
+      bindEvent(name, fn) {
+        const set = handlers.get(name) || new Set(); handlers.set(name, set); set.add(fn);
+        return { stop() { set.delete(fn); } };
+      },
+    };
+    modules['cryptLord.dynamicStatus'] = {
+      async load() {
+        flags.derivations++;
+        if (flags.hold) { flags.waiting = true; await new Promise(resolve => { release = resolve; }); flags.waiting = false; }
+        return { rules: [] };
+      }, apply() {},
+    };
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: flags.script }),
+      async getCharWorldbookNames() { return structuredClone(binding); },
+      async getWorldbook(name) {
+        if (flags.failBook) throw Error('模拟规则读取失败');
+        if (!books[name]) throw Error(`世界书「${name}」不存在`);
+        return structuredClone(books[name]);
+      },
+      async getChatMessages(range, options) {
+        readHook?.();
+        if (flags.failRead) throw Error('模拟楼层读取失败');
+        const rows = range.includes('-') ? floors : floors.filter(row => row.message_id === Number(range));
+        return structuredClone(options?.include_swipes ? rows.map(row => ({
+          message_id: row.message_id, role: row.role, name: row.name, is_hidden: row.is_hidden, swipe_id: 1,
+          swipes: [flags.branch, row.message], swipes_data: [{ alternate: true }, row.data],
+          swipes_info: [{ keep: true }, { timestamp: flags.date, revision: flags.page }],
+        })) : rows);
+      },
+      async setChatMessages(rows) {
+        if (fail) throw Error('模拟保存失败');
+        if (flags.noWrite) return;
+        writes.push(structuredClone(rows));
+        for (const row of rows) Object.assign(floors.find(floor => floor.message_id === row.message_id), structuredClone(row));
+        if (flags.afterWriteFail) flags.failRead = true;
+        if (flags.conflictWrite) floors.at(-1).data.external = true;
+        if (flags.lostReceipt) throw Error('模拟回执丢失');
+      },
+    };
+    modules['cryptLord.variableWorkbench'] = { notifyUpdate: value => updates.push(structuredClone(value)) };
+    modules['cryptLord.inputAdapter'] = { submit() { throw Error('重铸不得发送消息'); } };
+    window.preview = { writes, notices, flags, binding, books, modules, updates,
+      emit(key, ...args) { for (const fn of handlers.get(events[key]) || []) fn(...args); },
+      release() { flags.hold = false; release?.(); },
+      get floors() { return structuredClone(floors); },
+      set floors(value) { floors = value; }, set fail(value) { fail = value; },
+      set readHook(value) { readHook = value; }, chatChanged() { this.emit('CHAT_CHANGED'); },
+      get api() { return modules['cryptLord.theaterConsole']; } };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-forge-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-derivation-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/attribute-recalculation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-derivation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-forge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/theater-console/index.js"></script>
+  <script>document.getElementById('open').onclick = () => preview.api.open(2);</script>
+</body>
+</html>

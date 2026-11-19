@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>战争回放预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/war-replay/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/game-audio.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body { margin: 0; min-height: 100vh; background: #222722; color: #eee; font-family: sans-serif; } main { padding: 16px; }</style>
+</head>
+<body>
+  <main><button id="open">打开军演回放</button></main>
+  <script>
+    window.cryptLord = {
+      __stage1Modules: {},
+      contract: { initializeGlobal() {}, releaseGlobal() {} },
+    };
+    const events = {};
+    window.replayPreview = { change: () => events.chat?.forEach(fn => fn()) };
+    window.cryptLord.__stage1Modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document }),
+      tavernEvents: () => ({ CHAT_CHANGED: 'chat' }),
+      bindEvent(name, fn) {
+        (events[name] ||= new Set()).add(fn);
+        return { stop: () => events[name].delete(fn) };
+      },
+    };
+  </script>
+  <script src="./game-audio.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/game-audio.js"></script>
+  <script src="../../public/guimizhizhu_ui/shared/game-audio-control.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/war-sim.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/war-replay.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/war-replay/index.js"></script>
+  <script>
+    const modules = window.cryptLord.__stage1Modules;
+    const result = modules['cryptLord.warSim'].demo(42);
+    const open = () => modules['cryptLord.warReplayUi'].open(result, { title: '四对四军演' });
+    document.getElementById('open').addEventListener('click', open);
+    open();
+  </script>
+</body>
+</html>

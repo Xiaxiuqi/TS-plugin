@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>神秘解析原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>
+    body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 10px; }
+    #send_textarea { width: calc(100% - 24px); margin: 12px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <button id="open">打开神秘解析</button>
+  <textarea id="send_textarea" aria-label="原生输入框" rows="3">保留玩家的正文草稿</textarea>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; }, releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error('Missing ' + key); return modules[key]; },
+    } };
+    const pool = { pathways: {
+      窥秘人途径: ['序列9-窥秘人', '序列6-卷轴教授', '序列5-星象师', '序列4-神秘学家', '序列3-预言大师'],
+      阅读者途径: ['序列4-预言家'],
+    }, pictureConfig: {} };
+    let stored = { stat_data: { 名称: '玩家', 当前序列: '序列5-星象师',
+      其他列表: { 血样: { 名称: '密封血样', 数量: 1, 单位: '管', 序列: '序列4',
+        描述: '已完整解析的神话生物血液；样本封存保留。' },
+        普通物品: { 名称: '普通信件', 数量: 1 } },
+      活力: 100, 灵性: 100, 理智: 100, 人性: 100, 敏捷: 100, 运气: 100, 当前活力: 30, 当前灵性: 40 },
+      npc_data: { 老师: { 活力: 10 } }, cryptLord: {} };
+    const initial = structuredClone(stored);
+    let opening = { message_id: 0, role: 'assistant',
+      message: '<think>隐藏分析</think><gametxt>玩家在序列5时，已经完成对序列4神话生物血液的解析，尚未晋升序列4。</gametxt>',
+      data: { preserved: true } };
+    let id = 2, text = '<gametxt>玩家封存已经解析完毕的血样。</gametxt>';
+    let writes = [], requests = [], pending = null, chatHandler, writeFailure = false;
+    let response = '<裁定>\n通过|序列4|无|无|玩家已完成解析\n</裁定>', settings = { useCustomApi: false };
+    const message = () => ({ message_id: id, role: 'assistant', message: text, data: structuredClone(stored) });
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed' }),
+      bindEvent: (_event, handler) => { chatHandler = handler; return { stop() { chatHandler = null; } }; },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    modules['cryptLord.abilityState'] = { async loadPool() { return structuredClone(pool); } };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() { return settings; } };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages(range) {
+        if (range === '0') return [structuredClone(opening)];
+        if (range === String(id)) return [message()];
+        return [structuredClone(opening), message()];
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟写入失败');
+        for (const row of rows) {
+          if (row.message_id !== id || row.message_id === 0 || 'message' in row) throw Error('wrong floor/write');
+          stored = structuredClone(row.data); writes.push(row.message_id);
+        }
+      },
+      async generateRaw(config) { requests.push(config); return pending ? pending.promise : response; },
+    };
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get initial() { return structuredClone(initial); }, get writes() { return [...writes]; },
+      get requests() { return requests; }, get opening() { return structuredClone(opening); },
+      set response(value) { response = value; }, set settings(value) { settings = value; },
+      set message(value) { text = value; }, set id(value) { id = value; },
+      set historical(value) { opening.message = value; }, set writeFailure(value) { writeFailure = value; },
+      hold() { let resolve; const promise = new Promise(done => { resolve = done; }); pending = { promise, resolve }; },
+      release(value) { pending?.resolve(value); pending = null; }, changeChat() { chatHandler?.(); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.mysteryAnalysisUi'].open();
+  </script>
+  <script src="./pathway-roster.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/mystery-analysis.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/mystery-analysis-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/mystery-analysis-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/mystery-analysis/index.js"></script>
+</body>
+</html>

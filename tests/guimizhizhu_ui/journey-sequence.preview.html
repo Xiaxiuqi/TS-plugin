@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>经历序号修正预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/journey-sequence/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #1d2224; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    nav, textarea { margin: 18px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">经历序号修正</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script>
+    const event = (seq, title = '调查线索') => `序号|${seq}\n日期|第五纪1349年9月1日\n标题|${title}\n描述|第一行\n自定义|原样保留\n标签|调查|城市`;
+    const message = values => `<thinking><本周目经历>${event(999)}</本周目经历></thinking>\n<gametxt>正文保留</gametxt>\n<本周目经历>\n${values.map(value => event(value, '调查<img src=x onerror=alert(1)>线索')).join('\n\n')}\n</本周目经历>\n<UpdateVariable>变量协议不变</UpdateVariable>`;
+    const floors = [
+      { message_id: 0, role: 'assistant', message: message([1]), data: { protected: true } },
+      { message_id: 1, role: 'user', message: '调查', data: { protected: true } },
+      { message_id: 2, role: 'assistant', message: message([1, 1]), data: { stat_data: { 活力: 10 }, otherPlugin: { keep: true } } },
+      { message_id: 3, role: 'user', message: '继续调查', data: { protected: true } },
+      { message_id: 4, role: 'assistant', message: message([50, 4]), data: { stat_data: { 活力: 11 }, otherPlugin: { keep: true } } },
+    ];
+    const protectedValue = JSON.stringify(floors.map(row => row.role === 'user' || row.message_id === 0 ? row : row.data));
+    const alternates = floors.map(row => row.message), writes = [], notices = [], flags = {
+      readFail: false, writeFail: false, postFail: false, lostResponse: false, partialFail: false, attempts: 0,
+    };
+    let page = 0, hold = false, waiting = false, release;
+    window.addEventListener('cryptLord:message-edited', event => notices.push(event.detail.messageId));
+    const modules = {
+      'cryptLord.hostApi': {
+        async getChatMessages(range, options) {
+          if (flags.readFail) throw Error('模拟读取失败');
+          return structuredClone(options?.include_swipes ? floors.map(row => ({
+            message_id: row.message_id, role: row.role, swipe_id: page,
+            swipes: page === 0 ? [row.message, alternates[row.message_id]] : [alternates[row.message_id], row.message],
+            swipes_data: [row.data, row.data], swipes_info: [{ keep: true }, { keep: true }],
+          })) : floors);
+        },
+        async setChatMessages(rows) {
+          flags.attempts++;
+          if (flags.writeFail) throw Error('模拟保存失败');
+          if (rows.some(row => ![2, 4].includes(row.message_id))) throw Error('预览保护#0和user楼层');
+          writes.push(structuredClone(rows));
+          for (const row of rows) {
+            floors.find(floor => floor.message_id === row.message_id).message = row.message;
+            if (flags.partialFail) throw Error('模拟部分写入');
+          }
+          window.dispatchEvent(new Event('floor-rendered'));
+          if (flags.postFail) flags.readFail = true;
+          if (flags.lostResponse) throw Error('模拟成功响应丢失');
+        },
+        generateRaw() { throw Error('不允许生成'); }, getWorldbook() { throw Error('不允许世界书访问'); },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document, window }),
+        tavernEvents: () => ({ CHAT_CHANGED: 'chat', MESSAGE_UPDATED: 'updated', MESSAGE_SWIPED: 'swiped',
+          CHARACTER_MESSAGE_RENDERED: 'floor-rendered', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' }),
+        bindEvent(name, handler) {
+          const callback=event=>Array.isArray(event.detail)?handler(...event.detail):handler(event);
+          window.addEventListener(name, callback);return { stop() { window.removeEventListener(name, callback); } };
+        },
+      },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) {
+        if (hold) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+        if (!modules[key]) throw Error(key); return modules[key];
+      },
+    } };
+    window.preview = { floors, writes, flags, notices,
+      get api() { return modules['cryptLord.journeySequenceUi']; },
+      get waiting() { return waiting; },
+      get untouched() { return protectedValue === JSON.stringify(floors.map(row => row.role === 'user' || row.message_id === 0 ? row : row.data)) &&
+        document.getElementById('native-draft').value === '保留原生输入草稿'; },
+      hold() { hold = true; }, release() { hold = false; release?.(); },
+      swipe() { page++; window.dispatchEvent(new Event('swiped')); },
+      emit(name,...args){window.dispatchEvent(new CustomEvent(name,{detail:args}))},
+      replaceService() { modules['cryptLord.journeySequence'] = { ...modules['cryptLord.journeySequence'] }; },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/journey-reader.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/journey-sequence.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/journey-sequence/index.js"></script>
+  <script>document.getElementById('open').click();</script>
+</body>
+</html>

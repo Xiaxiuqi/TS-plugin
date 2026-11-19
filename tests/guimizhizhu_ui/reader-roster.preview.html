@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>阅读者原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>
+    body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 10px; }
+    #send_textarea { width: calc(100% - 24px); margin: 12px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <button id="open">打开阅读者秘术</button>
+  <textarea id="send_textarea" aria-label="原生输入框" rows="3">保留玩家的正文草稿</textarea>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; }, releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error('Missing ' + key); return modules[key]; },
+    } };
+    const pool = { pathways: {
+      阅读者途径: ['序列9-阅读者', '序列5-秘术导师', '序列3-洞悉者', '序列0-白塔'],
+      占卜家途径: ['序列5-秘偶大师', '序列4-诡法师'],
+      学徒途径: ['序列5-旅行家', '序列3-漫游者'],
+      观众途径: ['序列1-作家'],
+    }, abilities: {} };
+    let stored = { stat_data: { 名称: '玩家', 当前序列: '序列5-秘术导师', 当前途径: '阅读者',
+      序列能力列表: { 原有能力: [{ 名称: '解析', power: 10 }] },
+      人物关系列表: { 甲: { 好感度: 90, 关系: '老师' }, 乙: { 好感度: 95, 关系: '朋友' },
+        丙: { 好感度: 80, 关系: '熟人' } } },
+      npc_data: { 甲: { 当前序列: '序列5-秘偶大师/序列5-旅行家', 所处地点: '图书馆',
+        能力清单: [{ 名称: '灵体之线' }] },
+        乙: { 当前序列: '序列3-漫游者', 所处地点: '学院' },
+        丙: { 当前序列: '序列4-诡法师' } },
+      world_data: { 当前时间纪元: '第五纪1350年9月20日' }, cryptLord: {} };
+    const initial = structuredClone(stored);
+    const opening = { message_id: 0, role: 'assistant', message: '<gametxt>甲向玩家传授灵体之线。</gametxt>',
+      data: { preserved: true } };
+    let latestText = '<think>隐藏分析</think><gametxt>玩家成功掌握甲传授的灵体之线，完成占卜家途径能力解析。</gametxt>';
+    let id = 2, writes = [], requests = [], pending = null, chatHandler, writeFailure = false;
+    let response = '<裁定>\n通过|玩家已经成功掌握所选途径能力\n</裁定>', settings = { useCustomApi: false }, inputEvents = 0;
+    const message = () => ({ message_id: id, role: 'assistant', message: latestText, data: structuredClone(stored) });
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed' }),
+      bindEvent: (_event, handler) => { chatHandler = handler; return { stop() { chatHandler = null; } }; },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    modules['cryptLord.stateStore'] = {
+      async findLatestAssistant() { return message(); },
+      async writeAssistantData(target, data) {
+        if (writeFailure) throw Error('模拟写入失败');
+        if (target !== id || target === 0) throw Error('wrong floor');
+        stored = structuredClone(data); writes.push(target);
+      },
+    };
+    modules['cryptLord.abilityState'] = { async loadPool() { return structuredClone(pool); } };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() { return settings; } };
+    modules['cryptLord.hostApi'] = { async generateRaw(config) {
+      requests.push(config); if (pending) return pending.promise; return response;
+    } };
+    document.getElementById('send_textarea').addEventListener('input', () => inputEvents++);
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get writes() { return [...writes]; }, get requests() { return requests; },
+      get inputEvents() { return inputEvents; }, get opening() { return structuredClone(opening); },
+      get initial() { return structuredClone(initial); }, set writeFailure(value) { writeFailure = value; },
+      set response(value) { response = value; }, set settings(value) { settings = value; },
+      set message(value) { latestText = value; }, set id(value) { id = value; },
+      hold() { let resolve; const promise = new Promise(done => { resolve = done; }); pending = { promise, resolve }; },
+      release(value) { pending?.resolve(value); pending = null; }, changeChat() { chatHandler?.(); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.readerMysticUi'].open();
+  </script>
+  <script src="./pathway-roster.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-field-effect-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/reader-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/reader-roster-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/reader-mystic/index.js"></script>
+</body>
+</html>

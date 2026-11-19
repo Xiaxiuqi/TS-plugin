@@ -1,0 +1,175 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('C:/Users/ROG/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
+let currentPage;
+try {
+  for (const width of [1280, 390]) {
+    const page = await browser.newPage({ viewport: { width, height: 820 } }); currentPage = page;
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    let confirmation = 'accept';
+    page.on('dialog', dialog => { const action = confirmation; confirmation = 'accept'; return dialog[action](); });
+    await page.goto('http://127.0.0.1:8791/tests/guimizhizhu_ui/response-inspector.preview.html?characters=1');
+    await page.evaluate(() => document.fonts.ready);
+    const panel = page.getByRole('dialog', { name: '提取内容', exact: true });
+    const idle = () => page.waitForFunction(() => preview.api?.status().open && !preview.api.status().busy);
+    const message = text => panel.getByRole('status').filter({ hasText: text }).waitFor();
+    const command = async name => { await panel.getByRole('button', { name, exact: true }).click(); await idle(); };
+    const refresh = () => command('重新读取提取内容');
+    const open = async id => { await page.evaluate(id => preview.api.open(id, 'characterCard'), id); await idle(); };
+    const auto = panel.getByRole('checkbox', { name: '角色自动入库', exact: true });
+    const save = panel.getByRole('button', { name: '角色写入世界书', exact: true });
+    const count = () => page.evaluate(() => preview.bookWrites.length);
+    await idle(); assert.equal(await auto.isChecked(), true); assert.equal(await count(), 0);
+    assert.equal(await page.evaluate(() => preview.configWrites.length), 0);
+    const protectedSource = await page.evaluate(() => JSON.stringify({ floors: preview.floors.slice(0, 2), library: preview.books['2历史孔隙'], other: preview.books['1源堡'] }));
+    confirmation = 'dismiss'; await command('角色写入世界书'); await message('已取消'); assert.equal(await count(), 0);
+    await command('角色写入世界书'); await message('已入库'); assert.equal(await count(), 1);
+    assert.equal(await page.evaluate(() => preview.writes.length), 0);
+    const created = await page.evaluate(() => preview.books['1源堡'].at(-1));
+    assert.equal(created.name, '伦纳德'); assert.equal(created.enabled, true);
+    assert.equal(created.strategy.type, 'selective'); assert.deepEqual(created.strategy.keys, ['伦纳德']);
+    assert.equal(created.position.type, 'before_character_definition'); assert.equal(created.position.order, 260);
+    await refresh(); await message('已有真实设定'); assert.equal(await save.isDisabled(), true);
+
+    await page.evaluate(() => {
+      const entry = preview.books['1源堡'].at(-1);
+      entry.content = '正在等待AI生成角色设定'; entry.enabled = false; entry.custom = { keep: true };
+      entry.strategy.keys = [/雨夜/i];
+    });
+    await refresh(); assert.equal(await save.isDisabled(), false);
+    await command('角色写入世界书'); assert.equal(await count(), 2);
+    const filled = await page.evaluate(() => preview.books['1源堡'].at(-1));
+    assert.equal(filled.uid, created.uid); assert.equal(filled.custom.keep, true);
+    assert.equal(filled.strategy.keys[0].source, '雨夜');
+    await page.evaluate(() => { preview.books['1源堡'].at(-1).content = ''; }); await refresh();
+    await page.evaluate(() => preview.hold('book'));
+    await save.click(); await page.waitForFunction(() => preview.waiting === 'book');
+    assert.equal(await auto.isDisabled(), true);
+    await page.evaluate(() => { preview.books['1源堡'].at(-1).content = '外部真实设定'; preview.release(); });
+    await idle(); await message('角色条目已变化'); assert.equal(await count(), 2);
+    assert.equal(await page.evaluate(() => preview.books['1源堡'].at(-1).content), '外部真实设定');
+    await refresh(); await auto.uncheck(); await idle(); await message('已关闭');
+    assert.equal(await page.evaluate(() => preview.variables.otherPlugin.keep), true);
+    await page.evaluate(() => preview.turn('自动关闭角色')); await refresh();
+    assert.equal(await count(), 2); assert.equal(await page.evaluate(() => preview.writes.length), 1);
+    assert.equal(await auto.isChecked(), false);
+    await auto.check(); await idle(); await page.evaluate(() => preview.turn('自动入库角色')); await refresh();
+    assert.equal(await count(), 3); assert.equal(await page.evaluate(() => preview.writes.length), 2);
+    assert.equal(await save.isDisabled(), true);
+    await page.evaluate(() => preview.turn('自动入库角色')); await refresh();
+    assert.equal(await count(), 3); assert.equal(await page.evaluate(() => preview.writes.length), 3);
+
+    await page.evaluate(() => { preview.floors[2].message = '<gametxt>正文</gametxt><角色提取>Name: 姓名</角色提取>'; }); await refresh();
+    await message('未找到角色姓名'); assert.equal(await save.isDisabled(), true);
+    await page.evaluate(() => { preview.floors[2].message = '<角色提取>Name: <img src=x onerror=alert(1)>\n描述|纯文本</角色提取>'; }); await refresh();
+    assert.equal(await panel.locator('img').count(), 0);
+    await page.evaluate(() => { preview.flags.bookFail = true; }); await command('角色写入世界书'); await message('失败');
+    assert.equal(await save.isDisabled(), true); assert.equal(await count(), 3);
+    await page.evaluate(() => { preview.flags.bookFail = false; preview.flags.bookPostFail = true; });
+    await command('重试角色保存'); await message('已入库，但复核失败'); assert.equal(await count(), 4);
+    assert.equal(await save.isDisabled(), true);
+    for (let index = 0; index < 2; index++) {
+      await command('核对角色保存'); await message('读取失败'); assert.equal(await count(), 4);
+    }
+    await page.evaluate(() => preview.api.open(2, 'characterCard')); assert.equal(await save.isDisabled(), true);
+    confirmation = 'dismiss'; await command('重新读取提取内容');
+    assert.equal(await panel.getByRole('button', {name:'核对角色保存'}).isEnabled(), true);
+    await page.evaluate(() => { preview.flags.bookPostFail = false; preview.flags.bookFail = false; });
+    await command('核对角色保存'); await message('核对后已确认'); assert.equal(await count(), 4);
+    await refresh(); assert.equal(await panel.locator('img').count(), 0);
+    await page.evaluate(() => { preview.flags.configWriteFail = true; }); await auto.click(); await idle(); await message('设置失败');
+    assert.equal(await auto.isChecked(), false); assert.equal(await auto.isDisabled(), true);
+    await page.evaluate(() => { preview.flags.configWriteFail = false; preview.flags.configPostFail = true; });
+    await command('重试角色保存'); await message('设置已保存，但复核失败'); assert.equal(await auto.isDisabled(), true);
+    const savedSettings = await page.evaluate(() => preview.configWrites.length);
+    await command('核对角色保存'); await message('读取失败');
+    await page.evaluate(() => { preview.flags.configPostFail = false; preview.flags.configFail = false; });
+    await command('核对角色保存'); await message('核对后已确认');
+    assert.equal(await page.evaluate(() => preview.configWrites.length), savedSettings);
+    assert.equal(await auto.isChecked(), false);
+    await page.evaluate(() => preview.hold('config')); await auto.check();
+    await page.waitForFunction(() => preview.waiting === 'config');
+    await page.evaluate(() => { preview.variables['cryptLord.characterExtraction'].future = true; preview.release(); });
+    await idle(); await message('配置已变化'); assert.equal(await auto.isChecked(), true); assert.equal(await auto.isDisabled(), true);
+    await refresh();
+    const beforeClose = await page.evaluate(() => preview.configWrites.length);
+    await page.evaluate(() => preview.hold('config')); await auto.check();
+    await page.waitForFunction(() => preview.waiting === 'config');
+    await panel.getByRole('button', { name: '关闭提取内容', exact: true }).click(); await page.evaluate(() => preview.release());
+    await open(2); assert.equal(await auto.isChecked(), false);
+    assert.equal(await page.evaluate(() => preview.configWrites.length), beforeClose);
+    await page.evaluate(() => { preview.primary = '其他世界书'; }); await refresh();
+    await message('未挂载'); assert.equal(await save.isDisabled(), true);
+    await page.evaluate(() => { preview.primary = '1源堡'; }); await refresh();
+    await open(0); assert.equal(await save.isDisabled(), true); await open(2);
+    await page.evaluate(() => { preview.floors[2].message = `<角色提取>姓名|${'名称很长的调查员'.repeat(8)}\n描述|纯文本</角色提取>`; }); await refresh();
+    const overflow = await panel.evaluate(root => [...root.querySelectorAll('button,input,select,pre,[data-inspect-card-target]')].filter(item =>
+      item.getClientRects().length && !item.closest('[data-inspect-tabs]') && item.getBoundingClientRect().right > root.getBoundingClientRect().right + 1).map(item => item.outerHTML));
+    assert.deepEqual(overflow, []);
+    assert.equal(await page.evaluate(() => JSON.stringify({ floors: preview.floors.slice(0, 2), library: preview.books['2历史孔隙'], other: preview.books['1源堡'].slice(0, 2) })), protectedSource);
+    assert.equal(await page.locator('#native-draft').inputValue(), '保留原生草稿');
+    const branchCount = await count();
+    await page.evaluate(async () => {
+      const api = cryptLord.__stage1Modules['cryptLord.hostApi'];
+      preview.pages[0] = (await api.getChatMessages('0', {include_swipes:true}))[0];
+      preview.pages[0].swipes_info[1].external = true;
+    });
+    await command('角色写入世界书'); await message('楼层正文、变量或消息页已变化');
+    assert.equal(await count(), branchCount);
+    await page.evaluate(() => { delete preview.pages[0]; }); await refresh();
+    for (const args of [['quiet', {}, false], ['quiet_prompt', {}, false], ['normal', {params:{quiet_prompt:'静默'}}, false],
+      ['normal', {params:{dryRun:true}}, false], ['normal', {dryRun:true}, false], ['normal', {}, true]]) {
+      await page.evaluate(args => preview.emit('GENERATION_STARTED', ...args), args);
+      await page.evaluate(() => preview.emit('GENERATION_STOPPED'));
+      assert.equal(await save.isDisabled(), false);
+    }
+    await page.evaluate(() => preview.hold('book')); await save.click();
+    await page.waitForFunction(() => preview.waiting === 'book');
+    await page.evaluate(() => {preview.emit('GENERATION_STARTED', 'normal', {}, false); preview.release();});
+    await idle(); assert.equal(await count(), branchCount); assert.equal(await save.isDisabled(), true);
+    await page.evaluate(() => preview.emit('GENERATION_ENDED')); await refresh();
+    await page.evaluate(() => { preview.flags.bookResponseLost = true; });
+    await command('角色写入世界书'); await message('响应丢失后已确认'); assert.equal(await count(), branchCount + 1);
+    await page.evaluate(() => {preview.flags.bookResponseLost = false; preview.flags.configResponseLost = true;});
+    await auto.check(); await idle(); await message('响应丢失后已确认');
+    assert.equal(await auto.isChecked(), true);
+    await page.evaluate(() => {
+      preview.flags.configResponseLost = false;
+      preview.books['1源堡'].at(-1).content = '';
+      preview.floors[2].is_hidden = true;
+    });
+    await refresh(); await message('所选原生 assistant 楼层不存在'); assert.equal(await save.isDisabled(), true);
+    await page.evaluate(() => {preview.floors[2].is_hidden = false;}); await refresh();
+    await page.evaluate(() => {preview.flags.bookNoWrite=true});
+    const noWriteCount = await count();
+    await command('角色写入世界书'); await message('尚未保存');
+    assert.equal(await count(), noWriteCount);
+    await page.evaluate(() => {preview.flags.bookNoWrite=false});
+    await command('重试角色保存'); await message('已入库'); assert.equal(await count(), noWriteCount + 1);
+    await page.evaluate(() => {preview.books['1源堡'].at(-1).content=''});
+    await refresh(); await page.evaluate(() => preview.hold('book')); await save.click();
+    await page.waitForFunction(() => preview.waiting === 'book');
+    const surfaceCount = await count();
+    await page.evaluate(() => {preview.flags.surfaceChanged=true;preview.release()});
+    await page.waitForFunction(() => !preview.api.status().open);
+    assert.equal(await count(), surfaceCount);
+    await page.evaluate(() => {preview.flags.surfaceChanged=false}); await open(2);
+    const beforeCancelled = await count(); await page.evaluate(() => preview.hold('book')); await save.click();
+    await page.waitForFunction(() => preview.waiting === 'book');
+    await page.evaluate(() => { preview.emit('CHAT_CHANGED'); preview.release(); });
+    assert.equal(await panel.isVisible(), false); await open(2); assert.equal(await count(), beforeCancelled);
+    await page.evaluate(() => preview.hold('book')); await save.click();
+    await page.waitForFunction(() => preview.waiting === 'book');
+    await page.evaluate(() => { preview.api.dispose(); cryptLord.__stage1Modules['cryptLord.characterExtraction'].dispose(); preview.release(); });
+    await page.waitForFunction(() => preview.waiting === null);
+    assert.equal(await count(), beforeCancelled); assert.equal(await panel.count(), 0); assert.deepEqual(errors, []);
+    await page.close();
+  }
+  console.log('角色提取浏览器：桌面/手机手动与自动入库完整流程、原设定保护、配置和世界书冲突、故障及卸载通过');
+} catch (error) {
+  await currentPage?.screenshot({ path: path.join(os.tmpdir(), 'character-extraction-failure.png') }); throw error;
+} finally { await browser.close(); }

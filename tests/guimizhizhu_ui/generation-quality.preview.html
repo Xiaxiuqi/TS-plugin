@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>正文生成检修预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/generation-repair/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/system-settings/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202625; color: #e6eee9; font: 14px/1.7 "Microsoft YaHei", sans-serif; }
+    nav { display: flex; gap: 12px; flex-wrap: wrap; padding: 18px; border-bottom: 1px solid #61766b; }
+    #native-draft { display: block; width: min(380px, calc(100% - 36px)); height: 68px; margin: 18px; }
+    #result { margin: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <nav><button id="inspect">检修当前楼层</button><button id="retry">自动重试</button><button id="settings">系统设置</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <pre id="result"></pre>
+  <script>
+    const good = '<thinking>核对状态</thinking><gametxt>调查：你沿着廷根的街道前进，终于发现了一条新的线索。</gametxt><action>1.继续调查</action>';
+    const broken = good.replace('</gametxt>', '') + '\n<img src=x onerror=window.unsafe=true>';
+    const opening = { message_id: 0, role: 'assistant', message: good, data: { stat_data: { 活力: 10 }, other: { keep: true } } };
+    const initial = [opening, { message_id: 1, role: 'user', message: '调查', data: { keep: true } },
+      { message_id: 2, role: 'assistant', message: broken, data: { other: { keep: true } } }];
+    const state = { floors: structuredClone(initial), replies: [], settlements: 0, requests: [], writes: [], deletions: [],
+      configWrites:0,configLost:false,noConfigWrite:false,
+      variables: { otherPlugin: { keep: true }, 'cryptLord.generationQuality': { retryLimit: 1, streamTimeoutSeconds: 0, noStreamTimeoutSeconds: 0 } } };
+    const modules = {};
+    const host = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: 'quality-preview' }),
+      getVariables: async () => structuredClone(state.variables),
+      async updateVariablesWith(fn) {
+        const next=await fn(structuredClone(state.variables));if(!state.noConfigWrite)state.variables=next;
+        state.configWrites++;if(state.configLost)throw Error('正文设置响应丢失');
+      },
+      async getChatMessages(range) {
+        return structuredClone(range === '0-{{lastMessageId}}' ? state.floors : range === '{{lastMessageId}}' ? state.floors.slice(-1) :
+          state.floors.filter(row => row.message_id === Number(range)));
+      },
+      async createChatMessages(rows) {
+        rows.forEach(row => state.floors.push({ ...structuredClone(row), message_id: (state.floors.at(-1)?.message_id ?? -1) + 1 }));
+      },
+      async setChatMessages(rows) {
+        state.writes.push(structuredClone(rows));
+        rows.forEach(row => Object.assign(state.floors.find(item => item.message_id === row.message_id), structuredClone(row)));
+        paint();
+      },
+      async deleteChatMessages(ids) { state.deletions.push(...ids); state.floors = state.floors.filter(row => !ids.includes(row.message_id)); },
+      async generate(config) { state.requests.push(structuredClone(config)); return state.replies.shift() ?? good; },
+    };
+    modules['cryptLord.hostApi'] = host;
+    const surface={document,window:{}};
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => surface, tavernEvents: () => ({ CHAT_CHANGED: 'chat-changed', GENERATION_STOPPED: 'generation-stopped' }),
+      bindEvent(name, fn) { window.addEventListener(name, fn); return { stop: () => window.removeEventListener(name, fn) }; },
+    };
+    modules['cryptLord.contextBuilder'] = { build: async () => [] };
+    modules['cryptLord.nativeSettlement'] = {
+      apply(data) { state.settlements++; data.stat_data.活力++; },
+      async prepare(data) { const next=structuredClone(data);this.apply(next);return{data:next}; },
+      async assertPrepared() {},
+    };
+    modules['cryptLord.variablePatch'] = { apply: () => ({ applied: 0 }), embedUpdate: text => text, updateTag: () => '' };
+    modules['cryptLord.variableSettlementApi'] = {
+      settle: async () => ({ skipped: true }),
+      defaults: () => ({ enabled: false, streamingEnabled: false, gemini37fPrefill: false, useCustomApi: false, apiUrl: '', apiKey: '', model: '', retryLimit: 0 }),
+      async readSnapshot() { return { settings: this.defaults(), revision: { test: true } }; },
+      saveSettings: async () => ({ revision: { test: true } }), getModelList: async () => [],
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error(`缺少 ${key}`); return modules[key]; },
+    } };
+    function paint() { document.getElementById('result').textContent = state.floors.at(-1)?.message || ''; }
+    let task = null;
+    window.preview = {
+      state, initial, good, broken,
+      get api() { return modules['cryptLord.nativeFloor']; },
+      get ui() { return modules['cryptLord.generationRepairUi']; },
+      get idle() { return task === null; },
+      get untouched() { return JSON.stringify(state.floors.slice(0, 2)) === JSON.stringify(initial.slice(0, 2)) &&
+        document.getElementById('native-draft').value === '保留原生输入草稿' && state.variables.otherPlugin.keep === true; },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      async inspect() {
+        task = this.api.processNativeAssistantFloor(state.floors.at(-1).message_id);
+        try { await task; } finally { task = null; paint(); }
+      },
+      async retry() {
+        state.replies = ['', good]; task = this.api.submitNativeTurn('继续调查');
+        try { await task; } finally { task = null; paint(); }
+      },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-quality.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/generation-repair/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/system-settings/index.js"></script>
+  <script>
+    document.getElementById('inspect').onclick = () => preview.inspect();
+    document.getElementById('retry').onclick = () => preview.retry();
+    document.getElementById('settings').onclick = () => modules['cryptLord.systemSettingsUi'].open();
+    paint();
+  </script>
+</body>
+</html>

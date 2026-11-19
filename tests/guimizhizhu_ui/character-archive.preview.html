@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>角色档案完整流程验收</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/character-archive/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/game-shell/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body{margin:16px;background:#192024;color:#eee;font:14px/1.6 "Microsoft YaHei",sans-serif}.preview-tools{display:flex;gap:8px}button{padding:8px}#native-input{position:fixed;bottom:8px;left:8px;width:180px}</style>
+</head>
+<body>
+  <div class="preview-tools"><button id="open">档案详情</button><button id="history">历史档案</button></div>
+  <input id="native-input" aria-label="原生输入" value="保留输入草稿">
+  <script>
+    const modules={},handlers=new Map(),writes=[],notices=[],reads=[],questKey='<User>接受的任务';
+    const data={stat_data:{名称:'克莱恩',当前序列:'序列9-占卜家',活力:30,当前活力:31,灵性:60,当前灵性:0,
+      理智:50,当前理智:45,人性:30,当前人性:30,敏捷:20,当前敏捷:10,运气:110,身体年龄:25,灵魂年龄:30,
+      消化进度:75,失控进度:8,非凡特性列表:{$meta:{},占卜家:{等阶:'序列9',描述:'窥见隐秘的命运。\n保持清醒与克制。',百分比加成:{灵性:10}},神性:{等阶:'支柱',描述:'来自高位的特性。'}},
+      武器列表:{$meta:{},a:{名称:'杖剑',品阶:'序列9',isEquipped:true},b:{名称:'短剑'}},
+      衣物列表:{c:{名称:'黑色风衣'}},饰品列表:{d:{名称:'银戒'}},封印物列表:{e:{名称:'封印物 3-0782'}},
+      [questKey]:{$meta:{extensible:false,keep:true},
+        'a.b[0]':{任务名:'追查失踪的笔记',任务委托者:'伦纳德',任务概述:'前往码头寻找遗失的笔记。\n留意近日的陌生访客。',完成条件:'找到笔记并确认持有者。',任务奖励:'10金镑',是否已完成:'是',是否已领取奖励:'false',自定义:{keep:true}},
+        another:{任务名:'追查失踪的笔记',任务委托者:'阿兹克',任务概述:'另一份同名委托。',完成条件:'交还笔记',任务奖励:'古旧铜哨',是否已完成:false,是否已领取奖励:false},
+        html:{任务名:'<img src=x onerror="window.archiveUnsafe=true">',任务概述:'长字符串ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ'}}},
+      npc_data:{伦纳德:{名称:'伦纳德'}},world_data:{天气:'晴'},otherPlugin:{keep:true}};
+    const floors=[
+      {message_id:0,role:'assistant',message:'<UpdateVariable>开场不初始化</UpdateVariable>',data:structuredClone(data)},
+      {message_id:1,role:'user',message:'行动',data:{keep:true}},
+      {message_id:2,role:'assistant',message:'本轮原生正文\n<UpdateVariable>保持原标签</UpdateVariable>',swipe_id:1,data:structuredClone(data)}
+    ],initial=structuredClone(floors);
+    let readFail=false,writeFail=false,postFail=false,writeLost=false,noWrite=false,derivations=0,
+      chat='archive-chat',script='archive-script',gate=null,release=null,waiting=false;
+    const pages={};
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]}
+    }};
+    const events={CHAT_CHANGED:'chat',MESSAGE_UPDATED:'update',MESSAGE_DELETED:'delete',MESSAGE_SWIPED:'swipe',
+      CHARACTER_MESSAGE_RENDERED:'render',USER_MESSAGE_RENDERED:'user',GENERATION_STARTED:'start',GENERATION_ENDED:'end',GENERATION_STOPPED:'stop'};
+    modules['cryptLord.afterNativeHost']={
+      getHost:()=>({window,document}),createElement:tag=>document.createElement(tag),
+      listAssistantMessages:async()=>structuredClone(floors.filter(row=>row.role==='assistant')),tavernEvents:()=>events,
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}}
+    };
+    modules['cryptLord.hostApi']={
+      scriptVariableOptions:()=>({type:'script',script_id:script}),
+      async getChatMessages(range,options){reads.push(range);if(readFail)throw Error('模拟读取失败');
+        const rows=range==='{{lastMessageId}}'?floors.slice(-1):range==='0-{{lastMessageId}}'?floors:floors.filter(row=>row.message_id===Number(range));
+        return structuredClone(options?.include_swipes?rows.map(row=>{
+          const {message,data,extra,...rest}=row,selected=row.swipe_id||0,length=Math.max(2,selected+1);
+          return {...rest,swipe_id:selected,swipes:Array.from({length},(_,index)=>index===selected?message:'未选分支'),
+            swipes_data:Array.from({length},(_,index)=>index===selected?data:{protected:true}),
+            swipes_info:Array.from({length},()=>({})),...pages[row.message_id]};
+        }):rows)},
+      async setChatMessages(rows){
+        if(writeFail)throw Error('模拟保存失败');
+        writes.push(structuredClone(rows));
+        if(!noWrite)for(const row of rows)Object.assign(floors.find(item=>item.message_id===row.message_id),structuredClone(row));
+        if(postFail)readFail=true;
+        if(writeLost)throw Error('模拟任务响应丢失');
+      }
+    };
+    window.SillyTavern={getCurrentChatId:()=>chat};
+    modules['cryptLord.dynamicStatus']={async load(){if(gate){waiting=true;await gate;waiting=false}return{rules:[]}},apply(){derivations++}};
+    modules['cryptLord.personalBattleState']={};modules['cryptLord.inventoryState']={};
+    modules['cryptLord.abilityState']={loadPool:async()=>({pathways:{},abilities:{}})};
+    modules['cryptLord.variableWorkbench']={notifyUpdate:entry=>notices.push(entry)};
+    modules['cryptLord.responseNormalizer']={extractActions:()=>[]};
+    async function emit(name,...args){for(const fn of handlers.get(events[name]||name)||[])await fn(...args)}
+    window.preview={modules,floors,initial,writes,notices,reads,pages,emit,
+      set readFail(value){readFail=value},set writeFail(value){writeFail=value},
+      set noWrite(value){noWrite=value},get derivations(){return derivations},
+      set chat(value){chat=value},set script(value){script=value},
+      hold(){gate=new Promise(resolve=>release=()=>{gate=null;resolve()})},release(){release?.()},get waiting(){return waiting},
+      postFail(){postFail=true},recover(){readFail=false;postFail=false},
+      set writeLost(value){writeLost=value},
+      conflict(){floors[2].message+='\n外部修改'},chatChanged(){return emit('CHAT_CHANGED')}
+    };
+    document.querySelector('#open').onclick=()=>modules['cryptLord.characterArchiveUi'].open(2);
+    document.querySelector('#history').onclick=()=>modules['cryptLord.characterArchiveUi'].open(0);
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/character-panel-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/character-archive/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/game-shell/index.js"></script>
+</body>
+</html>

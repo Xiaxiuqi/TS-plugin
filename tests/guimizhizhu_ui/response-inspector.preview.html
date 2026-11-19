@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>提取内容与双模型思维链预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/response-inspector/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/native-floor-editor/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/action-options/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; color: #29322f; background: #e8eceb; font: 14px/1.8 "Microsoft YaHei", sans-serif; }
+    #chat { max-width: 960px; margin: 16px auto; padding: 0 16px; }
+    .mes { border-bottom: 1px solid #b8c3be; padding: 16px 0; }
+    .mes[is_user="true"] { color: #6a5667; }
+    #native-draft { margin: 12px 16px; width: 250px; height: 50px; }
+  </style>
+</head>
+<body>
+  <div id="chat">
+    <article class="mes" mesid="0" is_user="false"><div class="mes_text">开场：抵达廷根</div></article>
+    <article class="mes" mesid="1" is_user="true"><div class="mes_text">玩家行动：调查档案室</div></article>
+    <article class="mes" mesid="2" is_user="false"><div class="mes_text">雨夜的档案室里出现了新的线索。</div></article>
+    <article class="mes" mesid="3" is_user="false"><div class="mes_text">提供商原生思维链示例</div></article>
+  </div>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生草稿</textarea>
+  <script>
+    const journey = (id, title) => `序号|${id}\n日期|第五纪1349年9月1日\n时间|12:00\n大纲|${title}\n地点|廷根\n详细描述|雨夜调查`;
+    const raw = '<thinking>正文模型：核对人物行动与现场信息。</thinking>' +
+      '<gametxt>雨夜的档案室里出现了新的线索。\n<img src=x onerror=alert(1)></gametxt>' +
+      '<UpdateVariable><Analysis>隐藏的补丁说明</Analysis><JSONPatch>{"stat_data":[{"op":"replace","path":"/活力","value":12}]}</JSONPatch></UpdateVariable>' +
+      `<本周目经历>${journey(2, '发现档案线索')}</本周目经历>` +
+      '<角色提取>姓名|伦纳德\n身份|调查员\n描述|雨夜进入档案室，留意登记簿上的名字。</角色提取><物品提取>名称|档案登记簿</物品提取>' +
+      '<当前线索>编号|档案室</当前线索><wlog>时间|雨夜</wlog><action>1|调查登记簿</action>' +
+      '<dm>档案管理员今天加班了</dm><dm>先查登记簿</dm>' +
+      '<safe><当前线索>不可提取的示例</当前线索></safe>';
+    const data = () => ({ stat_data: { 活力: 12 }, world_data: { 保留: true }, otherPlugin: { keep: true } });
+    const floors = [
+      { message_id: 0, role: 'assistant', name: '开场', message: '<reasoning>旧版正文思考</reasoning><gametxt>开场</gametxt><think>旧版变量思考</think><UpdateVariable>{}</UpdateVariable>', data: data() },
+      { message_id: 1, role: 'user', message: '调查档案室', data: { keep: true } },
+      { message_id: 2, role: 'assistant', name: '正文', message: raw, data: data(), swipe_id: 0 },
+      { message_id: 3, role: 'assistant', message: '<gametxt>原生正文</gametxt>', data: {}, extra: { reasoning: '公开原生思维链' } },
+    ];
+    const books = { '1源堡': [
+      { uid: 4, name: '本周目经历', content: journey(1, '开场'), enabled: true, custom: { keep: true }, strategy: { keys: ['廷根'] } },
+      { uid: 7, name: '其他条目', content: '保持不变', enabled: false },
+    ], '2历史孔隙': [{ uid: 4, name: '本周目经历', content: '副库不变' }] };
+    const writes = [], bookWrites = [], updates = [], redirects = [], refreshes = [], pages = {};
+    const flags = { readFail: false, bookFail: false, bookPostFail: false, postFail: false, writeFail: false,
+      configFail: false, configPostFail: false, configWriteFail: false, configResponseLost: false, bookResponseLost: false,
+      bookNoWrite: false, configNoWrite: false, surfaceChanged: false, chat: 'inspector-preview-chat' };
+    let scriptVariables = { otherPlugin: { keep: true } }, scriptId = 'preview-script', primary = '1源堡';
+    const configWrites = [];
+    let hold = null, waiting = null, release = null;
+    async function pause(kind) {
+      if (hold !== kind) return;
+      hold = null; waiting = kind; await new Promise(resolve => { release = resolve; }); waiting = null;
+    }
+    const events = Object.fromEntries(['CHAT_CHANGED', 'GENERATION_STARTED', 'GENERATION_ENDED', 'GENERATION_STOPPED', 'GENERATION_AFTER_COMMANDS',
+      'MESSAGE_RECEIVED', 'MESSAGE_UPDATED', 'MESSAGE_EDITED', 'MESSAGE_SWIPED', 'MESSAGE_DELETED',
+      'MESSAGE_REASONING_EDITED', 'MESSAGE_REASONING_DELETED', 'MESSAGE_SWIPE_DELETED', 'CHARACTER_MESSAGE_RENDERED']
+      .map(name => [name, `preview:${name}`]));
+    const hostApi = {
+      getScriptId: () => scriptId,
+      scriptVariableOptions: () => ({ type: 'script', script_id: scriptId }),
+      getVariables() { if (flags.configFail) throw Error('模拟设置读取失败'); return structuredClone(scriptVariables); },
+      async updateVariablesWith(updater, options) {
+        await pause('config');
+        if (flags.configWriteFail) throw Error('模拟设置保存失败');
+        const next = await updater(structuredClone(scriptVariables));
+        if (flags.configNoWrite) return;
+        scriptVariables = structuredClone(next); configWrites.push(structuredClone(options));
+        if (flags.configPostFail) flags.configFail = true;
+        if (flags.configResponseLost) throw Error('模拟设置响应丢失');
+      },
+      getCharWorldbookNames: () => ({ primary, additional: [] }),
+      getGlobalWorldbookNames: () => [], getChatWorldbookName: () => null,
+      getWorldbookNames: () => Object.keys(books),
+      async getChatMessages(range, options) {
+        await pause('read');
+        if (flags.readFail) throw Error('模拟楼层读取失败');
+        const rows = range === '0-{{lastMessageId}}' ? floors : range === '{{lastMessageId}}' ? floors.slice(-1) :
+          floors.filter(row => row.message_id === Number(range));
+        return structuredClone(options?.include_swipes ? rows.map(row => {
+          const { message, data, extra, ...rest } = row, selected = row.swipe_id || 0;
+          const length = Math.max(2, selected + 1);
+          return { ...rest, swipe_id: selected, swipes: Array.from({length}, (_,index) => index === selected ? message : '未选分支'),
+            swipes_data: Array.from({length}, (_,index) => index === selected ? data || {} : {protected:true}),
+            swipes_info: Array.from({length}, () => ({})), ...pages[row.message_id] };
+        }) : rows);
+      },
+      async setChatMessages(rows) {
+        if (flags.writeFail) throw Error('模拟楼层保存失败');
+        if (rows.some(row => row.message_id !== 2)) throw Error('预览禁止修改保护楼层');
+        writes.push(structuredClone(rows));
+        rows.forEach(row => Object.assign(floors.find(item => item.message_id === row.message_id), structuredClone(row)));
+        if (flags.postFail) flags.readFail = true;
+      },
+      async getWorldbook(name) {
+        if (flags.bookFail) throw Error('模拟世界书读取失败');
+        return structuredClone(books[name]);
+      },
+      async updateWorldbookWith(name, updater) {
+        await pause('book');
+        if (flags.bookFail) throw Error('模拟世界书保存失败');
+        const next = await updater(structuredClone(books[name]));
+        if (flags.bookNoWrite) return;
+        books[name] = structuredClone(next); bookWrites.push(name);
+        if (flags.bookPostFail) flags.bookFail = true;
+        if (flags.bookResponseLost) throw Error('模拟归档响应丢失');
+      },
+      generateRaw() { throw Error('提取查看不得请求模型'); },
+    };
+    const detachedDocument = document.implementation.createHTMLDocument('隔离替换宿主');
+    window.SillyTavern = { getCurrentChatId: () => flags.chat };
+    const modules = {
+      'cryptLord.hostApi': hostApi,
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document: flags.surfaceChanged ? detachedDocument : document, window }), tavernEvents: () => events,
+        status: () => ({ ready: true }),
+        createElement: tag => document.createElement(tag),
+        mount(id, kind, element) {
+          const message = document.querySelector(`.mes[mesid="${id}"]`);
+          if (!message) return false; element.dataset.fixtureModule = kind; message.append(element); return true;
+        },
+        unmount(id, kind) { document.querySelector(`.mes[mesid="${id}"] [data-fixture-module="${kind}"]`)?.remove(); },
+        listAssistantMessages: async () => (await hostApi.getChatMessages('0-{{lastMessageId}}')).filter(row => row.role === 'assistant'),
+        getDisplayedMessageElement: id => document.querySelector(`.mes[mesid="${id}"]`),
+        bindEvent(name, handler) {
+          const callback = event => handler(...(event.detail || []));
+          window.addEventListener(name, callback);
+          return { stop() { window.removeEventListener(name, callback); } };
+        },
+      },
+      'cryptLord.gameShell': { refresh(id) { refreshes.push(id); } },
+      'cryptLord.nativeFloorStatusBar': { refresh(id) { refreshes.push(id); } },
+      'cryptLord.variableWorkbench': { open(id) { redirects.push(id); } },
+      'cryptLord.inputAdapter': {
+        status: () => ({ selectors: { nativeTextarea: '#native-draft' } }),
+        setInputText(text, target) {
+          if (target !== 'sillytavern-native') throw Error('必须使用原生输入');
+          document.getElementById('native-draft').value = text; return true;
+        },
+      },
+      'cryptLord.contextBuilder': { build: async () => [] },
+      'cryptLord.generationQuality': { readSnapshot: async () => ({ settings: { retryLimit: 0, streamTimeoutSeconds: 0, noStreamTimeoutSeconds: 0 } }) },
+      'cryptLord.nativeSettlement': { apply() {} },
+      'cryptLord.variableSettlementApi': { settle: async ({ previousData }) => ({ skipped: true, data: previousData, response: '' }) },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error(`缺少模块 ${key}`); return modules[key]; },
+    } };
+    window.preview = {
+      floors, books, writes, bookWrites, flags, raw, updates, redirects, configWrites, pages,
+      get variables() { return scriptVariables; },
+      get primary() { return primary; }, set primary(value) { primary = value; },
+      set script(value) { scriptId = value; },
+      get api() { return modules['cryptLord.responseInspectorUi']; },
+      get waiting() { return waiting; },
+      hold(kind) { hold = kind; }, release() { release?.(); release = null; },
+      emit(name, ...args) { window.dispatchEvent(new CustomEvent(events[name], { detail: args })); },
+      async verified() {
+        floors[2].message = raw;
+        floors[2].data.cryptLord = { responseInspection: await modules['cryptLord.responseInspector'].captureVariable({
+          messageId: 2, message: raw, response: '<thinking>变量模型：核对本回合活力变化。</thinking>', purpose: 'turn-settlement',
+        }) };
+        await modules['cryptLord.actionOptions']?.refresh(2);
+      },
+      async turn(name) {
+        floors.splice(2);
+        const bridge = modules['cryptLord.nativeFloorBridge'], built = await bridge.buildGenerationConfig('调查档案室');
+        const response = raw.replace('姓名|伦纳德', `Name: ${name}`);
+        floors.push({ message_id: 2, role: 'assistant', message: response, data: data(), swipe_id: 0 });
+        await bridge.completeNarrative(response, { userMessageId: 1, assistantMessageId: 2, userText: '调查档案室',
+          narrativeText: '现场正文', floorText: response, characterTurn: built.characterTurn, archiveTurn: built.archiveTurn, guard: () => true });
+        preview.emit('MESSAGE_UPDATED');
+      },
+    };
+    window.addEventListener('cryptLord:message-edited', event => updates.push(structuredClone(event.detail)));
+  </script>
+  <script src="../../public/guimizhizhu_ui/shared/save-recovery.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/journey-reader.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-editor.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-inspector.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/character-extraction.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/story-archive.js"></script>
+  <script>
+    if (!new URLSearchParams(location.search).has('archive')) modules['cryptLord.storyArchive'].dispose();
+    else scriptVariables['cryptLord.characterExtraction'] = { version: 1, automatic: false };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor-editor/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/response-inspector/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/action-options/index.js"></script>
+  <script>preview.verified().then(() => preview.api.open(2, new URLSearchParams(location.search).has('archive') ? 'novelText' : new URLSearchParams(location.search).has('characters') ? 'characterCard' : 'thinking'));</script>
+</body>
+</html>

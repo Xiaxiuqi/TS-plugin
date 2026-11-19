@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>装备强化原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>
+    body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 10px; }
+    #send_textarea { width: calc(100% - 24px); margin: 12px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <button id="open">打开装备强化</button>
+  <textarea id="send_textarea" aria-label="原生输入框" rows="3">保留玩家的正文草稿</textarea>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; }, releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error('Missing ' + key); return modules[key]; },
+    } };
+    const pool = { pathways: { 通识者途径: ['序列7-鉴定师', '序列6-机械专家', '序列1-文明启蒙者'],
+      观众途径: ['序列1-作家'] }, pictureConfig: {}, abilities: {} };
+    const material = qty => ({ 名称: '钢', 材质族: '金属', 具体材质: '钢', 等级: '序列6',
+      关联途径: '无', 性质: ['坚硬'], 数量: qty, 加工结果: '成功' });
+    let stored = { stat_data: { 名称: '玩家', 当前序列: '序列6-机械专家', 活力: 100, 当前活力: 90,
+      武器列表: { 枪: { 名称: '枪', 序列: '序列8', 活力: 30, 敏捷: 20, isEquipped: true,
+        $战斗分类: { 威力量级: '手枪级', 精度: '手枪级', 射程: '中距离', AOE: '无AOE' } } },
+      衣物列表: { 制服: { 名称: '制服', 活力: 100, isEquipped: true } },
+      $专属玩法: { 通识者途径: { 材料加工玩法: { 版本: 1, 材料仓库: { a: material(10.5), b: material(30.25) } } } } },
+      world_data: { 当前时间纪元: '第五纪1352年1月1日星期一12:00' },
+      npc_data: { 老师: { 活力: 100, 事件历史: { 一: '原记录' } } }, cryptLord: {} };
+    const initial = structuredClone(stored);
+    const opening = { message_id: 0, role: 'assistant', message: '保留开场', data: { preserved: true } };
+    let id = 2, text = '<gametxt>玩家在工坊整理装备。</gametxt>', models = 0, writeFailure = false,
+      confirmHook = '', writeHook = '', random = .25;
+    const handlers = new Map(), events = { CHAT_CHANGED: 'chat_changed', GENERATION_STARTED: 'generation_started',
+      GENERATION_ENDED: 'generation_ended', GENERATION_STOPPED: 'generation_stopped' };
+    const emit = (name, ...args) => { for (const fn of handlers.get(events[name]) || []) fn(...args); };
+    const flags = { writeMode: '', readFailure: false, pendingUser: false, branch: '备用分支', metadata: 0, rolls: 0,
+      chatId: 'manufacturing-chat', scriptId: 'manufacturing-script' };
+    window.SillyTavern = { getCurrentChatId: () => flags.chatId };
+    const writes = [], nativeConfirm = window.confirm.bind(window);
+    window.confirm = text => {
+      const result = nativeConfirm(text);
+      if (result && confirmHook === 'variables') stored.stat_data.当前活力 = 55;
+      if (result && confirmHook === 'floor') id = 4;
+      if (result && confirmHook === 'chat') emit('CHAT_CHANGED');
+      if (result && confirmHook === 'silentChat') flags.chatId += '-changed';
+      if (result && confirmHook === 'script') flags.scriptId += '-changed';
+      confirmHook = ''; return result;
+    };
+    const message = () => ({ message_id: id, role: 'assistant', message: text, data: structuredClone(stored) });
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => events,
+      bindEvent(name, handler) {
+        const set = handlers.get(name) || new Set(); handlers.set(name, set); set.add(handler);
+        return { stop() { set.delete(handler); } };
+      },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    const issuedPools = new WeakMap();
+    modules['cryptLord.abilityState'] = {
+      async loadPool() { const value = structuredClone(pool); issuedPools.set(value, JSON.stringify(value)); return value; },
+      async assertPool(value, guard) {
+        if (guard?.() === false || issuedPools.get(value) !== JSON.stringify(value)) throw Error('玩法规则来源无效');
+      },
+    };
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: flags.scriptId }),
+      async getChatMessages(range, options) {
+        if (flags.readFailure) throw Error('模拟回读失败');
+        if (range.includes('-') && writeHook === 'variables') { stored.stat_data.当前活力 = 66; writeHook = ''; }
+        const all = [opening, message(), ...(flags.pendingUser ? [{ message_id: id + 1, role: 'user', message: '继续', data: {} }] : [])];
+        const rows = range.includes('-') ? all : all.filter(row => row.message_id === Number(range));
+        return structuredClone(options?.include_swipes ? rows.map(row => ({ message_id: row.message_id, role: row.role, swipe_id: 1,
+          swipes: [flags.branch, row.message], swipes_data: [{ preserved: 'alternate' }, row.data],
+          swipes_info: [{ preserved: true }, { timestamp: new Date('2026-10-16T00:00:00Z'), revision: flags.metadata }] })) : rows);
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟写入失败');
+        if (flags.writeMode === 'noop') return;
+        for (const row of rows) {
+          if (row.message_id !== id || row.message_id === 0 || 'message' in row) throw Error('错误的原生楼层写入');
+          stored = structuredClone(row.data); writes.push(row.message_id);
+        }
+        if (flags.writeMode === 'readback') flags.readFailure = true;
+        if (flags.writeMode === 'tamper') stored.npc_data.老师.活力 = 11;
+        if (flags.writeMode === 'lost') throw Error('模拟保存回执丢失');
+      },
+      async generateRaw() { models++; throw Error('装备强化不应调用模型'); },
+    };
+    modules['cryptLord.responseNormalizer'] = { normalize: value => ({ message: String(value).replace(/<\/?gametxt>/g, '') }) };
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get writes() { return [...writes]; }, get models() { return models; },
+      get opening() { return structuredClone(opening); }, get initial() { return structuredClone(initial); },
+      set writeFailure(value) { writeFailure = value; }, set confirmHook(value) { confirmHook = value; },
+      set writeHook(value) { writeHook = value; }, set random(value) { random = value; },
+      changeChat() { emit('CHAT_CHANGED'); }, flags, emit,
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-field-effect-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-units.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/savant-material.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/savant-enhancement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/weapon-classifier.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/workshop-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/workshop-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/enhancement-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/enhancement-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/enhancement-native/index.js"></script>
+  <script>
+    const create = modules['cryptLord.enhancementState'].create;
+    modules['cryptLord.enhancementState'].create = (data, pool, options) => create(data, pool, { ...options,
+      random: () => { flags.rolls++; return random; } });
+    document.querySelector('#open').onclick = () => modules['cryptLord.enhancementNativeUi'].open();
+  </script>
+</body>
+</html>

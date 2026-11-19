@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图像生成预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/image-generation/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/native-floor-status-bar/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #141719; color: #fff; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">图像生成</button>
+  <button id="floor-image">楼层一键生图</button>
+  <textarea id="send_textarea">原生输入草稿</textarea>
+  <div id="floor-preview">
+    <article data-floor="0"><p class="mes_text">开场</p></article>
+    <article data-floor="2"><p class="mes_text">雨夜的廷根街道</p></article>
+  </div>
+  <script>
+    const preview = window.preview = {
+      books: [{ uid: 1, name: '[生图提示词]', content: JSON.stringify([
+        { id: 'default', name: '默认（Image2）', prompt: '生成安全的画面', locked: true },
+        { id: 'user-one', name: '自定义', prompt: '自定义规则', locked: false },
+      ]) }, { uid: 9, name: '其他条目', content: '保留' }],
+      vars: { unrelated: '保留' }, shared: { useCustomApi: false },
+      rows: [{ role: 'assistant', message_id: 0, message: '开场', data: { untouched: true } },
+        { role: 'assistant', message_id: 2, message: '<think>秘密</think><gametxt>雨夜的廷根街道</gametxt><UpdateVariable>秘密</UpdateVariable>', data: { value: 1 } }],
+      writes: 0, configs: [], requests: [], inline: [], listeners: new Set(),
+      failSave: false, holdModel: false, holdImage: false, imageError: false, brokenImage: false,
+      inputEvents: 0,
+      floorUnavailable: false,
+      branches: {}, responseLost: false, readFail: false, failReadAfterWrite: false,
+    };
+    document.querySelector('#send_textarea').addEventListener('input', () => preview.inputEvents++);
+    const canvas = document.createElement('canvas');
+    canvas.width = 640; canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#467d85'; ctx.fillRect(0, 0, 640, 320);
+    ctx.fillStyle = '#747674'; ctx.fillRect(0, 180, 640, 140);
+    for (let x = 10; x < 640; x += 105) {
+      ctx.fillStyle = '#324542'; ctx.fillRect(x, 40, 85, 170);
+      ctx.fillStyle = '#efc96a'; ctx.fillRect(x + 18, 65, 20, 30); ctx.fillRect(x + 48, 120, 20, 30);
+    }
+    ctx.fillStyle = '#ffffff'; ctx.font = '26px sans-serif'; ctx.fillText('廷根街道', 250, 270);
+    preview.bitmap = canvas.toDataURL('image/png');
+    preview.respond = payload => {
+      for (const fn of [...preview.listeners]) fn({
+        ...payload, success: !preview.imageError, error: '后端失败',
+        imageData: preview.brokenImage ? 'data:image/png;base64,broken' : preview.bitmap,
+      });
+    };
+    const methods = {
+      getCharWorldbookNames() { return { primary: '实际主书', additional: preview.additional || [] }; },
+      async getWorldbook() { if (preview.readFail) throw Error('读取失败'); return structuredClone(preview.books); },
+      async updateWorldbookWith(_name, fn) {
+        if (preview.failSave) throw Error('保存失败');
+        preview.books = await fn(structuredClone(preview.books)); preview.writes++;
+        if (preview.failReadAfterWrite) preview.readFail = true;
+        if (preview.responseLost) throw Error('提交响应丢失');
+      },
+      getVariables() { return structuredClone(preview.vars); },
+      replaceVariables(value) { preview.vars = value; },
+      async updateVariablesWith(fn) { preview.vars = await fn(structuredClone(preview.vars)); },
+      scriptVariableOptions() { return { type: 'script', script_id: 'preview' }; },
+      async getChatMessages(_range, options) {
+        return structuredClone(options?.include_swipes ? preview.rows.map(row => ({
+          message_id: row.message_id, role: row.role, is_hidden: row.is_hidden, swipe_id: 0,
+          swipes: [row.message, ...(preview.branches[row.message_id] || [])],
+          swipes_data: [row.data, ...(preview.branches[row.message_id] || []).map(() => ({}))],
+          swipes_info: [{}],
+        })) : preview.rows);
+      },
+      async generateRaw(config) {
+        preview.configs.push(config);
+        if (preview.holdModel) await new Promise(resolve => { preview.releaseModel = resolve; });
+        return '<pic prompt="雨夜的廷根街道">';
+      },
+    };
+    window.eventOn = (_name, fn) => {
+      preview.listeners.add(fn); return { stop() { preview.listeners.delete(fn); } };
+    };
+    window.eventEmit = (_name, payload) => {
+      preview.requests.push(payload);
+      if (!preview.holdImage) queueMicrotask(() => preview.respond(payload));
+    };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.variableSettlementApi': { async readSettings() { return preview.shared; } },
+        'cryptLord.afterNativeHost': {
+          getHost() { return { document, window }; },
+          status() { return { ready: true }; },
+          createElement(tag) { return document.createElement(tag); },
+          async listAssistantMessages() { return structuredClone(preview.rows); },
+          getDisplayedMessageElement(id) { return document.querySelector(`[data-floor="${id}"]`); },
+          getMessageTextElement(node) { return node?.querySelector('.mes_text'); },
+          mountTop(id, _module, node) {
+            const floor = this.getDisplayedMessageElement(id);
+            if (!floor) return false;
+            floor.prepend(node); return true;
+          },
+          unmountTop(id) { this.getDisplayedMessageElement(id)?.querySelector('.crypt-lord-native-floor-status-bar')?.remove(); },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-start',
+            GENERATION_ENDED: 'generation-end', GENERATION_STOPPED: 'generation-stop' }; },
+          bindEvent(name, callback) {
+            const listener = event => callback(...(event.detail || []));
+            window.addEventListener(name, listener);
+            return { stop() { window.removeEventListener(name, listener); } };
+          },
+        },
+      },
+      contract: {
+        initializeGlobal() {}, releaseGlobal() {},
+        async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+      },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor-status-bar/index.js"></script>
+  <script>
+    const nativeBar = window.cryptLord.__stage1Modules['cryptLord.nativeFloorStatusBar'];
+    window.cryptLord.__stage1Modules['cryptLord.nativeFloorStatusBar'] = {
+      ...nativeBar,
+      setImage(id, image) {
+        if (preview.floorUnavailable) return false;
+        const result = nativeBar.setImage(id, image);
+        if (result) preview.inline.push({ id, image });
+        return result;
+      },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/image-generation.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/image-generation/index.js"></script>
+  <script>
+    const imageUi = window.cryptLord.__stage1Modules['cryptLord.imageGenerationUi'];
+    document.querySelector('#open').addEventListener('click', () => imageUi.open());
+    document.querySelector('#floor-image').addEventListener('click', () => imageUi.oneClickForFloor(2));
+    preview.generation = (type, options = {}, dryRun = false) => window.dispatchEvent(new CustomEvent('generation-start', { detail: [type, options, dryRun] }));
+    preview.stop = () => window.dispatchEvent(new Event('generation-stop'));
+    if (new URLSearchParams(location.search).has('paused')) preview.generation('normal');
+    else imageUi.open();
+  </script>
+</body>
+</html>

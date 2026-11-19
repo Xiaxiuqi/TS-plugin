@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>阅读者秘术强化隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/game-shell/style.css">
+  <style>
+    body { margin: 0; min-height: 100vh; background: #242925; color: #eee; font-family: "Microsoft YaHei", sans-serif; }
+    .preview-controls { position: fixed; top: 12px; left: 12px; z-index: 12000; display: flex; gap: 6px; }
+    .preview-controls button { padding: 6px 9px; }
+    output { position: fixed; bottom: 8px; left: 8px; z-index: 12000; background: #191d1a; padding: 6px; }
+  </style>
+</head>
+<body>
+  <div class="preview-controls">
+    <button id="open">打开途径玩法</button>
+    <button id="promote">切到序列3</button>
+    <button id="reset">重置</button>
+  </div>
+  <output id="status"></output>
+  <script>
+    const pool = {
+      pathways: {
+        阅读者途径: ['序列9-阅读者', '序列5-秘术导师', '序列3-洞悉者'],
+        占卜家途径: ['序列9-占卜家', '序列5-秘偶大师', '序列3-古代学者'],
+        观众途径: ['序列9-观众', '序列5-梦境行者', '序列3-织梦人'],
+      }, abilities: {},
+    };
+    const initial = () => ({
+      stat_data: {
+        名称: '阿黛尔', 当前途径: '阅读者', 当前序列: '序列5-秘术导师',
+        活力: 5000, 当前活力: 5000, 灵性: 5000, 当前灵性: 5000,
+        理智: 5000, 当前理智: 5000, 人性: 5000, 当前人性: 5000,
+        敏捷: 2000, 当前敏捷: 2000, 运气: 20, 序列能力列表: {},
+        人物关系列表: { 莫里斯: { 好感度: 91, 关系: '友人' } },
+      },
+      npc_data: { 莫里斯: { 名称: '莫里斯', 当前序列: '序列5-秘偶大师',
+        能力清单: [{ 名称: '灵体之线' }] } },
+    });
+    let stored = initial();
+    let writes = 0;
+    let modelResponse = '<裁定>通过|已从莫里斯掌握灵体之线</裁定>';
+    const messages = () => [{ message_id: 0, role: 'assistant',
+      message: '阿黛尔已经从莫里斯成功解析并掌握灵体之线。', data: structuredClone(stored) }];
+    const output = document.getElementById('status');
+    const show = text => { output.textContent = `${text} · 写入 ${writes} 次`; };
+    window.confirm = () => true;
+    window.cryptLord = { __stage1Modules: {}, contract: {
+      initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+    } };
+    const modules = window.cryptLord.__stage1Modules;
+    window.toastr = Object.fromEntries(['success', 'error', 'warning', 'info']
+      .map(level => [level, text => show(`${level}: ${text}`)]));
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), createElement: tag => document.createElement(tag),
+      listAssistantMessages: async () => messages(), tavernEvents: () => ({}),
+      bindEvent: () => ({ stop() {} }),
+    };
+    modules['cryptLord.equipmentState'] = { lists: [] };
+    modules['cryptLord.inventoryState'] = { giftLists: [] };
+    modules['cryptLord.abilityState'] = { loadPool: async () => pool };
+    modules['cryptLord.relationshipState'] = {};
+    modules['cryptLord.variableSettlementApi'] = { readSettings: async () => ({ useCustomApi: false }) };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages() { return messages(); },
+      async setChatMessages(changes) { stored = structuredClone(changes[0].data); writes++; },
+      async generateRaw() { return modelResponse; },
+    };
+    window.preview = {
+      get data() { return structuredClone(stored); },
+      get writes() { return writes; },
+      set response(value) { modelResponse = value; },
+      mutate(fn) { fn(stored); },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/character-panel-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/pathway-play-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/reader-mystic.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/personal-battle-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/game-shell/index.js"></script>
+  <script>
+    const shell = modules['cryptLord.gameShell'];
+    const open = () => {
+      document.querySelector('.crypt-lord-game-shell__trigger')?.click();
+      [...document.querySelectorAll('.crypt-lord-game-shell__menu-button')]
+        .find(button => button.textContent === '途径玩法')?.click();
+    };
+    document.getElementById('open').onclick = open;
+    document.getElementById('promote').onclick = async () => {
+      stored.stat_data.当前序列 = '序列3-洞悉者';
+      await shell.refresh(); open(); show('已晋升');
+    };
+    document.getElementById('reset').onclick = async () => {
+      stored = initial(); writes = 0; await shell.refresh(); open(); show('已重置');
+    };
+    shell.mount();
+    show('准备就绪');
+  </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>世界书开关方案预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/worldbook-toggle-profiles/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body { margin: 0; min-height: 100vh; background: #11181b; color: white; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open">世界书开关方案</button>
+  <script>
+    const storageBook = '【源堡】玩家自建内容';
+    const config = { activeId: 'day', profiles: [{ id: 'day', name: '日常方案', note: '', updatedAt: '2026-10-07', entries: [
+      { book: '未挂载书', name: '旧条目', enabled: true },
+    ] }] };
+    const books = new Map([
+      [storageBook, [{ uid: 10, name: '[世界书开关方案]', content: JSON.stringify(config), enabled: false },
+        { uid: 11, name: '其他插件内容', content: '保持不变', enabled: true }]],
+      ['主世界书', [{ uid: 1, name: '黎明', enabled: true, content: '原版正文', strategy: { type: 'constant' } },
+        { uid: 2, name: '夜航', enabled: false }, { uid: 3, name: '重名', enabled: false }, { uid: 4, name: '重名', enabled: true }]],
+      ['副世界书', [{ uid: 1, name: '线索', enabled: false, content: '副库正文' }]],
+      ['未挂载书', [{ uid: 1, name: '旧条目', enabled: false }]],
+    ]);
+    let writes = 0, failBook = '', waiting = false, pause = false, release;
+    const attempts = [], writeBooks = [], identity = { chat: 'toggle-chat', script: 'toggle-script' };
+    window.SillyTavern = { getCurrentChatId: () => identity.chat };
+    let surface = { window, document };
+    const methods = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: identity.script }),
+      async getWorldbookNames() { return [...books.keys()]; },
+      async getWorldbook(name) {
+        if (window.preview?.readFail) throw Error('模拟读取失败');
+        if (!books.has(name)) throw Error('世界书不存在');
+        return structuredClone(books.get(name));
+      },
+      async createWorldbook(name) { books.set(name, []); },
+      async createWorldbookEntries(name, entries) { books.get(name).push(...entries.map((entry, index) => ({ ...entry, uid: 10 + index }))); },
+      async updateWorldbookWith(name, updater) {
+        attempts.push(name);
+        if (pause) {
+          waiting = true;
+          await new Promise(resolve => { release = resolve; });
+          waiting = false;
+        }
+        if (name === failBook) throw Error('模拟写入失败');
+        const next = await updater(structuredClone(books.get(name)));
+        if (window.preview.noWriteBook !== name) {
+          books.set(name, structuredClone(next).map((row, index) => ({ ...row, uid: row.uid ?? 100 + index })));
+          writes++; writeBooks.push(name);
+        }
+        if (window.preview.failReadAfterWrite || window.preview.failReadBook === name) window.preview.readFail = true;
+        if (window.preview.lostResponse) throw Error('模拟响应丢失');
+        return structuredClone(books.get(name));
+      },
+      async getGlobalWorldbookNames() { return ['主世界书']; },
+      async getCharWorldbookNames() { return { primary: '副世界书', additional: [] }; },
+      async getChatWorldbookName() { return null; },
+    };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.afterNativeHost': {
+          getHost() { return surface; },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-started',
+            GENERATION_ENDED: 'generation-ended', GENERATION_STOPPED: 'generation-stopped' }; },
+          bindEvent(name, callback) {
+            const handler = event => callback(...(event.detail || []));
+            window.addEventListener(name, handler);
+            return { stop() { window.removeEventListener(name, handler); } };
+          },
+        },
+      },
+      contract: {
+        initializeGlobal() {},
+        releaseGlobal() {},
+        async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+      },
+    };
+    window.preview = {
+      books, storageBook, attempts, writeBooks, identity,
+      get writes() { return writes; },
+      get waiting() { return waiting; },
+      set failBook(value) { failBook = value; },
+      hold() { pause = true; },
+      release() { pause = false; release?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      generate(type = 'normal', options = {}, dryRun = false) {
+        window.dispatchEvent(new CustomEvent('generation-started', { detail: [type, options, dryRun] }));
+      },
+      end() { window.dispatchEvent(new Event('generation-ended')); },
+      stop() { window.dispatchEvent(new Event('generation-stopped')); },
+      replaceSurface() { surface = { window, document: document.implementation.createHTMLDocument('新宿主') }; },
+      replaceService() {
+        const modules = window.cryptLord.__stage1Modules;
+        modules['cryptLord.worldbookToggleProfiles'] = { ...modules['cryptLord.worldbookToggleProfiles'] };
+      },
+      get api() { return window.cryptLord.__stage1Modules['cryptLord.worldbookToggleProfilesUi']; },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/worldbook-toggle-profiles.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/worldbook-toggle-profiles/index.js"></script>
+  <script>window.cryptLord.__stage1Modules['cryptLord.worldbookToggleProfilesUi'].open();</script>
+</body>
+</html>

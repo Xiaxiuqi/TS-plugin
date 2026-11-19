@@ -1,0 +1,128 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('C:/Users/ROG/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
+try {
+  for (const width of [1280, 390]) {
+    const page = await browser.newPage({ viewport: { width, height: 820 } });
+    page.setDefaultTimeout(10000);
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    let accept = true;
+    page.on('dialog', dialog => { const ok = accept; accept = true; return ok ? dialog.accept() : dialog.dismiss(); });
+    await page.goto('http://127.0.0.1:8791/tests/guimizhizhu_ui/battle-prompt-mode.preview.html');
+    await page.waitForFunction(()=>preview.service?.status().ready);
+    const panel = page.getByRole('dialog', { name: '战斗提示模式' });
+    const idle = () => page.waitForFunction(() => document.querySelector('.crypt-lord-battle-prompt').getAttribute('aria-busy') === 'false');
+    const command = async name => { await panel.getByRole('button', { name, exact: true }).click(); await idle(); };
+    const notice = text => panel.getByRole('status').filter({ hasText: text }).waitFor();
+    const count = () => page.evaluate(() => preview.writes.length);
+    const mode = () => page.evaluate(async () => (await preview.service.load()).mode);
+    const waitMode = value => page.waitForFunction(async mode => (await preview.service.load()).mode === mode, value);
+    const automatic = panel.getByRole('checkbox', { name: '自动切换战斗提示' });
+    await idle(); assert.equal(await count(), 0); assert.equal(await page.evaluate(() => preview.configWrites), 0);
+    await notice('已读取'); assert.equal(await mode(), 'normal');
+    accept = false; await command('战斗模式'); assert.equal(await count(), 0);
+    await command('战斗模式'); await notice('战斗模式已保存'); assert.equal(await mode(), 'battle');
+    await command('应用当前状态'); await notice('日常模式已保存'); assert.equal(await mode(), 'normal');
+    await command('日常模式'); await notice('模式无变化'); assert.equal(await count(), 2);
+    await automatic.uncheck(); await idle(); await notice('自动切换已关闭');
+    await page.evaluate(() => preview.generate()); await waitMode('normal');
+    assert.equal(await page.evaluate(() => preview.requests.length), 1); assert.equal(await count(), 2);
+    await command('重新读取'); await automatic.check(); await idle(); await command('应用当前状态');
+    await waitMode('battle');
+    await page.evaluate(() => preview.local('finished')); await waitMode('normal');
+    await page.evaluate(() => preview.local('active')); await waitMode('battle');
+    await page.evaluate(() => {
+      delete preview.floors.at(-1).data.cryptLord.teamBattle;
+      return preview.native('regenerate', false);
+    });
+    await waitMode('normal');
+    await page.evaluate(() => preview.native('swipe', true)); await waitMode('battle');
+    await page.evaluate(() => preview.native('continue', false)); await waitMode('normal');
+    await page.evaluate(() => preview.native('append', true)); await waitMode('battle');
+    await page.evaluate(() => preview.native('append', false)); await waitMode('normal');
+    assert.equal(await page.evaluate(() => preview.requests.length), 1);
+    await command('重新读取');
+    await page.evaluate(() => preview.swipe()); await notice('请重新读取');
+    await command('重新读取');
+    await page.evaluate(() => { preview.floors.at(-1).message += '外部正文'; });
+    const beforeConflict = await count(); await command('战斗模式'); await notice('已变化');
+    assert.equal(await count(), beforeConflict);
+    await command('重新读取');
+    await page.evaluate(() => { preview.flags.writeFail = true; });
+    await command('战斗模式'); await notice('模拟世界书保存失败');
+    assert.equal(await panel.getByRole('button', { name: '战斗模式', exact: true }).isDisabled(), true);
+    await page.evaluate(() => { preview.flags.writeFail = false; }); await command('重新读取');
+    await page.evaluate(() => { preview.flags.configWriteFail = true; });
+    await automatic.uncheck(); await idle(); await notice('模拟设置保存失败');
+    await page.evaluate(() => { preview.flags.configWriteFail = false; }); await command('重新读取');
+    await page.evaluate(() => { preview.flags.postFail = true; });
+    await command('战斗模式'); await notice('保存结果无法确认');
+    await page.evaluate(() => { preview.flags.postFail = false; preview.flags.readFail = false; }); await command('重新读取');
+    const beforeCancel = await count();
+    await page.evaluate(() => preview.hold());
+    const pending = command('日常模式'); await page.waitForFunction(() => preview.waiting);
+    await panel.getByRole('button', { name: '关闭' }).click(); await page.evaluate(() => preview.release()); await pending;
+    assert.equal(await count(), beforeCancel);
+    await page.getByRole('button', { name: '战斗提示模式', exact: true }).click(); await idle();
+    await page.evaluate(() => preview.hold());
+    const chatPending = command('日常模式'); await page.waitForFunction(() => preview.waiting);
+    await page.evaluate(() => preview.emit('CHAT_CHANGED')); await page.evaluate(() => preview.release()); await chatPending;
+    assert.equal(await count(), beforeCancel);
+    await page.evaluate(() => preview.api.open()); await idle();
+    await page.evaluate(() => { preview.books['角色主书'][0].name = '缺失'; }); await command('重新读取'); await notice('缺失');
+    assert.equal(await panel.getByRole('button', { name: '战斗模式', exact: true }).isDisabled(), true);
+    await automatic.uncheck(); await idle(); await notice('自动切换已关闭');
+    await page.evaluate(() => { preview.books['角色主书'][0].name = '【判定】战斗'; }); await command('重新读取');
+    for (const args of [['quiet',{},false],['normal',{quiet_prompt:'副请求'},false],
+      ['normal',{dryRun:true},false],['normal',{},true]]) {
+      await page.evaluate(args=>preview.emit('GENERATION_STARTED',...args),args);
+      assert.equal(await panel.getByRole('button',{name:'日常模式',exact:true}).isDisabled(),false);
+    }
+    await page.evaluate(()=>preview.emit('GENERATION_STARTED','normal',{},false));await notice('生成进行中');
+    assert.equal(await panel.getByRole('button',{name:'日常模式',exact:true}).isDisabled(),true);
+    await page.evaluate(()=>preview.emit('GENERATION_STOPPED'));await notice('生成已结束');await command('重新读取');
+    await page.evaluate(()=>{preview.flags.lostBookResponse=true});
+    const beforeLost=await count();await command('日常模式');await notice('已确认保存');
+    assert.equal(await count(),beforeLost+1);
+    await command('日常模式');await notice('模式无变化');assert.equal(await count(),beforeLost+1);
+    await page.evaluate(()=>{preview.flags.lostBookResponse=false;preview.flags.lostConfigResponse=true});
+    await automatic.check();await idle();await notice('已确认保存');
+    await page.evaluate(()=>{preview.flags.lostConfigResponse=false;preview.flags.noBookWrite=true});
+    const beforeUnconfirmed=await count();await command('战斗模式');await notice('保存结果无法确认');
+    assert.equal(await count(),beforeUnconfirmed+1);
+    assert.equal(await panel.getByRole('button',{name:'战斗模式',exact:true}).isDisabled(),true);
+    await page.evaluate(()=>{preview.flags.noBookWrite=false});await command('重新读取');
+    await page.evaluate(async()=>{
+      const page=(await window.cryptLord.__stage1Modules['cryptLord.hostApi'].getChatMessages('0-{{lastMessageId}}',{include_swipes:true}))[0];
+      page.swipes_data[1].other=true;preview.pages.set(0,page);
+    });
+    const beforeBranch=await count();await command('战斗模式');await notice('已变化');assert.equal(await count(),beforeBranch);
+    await page.evaluate(()=>preview.pages.clear());await command('重新读取');
+    await page.evaluate(()=>{preview.floors.at(-1).is_hidden=true});await command('重新读取');await notice('隐藏');
+    assert.equal(await panel.getByRole('button',{name:'战斗模式',exact:true}).isDisabled(),true);
+    await page.evaluate(()=>{delete preview.floors.at(-1).is_hidden});await command('重新读取');
+    await panel.getByRole('button',{name:'应用当前状态',exact:true}).focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await panel.getByRole('button',{name:'重新读取',exact:true}).evaluate(node=>node===document.activeElement),true);
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await panel.getByRole('button',{name:'应用当前状态',exact:true}).evaluate(node=>node===document.activeElement),true);
+    assert.equal(await page.evaluate(() => preview.untouched), true);
+    await page.evaluate(() => {
+      const book = '主要世界书<img src=x onerror=alert(1)>超长书名'.repeat(10);
+      preview.books[book] = preview.books['角色主书']; preview.binding.primary = book;
+    }); await command('重新读取');
+    assert.equal(await panel.locator('img').count(), 0);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.crypt-lord-battle-prompt, .crypt-lord-battle-prompt main')]
+      .every(node => node.scrollWidth <= node.clientWidth + 1)), true);
+    await panel.press('Escape');
+    assert.equal(await page.locator('.crypt-lord-battle-prompt').getAttribute('data-open'), 'false');
+    await page.evaluate(() => preview.dispose());
+    assert.equal(await page.locator('.crypt-lord-battle-prompt').count(), 0); assert.deepEqual(errors, []);
+    await page.close();
+  }
+  console.log('战斗提示模式：桌面/手机同一条完整功能流程通过');
+} finally { await browser.close(); }

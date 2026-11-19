@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>变量增殖提醒预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/collection-growth/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #1d2224; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    body > nav, body > textarea { margin: 18px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">变量增殖提醒</button><button id="settings">提醒配置</button><button id="save-floor">保存当前楼层</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script>
+    const list = count => Object.fromEntries([['$meta', { keep: true }], ...Array.from({ length: count }, (_, index) => [`记录${index}`, index])]);
+    const floors = [
+      { message_id: 0, role: 'assistant', message: '<gametxt>开场</gametxt>', data: { protected: true } },
+      { message_id: 1, role: 'user', message: '调查', data: { protected: true } },
+      { message_id: 2, role: 'assistant', message: '<gametxt>正文不变</gametxt>', data: {
+        stat_data: { 其他列表: list(31), 消耗品列表: Array.from({ length: 31 }, () => '物品'), 人物关系列表: list(41),
+          武器列表: list(100), 第三方扩展: list(31) },
+        npc_data: { ...list(41), 角色: { 名称: '角色', 事件历史: list(100), '记录<img src=x onerror=alert(1)>': list(31) } },
+        world_data: { 随机D100: list(100), 第三方扩展: list(31) }, otherPlugin: { keep: true },
+      } },
+    ];
+    const protectedValue = JSON.stringify(floors), writes = [], pages = {};
+    const flags = { readFail: false, writeFail: false, postFail: false, responseLost: false, noWrite: false,
+      surfaceChanged: false, chat: 'growth-preview-chat', script: 'growth-preview' };
+    let variables = { otherPlugin: { keep: true } }, page = 0, hold = false, waiting = false, release;
+    const handlers = new Map(), events = { CHAT_CHANGED: 'chat', MESSAGE_UPDATED: 'updated', MESSAGE_SWIPED: 'swipe',
+      MESSAGE_DELETED: 'deleted', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' };
+    const emit = async (key,...args) => { for (const callback of handlers.get(events[key]) || []) await callback(...args); };
+    const modules = {
+      'cryptLord.hostApi': {
+        getScriptId: () => flags.script,
+        scriptVariableOptions: () => ({ type: 'script', script_id: flags.script }),
+        getVariables() { if (flags.readFail) throw Error('模拟配置读取失败'); return structuredClone(variables); },
+        async updateVariablesWith(update) {
+          if (hold) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+          if (flags.writeFail) throw Error('模拟配置保存失败');
+          const next = await update(structuredClone(variables));
+          if (flags.noWrite) return;
+          variables = structuredClone(next); writes.push('script');
+          if (flags.postFail) flags.readFail = true;
+          if (flags.responseLost) throw Error('模拟提醒响应丢失');
+        },
+        getChatMessages(range, options) {
+          const rows = range === '0-{{lastMessageId}}' ? floors : floors.filter(row => row.message_id === Number(range));
+          return structuredClone(options?.include_swipes ? rows.map(row => {
+            const {message,data,extra,...rest}=row,length=Math.max(2,page+1);
+            return {...rest,swipe_id:page,swipes:Array.from({length},(_,index)=>index===page?message:'未选分支'),
+              swipes_data:Array.from({length},(_,index)=>index===page?data:{protected:true}),
+              swipes_info:Array.from({length},()=>({})),...pages[row.message_id]};
+          }) : rows);
+        },
+        async setChatMessages(rows) {
+          rows.forEach(row => {
+            if (row.message_id !== 2) throw Error('保护#0/user楼层');
+            Object.assign(floors[2], structuredClone(row)); writes.push('floor');
+          });
+        },
+        generate() { throw Error('禁止模型请求'); }, getWorldbook() { throw Error('禁止世界书访问'); },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document: flags.surfaceChanged ? detachedDocument : document, window }), tavernEvents: () => events,
+        bindEvent(event, callback) {
+          const set = handlers.get(event) || new Set(); set.add(callback); handlers.set(event, set);
+          return { stop: () => set.delete(callback) };
+        },
+      },
+    };
+    const detachedDocument = document.implementation.createHTMLDocument('隔离替换宿主');
+    window.SillyTavern = { getCurrentChatId: () => flags.chat };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) {
+        if (!modules[key]) throw Error(key); return modules[key];
+      },
+    } };
+    window.preview = { floors, writes, flags, list, emit, pages,
+      get service() { return modules['cryptLord.collectionGrowth']; },
+      get api() { return modules['cryptLord.collectionGrowthUi']; },
+      get waiting() { return waiting; },
+      get variables() { return variables; },
+      replaceService() {
+        const key = 'cryptLord.collectionGrowth';
+        if (!preview.originalService) { preview.originalService = modules[key]; modules[key] = {...modules[key]}; }
+        else { modules[key] = preview.originalService; preview.originalService = null; }
+      },
+      get untouched() { return JSON.stringify(floors) === protectedValue && variables.otherPlugin.keep === true &&
+        document.getElementById('native-draft').value === '保留原生输入草稿'; },
+      hold() { hold = true; }, release() { hold = false; release?.(); },
+      async saveFloor() { await modules['cryptLord.stateStore'].writeAssistantData(2, floors[2].data); },
+      swipe() { page++; return emit('MESSAGE_SWIPED'); },
+      dispose() { preview.api.dispose(); preview.service.dispose(); },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+    document.getElementById('settings').onclick = () => preview.api.open({ tab: 'settings' });
+    document.getElementById('save-floor').onclick = () => preview.saveFloor();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/collection-growth.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/collection-growth/index.js"></script>
+  <script>document.getElementById('open').click();</script>
+</body>
+</html>

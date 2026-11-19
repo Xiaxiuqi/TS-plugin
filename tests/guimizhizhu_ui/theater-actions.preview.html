@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>诡秘剧场完整预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/theater-console/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #17211c; color: white; font: 14px sans-serif; } textarea { width: 280px; height: 48px; vertical-align: middle; }</style>
+</head>
+<body>
+  <button id="open">诡秘剧场</button><textarea id="send_textarea">保留的用户输入</textarea>
+  <script>
+    const modules = {}, handlers = new Map(), writes = [], notices = [], injections = [];
+    const events = { GENERATION_AFTER_COMMANDS:'before',GENERATION_STOPPED:'stop',CHAT_CHANGED:'chat',
+      GENERATION_STARTED:'start',GENERATION_ENDED:'end' };
+    let floors = [{message_id:0,role:'assistant',message:'开场原文\n<UpdateVariable>\n保留变量标签\n</UpdateVariable>',
+      data:{stat_data:{剧场点数:200,武器列表:{
+        a:{名称:'测试短剑',序列:'序列9',类型:'武器',活力:10},
+        installed:{名称:'安装中的装备',$强化模块安装:{模块ID:'模块'}},
+      }},npc_data:{同伴:{活力:8}},world_data:{天气:'晴'}}}];
+    const initial = structuredClone(floors);
+    let readFail=false,inputFail=false,writeFail=false,pause=false,waiting=0,releases=[],page=0,writeHook=null,responseLost=false;
+    async function gate() {
+      if(pause) {waiting++;await new Promise(resolve=>releases.push(resolve));waiting--;}
+      if(readFail) throw Error('模拟读取失败');
+    }
+    async function emit(name,...args) {for(const fn of [...(handlers.get(events[name]) || [])]) await fn(...args);}
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api;},releaseGlobal(key){delete modules[key];},
+      async waitGlobalInitialized(key){if(!modules[key]) throw Error(key);return modules[key];},
+    }};
+    window.toastr=Object.fromEntries(['info','warning','error','success'].map(level=>[level,text=>notices.push({level,text})]));
+    modules['cryptLord.afterNativeHost']={
+      getHost(){return {document,window};},tavernEvents:()=>events,
+      bindEvent(name,fn) {
+        if(!handlers.has(name)) handlers.set(name,new Set());
+        handlers.get(name).add(fn);
+        return {stop(){handlers.get(name).delete(fn);}};
+      },
+    };
+    modules['cryptLord.hostApi']={
+      async getChatMessages(range,options) {
+        await gate();
+        const rows=range==='0-{{lastMessageId}}' ? floors : range===-1 ? floors.slice(-1) :
+          floors.filter(item=>item.message_id===Number(range));
+        return structuredClone(options?.include_swipes ? rows.map(row=>({
+          message_id:row.message_id,role:row.role,name:row.name,is_hidden:row.is_hidden,swipe_id:page,
+          swipes:[row.message,row.message],swipes_data:[row.data,row.data],swipes_info:[{},{}],
+        })) : rows);
+      },
+      getCharWorldbookNames:()=>({primary:null,additional:[]}),
+      getWorldbook:async()=>[],
+      async setChatMessages(rows) {
+        if(writeFail) throw Error('模拟楼层保存失败');
+        for(const row of rows) {
+          writes.push(row.message_id);
+          Object.assign(floors.find(item=>item.message_id===row.message_id),structuredClone(row));
+        }
+      },
+      injectPrompts(items,options){const item={items:structuredClone(items),options,removed:false};injections.push(item);return {uninject(){item.removed=true;}};},
+    };
+    const latest=before=>floors.filter(item=>item.role==='assistant' && item.message_id<before).at(-1);
+    const narrativeStore={
+      async readAssistantData(before=Infinity){return structuredClone(latest(before)?.data || {});},
+      async readMessage(id){return structuredClone(floors.find(item=>item.message_id===id));},
+      async findLatestAssistant(){return structuredClone(latest(Infinity));},
+      async writeAssistantMessage(id,message,data,options={}){
+        await writeHook?.();await options.beforeWrite?.();options.guard?.();
+        if(writeFail) throw Error('模拟楼层保存失败');
+        writes.push(id);Object.assign(floors.find(item=>item.message_id===id),{message,data:structuredClone(data)});
+        if(responseLost) throw Error('保存成功但响应丢失');
+        return structuredClone(data);
+      },
+    };
+    modules['cryptLord.inputAdapter']={
+      submit(text){if(inputFail) throw Error('模拟输入框失败');document.getElementById('send_textarea').value=text;return true;},
+      setInputText(text){document.getElementById('send_textarea').value=text;return true;},
+    };
+    modules['cryptLord.contextBuilder']={build:async()=>[]};
+    modules['cryptLord.responseNormalizer']={extractActions:()=>[]};
+    modules['cryptLord.variablePatch']={apply:()=>({applied:false}),updateTag:()=>'',embedUpdate:text=>text};
+    modules['cryptLord.variableSettlementApi']={settle:async()=>({skipped:true})};
+    window.preview={
+      writes,notices,injections,initial,
+      get api(){return modules['cryptLord.theaterConsole'];},
+      get service(){return modules['cryptLord.theaterActions'];},
+      get floors(){return structuredClone(floors);},
+      get waiting(){return waiting;},
+      set readFail(value){readFail=value;},
+      set inputFail(value){inputFail=value;},
+      set writeFail(value){writeFail=value;},
+      set writeHook(value){writeHook=value;},
+      set responseLost(value){responseLost=value;},
+      set page(value){page=value;},
+      emit,
+      hold(){pause=true;},release(){pause=false;releases.splice(0).forEach(resolve=>resolve());},
+      async reset(points=200){
+        await emit('CHAT_CHANGED');floors=structuredClone(initial);floors[0].data.stat_data.剧场点数=points;
+        page=0;writeHook=null;responseLost=false;
+        document.getElementById('send_textarea').value='';writes.length=0;
+      },
+      async chatChanged(){await emit('CHAT_CHANGED');},
+      async send({stop=false}={}){
+        const label=document.getElementById('send_textarea').value;
+        await emit('GENERATION_AFTER_COMMANDS','normal',{},false);
+        const userId=floors.length;
+        floors.push({message_id:userId,role:'user',message:label,data:{user:'保留'}});
+        if(stop){await emit('GENERATION_STOPPED');return;}
+        const id=floors.length;
+        floors.push({message_id:id,role:'assistant',message:'原生模型正文\n<UpdateVariable>\n保留标签\n</UpdateVariable>',data:{}});
+        await modules['cryptLord.nativeFloorBridge'].completeNarrative('原生模型正文',{
+          userMessageId:userId,assistantMessageId:id,userText:label,narrativeText:'原生模型正文',generationId:`native-host-${id}`,
+        });
+        return id;
+      },
+      external(){floors[0].data.world_data.天气='外部新天气';},
+      async retry(){
+        const target=floors.at(-1),user=floors.at(-2);
+        return modules['cryptLord.nativeFloorBridge'].completeNarrative(target.message,{
+          userMessageId:user.message_id,assistantMessageId:target.message_id,userText:user.message,
+          narrativeText:'原生模型正文',generationId:`native-host-${target.message_id}`,
+        });
+      },
+    };
+    document.getElementById('open').onclick=()=>preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script>
+    modules['cryptLord.stateStore'] = { ...modules['cryptLord.stateStore'], ...narrativeStore };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-forge-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-derivation-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-derivation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-forge.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/theater-actions.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/theater-console/index.js"></script>
+</body>
+</html>

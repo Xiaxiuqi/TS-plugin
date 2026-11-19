@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生变量工作台预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/floating-variable-workbench/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/system-settings/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/ai-context-config/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202426; color: #eef1ef; font: 14px "Microsoft YaHei", sans-serif; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px; }
+    #native-draft { display: block; width: 240px; height: 70px; margin: 20px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">变量修改器</button><button id="history">历史楼层</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script>
+    const patch = value => `<UpdateVariable><JSONPatch>{"stat_data":[{"op":"replace","path":"/活力","value":${value}}],"npc_data":[],"world_data":[]}</JSONPatch></UpdateVariable>`;
+    const sample = () => ({ stat_data: {
+      活力: 10, 开关: false, 地点: '廷根', 秘密: '不应发给模型的秘密', 列表: ['甲', '乙', '丙'], 空值: null,
+      'a.b[0]/~': { 值: 7 }, '<img src=x onerror=alert(1)>': '按文本显示',
+      深层: { 层一: { 层二: { 层三: { 很长的变量名称需要正确换行而不是与按钮重叠: 1 } } } },
+      $meta: { extensible: false },
+    }, npc_data: { 伦纳德: { 好感: 3 } }, world_data: { 当前时间纪元: '第五纪' },
+      stat_data_for_ai: { 原文: '非编辑域快照' }, otherPlugin: { keep: true }, cryptLord: { marker: '保留' } });
+    const floors = [
+      { message_id: 0, role: 'assistant', message: `开场\n${patch(10)}`, data: sample() },
+      { message_id: 1, role: 'user', message: '调查', data: { keep: true } },
+      { message_id: 2, role: 'assistant', message: `原生正文\n${patch(10)}`, data: sample(), swipe_id: 1 },
+    ];
+    const books = { '1源堡': [{ uid: 1, name: '【模板】提示词模板', enabled: false,
+      content: JSON.stringify({ variable_template: '原版变量结算模板', fix_variable_template: '原版变量修复模板' }) }], '2历史孔隙': [] };
+    const binding = { primary: '1源堡', additional: [] };
+    const variables = { otherPlugin: { keep: true }, 'cryptLord.aiContextConfig': { hiddenFields: ['stat_data.秘密'], lockedFields: [] },
+      'cryptLord.variableSettlement': { retryLimit: 0, useCustomApi: true, apiUrl: 'https://example.test/v1', apiKey: 'preview-secret', model: 'test-model' } };
+    const protectedSource = JSON.stringify({ floors: floors.slice(0, 2), books });
+    const writes = [], calls = [], updates = [];
+    let writeFail = false, responseLost = false, readFail = false, postFail = false, modelFail = false, response = patch(18);
+    const otherPage = { message: '未选分支正文', data: { stat_data: { 活力: 99 } }, extra: { branch: true } };
+    let savePause = false, saveRelease, saveWaiting = false, modelPause = false, modelRelease, modelWaiting = false;
+    const modules = {
+      'cryptLord.hostApi': {
+        scriptVariableOptions: () => ({ type: 'script', script_id: 'variable-workbench-preview' }),
+        getVariables: () => structuredClone(variables),
+        getCharWorldbookNames: () => structuredClone(binding),
+        getWorldbook: async name => structuredClone(books[name] || []),
+        async updateVariablesWith(updater) { Object.assign(variables, await updater(structuredClone(variables))); },
+        async getChatMessages(range, options = {}) {
+          if (readFail) throw Error('模拟读取失败');
+          const rows = range === '0-{{lastMessageId}}' ? floors : range === '{{lastMessageId}}' ? floors.slice(-1) :
+            floors.filter(row => row.message_id === Number(range));
+          return structuredClone(rows.map(row => {
+            const { swipe_id = 0, message = '', data = {}, extra = {}, ...identity } = row;
+            if (!options.include_swipes) return { ...identity, message, data, extra };
+            const pages = Array.from({ length: Math.max(2, swipe_id + 1) }, () => otherPage);
+            pages[swipe_id] = { message, data, extra };
+            return { ...identity, swipe_id, swipes: pages.map(page => page.message),
+              swipes_data: pages.map(page => page.data), swipes_info: pages.map(page => page.extra) };
+          }));
+        },
+        async setChatMessages(rows) {
+          if (writeFail) throw Error('模拟保存失败');
+          if (rows.some(row => row.message_id !== 2)) throw Error('不允许修改保护楼层');
+          writes.push(structuredClone(rows));
+          rows.forEach(row => Object.assign(floors.find(item => item.message_id === row.message_id), structuredClone(row)));
+          if (postFail) readFail = true;
+          if (responseLost) throw Error('模拟保存响应丢失');
+        },
+        async generateRaw(config) {
+          calls.push(structuredClone(config));
+          if (modelPause) { modelWaiting = true; await new Promise(resolve => { modelRelease = resolve; }); modelWaiting = false; }
+          if (modelFail) throw Error(`模拟模型失败 ${config.custom_api.key}`);
+          return response;
+        },
+        async getModelList() { return ['test-model']; },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document, window }),
+        tavernEvents: () => ({ CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-start',
+          GENERATION_ENDED: 'generation-end', GENERATION_STOPPED: 'generation-stop' }),
+        bindEvent(name, handler) {
+          const callback = event => handler(...(Array.isArray(event.detail) ? event.detail : []));
+          window.addEventListener(name, callback);
+          return { stop() { window.removeEventListener(name, callback); } };
+        },
+      },
+      'cryptLord.dynamicStatus': {
+        status: () => ({ epoch: 0 }),
+        async load() {
+          if (savePause) { saveWaiting = true; await new Promise(resolve => { saveRelease = resolve; }); saveWaiting = false; }
+          return { rules: [] };
+        },
+        apply() {},
+      },
+      'cryptLord.gameShell': { refresh() {} },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: { initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error(`缺少模块 ${key}`); return modules[key]; } } };
+    window.addEventListener('cryptLord:variables-updated', event => updates.push(structuredClone(event.detail)));
+    window.preview = {
+      get api() { return modules['cryptLord.variableWorkbench']; }, get floors() { return floors; }, get calls() { return calls; },
+      get writes() { return writes; }, get updates() { return updates; }, get waiting() { return saveWaiting; }, get modelWaiting() { return modelWaiting; },
+      books, variables, binding, otherPage,
+      get untouched() { return JSON.stringify({ floors: floors.slice(0, 2), books }) === protectedSource &&
+        document.getElementById('native-draft').value === '保留原生输入草稿' && floors[2].data.otherPlugin.keep &&
+        floors[2].data.stat_data_for_ai.原文 === '非编辑域快照'; },
+      set writeFail(value) { writeFail = value; }, set readFail(value) { readFail = value; }, set postFail(value) { postFail = value; },
+      set responseLost(value) { responseLost = value; },
+      set modelFail(value) { modelFail = value; }, set response(value) { response = value; },
+      holdSave() { savePause = true; }, releaseSave() { savePause = false; saveRelease?.(); },
+      holdModel() { modelPause = true; }, releaseModel() { modelPause = false; modelRelease?.(); },
+      chatChanged() { window.dispatchEvent(new Event('chat-changed')); },
+      generation(type = 'normal', options = {}, dryRun = false) {
+        window.dispatchEvent(new CustomEvent('generation-start', { detail: [type, options, dryRun] }));
+      },
+      endGeneration() { window.dispatchEvent(new Event('generation-end')); },
+      notify() {
+        const beforeData = structuredClone(floors[2].data); floors[2].data.stat_data.活力++;
+        window.dispatchEvent(new CustomEvent('cryptLord:variables-updated', {
+          detail: { messageId: 2, beforeData, afterData: structuredClone(floors[2].data), source: 'external' } }));
+      },
+    };
+    document.getElementById('open').onclick = () => preview.api.open(2);
+    document.getElementById('history').onclick = () => preview.api.open(0);
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ai-context-config.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-workbench-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/system-settings/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/ai-context-config/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/floating-variable-workbench/index.js"></script>
+  <script>
+    window.addEventListener('cryptLord:open-variable-settlement-settings', () => modules['cryptLord.systemSettingsUi'].open());
+    document.getElementById('open').click();
+  </script>
+</body>
+</html>

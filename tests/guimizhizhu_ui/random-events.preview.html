@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>随机事件库预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/random-events/style.css">
+  <style>
+    body { margin: 0; min-height: 100vh; background: #141719; color: #fff; font: 14px sans-serif; }
+    main { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; }
+    main button { padding: 8px; color: white; background: #303b37; border: 1px solid #687d71; border-radius: 4px; }
+    .fa-trash::before { content: "\2715"; }
+  </style>
+</head>
+<body>
+  <main>
+    <button id="open">随机事件库</button>
+    <button id="native">原生发送</button>
+    <button id="frontend">前端发送</button>
+  </main>
+  <script>
+    let vars = {};
+    const books = new Map([
+      ['当前角色主书', [{
+        uid: 1, name: '【随机】廷根街头', enabled: true,
+        content: JSON.stringify({
+          name: '廷根街头', isEnabled: true, order: 10, 触发率: 0.25, 抽取数量: 1,
+          输出指令: '发生${type}-${name}：${description}',
+          事件列表: [
+            { weight: 10, type: '日常', name: '偶遇', description: '在街头遇到熟人' },
+            { weight: 5, type: '线索', name: '传闻', description: '听见一则传闻' },
+          ],
+        }),
+      }, { uid: 8, name: '其他插件条目', content: '保持', enabled: false, extra: { plugin: 'keep' } }]],
+      ['2历史孔隙', [{
+        uid: 12, name: '【随机】廷根街头', enabled: true,
+        content: JSON.stringify({
+          name: '廷根街头旧配置', isEnabled: true, order: 10, 触发率: 0.25, 抽取数量: 1,
+          输出指令: '历史书${name}', 事件列表: [{ weight: 1, name: '历史书事件' }],
+        }),
+      }]],
+    ]);
+    let floors = [{ message_id: 0, role: 'assistant', message: '开场正文', data: { otherPlugin: '不动' } }];
+    let gate = null, release = null, frontendActive = false;
+    const listeners = new Map(), injected = new Map();
+    const emit = async (event, ...args) => { for (const fn of listeners.get(event) || []) await fn(...args); };
+    const preview = window.preview = {
+      books, floors, writes: 0, floorWrites: 0, requests: [], error: '', commitFail: false, lostResponse: false,
+      readFail: false, cancelGeneration: false, chat: 'preview-chat', binding: { primary: '当前角色主书', additional: [] },
+      hold() { gate = new Promise(resolve => { release = resolve; }); this.waiting = false; },
+      release() { gate = null; this.waiting = false; release?.(); release = null; },
+      emit,
+      async chatChanged() { this.chat += '-new'; await emit('CHAT_CHANGED'); },
+      pending() { return structuredClone(vars['cryptLord.randomEventsPending']?.[this.chat] || []); },
+      vars() { return structuredClone(vars); },
+    };
+    const host = {
+      async getCharWorldbookNames() { return structuredClone(preview.binding); },
+      async getWorldbook(name) {
+        if (preview.readFail) throw Error('模拟读取失败');
+        if (!books.has(name)) throw Error('世界书不存在');
+        return structuredClone(books.get(name));
+      },
+      async getChatMessages(_range, options) {
+        if (!options?.include_swipes) return structuredClone(floors);
+        return floors.map(({ message, data, ...row }) => ({
+          ...row,
+          ...(row.message_id === 0 ? {
+            swipe_id: 1, swipes: ['未选的旧开局', message],
+            swipes_data: [{ old: true }, structuredClone(data || {})], swipes_info: [{ old: true }, {}],
+          } : {
+            swipe_id: 0, swipes: [message], swipes_data: [structuredClone(data || {})], swipes_info: [{}],
+          }),
+          ...structuredClone(preview.pages?.[row.message_id] || {}),
+        }));
+      },
+      async getWorldbookNames() { return [...books.keys()]; },
+      async updateWorldbookWith(name, updater) {
+        if (gate) { preview.waiting = true; await gate; }
+        if (preview.interruptOnPrimary && name === '当前角色主书') {
+          preview.interruptOnPrimary = false; preview.chat = 'interrupted-chat'; await emit('CHAT_CHANGED');
+        }
+        const next = structuredClone(await updater(structuredClone(books.get(name))));
+        if (preview.commitFail) throw Error('模拟提交失败');
+        books.set(name, next);
+        preview.writes++;
+        if (preview.lostResponse) throw Error('模拟响应丢失');
+        return structuredClone(next);
+      },
+      async createWorldbookEntries() { throw new Error('预览必须通过带校验的世界书更新'); },
+      async deleteWorldbookEntries() { throw new Error('原版条目不能直接删除'); },
+      getVariables() { return structuredClone(vars); },
+      scriptVariableOptions() { return { type: 'script', script_id: 'preview' }; },
+      async replaceVariables(value) { vars = structuredClone(value); },
+      async updateVariablesWith(updater) { vars = structuredClone(await updater(structuredClone(vars))); },
+      injectPrompts(prompts, options) {
+        prompts.forEach(prompt => injected.set(prompt.id, { ...structuredClone(prompt), once: options.once }));
+        return { uninject() { prompts.forEach(prompt => injected.delete(prompt.id)); } };
+      },
+    };
+    window.SillyTavern = { getCurrentChatId: () => preview.chat };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': host,
+        'cryptLord.afterNativeHost': {
+          getHost() { return { document, window }; },
+          tavernEvents() { return Object.fromEntries(['CHAT_CHANGED', 'GENERATION_STARTED', 'GENERATION_ENDED', 'GENERATION_STOPPED', 'GENERATION_AFTER_COMMANDS'].map(key => [key, key])); },
+          bindEvent(name, callback) {
+            const set = listeners.get(name) || new Set(); set.add(callback); listeners.set(name, set);
+            return { stop() { set.delete(callback); } };
+          },
+        },
+      },
+      contract: {
+        initializeGlobal() {},
+        releaseGlobal() {},
+        async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+      },
+    };
+    const modules = window.cryptLord.__stage1Modules;
+    Object.assign(modules, {
+      'cryptLord.nativeFloor': { hasActiveTurn() { return frontendActive; } },
+      'cryptLord.stateStore': {
+        async readAssistantData() { return structuredClone(floors.filter(row => row.role === 'assistant').at(-1).data); },
+        async readMessage(id) { return structuredClone(floors.find(row => row.message_id === id)); },
+        async writeAssistantMessage(id, message, data) {
+          if (preview.floorFail) throw Error('模拟楼层保存失败');
+          Object.assign(floors.find(row => row.message_id === id), { message, data: structuredClone(data) }); preview.floorWrites++;
+        },
+      },
+      'cryptLord.contextBuilder': { build: async () => [] },
+      'cryptLord.generationQuality': { readSnapshot: async () => ({ settings: {} }) },
+      'cryptLord.responseNormalizer': { extractActions: () => [] },
+      'cryptLord.variablePatch': { apply: () => ({ applied: false }), updateTag: () => '', embedUpdate: text => text },
+      'cryptLord.nativeSettlement': {},
+      'cryptLord.variableSettlementApi': {
+        async settle() { await emit('GENERATION_AFTER_COMMANDS', 'quiet', { quiet_prompt: '副模型' }, false); return { skipped: true }; },
+      },
+    });
+    async function send(frontend) {
+      preview.error = '';
+      frontendActive = frontend;
+      const bridge = modules['cryptLord.nativeFloorBridge'], userText = frontend ? '前端行动' : '原生行动';
+      let built = null;
+      try {
+        if (frontend) built = await bridge.buildGenerationConfig(userText);
+        const userMessageId = floors.at(-1).message_id + 1;
+        floors.push({ message_id: userMessageId, role: 'user', message: userText, data: {} });
+        if (frontend) await built.assertQueues({ userMessageId, userText });
+        await emit('GENERATION_STARTED', 'normal', {}, false);
+        await emit('GENERATION_AFTER_COMMANDS', 'normal', {}, false);
+        preview.requests.push(frontend ? [built.config.user_input] : [...injected.values()].map(row => row.content));
+        for (const [id, row] of injected) if (row.once) injected.delete(id);
+        if (preview.cancelGeneration) {
+          floors.pop();
+          await emit('GENERATION_STOPPED'); return;
+        }
+        const assistantMessageId = userMessageId + 1, message = '本轮已保存正文';
+        floors.push({ message_id: assistantMessageId, role: 'assistant', message, data: {} });
+        await bridge.completeNarrative(message, {
+          userMessageId, assistantMessageId, userText, narrativeText: message,
+          generationId: frontend ? `preview-frontend-${assistantMessageId}` : `native-host-${assistantMessageId}`,
+          ...(frontend ? { randomTurn: built.randomTurn } : {}),
+        });
+      } catch (error) { preview.error = error.message; }
+      finally { frontendActive = false; await emit('GENERATION_ENDED'); }
+    }
+    document.getElementById('native').addEventListener('click', () => void send(false));
+    document.getElementById('frontend').addEventListener('click', () => void send(true));
+    document.getElementById('open').addEventListener('click', () => void modules['cryptLord.randomEventsUi'].open());
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/random-events.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/random-events/index.js"></script>
+  <script>preview.api = window.cryptLord.__stage1Modules['cryptLord.randomEvents'];</script>
+</body>
+</html>

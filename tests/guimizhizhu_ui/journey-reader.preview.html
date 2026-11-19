@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本周目经历完整浏览预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/journey-reader/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body{margin:20px;background:#17211c;color:#e6e8ed;font:14px sans-serif}button{padding:8px}#chat{max-width:500px;margin-top:30px}.mes{padding:20px;border-bottom:1px solid #48535a}</style>
+</head>
+<body>
+  <button id="open">本周目经历</button>
+  <div id="chat"><article class="mes" mesid="0">#0 抵达银湾港</article><article class="mes" mesid="2">#2 港口调查</article></div>
+  <script>
+    const modules={},handlers=new Map(),writes=[],copies=[],scrolls=[];
+    let nativeFail=false,booksFail=false,copyFail=false,held=false,waiting=0,releases=[],reads=0;
+    let surface = { document, window };
+    const event=(number,title,tag='调查')=>`序号|${number}\n日期|第五纪1349年9月1日\n时间|${number%24}:30\n标题|${title}\n地点|银湾港\n人物|艾琳、诺兰\n描述|港口议事厅中的调查记录。\n第二行|保留原有竖线\n人物关系|艾琳逐渐信任玩家。\n标签|${tag}|港口\n暗线与伏笔|货船名单指向北方商路。`;
+    let floors=[
+      {message_id:0,role:'assistant',message:`原文<本周目经历>${event(1,'抵达银湾港','旅行')}</本周目经历>`,data:{stat_data:{保留:true}}},
+      {message_id:1,role:'user',message:'调查港口',data:{保留:true}},
+      {message_id:2,role:'assistant',message:`原文<本周目经历>${event(2,'港口调查')}\n\n${event(3,'追查货船名单')}</本周目经历>`,data:{stat_data:{保留:true}}},
+      {message_id:4,role:'assistant',message:'当前正文没有经历标签',data:{stat_data:{保留:true}}},
+      {message_id:6,role:'assistant',message:`<本周目经历>${event(4,'不应出现在历史视图的未来事件')}</本周目经历>`,data:{}},
+    ];
+    const entries=[
+      {uid:1,name:'本周目经历',content:Array.from({length:51},(_,i)=>event(i+1,i===50?'世界书最新事件':`世界书事件${i+1}`,i%2?'调查':'旅行')).join('\n\n')},
+      {uid:2,name:'本周目经历(2)',content:event(1,'另一周目的记录')},
+      {uid:3,name:'本周目经历(3)',content:'序号丢失，原文需要人工检查。<script>window.bad=true<\/script>'},
+    ];
+    const initial=structuredClone(floors),initialEntries=structuredClone(entries);
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]},
+    }};
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+      async writeText(text){if(copyFail)throw Error('模拟剪贴板失败');copies.push(text)},
+    }});
+    modules['cryptLord.hostApi']={
+      async getChatMessages(range,options){
+        reads++;
+        if(held){waiting++;await new Promise(resolve=>releases.push(resolve));waiting--}
+        if(nativeFail)throw Error('模拟楼层读取失败');
+        return structuredClone(options?.include_swipes?floors.map(row=>({
+          message_id:row.message_id,role:row.role,name:row.name,is_hidden:row.is_hidden,swipe_id:1,
+          swipes:['备用正文',row.message],swipes_data:[{},row.data],swipes_info:[{},{}],
+        })):floors);
+      },
+      getCharWorldbookNames:()=>({primary:null,additional:[]}),
+      async getWorldbook(name){if(booksFail)throw Error('模拟世界书读取失败');return name==='1源堡'?structuredClone(entries):[]},
+      setChatMessages(){writes.push('楼层')},replaceWorldbook(){writes.push('世界书')},
+      getVariables(){throw Error('不允许读取私有变量')},
+    };
+    modules['cryptLord.afterNativeHost']={
+      getHost:()=>surface,
+      tavernEvents:()=>({CHAT_CHANGED:'chat',MESSAGE_UPDATED:'update',MESSAGE_SWIPED:'swipe',GENERATION_STARTED:'start',GENERATION_ENDED:'end',GENERATION_STOPPED:'stop'}),
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}},
+      getDisplayedMessageElement(id){const node=document.querySelector(`.mes[mesid="${id}"]`);if(node){node.scrollIntoView=()=>scrolls.push(id)}return node},
+    };
+    modules['cryptLord.stateStore']={readMessage(){throw Error('禁止初始化读取')},readAssistantData(){throw Error('禁止初始化读取')}};
+    window.preview={
+      get api(){return modules['cryptLord.journeyReaderUi']},writes,copies,scrolls,initial,initialEntries,
+      get floors(){return structuredClone(floors)},get entries(){return structuredClone(entries)},get waiting(){return waiting},
+      get reads(){return reads},
+      set nativeFail(value){nativeFail=value},set booksFail(value){booksFail=value},set copyFail(value){copyFail=value},
+      hold(){held=true},release(){held=false;releases.splice(0).forEach(resolve=>resolve())},
+      emit(name,...args){for(const fn of handlers.get(name)||[])fn(...args)},
+      edit(){floors[2].message=`<本周目经历>${event(2,'外部修订后的事件')}</本周目经历>`},
+      hostile(){floors[2].message=`<本周目经历>${event(2,'<img src=x onerror="window.bad=1">')}</本周目经历>`},
+      clear(){floors[0].message='';floors[2].message=''},
+      hidden(value){floors.at(-1).is_hidden=value},
+      replaceSurface(){surface={document:document.implementation.createHTMLDocument('另一个宿主'),window:{}}},
+    };
+    document.getElementById('open').onclick=()=>preview.api.open(4);
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/journey-reader.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/journey-reader/index.js"></script>
+</body>
+</html>

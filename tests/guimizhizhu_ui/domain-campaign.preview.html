@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>领地战役预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/domain-campaign/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/war-replay/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/war-sandbox/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/domain-console/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/game-audio.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body { margin: 0; min-height: 100vh; background: #252a27; color: #eee; font-family: sans-serif; } main { padding: 16px; } #send_textarea { display: block; width: min(600px, 95%); height: 70px; }</style>
+</head>
+<body>
+  <main><button id="open">打开战役</button><button id="drill">军演</button><textarea id="send_textarea" placeholder="原生输入框（预览）"></textarea><output id="preview-status"></output></main>
+  <script>
+    const stack = (count, elite = 1) => ({ 军种: '陆军', 兵种: 'infantry', 数量: count, 精锐等级: elite });
+    const peer = { id: 'neighbor', 名称: '红岩领', 状态: '存续', 战场: '陆战',
+      战利品: { 名称: '旧日密匣', 设定: '由侍从呈送' },
+      军队: [{ id: 'enemy', 名称: '前锋', 军种: '陆军', 主兵种: 'infantry', 编成: [stack(10)] }] };
+    const army = { id: 'guards', 名称: '灰雾卫队', 军种: '陆军', 主兵种: 'infantry', 编成: [stack(20, 2)] };
+    const floors = [{ message_id: 0, role: 'user', message: '保护楼层', data: { untouched: true } },
+      { message_id: 2, role: 'assistant', message: '<gametxt>领主正在灰雾郡。</gametxt>', swipe_id: 0,
+        data: { stat_data: { 领地: { 已建立: true, 领地名: '灰雾郡', 地点: '贝克兰德', 线路: '市内',
+          等级: 1, 人口: 500, 同级对手: [peer], 出战名单: [army.id], 驻军: { 军队: [army], 散兵: [] } } }, world_data: {} } }];
+    const books = { bound: [
+      { name: '【配置】战争配置', content: '{"board":{"cols":4,"rows":4},"maxPiecesPerSide":2,"hardCapTicks":200}' },
+      { name: '【配置】领地配置', content: JSON.stringify({ recruit: { mainTypeHpRatio: .7, troops: [
+        { id: 'infantry', 名称: '步兵', 军种: '陆军', 生命: 20, 攻击: 8, 护盾: 1, 速度: 75, 技能: 'CHARGE' },
+      ] } }) },
+    ] };
+    window.preview = { floors, books, initial: structuredClone(floors), writes: [], updates: [], notices: [], requests: [],
+      failNarration: false, waitNarration: null, failRead: false, lostReceipt: false, noWrite: false, afterWriteFail: false,
+      conflictWrite: false, derivations: 0, branch: '备用原生分支', page: 0, chat: 'campaign', script: 'campaign',
+      date: new Date('2026-10-28T00:00:00Z'), confirm: true };
+    window.SillyTavern = { getCurrentChatId: () => preview.chat };
+    window.toastr = Object.fromEntries(['error', 'warning', 'info', 'success'].map(kind => [kind, text => {
+      preview.notices.push(text); document.getElementById('preview-status').textContent = text;
+    }]));
+    const events = {};
+    window.cryptLord = { __stage1Modules: {}, contract: {
+      initializeGlobal() {}, releaseGlobal() {},
+      async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+    } };
+    const modules = window.cryptLord.__stage1Modules;
+    modules['cryptLord.variableWorkbench'] = { notifyUpdate(update) { preview.updates.push(update); } };
+    window.confirm = () => preview.confirm;
+    modules['cryptLord.industryState'] = { parseWorldbookJson: JSON.parse };
+    modules['cryptLord.afterNativeHost'] = { getHost: () => ({ window, document }),
+      tavernEvents: () => ({ CHAT_CHANGED: 'chat', GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' }),
+      bindEvent(name, callback) { (events[name] ||= new Set()).add(callback); return { stop() { events[name].delete(callback); } }; } };
+    preview.emit = (name, ...args) => events[name]?.forEach(callback => callback(...args));
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: preview.script }),
+      async getCharWorldbookNames() { return { primary: 'bound', additional: [] }; },
+      async getWorldbook(name) {
+        await preview.waitRules?.();
+        if (!books[name]) throw Error(`worldbook ${name} not found`);
+        return structuredClone(books[name]);
+      },
+      async getChatMessages(range, options) {
+        if (preview.failRead) throw Error('预览楼层读取失败');
+        const rows = range === '0-{{lastMessageId}}' ? floors : floors.filter(item => String(item.message_id) === range);
+        return structuredClone(options?.include_swipes ? rows.map(row => ({
+          message_id: row.message_id, role: row.role, name: row.name, is_hidden: row.is_hidden, swipe_id: 1,
+          swipes: [preview.branch, row.message], swipes_data: [{ keep: 'alternate' }, row.data],
+          swipes_info: [{ keep: true }, { timestamp: preview.date, revision: preview.page + (row.swipe_id || 0) }],
+        })) : rows);
+      },
+      async setChatMessages(rows) {
+        if (preview.failWrite) throw Error('预览保存失败');
+        if (preview.noWrite) return;
+        preview.writes.push(structuredClone(rows));
+        rows.forEach(row => Object.assign(floors.find(item => item.message_id === row.message_id), structuredClone(row)));
+        preview.afterWrite?.();
+        if (preview.afterWriteFail) preview.failRead = true;
+        if (preview.conflictWrite) floors[1].data.conflict = true;
+        if (preview.lostReceipt) throw Error('预览保存回执丢失');
+      },
+      async generateRaw(config) {
+        preview.requests.push(structuredClone(config));
+        const system = config.ordered_prompts.find(item => item?.role === 'system').content;
+        if (system.includes('校验官')) return '<裁定>通过</裁定><理由>领主身在府中</理由>';
+        await preview.waitNarration?.();
+        if (preview.failNarration) return '无效标签';
+        return `<战役正文>${system.match(/：([^。]+)。 只依据/)?.[1] || '战役演绎'}，领主与随行军队见证了这一段经过。</战役正文>`;
+      },
+    };
+    modules['cryptLord.dynamicStatus'] = {
+      async load() { preview.derivations++; await preview.waitDerivation?.(); return { rules: [] }; },
+      assertLoaded() {}, apply() {},
+    };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() { return { useCustomApi: false }; } };
+    modules['cryptLord.inputAdapter'] = { setInputText(text) {
+      if (preview.inputFail) throw Error('预览输入框暂不可用');
+      document.getElementById('send_textarea').value = text;
+    } };
+    modules['cryptLord.domainFoundation'] = {};
+    modules['cryptLord.domainRecognition'] = {};
+  </script>
+  <script src="./game-audio.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/game-audio.js"></script>
+  <script src="../../public/guimizhizhu_ui/shared/game-audio-control.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-defaults.js"></script>
+  <script>
+    // Keep the isolated preview's neighbor stable through the original domain normalization.
+    modules['cryptLord.domainDefaults'].roster[1] = [structuredClone(peer)];
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/domain-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/war-sim.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/war-replay.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/war-sandbox.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-campaign.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/war-replay/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/war-sandbox/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/domain-console/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/domain-campaign/index.js"></script>
+  <script>
+    document.getElementById('open').addEventListener('click', () => modules['cryptLord.domainCampaignUi'].open(2, peer.id));
+    document.getElementById('drill').addEventListener('click', () => modules['cryptLord.domainConsole'].open(2));
+    window.previewReady = true;
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自建内容生成器预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/custom-content/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #11181b; color: white; font: 14px sans-serif; }</style>
+</head>
+<body>
+  <button id="open" type="button">自建内容生成器</button>
+  <script>
+    let nextUid = 10;
+    const books = new Map([
+      ['【源堡】玩家自建内容', [{ uid: 1, name: '[自建提示词]', content: JSON.stringify([{ name: '锁定示例', prompt: '预置提示词', locked: true, preset: { targetBook: '1源堡', entryName: '旧条目', saveMode: 'append' } }]), enabled: false }]],
+      ['1源堡', [{ uid: 2, name: '旧条目', content: '旧正文', enabled: true }]],
+    ]);
+    const preview = window.preview = { books, writes: 0, generated: [], settings: { useCustomApi: false }, readFail: false, commitFail: false };
+    preview.hold = () => { preview.gate = new Promise(resolve => { preview.release = () => { resolve(); preview.gate = null; }; }); };
+    const methods = {
+      getCharWorldbookNames() { return { primary: '1源堡', additional: preview.additional || [] }; },
+      async getWorldbook(name) { if (preview.readFail) throw Error('模拟读取失败'); return structuredClone(books.get(name)); },
+      async getWorldbookNames() { return [...books.keys()]; },
+      async createWorldbook(name) { books.set(name, []); },
+      async createWorldbookEntries(name, entries) { books.get(name).push(...entries.map(entry => ({ ...structuredClone(entry), uid: nextUid++ }))); },
+      async updateWorldbookWith(name, updater) {
+        if (preview.gate) { preview.waiting = true; await preview.gate; preview.waiting = false; }
+        const result = await updater(structuredClone(books.get(name)));
+        if (preview.commitFail) throw Error('模拟提交失败');
+        books.set(name, structuredClone(result).map(entry => ({ ...entry, uid: entry.uid ?? nextUid++ })));
+        preview.writes++;
+        if (preview.failReadAfterWrite) preview.readFail = true;
+        if (preview.responseLost) throw Error('提交响应丢失');
+      },
+      async generateRaw(config) {
+        preview.generated.push(structuredClone(config));
+        if (preview.gate) { preview.waiting = true; await preview.gate; preview.waiting = false; }
+        if (preview.generationFail) throw Error('模拟生成失败');
+        return { content: '生成的设定正文\n第二行' };
+      },
+    };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.variableSettlementApi': { async readSettings() { return structuredClone(preview.settings); } },
+        'cryptLord.inputAdapter': { setInputText(text) { window.nativeInput = text; } },
+        'cryptLord.afterNativeHost': {
+          getHost() { return { window, document }; },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'generation-start',
+            GENERATION_ENDED: 'generation-end', GENERATION_STOPPED: 'generation-stop' }; },
+          bindEvent(name, callback) {
+            const listener = event => callback(...(event.detail || []));
+            window.addEventListener(name, listener);
+            return { stop() { window.removeEventListener(name, listener); } };
+          },
+        },
+      },
+      contract: {
+        initializeGlobal() {},
+        releaseGlobal() {},
+        async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+      },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/custom-content.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/custom-content/index.js"></script>
+  <script>
+    preview.ui = window.cryptLord.__stage1Modules['cryptLord.customContentUi'];
+    document.getElementById('open').onclick = () => preview.ui.open();
+    preview.chatChanged = () => window.dispatchEvent(new Event('chat-changed'));
+    preview.generation = (type, options = {}, dryRun = false) => window.dispatchEvent(new CustomEvent('generation-start', { detail: [type, options, dryRun] }));
+    preview.stop = () => window.dispatchEvent(new Event('generation-stop'));
+    preview.ui.open();
+  </script>
+</body>
+</html>

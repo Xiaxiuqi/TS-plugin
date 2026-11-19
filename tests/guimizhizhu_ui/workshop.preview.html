@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>制造工坊原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; } #open { margin: 10px; } #send_textarea { width: calc(100% - 24px); margin: 12px; box-sizing: border-box; }</style>
+</head>
+<body>
+  <button id="open">打开制造工坊</button>
+  <textarea id="send_textarea" aria-label="原生输入框" rows="4"></textarea>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; },
+      releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error('Missing ' + key); return modules[key]; },
+    } };
+    const material = (材质族, 具体材质, 性质, 数量 = 20) => ({
+      名称: 具体材质, 材质族, 具体材质, 等级: '序列4', 关联途径: '无', 性质, 数量, 加工结果: '成功',
+    });
+    let stored = {
+      stat_data: { 名称: '玩家', 当前序列: '序列4-炼金术士', 当前途径: '通识者',
+        当前区域: '鲁恩', 当前地标: '廷根', 活力: 500, 当前活力: 500, 人物关系列表: {},
+        其他列表: { 废金属: { 名称: '废金属', 数量: 2, 描述: '可回收金属' } },
+        $专属玩法: { 通识者途径: { 材料加工玩法: { 版本: 1, 材料仓库: {
+          metal: material('金属', '钢', ['坚硬', '导电', '韧性', '耐磨']),
+          crystal: material('晶体', '灵晶', ['导灵', '储灵', '坚硬', '耐热']),
+          chemical: material('化学', '燃料', ['易燃', '易爆', '挥发', '导热']),
+        } } } },
+      }, npc_data: {}, world_data: { 当前时间纪元: '第五纪1350年9月20日' },
+      cryptLord: { teamComposition: { version: 1, allyTeam: [{ name: '<User>', dataSource: 'player' }], enemyTeam: [] } },
+    };
+    const initial = structuredClone(stored);
+    const opening = { message_id: 0, role: 'assistant', message: '玩家拥有工坊。', data: { preserved: true } };
+    let latestText = '<think>隐藏分析</think><gametxt>玩家在廷根整理材料准备制造。</gametxt>';
+    let id = 2, writes = [], requests = [], pending = null;
+    const handlers = new Map(), events = { CHAT_CHANGED: 'chat_changed', GENERATION_STARTED: 'generation_started',
+      GENERATION_ENDED: 'generation_ended', GENERATION_STOPPED: 'generation_stopped' };
+    const emit = (name, ...args) => { for (const fn of handlers.get(events[name]) || []) fn(...args); };
+    let custom = { useCustomApi: false }, response = '', inputEvents = 0, writeFailure = false;
+    const message = () => ({ message_id: id, role: 'assistant', message: latestText, data: structuredClone(stored) });
+    const pool = { pathways: { 通识者途径: ['序列6-机械专家', '序列4-炼金术士', '序列1-文明启蒙者', '旧日-知识之妖'],
+      观众途径: ['序列1-作家'], 猎人途径: ['序列9-猎人'] }, abilities: {}, pictureConfig: {} };
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => events,
+      bindEvent(name, handler) {
+        const set = handlers.get(name) || new Set(); handlers.set(name, set); set.add(handler);
+        return { stop() { set.delete(handler); } };
+      },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    const issuedPools = new WeakMap();
+    modules['cryptLord.abilityState'] = {
+      async loadPool() { const value = structuredClone(pool); issuedPools.set(value, JSON.stringify(value)); return value; },
+      async assertPool(value, guard) {
+        if (guard?.() === false || issuedPools.get(value) !== JSON.stringify(value)) throw Error('玩法规则来源无效');
+      },
+    };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() { return custom; } };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages(range, options) {
+        const rows = range.includes('-') ? [opening, message()] : [opening, message()].filter(row => row.message_id === Number(range));
+        return structuredClone(options?.include_swipes ? rows.map(row => ({ message_id: row.message_id, role: row.role, swipe_id: 0,
+          swipes: [row.message, '备用分支'], swipes_data: [row.data, { preserved: 'alternate' }],
+          swipes_info: [{ timestamp: new Date('2026-10-16T00:00:00Z') }, { preserved: true }] })) : rows);
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟写入失败');
+        for (const row of rows) {
+          if (row.message_id !== id || row.message_id === 0 || 'message' in row) throw Error('wrong floor');
+          stored = structuredClone(row.data); writes.push(row.message_id);
+        }
+      },
+      async generateRaw(config) {
+      requests.push(config);
+      if (pending) return pending.promise;
+      return response || '<材料认定>\n1|1|通过|金属|钢|序列4|无|坚硬,耐磨|1|结构洁净稳定|拆解>分离>精炼|可取得钢材\n</材料认定>';
+    } };
+    const textarea = document.getElementById('send_textarea');
+    textarea.addEventListener('input', () => inputEvents++);
+    modules['cryptLord.inputAdapter'] = { setInputText(text) {
+      textarea.value = text; textarea.dispatchEvent(new Event('input', { bubbles: true })); return true;
+    } };
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get writes() { return [...writes]; }, get requests() { return requests; },
+      get inputEvents() { return inputEvents; }, get opening() { return structuredClone(opening); },
+      get initial() { return structuredClone(initial); }, set writeFailure(value) { writeFailure = value; },
+      set response(value) { response = value; }, set settings(value) { custom = value; },
+      set message(value) { latestText = value; }, set id(value) { id = value; },
+      hold() { let resolve; const promise = new Promise(done => { resolve = done; }); pending = { promise, resolve }; },
+      release(value) { pending?.resolve(value); pending = null; }, changeChat() { emit('CHAT_CHANGED'); }, emit,
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.workshopUi'].open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-field-effect-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-units.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/savant-material.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/savant-enhancement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/workshop-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/workshop-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/workshop/index.js"></script>
+</body>
+</html>

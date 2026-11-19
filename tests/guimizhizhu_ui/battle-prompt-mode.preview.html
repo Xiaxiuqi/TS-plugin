@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>战斗提示模式预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/battle-prompt-mode/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #1d2224; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    nav, textarea { margin: 18px; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">战斗提示模式</button></nav>
+  <textarea id="native-draft" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <script>
+    const names = ['【判定】战斗', '【世界】海洋环境', '【世界】神秘学基础', '【世界】灵性聚合', '【世界】简易年表（3.0版）'];
+    const raw = battle => `<thinking>【战斗状态表】推理示例</thinking><gametxt>雨夜档案室。${battle ? '【战斗状态表】对峙开始。' : '调查继续。'}</gametxt>`;
+    const floors = [
+      { message_id: 0, role: 'assistant', message: '<gametxt>开场</gametxt>', data: { stat_data: { 活力: 10 }, protected: true } },
+      { message_id: 1, role: 'user', message: '调查', data: { protected: true } },
+      { message_id: 2, role: 'assistant', message: raw(false), data: { stat_data: { 活力: 10 }, otherPlugin: { keep: true } } },
+    ];
+    const books = { '角色主书': [
+      ...names.map((name, index) => ({ uid: index + 10, name, enabled: index > 0, content: `原提示词${index}`,
+        strategy: { keys: [/角色/i], scan_depth: 8 }, position: { order: index }, custom: { keep: true } })),
+      { uid: 100, name: '其他条目', enabled: false, content: '保留' },
+    ], '1源堡': [{ uid: 1, name: '保护主库', content: '保留' }], '2历史孔隙': [{ uid: 2, name: '保护副库', content: '保留' }] };
+    const alternate = structuredClone(floors), pages = new Map();
+    const protectedValue = JSON.stringify([floors.slice(0, 2), books['1源堡'], books['2历史孔隙'], books['角色主书'].map(({ enabled, ...row }) => row)]);
+    const binding = { primary: '角色主书', additional: ['1源堡'] }, writes = [], requests = [], floorWrites = [];
+    let variables = { otherPlugin: { keep: true } }, configWrites = 0, page = 0, held = false, waiting = false, release;
+    const flags = { readFail: false, writeFail: false, postFail: false, configFail: false, configWriteFail: false, configPostFail: false,
+      lostBookResponse: false, lostConfigResponse: false, noBookWrite: false, noConfigWrite: false };
+    const handlers = new Map(), events = { CHAT_CHANGED: 'chat', MESSAGE_UPDATED: 'updated', MESSAGE_SWIPED: 'swiped',
+      MESSAGE_RECEIVED: 'received', WORLDINFO_SETTINGS_UPDATED: 'worldbook', GENERATION_STARTED: 'start',
+      GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop', GENERATION_AFTER_COMMANDS: 'prepare' };
+    const emit = async (key, ...args) => { for (const fn of handlers.get(events[key]) || []) await fn(...args); };
+    const modules = {
+      'cryptLord.hostApi': {
+        getScriptId: () => 'preview-script',
+        scriptVariableOptions: () => ({ type: 'script', script_id: 'preview-script' }),
+        getVariables() { if (flags.configFail) throw Error('模拟配置读取失败'); return structuredClone(variables); },
+        async updateVariablesWith(fn) {
+          if (flags.configWriteFail) throw Error('模拟设置保存失败');
+          const next = await fn(structuredClone(variables));
+          if (!flags.noConfigWrite) variables = next;
+          configWrites++;
+          if (flags.configPostFail) flags.configFail = true;
+          if (flags.lostConfigResponse) throw Error('设置保存响应丢失');
+        },
+        getCharWorldbookNames: () => structuredClone(binding),
+        getWorldbook(name) { if (flags.readFail) throw Error('模拟世界书读取失败'); return structuredClone(books[name]); },
+        async updateWorldbookWith(name, fn) {
+          if (flags.writeFail) throw Error('模拟世界书保存失败');
+          if (held) { waiting = true; await new Promise(resolve => { release = resolve; }); waiting = false; }
+          const next = await fn(structuredClone(books[name]));
+          if (!flags.noBookWrite) books[name] = structuredClone(next);
+          writes.push(name);
+          if (flags.postFail) flags.readFail = true;
+          if (flags.lostBookResponse) throw Error('模式保存响应丢失');
+        },
+        getChatMessages(range, options) {
+          const rows = range === '0-{{lastMessageId}}' ? floors : range === '{{lastMessageId}}' ? floors.slice(-1) :
+            floors.filter(row => row.message_id === Number(range));
+          return structuredClone(options?.include_swipes ? rows.map(row => {
+            if (pages.has(row.message_id)) return pages.get(row.message_id);
+            const { message, data, ...metadata } = row, old = alternate.find(item => item.message_id === row.message_id), index = page % 2;
+            return { ...metadata, swipe_id: index, swipes: index ? [old?.message || '旧分支', message] : [message, old?.message || '旧分支'],
+              swipes_data: index ? [old?.data || {}, data] : [data, old?.data || {}], swipes_info: [{keep:true}, {keep:true}] };
+          }) : rows);
+        },
+        async setChatMessages(rows) {
+          rows.forEach(row => {
+            if (row.message_id < 2) throw Error('保护#0与user楼层');
+            Object.assign(floors.find(item => item.message_id === row.message_id), structuredClone(row));
+            floorWrites.push(row.message_id);
+          });
+        },
+        async createChatMessages(rows) {
+          rows.forEach(row => floors.push({ data: {}, ...structuredClone(row), message_id: (floors.at(-1)?.message_id ?? -1) + 1 }));
+        },
+        async deleteChatMessages(ids) {
+          for (let index = floors.length - 1; index >= 2; index--) if (ids.includes(floors[index].message_id)) floors.splice(index, 1);
+        },
+        async generate(config) {
+          requests.push(structuredClone(config));
+          await emit('GENERATION_AFTER_COMMANDS', 'normal', {}, false);
+          await emit('GENERATION_STARTED', 'normal', {}, false);
+          await emit('GENERATION_ENDED', floors.at(-1).message_id);
+          return raw(true);
+        },
+        generateRaw() { throw Error('禁止副请求'); },
+      },
+      'cryptLord.afterNativeHost': {
+        getHost: () => ({ document, window }), tavernEvents: () => events,
+        bindEvent(name, fn) {
+          const set = handlers.get(name) || new Set(); set.add(fn); handlers.set(name, set);
+          return { stop: () => set.delete(fn) };
+        },
+      },
+      'cryptLord.contextBuilder': { build: async () => [] },
+      'cryptLord.generationQuality': {
+        readSnapshot: async () => ({ settings: { retryLimit: 0, streamTimeoutSeconds: 0, noStreamTimeoutSeconds: 0 } }),
+        inspect: async text => ({ passed: true, text }),
+      },
+      'cryptLord.nativeSettlement': { apply() {} },
+      'cryptLord.variableSettlementApi': { settle: async ({ previousData }) => ({ skipped: true, data: previousData, response: '' }) },
+    };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) {
+        if (!modules[key]) throw Error(key); return modules[key];
+      },
+    } };
+    window.preview = { floors, books, binding, writes, requests, floorWrites, flags, raw, emit, pages,
+      get api() { return modules['cryptLord.battlePromptModeUi']; },
+      get service() { return modules['cryptLord.battlePromptMode']; },
+      get waiting() { return waiting; }, get configWrites() { return configWrites; },
+      get untouched() { return protectedValue === JSON.stringify([floors.slice(0, 2), books['1源堡'], books['2历史孔隙'],
+        books['角色主书'].map(({ enabled, ...row }) => row)]) && variables.otherPlugin.keep === true &&
+        document.getElementById('native-draft').value === '保留原生输入草稿'; },
+      hold() { held = true; }, release() { held = false; release?.(); },
+      async generate() { await modules['cryptLord.nativeFloor'].submitNativeTurn('迎战', { source: 'preview' }); },
+      async native(type, battle) {
+        await emit('GENERATION_AFTER_COMMANDS', type, {}, false);
+        await emit('GENERATION_STARTED', type, {}, false);
+        floors.at(-1).message = raw(battle);
+        await emit('MESSAGE_RECEIVED', floors.at(-1).message_id, type);
+        await emit('GENERATION_ENDED', floors.at(-1).message_id);
+      },
+      local(status) {
+        floors.at(-1).data.cryptLord = { ...floors.at(-1).data.cryptLord, teamBattle: { status } };
+        window.dispatchEvent(new Event('cryptLord:variables-updated'));
+      },
+      swipe() { page++; return emit('MESSAGE_SWIPED'); },
+      dispose() {
+        modules['cryptLord.nativeFloor'].dispose(); preview.api.dispose(); preview.service.dispose();
+      },
+    };
+    document.getElementById('open').onclick = () => preview.api.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-inspector.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-prompt-mode.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/native-floor/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/battle-prompt-mode/index.js"></script>
+  <script>document.getElementById('open').click();</script>
+</body>
+</html>

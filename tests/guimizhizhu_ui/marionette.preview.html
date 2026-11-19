@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>秘偶管理原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; } #open { margin: 10px; }</style>
+</head>
+<body>
+  <button id="open">打开秘偶管理</button>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; },
+      releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) {
+        if (!modules[key]) throw Error('Missing ' + key);
+        return modules[key];
+      },
+    } };
+    const card = name => ({ 名称: name, 当前序列: '序列9-猎人', 模板: '普通',
+      活力: 100, 当前活力: 83, 敏捷: 70, 当前敏捷: 60, 灵性: 50, 当前灵性: 30,
+      理智: 90, 当前理智: 80, 人性: 65, 当前人性: 64, 运气: 55, 神性: 1,
+      能力体系: '肉身武技系', 能力清单: [{ 名称: '追踪', power: 11, range: 3 }],
+      性格: '沉默', 关键记忆: { 开场: '原本人格记录' }, 事件历史: { 首战: '完整历史' },
+      当前状态: {}, 身份: '猎人', 所处地点: '廷根', 正在做的事: '等待命令' });
+    let stored = { stat_data: { ...card('玩家'), 当前序列: '序列5-秘偶大师', 当前途径: '占卜家',
+      当前区域: '鲁恩', 当前地标: '廷根', 人物关系列表: {
+        甲: { 名称: '甲', 关系: '俘虏', 好感度: 41, 性格: '沉默' },
+        乙: { 名称: '乙', 关系: '同伴', 好感度: 90 } } },
+      npc_data: { 甲: card('甲'), 乙: card('乙'),
+        分身: { ...card('分身'), $寄生分身: true } },
+      world_data: { 当前时间纪元: '第五纪1350年9月20日' },
+      cryptLord: { teamComposition: { version: 1, allyTeam: [{ name: '<User>', dataSource: 'player' },
+        { name: '甲', dataSource: 'npc' }], enemyTeam: [] } } };
+    const initial = structuredClone(stored);
+    const opening = { message_id: 0, role: 'assistant', message: '玩家亲手将丙制成秘偶。', data: { preserved: true } };
+    let latestText = '<think>隐藏分析</think><gametxt>玩家亲手将甲制成秘偶，甲仍受玩家控制。丙也仍可使用。</gametxt><UpdateVariable>隐藏补丁</UpdateVariable>';
+    let id = 2, writes = [], requests = [], pending = null, chatHandler;
+    let custom = { useCustomApi: false };
+    let response = '';
+    const message = () => ({ message_id: id, role: 'assistant', message: latestText, data: structuredClone(stored) });
+    const pool = { pathways: { 占卜家途径: ['序列9-占卜家', '序列5-秘偶大师', '序列1-诡秘侍者', '序列0.5-愚者', '支柱-诡秘之主'],
+      猎人途径: ['序列9-猎人', '序列5-收割者'], 观众途径: ['序列1-作家'] },
+      abilities: { '猎人途径-序列9': [{ name: '追踪', power: 11, range: 3 }] }, pictureConfig: {} };
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }),
+      tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed' }),
+      bindEvent: (_event, handler) => { chatHandler = handler; return { stop() { chatHandler = null; } }; },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    modules['cryptLord.stateStore'] = {
+      async findLatestAssistant() { return message(); },
+      async readMessage() { return message(); },
+      async writeAssistantData(target, data) {
+        if (target !== id || target === 0) throw Error('wrong floor');
+        stored = structuredClone(data); writes.push(target);
+      },
+    };
+    modules['cryptLord.abilityState'] = { async loadPool() { return structuredClone(pool); } };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() { return custom; } };
+    modules['cryptLord.hostApi'] = { async generateRaw(config) {
+      requests.push(config);
+      if (pending) return pending.promise;
+      if (response) return response;
+      return config.ordered_prompts.find(row => row.role === 'system')?.content.includes('指定剧情')
+        ? '<裁定>\n通过|丙|序列9-猎人|亲手制成且仍可用\n</裁定>'
+        : '<裁定>\n1|通过|亲手制成且仍可用\n2|不通过|仅为同伴\n</裁定>';
+    } };
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get writes() { return [...writes]; }, get requests() { return requests; },
+      get opening() { return structuredClone(opening); }, get initial() { return structuredClone(initial); },
+      set response(value) { response = value; }, set settings(value) { custom = value; },
+      set message(value) { latestText = value; }, set id(value) { id = value; },
+      hold() { let resolve; const promise = new Promise(done => { resolve = done; }); pending = { promise, resolve }; },
+      release(value) { pending?.resolve(value); pending = null; },
+      changeChat() { chatHandler?.(); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.marionetteUi'].open();
+  </script>
+  <script src="./pathway-roster.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-field-effect-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-play-units.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/marionette/index.js"></script>
+</body>
+</html>

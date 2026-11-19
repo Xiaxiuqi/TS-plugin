@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>原版物品与人物派生完整保存链</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/inventory/style.css">
+  <style>
+    body{margin:16px;background:#192024;color:#eee;font:14px/1.6 "Microsoft YaHei",sans-serif}
+    button{padding:8px}#draft{position:fixed;bottom:8px;left:8px;width:180px}
+  </style>
+</head>
+<body>
+  <button id="open">物品栏</button><button id="history">开场物品栏</button>
+  <input id="draft" value="保留输入草稿" aria-label="原生输入">
+  <script src="item-derivation.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-forge-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-derivation-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/attribute-recalculation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/item-derivation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/inventory-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/inventory/index.js"></script>
+  <script>
+    document.querySelector('#open').onclick=()=>preview.modules['cryptLord.inventoryUi'].open(2);
+    document.querySelector('#history').onclick=()=>preview.modules['cryptLord.inventoryUi'].open(0);
+  </script>
+</body>
+</html>

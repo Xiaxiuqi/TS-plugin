@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>事件词库生成器预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/event-generator/style.css">
+  <style>body { margin: 0; background: #202827; color: #f1eee4; font: 14px "Microsoft YaHei", sans-serif; } .preview-host { padding: 24px; }</style>
+</head>
+<body>
+  <div class="preview-host">
+    <button id="open">事件词库生成</button>
+    <textarea id="send_textarea">原生输入草稿</textarea>
+    <article data-floor="0">开场正文</article>
+    <article data-floor="2">最新原生正文</article>
+  </div>
+  <script>
+    const preview = window.preview = {
+      books: {
+        '1源堡': [
+          { uid: 1, name: '【模板】提示词模板池', content: JSON.stringify({ event_template: '地点：[词库1]；线索：[词库2]；<EventCard>事件卡</EventCard>' }) },
+          { uid: 2, name: '【配置】事件词库', content: JSON.stringify({
+            词库1: [{ text: '廷根', addTags: ['城'], nextPool: '街景' }],
+            街景: [{ text: '钟楼', reqTags: ['城'] }, { text: '野外', forbidTags: ['城'] }],
+            词库2: [{ text: '备用线索' }],
+          }) },
+          { uid: 3, name: '其他条目', content: '保留', enabled: false },
+        ],
+        '2历史孔隙': [{ uid: 9, name: '【配置】事件词库', content: '{broken' }],
+      },
+      settings: { useCustomApi: false }, requests: [], writes: 0, uid: 10, inputs: 0,
+      binding: { primary: '1源堡', additional: [] }, afterWriteFailure: false, readFailure: false,
+      response: '<think>分析</think><EventCard>钟楼失踪案：夜间钟声后，失踪的档案重新出现。</EventCard>',
+      failSave: false, holdModel: false, releases: [], updateHook: null,
+      noWrite: false, corruptWrite: false, chat: 'event-chat', script: 'event-script', surface: null,
+      rows: [{ id: 0, message: '开场正文', data: { keep: true } }, { id: 2, message: '最新原生正文', data: { keep: true } }],
+    };
+    document.querySelector('#send_textarea').addEventListener('input', () => preview.inputs++);
+    const methods = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: preview.script }),
+      async getCharWorldbookNames() { return structuredClone(preview.binding); },
+      async getWorldbook(name) {
+        if (preview.readFailure) throw Error('模拟归档复核失败');
+        if (!preview.books[name]) throw Error('世界书不存在');
+        return structuredClone(preview.books[name]);
+      },
+      async updateWorldbookWith(name, fn) {
+        if (preview.updateHook) { const hook = preview.updateHook; preview.updateHook = null; await hook(); }
+        if (preview.failSave) throw Error('保存失败');
+        const result = (await fn(structuredClone(preview.books[name]))).map(row => row.uid == null ? { ...row, uid: preview.uid++ } : row);
+        if (preview.noWrite) return structuredClone(result);
+        if (preview.corruptWrite) result.find(row => row.name === '【存入】生成的事件').recursion.prevent_incoming = false;
+        preview.books[name] = structuredClone(result); preview.writes++;
+        if (preview.readAfterWriteFailure) preview.readFailure = true;
+        if (preview.afterWriteFailure) throw Error('模拟保存响应丢失');
+        return structuredClone(result);
+      },
+      async generateRaw(config) {
+        preview.requests.push(config);
+        const response = preview.response;
+        if (preview.holdModel) await new Promise(resolve => preview.releases.push(resolve));
+        return response;
+      },
+    };
+    window.SillyTavern = { getCurrentChatId: () => preview.chat };
+    preview.surface = { document, window };
+    window.cryptLord = {
+      __stage1Modules: {
+        'cryptLord.hostApi': methods,
+        'cryptLord.variableSettlementApi': { async readSettings() { return preview.settings; } },
+        'cryptLord.afterNativeHost': {
+          getHost() { return preview.surface; },
+          tavernEvents() { return { CHAT_CHANGED: 'chat-changed', GENERATION_STARTED: 'started', GENERATION_ENDED: 'ended', GENERATION_STOPPED: 'stopped' }; },
+          bindEvent(name, fn) {
+            const callback = event => fn(...(event.detail || []));
+            window.addEventListener(name, callback);
+            return { stop() { window.removeEventListener(name, callback); } };
+          },
+        },
+      },
+      contract: {
+        initializeGlobal() {}, releaseGlobal() {},
+        async waitGlobalInitialized(key) { return window.cryptLord.__stage1Modules[key]; },
+      },
+    };
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/random-events.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/event-generator.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/event-generator/index.js"></script>
+  <script>
+    const eventUi = window.cryptLord.__stage1Modules['cryptLord.eventGeneratorUi'];
+    document.querySelector('#open').addEventListener('click', () => eventUi.open());
+    eventUi.open();
+  </script>
+</body>
+</html>

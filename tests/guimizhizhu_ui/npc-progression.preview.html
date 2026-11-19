@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NPC成长与初始化隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/styles.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/npc-progression/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202625; color: #edf0ef; font: 14px/1.6 "Microsoft YaHei", sans-serif; }
+    nav, textarea { margin: 16px; }
+    #chat { max-width: 860px; margin: auto; padding: 12px; }
+    article { border-top: 1px solid #7e949060; padding: 12px 0; }
+    body[data-theme="light"] { --SmartThemeBlurTintColor: #f1f5f4; --SmartThemeBodyColor: #24302d; background: #fff; color: #24302d; }
+  </style>
+</head>
+<body>
+  <nav><button id="open">NPC成长与初始化</button></nav>
+  <textarea id="draft" aria-label="原生输入草稿">原生草稿保留</textarea>
+  <div id="chat"><article>#0 开场</article><article>#1 调查</article><article>#2 调查：街灯下有三个人。</article></div>
+  <script src="npc-progression.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/attribute-recalculation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/player-progression.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/npc-progression.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/npc-progression/index.js"></script>
+  <script>document.getElementById('open').onclick = () => preview.api.open(2);</script>
+</body>
+</html>

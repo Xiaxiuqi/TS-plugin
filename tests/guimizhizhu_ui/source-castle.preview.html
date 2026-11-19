@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>源堡系统隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/source-castle/style.css">
+  <style>
+    body { margin: 0; background: #252c29; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 12px; }
+  </style>
+</head>
+<body>
+  <button id="open">打开源堡系统</button>
+  <script>
+    let floor = { message_id: 8, role: 'assistant', message: '真实原生正文', data: { stat_data: { $meta: {}, 名称: '克莱恩' },
+      npc_data: { 奥黛丽: {} }, world_data: { 当前时间纪元: '1349年6月28日' } } };
+    const listeners = new Map();
+    let pause = false;
+    let release, failBooks = false, failFloor = false;
+    const events = [{ timestamp: '2026-10-01T00:00:00Z', level: 'warn',
+      module: 'cryptLord.nativeFloor', action: 'settle', details: '模拟观测记录' }];
+    window.cryptLord = { __stage1Modules: {}, loader: { status: 'ready' },
+      debug: { snapshot() { return { loader: { status: 'ready' }, events: [...events],
+        modules: [{ key: 'cryptLord.nativeFloor', registered: true, ready: true, mounted: true },
+          { key: 'cryptLord.nativeFloorBridge', registered: true, ready: true, mounted: false }] }; } },
+      contract: {
+        initializeGlobal(key, api) { this.registry[key] = api; },
+        releaseGlobal(key) { delete this.registry[key]; },
+        async waitGlobalInitialized(key) { return this.registry[key]; },
+        registry: null,
+      },
+    };
+    const modules = window.cryptLord.__stage1Modules;
+    window.cryptLord.contract.registry = modules;
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }),
+      tavernEvents: () => Object.fromEntries(['CHAT_CHANGED', 'GENERATION_STARTED', 'GENERATION_ENDED', 'GENERATION_STOPPED'].map(name => [name, name])),
+      bindEvent(name, fn) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn);
+        return { stop() { listeners.get(name).delete(fn); } }; },
+    };
+    modules['cryptLord.stateStore'] = { findLatestAssistant() { throw Error('只读观测不得初始化开场'); } };
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions: () => ({ type: 'script', script_id: 'source-castle-preview' }),
+      async getChatMessages(_, options) {
+        if (pause) await new Promise(resolve => { release = resolve; });
+        if (failFloor) throw Error('模拟楼层读取失败');
+        return structuredClone(options?.include_swipes ? [{ ...floor, swipe_id: 0, swipes: [floor.message, '旧分支'],
+          swipes_data: [floor.data, {}], swipes_info: [{}, { keep: true }] }] : [floor]);
+      },
+      getCharWorldbookNames: () => ({ primary: '实际角色主库', additional: [] }),
+      getGlobalWorldbookNames: () => ['实际角色主库'],
+      getChatWorldbookName: () => null,
+      async getWorldbookNames() { if (failBooks) throw Error('模拟目录读取失败'); return ['1源堡', '原著', '实际角色主库']; },
+    };
+    modules['cryptLord.quickShortcuts'] = { async load() { return { commands: ['行动A'], source: 'custom' }; } };
+    window.preview = {
+      events,
+      get api() { return modules['cryptLord.sourceCastleUi']; },
+      get floor() { return structuredClone(floor); },
+      set floor(value) { floor = value; },
+      chatChanged() { preview.event('CHAT_CHANGED'); },
+      event(name, ...args) { listeners.get(name)?.forEach(fn => fn(...args)); },
+      set failBooks(value) { failBooks = value; }, set failFloor(value) { failFloor = value; },
+      hold() { pause = true; },
+      release() { pause = false; release?.(); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.sourceCastleUi'].open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/source-castle-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/source-castle/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>领地图腾原生楼层预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/marionette/style.css">
+  <style>
+    body { margin: 0; background: #171e1c; color: #eee; font: 14px "Microsoft YaHei", sans-serif; }
+    #open { margin: 10px; }
+    #send_textarea { width: calc(100% - 24px); margin: 12px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <button id="open">打开领地图腾</button>
+  <textarea id="send_textarea" aria-label="原生输入框" rows="3">保留玩家的正文草稿</textarea>
+  <script>
+    const modules = {};
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal(key, api) { modules[key] = api; }, releaseGlobal(key) { delete modules[key]; },
+      async waitGlobalInitialized(key) { if (!modules[key]) throw Error('Missing ' + key); return modules[key]; },
+    } };
+    const pool = { pathways: {
+      萨满途径: ['序列9-萨满', '序列8-林语者', '序列5-绘梦者', '序列1-画界主宰'],
+      观众途径: ['序列1-作家'],
+    }, abilities: {} };
+    const time = day => `第五纪1352年1月${day}日星期一12:00`;
+    let stored = { stat_data: { 名称: '玩家', 当前序列: '序列9-萨满',
+      活力: 100, 当前活力: 70, 灵性: 100, 当前灵性: 80, 敏捷: 100, 当前敏捷: 80,
+      理智: 100, 当前理智: 90, 人性: 100, 当前人性: 60, 运气: 100,
+      其他列表: {
+        主材: { 名称: '林间图腾的魔药主材料', 类型: '魔药主材料', 序列: '序列9', 数量: 3.5, 单位: '份' },
+        辅材: { 名称: '星光魔药辅助材料', 类型: '魔药辅助材料', 序列: '序列9', 数量: 3, 单位: '份' },
+        灵材: { 名称: '图腾灵性粉末', 类型: '灵性材料', 序列: '序列9', 数量: 10, 单位: '份' },
+        低阶: { 名称: '位阶不足的粉末', 类型: '灵性材料', 序列: '序列10', 数量: 10 },
+      } }, world_data: { 当前时间纪元: time(1) },
+      npc_data: { 老师: { 活力: 100, 事件历史: { 一: '保留记录' } } }, cryptLord: {} };
+    const initial = structuredClone(stored);
+    const opening = { message_id: 0, role: 'assistant', message: '<gametxt>玩家曾在河谷设置图腾。</gametxt>', data: { preserved: true } };
+    let id = 2, text = '<gametxt>玩家完成固定领地的仪式。</gametxt>', writes = [], requests = [], chatHandler;
+    let writeFailure = false, confirmHook = '', requestHook = '', waiting = null;
+    let settings = { useCustomApi: false }, reply = '<裁定>通过</裁定><理由>已完成图腾仪式</理由>';
+    const nativeConfirm = window.confirm.bind(window);
+    window.confirm = text => {
+      const answer = nativeConfirm(text);
+      if (answer && confirmHook === 'variables') stored.stat_data.当前灵性 = 55;
+      if (answer && confirmHook === 'chat') chatHandler?.();
+      confirmHook = ''; return answer;
+    };
+    const message = () => ({ message_id: id, role: 'assistant', message: text, data: structuredClone(stored) });
+    modules['cryptLord.afterNativeHost'] = {
+      getHost: () => ({ document, window }), tavernEvents: () => ({ CHAT_CHANGED: 'chat_changed' }),
+      bindEvent: (_event, handler) => { chatHandler = handler; return { stop() { chatHandler = null; } }; },
+      async listAssistantMessages() { return [structuredClone(opening), message()]; },
+    };
+    modules['cryptLord.abilityState'] = { async loadPool() { return structuredClone(pool); } };
+    modules['cryptLord.variableSettlementApi'] = { async readSettings() { return structuredClone(settings); } };
+    modules['cryptLord.hostApi'] = {
+      async getChatMessages(range) {
+        if (range === '0') return [structuredClone(opening)];
+        if (range === String(id)) return [message()];
+        return [structuredClone(opening), message()];
+      },
+      async setChatMessages(rows) {
+        if (writeFailure) throw Error('模拟写入失败');
+        for (const row of rows) {
+          if (row.message_id !== id || row.message_id === 0 || 'message' in row) throw Error('wrong floor/write');
+          stored = structuredClone(row.data); writes.push(row.message_id);
+        }
+      },
+      async generateRaw(config) {
+        requests.push(structuredClone(config));
+        if (requestHook === 'variables') stored.stat_data.当前灵性 = 55;
+        if (requestHook === 'history') opening.message = '<gametxt>历史证据已变更。</gametxt>';
+        if (requestHook === 'floor') id = 4;
+        if (requestHook === 'defer') await new Promise(resolve => { waiting = resolve; });
+        requestHook = ''; return reply;
+      },
+    };
+    window.preview = {
+      get data() { return structuredClone(stored); }, set data(value) { stored = structuredClone(value); },
+      get initial() { return structuredClone(initial); }, get writes() { return [...writes]; },
+      get opening() { return structuredClone(opening); }, get requests() { return structuredClone(requests); },
+      set reply(value) { reply = value; }, set settings(value) { settings = structuredClone(value); },
+      set writeFailure(value) { writeFailure = value; }, set confirmHook(value) { confirmHook = value; },
+      set requestHook(value) { requestHook = value; }, changeChat() { chatHandler?.(); },
+      get waiting() { return Boolean(waiting); }, resolve() { waiting?.(); waiting = null; },
+      advance(day) { stored.world_data.当前时间纪元 = time(day); },
+    };
+    document.getElementById('open').onclick = () => modules['cryptLord.shamanTerritoryUi'].open();
+  </script>
+  <script src="./pathway-roster.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/audience-imagination.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/marionette-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/scroll-workshop-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/shaman-territory-reference.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/shaman-territory-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/pathway-roster-window/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/shaman-territory/index.js"></script>
+</body>
+</html>

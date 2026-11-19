@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>动态状态完整链路验收</title>
+  <style>
+    *{box-sizing:border-box;letter-spacing:0}body{margin:0;background:#202326;color:#e6e9eb;font:14px/1.6 "Microsoft YaHei",sans-serif}
+    main{max-width:1020px;margin:auto;padding:20px}h1{font-size:20px;color:#efd285}h2{font-size:15px;color:#9bd8cb}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+    input,button,select{background:#151b1e;color:inherit;border:1px solid #69777c;border-radius:4px;font:inherit;padding:7px}
+    input[type=number]{width:90px}label{display:flex;gap:6px;align-items:center}
+    pre{white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid #48535a;padding-top:14px;font:inherit}
+    #error{color:#f0a6a0}#status{color:#9bd8cb}
+  </style>
+  <script src="../../node_modules/lodash/lodash.min.js"></script>
+</head>
+<body>
+  <main>
+    <h1>动态状态完整链路验收</h1>
+    <div class="controls"><label>玩家当前活力<input aria-label="玩家当前活力" type="number" value="20"></label>
+      <button id="predict">只读预览</button><button id="save">保存模拟楼层</button><button id="complete">模拟原生结算</button></div>
+    <div class="controls"><select aria-label="生成类型"><option value="normal">新回合</option><option value="regenerate">重生成</option><option value="swipe">切页</option><option value="continue">续写</option><option value="append">追加续写</option><option value="quiet">副模型</option></select>
+      <button id="send">模拟原生请求</button><button id="stop">停止生成</button><button id="chat">切换聊天</button>
+      <label><input id="fail" type="checkbox">读取失败</label><label><input id="save-fail" type="checkbox">保存失败</label></div>
+    <p id="status" role="status">隔离测试数据</p><p id="error"></p>
+    <h2>当前模拟楼层状态</h2><pre id="states"></pre><h2>本次红线指令</h2><pre id="prompt"></pre>
+  </main>
+  <script>
+    const modules={},handlers=new Map(),writes=[],prompts=[],warnings=[];
+    const rule=(name,scope,priority,conditions)=>({name,targetScope:scope,priority,conditions,
+      output:{type:'系统状态',description:`${name}描述`,directive:`${name}-${scope}红线`}});
+    const condition={target:'当前活力',operator:'<=',value:30,calcType:'percentage',reference:'活力'};
+    const rules=[{...rule('昏迷','player',90,[condition]),group:'活力',isExclusive:true},
+      {...rule('虚弱','all',30,[condition]),group:'活力'},rule('虚弱','npc',40,[condition]),
+      rule('坚韧','all',1,[{target:'当前活力',operator:'>',value:30}])];
+    const startData={stat_data:{活力:100,当前活力:20,当前状态:{普通状态:'保留','[旧状态]旧名':'应移除'}},
+      npc_data:{艾琳:{活力:100,当前活力:20,当前状态:{普通状态:'NPC保留'}},$meta:{保留:true}},otherPlugin:{保留:true}};
+    const floors=[{message_id:0,role:'assistant',message:'开场',data:structuredClone(startData)},
+      {message_id:1,role:'user',message:'行动',data:{}},{message_id:2,role:'assistant',message:'真实正文样式',data:structuredClone(startData)}];
+    const initial=structuredClone(floors);
+    const binding={primary:'1源堡',additional:[]};
+    const books={'1源堡':[{name:'【动态规则】状态',content:JSON.stringify(rules)}],'2历史孔隙':[]};
+    const variables={'cryptLord.variableSettlement':{enabled:false,retryLimit:0}};
+    const requests=[],pages=new Map(),identity={chat:'preview-chat',script:'dynamic-rules-preview'};
+    const surface={document,window:{_:window._,SillyTavern:{getCurrentChatId:()=>identity.chat}}};
+    let fail=false,saveFail=false,held=false,waiting=0,releases=[],hook=null;
+    const ui={states:document.querySelector('#states'),prompt:document.querySelector('#prompt'),status:document.querySelector('#status'),error:document.querySelector('#error')};
+    function render(){ui.states.textContent=JSON.stringify({玩家:floors[2].data.stat_data.当前状态,NPC:floors[2].data.npc_data.艾琳.当前状态},null,2)}
+    const warn=console.warn.bind(console);console.warn=(...args)=>{warnings.push(args.map(String).join(' '));warn(...args)};
+    window.cryptLord={__stage1Modules:modules,contract:{initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]}}};
+    modules['cryptLord.hostApi']={
+      getCharWorldbookNames:()=>structuredClone(binding),
+      scriptVariableOptions:()=>({type:'script',script_id:identity.script}),
+      getVariables:()=>structuredClone(variables),
+      async generateRaw(config){requests.push(structuredClone(config));return '<UpdateVariable><JSONPatch>{"stat_data":[{"op":"replace","path":"/当前活力","value":50}],"npc_data":[],"world_data":[]}</JSONPatch></UpdateVariable>'},
+      async getWorldbook(name){
+        if(held){waiting++;await new Promise(resolve=>releases.push(resolve));waiting--}
+        if(hook){const current=hook;hook=null;current()}
+        if(fail)throw Error('模拟动态规则读取失败');
+        return structuredClone(books[name]||[]);
+      },
+      async getChatMessages(range,options){
+        const rows=range==='0-{{lastMessageId}}'?floors:floors.filter(row=>row.message_id===Number(range));
+        return structuredClone(options?.include_swipes?rows.map(row=>{
+          if(pages.has(row.message_id))return pages.get(row.message_id);
+          const {message,data={},...metadata}=row;
+          return {...metadata,swipe_id:1,swipes:['未选旧分支',message],swipes_data:[{otherPlugin:'保留'},data],
+            swipes_info:[{oldPage:true},{selectedPage:true}]};
+        }):rows.map(row=>({...row,data:row.data||{}})));
+      },
+      async setChatMessages(rows){if(saveFail)throw Error('模拟保存失败');for(const row of rows){Object.assign(floors.find(item=>item.message_id===row.message_id),structuredClone(row));writes.push(structuredClone(row))}render()},
+      injectPrompts(items,options){const row={items:structuredClone(items),options,active:true};prompts.push(row);ui.prompt.textContent=items[0].content;return{uninject(){row.active=false;ui.prompt.textContent=''}}},
+    };
+    modules['cryptLord.afterNativeHost']={getHost:()=>surface,
+      tavernEvents:()=>({GENERATION_AFTER_COMMANDS:'start',GENERATION_STOPPED:'stop',CHAT_CHANGED:'chat',GENERATION_ENDED:'end'}),
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}}};
+    modules['cryptLord.nativeHistoryPolicy']={createInjection:()=>({content:'原生历史策略'})};
+    modules['cryptLord.responseNormalizer']={extractActions:()=>[]};
+    modules['cryptLord.nativeSettlement']={apply(){}};
+    modules['cryptLord.variablePatch']={apply:(_text,data)=>({applied:true,data:structuredClone(data)}),updateTag:()=>'',embedUpdate:text=>text};
+    modules['cryptLord.variableSettlementApi']={settle:async()=>({skipped:true})};
+    if(new URLSearchParams(location.search).has('rules')){
+      delete modules['cryptLord.variablePatch'];delete modules['cryptLord.variableSettlementApi'];
+    }
+    async function emit(name,...args){for(const fn of handlers.get(name)||[])await fn(...args)}
+    async function run(fn){ui.error.textContent='';try{await fn();ui.status.textContent='操作完成';render()}catch(error){ui.error.textContent=error.message;ui.status.textContent='操作未提交'}}
+    const draft=()=>{const value=structuredClone(floors[2].data);value.stat_data.当前活力=Number(document.querySelector('input[type=number]').value);return value};
+    document.querySelector('#predict').onclick=()=>run(async()=>{const prompt=await modules['cryptLord.dynamicStatus'].provide({state:floors[2].data});ui.prompt.textContent=prompt?.content||''});
+    document.querySelector('#save').onclick=()=>run(()=>modules['cryptLord.stateStore'].writeAssistantData(2,draft()));
+    document.querySelector('#send').onclick=()=>run(()=>emit('start',document.querySelector('select').value,{},false));
+    document.querySelector('#stop').onclick=()=>run(()=>emit('stop'));
+    document.querySelector('#chat').onclick=()=>run(()=>emit('chat'));
+    document.querySelector('#fail').onchange=event=>fail=event.target.checked;
+    document.querySelector('#save-fail').onchange=event=>saveFail=event.target.checked;
+    document.querySelector('#complete').onclick=()=>run(async()=>{
+      if(floors.length===3)floors.push({message_id:3,role:'user',message:'本回合行动'},{message_id:4,role:'assistant',message:'本回合已生成正文',data:{}});
+      await modules['cryptLord.nativeFloorBridge'].completeNarrative('正文',{userMessageId:3,assistantMessageId:4,userText:'本回合行动',narrativeText:'本回合已生成正文'});
+      ui.prompt.textContent=JSON.stringify(floors[4].data.stat_data.当前状态,null,2);
+    });
+    window.preview={modules,floors,initial,writes,prompts,warnings,emit,books,binding,variables,requests,pages,identity,surface,get waiting(){return waiting},
+      hold(){held=true},release(){held=false;releases.splice(0).forEach(resolve=>resolve())},
+      conflict(){hook=()=>floors[2].message='外部修改正文'},
+    };render();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/dynamic-status.js"></script>
+  <script src="../../public/guimizhizhu_ui/prompts/context-builder.js"></script>
+  <script src="../../public/guimizhizhu_ui/prompts/game-context-providers.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ai-context-config.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+</body>
+</html>

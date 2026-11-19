@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>领地事务评定预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/domain-affairs/style.css">
+  <style>body { margin: 0; min-height: 100vh; background: #252a27; color: #eee; font-family: sans-serif; } main { padding: 16px; } #send_textarea { display: block; width: min(600px, 95%); height: 70px; }</style>
+</head>
+<body>
+  <main><button id="open">打开事务评定</button><textarea id="send_textarea" placeholder="原生输入框（预览）"></textarea></main>
+  <script src="domain-affairs.fixture.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-defaults.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/industry-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/cashflow.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/faction-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/affair-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-affairs.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/domain-affairs/index.js"></script>
+  <script>
+    const modules = window.cryptLord.__stage1Modules;
+    document.getElementById('open').addEventListener('click', () => modules['cryptLord.domainAffairsUi'].open(2));
+    modules['cryptLord.domainAffairsUi'].open(2).then(() => { window.previewReady = true; });
+  </script>
+</body>
+</html>

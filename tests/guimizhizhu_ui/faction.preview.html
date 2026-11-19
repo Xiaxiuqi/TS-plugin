@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>势力管理完整预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/organization-console/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body{margin:20px;background:#17211c;color:#e6e8ed;font:14px sans-serif}button{padding:8px}</style>
+</head>
+<body>
+  <button id="open">势力管理</button>
+  <script>
+    const modules = {}, handlers = new Map(), writes = [], notices = [];
+    let fail = false, hold = false, waiting = 0, releases = [];
+    let chat = 'faction-chat', script = 'faction-script', ruleHook = null;
+    const books = new Map(), pages = {};
+    const faction = {
+      势力名: '银湾联合教区', 势力类型: '教会', '<User>的职位': '教区守护者',
+      势力概述: '银湾港与北方教区缔结的联合势力。\n驻守港口、保护商路与信众。',
+      直辖的半神和真神信息: {
+        守护者: { '半神/真神名称': '艾琳', 序列: '序列2-旧日侍者', 职位: '教区守护神' },
+        主教: { '半神/真神名称': '诺兰', 序列: '序列4-守夜人', 职位: '港口主教' },
+        $meta: { extensible: true },
+      },
+      实控区域: {
+        港口: { 区域名: '银湾港', 区域类型: '世俗领地', 区域人口: 12000, 区域面积: 32, 区域核心: '联合议事厅', 区域概述: '港务、工坊与运输枢纽。' },
+        教区: { 区域名: '北方教区', 区域类型: '教会教区', 区域人口: 3000, 区域面积: 15 },
+        星界: { 区域名: '星界哨站', 区域类型: '星界', 区域人口: 800, 区域面积: 2 },
+      },
+      世俗军队: {
+        海军: { 护卫: { 部队名: '港口护卫舰队', 部队类型: '舰队', 部队精锐等级: '3级', 部队数量: 50 } },
+        陆军: { 驻防: { 部队名: '教区驻防军', 部队类型: '步兵', 部队精锐等级: '2级', 部队数量: 200 } },
+        空军: { 侦察: { 部队名: '空中侦察队', 部队类型: '飞行编队', 部队精锐等级: '4级', 部队数量: 8 } },
+      },
+    };
+    let floors = [
+      { message_id:0,role:'assistant',message:'原生开场',data:{stat_data:{势力:{$meta:{extensible:true},教区:faction,
+        星界:{势力名:'星界议会',势力类型:'其它',锚的需求:'尚待确认',实控区域:{哨站:{区域类型:'星界',区域面积:20}}},
+      },领地:{已建立:true,领地名:'玩家领地',等级:1,人口:2000,地点:'银湾港'}},npc_data:{保留:{}}} },
+      { message_id:1,role:'user',message:'用户正文',data:{保留:true} },
+      { message_id:2,role:'assistant',message:'本回合正文',data:{stat_data:{势力:{无:{势力名:'未建立的势力'}}}} },
+    ];
+    const initial = structuredClone(floors);
+    window.cryptLord = { __stage1Modules:modules, contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]},
+    }};
+    window.toastr = Object.fromEntries(['info','warning','error','success'].map(level=>[level,text=>notices.push({level,text})]));
+    modules['cryptLord.afterNativeHost'] = {
+      getHost:()=>({document,window}),tavernEvents:()=>({CHAT_CHANGED:'chat',MESSAGE_UPDATED:'updated',
+        GENERATION_STARTED:'start',GENERATION_ENDED:'end',GENERATION_STOPPED:'stop'}),
+      bindEvent(name,fn){const set=handlers.get(name)||new Set();set.add(fn);handlers.set(name,set);
+        return{stop(){set.delete(fn)}}},
+    };
+    window.SillyTavern = {getCurrentChatId:()=>chat};
+    modules['cryptLord.hostApi'] = {
+      scriptVariableOptions:()=>({type:'script',script_id:script}),
+      getCharWorldbookNames:()=>({primary:'角色规则',additional:[]}),
+      async getWorldbook(name){const value=structuredClone(books.get(name)||[]);ruleHook?.(name);return value},
+      async getChatMessages(id,options){
+        if(hold){waiting++;await new Promise(resolve=>releases.push(resolve));waiting--}
+        if(fail)throw Error('模拟只读失败');
+        const rows=id==='{{lastMessageId}}'?floors.slice(-1):id==='0-{{lastMessageId}}'?floors:
+          floors.filter(row=>row.message_id===Number(id));
+        return structuredClone(options?.include_swipes?rows.map(({message,data,...row})=>({...row,swipe_id:1,
+          swipes:['备用分支',message],swipes_data:[{keep:true},data],
+          swipes_info:[{extra:{keep:true},date:new Date('2026-10-28')},{}],...pages[row.message_id]})):rows);
+      },
+      async setChatMessages(rows){
+        if(modules['cryptLord.organizationConsole'].status().kind!=='industry')throw Error('势力禁止写入');
+        for(const row of rows){writes.push(row.message_id);Object.assign(floors.find(floor=>floor.message_id===row.message_id),structuredClone(row))}
+      },
+    };
+    window.preview = {
+      get api(){return modules['cryptLord.organizationConsole']}, modules, writes, notices, initial, books, pages,
+      get floors(){return structuredClone(floors)},get waiting(){return waiting},
+      set fail(value){fail=value},hold(){hold=true},release(){hold=false;releases.splice(0).forEach(fn=>fn())},
+      set chat(value){chat=value},set script(value){script=value},set ruleHook(value){ruleHook=value},
+      hide(id,value){floors.find(row=>row.message_id===id).is_hidden=value},
+      addUser(){floors.push({message_id:3,role:'user',message:'待回复',data:{}})},pop(){floors.pop()},
+      emit(name,...args){handlers.get(name)?.forEach(fn=>fn(...args))},
+      change(){handlers.get('chat')?.forEach(fn=>fn())},
+      external(name='外部修订后的教区'){floors[0].data.stat_data.势力.教区.势力名=name},
+      update(){handlers.get('updated')?.forEach(fn=>fn(0))},
+      async open(id=0){return preview.api.open('faction',id)},
+    };
+    document.getElementById('open').onclick=()=>preview.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/industry-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-defaults.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/faction-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/organization-console/index.js"></script>
+</body>
+</html>

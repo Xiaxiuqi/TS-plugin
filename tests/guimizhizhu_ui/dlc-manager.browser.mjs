@@ -1,0 +1,124 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('C:/Users/ROG/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
+try {
+  for (const width of [1280, 390]) {
+    const page = await browser.newPage({ viewport: { width, height: 820 } });
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto('http://127.0.0.1:8791/tests/guimizhizhu_ui/dlc-manager.preview.html');
+    const panel = page.getByRole('dialog', { name: 'DLC 管理器', includeHidden: true });
+    const idle = () => page.waitForFunction(() => !preview.api.status().busy);
+    const switches = panel.getByRole('switch');
+    const refresh = async () => { await panel.getByRole('button', { name: '刷新 DLC 条目' }).click(); await idle(); };
+    const status = text => panel.getByRole('status').filter({ hasText: text }).waitFor();
+    await idle();
+    assert.equal(await switches.count(), 3);
+    assert.equal(await page.evaluate(() => preview.writes), 0);
+    await switches.nth(1).click(); await idle();
+    assert.equal(await switches.nth(2).isChecked(), false);
+    assert.equal(await page.evaluate(() => preview.books.get('主世界书')[1].enabled), false);
+    await switches.nth(0).click(); await idle();
+    const expanded = panel.locator('article').first();
+    await expanded.locator('summary').click();
+    assert.ok((await expanded.locator('pre').textContent()).length > 100);
+    assert.equal(await panel.locator('img').count(), 0);
+    const switchRect = await switches.nth(0).boundingBox();
+    const summaryRect = await expanded.locator('summary').boundingBox();
+    assert.ok(switchRect.y >= summaryRect.y - 1 && switchRect.y < summaryRect.y + 32);
+    const layout = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]').getBoundingClientRect();
+      const footer = document.querySelector('[data-dlc-result]').getBoundingClientRect();
+      return { left: dialog.left, right: dialog.right, bottom: dialog.bottom,
+        footerBottom: footer.bottom, horizontal: document.documentElement.scrollWidth > innerWidth };
+    });
+    assert.ok(layout.left >= 0 && layout.right <= width && layout.bottom <= 820 && layout.footerBottom <= 820);
+    assert.equal(layout.horizontal, false);
+    await page.evaluate(() => { preview.writeFail = true; });
+    await switches.nth(0).click(); await idle(); await status('模拟保存失败');
+    assert.equal(await switches.count(), 0);
+    await page.evaluate(() => { preview.writeFail = false; });
+    await refresh();
+    assert.equal(await switches.nth(0).isChecked(), true);
+    await page.evaluate(() => { preview.writeFail = false; preview.books.get('主世界书')[0].content = '外部新正文'; });
+    await switches.nth(0).click(); await idle(); await status('别处更改');
+    assert.equal(await page.evaluate(() => preview.books.get('主世界书')[0].enabled), true);
+    await refresh();
+    await switches.nth(0).click(); await idle();
+    await page.evaluate(() => { preview.afterWriteFail = true; });
+    await switches.nth(0).click(); await idle(); await status('实际开关未确认');
+    assert.equal(await switches.count(), 0);
+    assert.equal(await page.evaluate(() => preview.books.get('主世界书')[0].enabled), true);
+    await page.evaluate(() => { preview.afterWriteFail = false; preview.readFail = false; });
+    await refresh();
+    const before = await page.evaluate(() => preview.writes);
+    await page.evaluate(() => preview.hold());
+    await switches.nth(0).click();
+    await page.waitForFunction(() => preview.waiting);
+    assert.equal(await panel.getByRole('button', { name: '刷新 DLC 条目' }).isDisabled(), true);
+    assert.equal(await switches.nth(1).isDisabled(), true);
+    await panel.getByRole('button', { name: '关闭', exact: true }).click();
+    await page.locator('#open').click();
+    await page.evaluate(() => preview.release());
+    await idle();
+    assert.equal(await page.evaluate(() => preview.writes), before);
+    assert.equal(await switches.nth(0).isChecked(), true);
+    await page.evaluate(() => preview.hold());
+    await switches.nth(0).click();
+    await page.waitForFunction(() => preview.waiting);
+    await page.evaluate(() => { preview.chatChanged(); preview.release(); });
+    await page.locator('#open').click(); await idle();
+    assert.equal(await page.evaluate(() => preview.writes), before);
+    await page.keyboard.press('Escape');
+    assert.equal(await panel.isVisible(), false);
+    assert.equal(await page.locator('#open').evaluate(node => node === document.activeElement), true);
+    await page.evaluate(() => { preview.primary = null; });
+    await page.locator('#open').click(); await idle();
+    await panel.getByText('未找到当前角色绑定的主世界书。', { exact: true }).waitFor();
+    await page.evaluate(() => { preview.primary = '主世界书'; preview.readFail = true; });
+    await refresh(); await status('读取 DLC 失败');
+    assert.equal(await switches.count(), 0);
+    await page.evaluate(() => { preview.readFail = false; });
+    await refresh();
+    await page.evaluate(() => { preview.responseLost = true; });
+    await switches.nth(0).click(); await idle(); await status('开关已保存，但宿主未返回成功响应');
+    assert.equal(await switches.nth(0).isChecked(), false);
+    await page.evaluate(() => { preview.responseLost = false; preview.generation('quiet'); preview.generation('normal', {}, true); });
+    assert.equal(await panel.getByRole('button', { name: '刷新 DLC 条目' }).isDisabled(), false);
+    const generationWrites = await page.evaluate(() => preview.writes);
+    await page.evaluate(() => preview.hold());
+    await switches.nth(0).click();
+    await page.waitForFunction(() => preview.waiting);
+    await page.evaluate(() => { preview.generation('normal'); preview.release(); });
+    await status('已暂停');
+    assert.equal(await panel.getByRole('button', { name: '刷新 DLC 条目' }).isDisabled(), true);
+    await page.evaluate(() => preview.stop());
+    await refresh();
+    assert.equal(await page.evaluate(() => preview.writes), generationWrites);
+    await panel.getByRole('button', { name: '关闭', exact: true }).focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await switches.nth(0).evaluate(node => node === document.activeElement), false);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#open').evaluate(node => node === document.activeElement), true);
+    await page.locator('#open').click(); await idle();
+    const preserved = await page.evaluate(() => {
+      const rows = preview.books.get('主世界书');
+      const originals = preview.original.get('主世界书');
+      return JSON.stringify(rows.slice(2)) === JSON.stringify(originals.slice(2))
+        && JSON.stringify(rows[0].strategy) === JSON.stringify(originals[0].strategy)
+        && JSON.stringify(rows[0].position) === JSON.stringify(originals[0].position)
+        && JSON.stringify(rows[0].extra) === JSON.stringify(originals[0].extra)
+        && JSON.stringify(preview.books.get('副世界书')) === JSON.stringify(preview.original.get('副世界书'));
+    });
+    assert.equal(preserved, true);
+    await page.evaluate(() => preview.api.dispose());
+    assert.equal(await panel.count(), 0);
+    assert.deepEqual(errors, []);
+    await page.close();
+  }
+  console.log('DLC browser: complete desktop/mobile switch, preview, conflict, retry and lifecycle workflow passed');
+} finally { await browser.close(); }

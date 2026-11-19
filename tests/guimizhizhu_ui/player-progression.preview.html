@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>玩家成长与晋升隔离预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/shared/styles.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/attribute-recalculation/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/system-settings/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body { margin: 0; background: #202625; color: #edf0ef; font: 14px/1.6 "Microsoft YaHei", sans-serif; }
+    nav, #send_textarea { margin: 16px; }
+    #chat { max-width: 860px; margin: auto; padding: 12px; }
+    .mes { border-top: 1px solid #7e949060; padding: 12px 0; }
+    .mes_text { white-space: pre-wrap; overflow-wrap: anywhere; }
+    button { cursor: pointer; }
+    body[data-theme="light"] { --SmartThemeBlurTintColor: #f1f5f4; --SmartThemeBodyColor: #24302d; background: #fff; color: #24302d; }
+  </style>
+</head>
+<body>
+  <nav><button id="attributes">属性上限与重算</button><button id="settings">系统设置</button></nav>
+  <textarea id="send_textarea" aria-label="原生输入草稿">保留原生输入草稿</textarea>
+  <div id="chat"></div>
+  <script>
+    const stats = ['活力', '敏捷', '灵性', '理智', '人性', '运气'];
+    const profile = Object.fromEntries(stats.map(key => [key, 1 / 6]));
+    const data = { stat_data: { 当前序列: '普通人', initialized: false, 消化进度: 10, 失控进度: 0,
+      $战斗经验: 0, $战斗经验等级: 0, 能力体系: '', 非凡特性列表: {},
+      ...Object.fromEntries(stats.flatMap(key => [[`基础${key}`, 100], [key, 100], ...(key === '运气' ? [] : [[`当前${key}`, 30]])])) },
+      npc_data: { 伦纳德: { 身份: '值夜者' } }, world_data: {}, otherPlugin: { keep: true }, cryptLord: { keep: true } };
+    const floors = [
+      { message_id: 0, role: 'assistant', name: '旧开场', message: '<gametxt>街道上还没有行人。</gametxt>', data: structuredClone(data) },
+      { message_id: 1, role: 'user', message: '晋升', data: { protected: true } },
+      { message_id: 2, role: 'assistant', name: '本回合', message: '<gametxt>调查：短杖已经拿在手里。</gametxt>', data: structuredClone(data) },
+    ];
+    Object.assign(floors[0].data.stat_data, { initialized: true, _lastSequence: '普通人', _lastDigestion: 10, 能力体系: '均衡' });
+    const protectedValue = JSON.stringify(floors.slice(0, 2)), initial = JSON.stringify(floors);
+    let variables = { otherPlugin: { keep: true }, 'cryptLord.variableSettlement': { enabled: false } };
+    const flags = { failRead: false, failWrite: false, failBook: false, failConfig: false, failConfigWrite: false,
+      afterConfigFail: false, hold: '', waiting: 0, page: 0, writes: [], configWrites: [] };
+    const binding = { primary: '1源堡', additional: [] };
+    const books = { '1源堡': [
+      { uid: 1, name: '序列基准', content: '{"10":600,"9":1000,"8":2000}' },
+      { uid: 2, name: '能力体系配置', content: JSON.stringify({ systems: { 均衡: profile,
+        神秘法术系: { 活力: .1, 敏捷: .2, 灵性: .35, 理智: .2, 人性: .1, 运气: .05 } }, aliases: {}, defaultSystem: '均衡' }) },
+      { uid: 3, name: '能力体系映射', content: '{"普通人":"均衡","占卜家":"神秘法术系","小丑":"均衡"}' },
+      { uid: 4, name: '[神之途径]占卜家', content: '{"占卜家":["序列9-占卜家","序列8-小丑"]}' },
+      { uid: 5, name: '[序列能力]占卜家', content: '{"占卜家-序列9":[{"name":"灵视"}],"占卜家-序列8":[{"name":"身体控制"}]}' },
+    ] };
+    const releases = [], handlers = new Map();
+    const events = { CHAT_CHANGED: 'chat', MESSAGE_UPDATED: 'updated', MESSAGE_DELETED: 'deleted', MESSAGE_SWIPED: 'swipe',
+      GENERATION_STARTED: 'start', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stop' };
+    window.tavern_events = events;
+    window.eventOn = (event, fn) => {
+      const set = handlers.get(event) || new Set(); handlers.set(event, set); set.add(fn); return { stop: () => set.delete(fn) };
+    };
+    const emit = async (key, ...args) => { for (const fn of handlers.get(events[key]) || []) await fn(...args); };
+    async function pause(kind) {
+      if (flags.hold !== kind) return;
+      flags.waiting++; await new Promise(resolve => releases.push(resolve)); flags.waiting--;
+    }
+    const modules = { 'cryptLord.hostApi': {
+      getScriptId: () => 'player-progression-preview',
+      scriptVariableOptions: () => ({ type: 'script', script_id: 'player-progression-preview' }),
+      async getVariables(options) {
+        if (options.type !== 'script' || options.script_id !== 'player-progression-preview') throw Error('脚本身份错误');
+        await pause('config'); if (flags.failConfig) throw Error('模拟配置读取失败');
+        return structuredClone(variables);
+      },
+      async updateVariablesWith(fn, options) {
+        if (options.script_id !== 'player-progression-preview') throw Error('脚本身份错误');
+        await pause('saveConfig'); if (flags.failConfigWrite) throw Error('模拟配置保存失败');
+        variables = structuredClone(await fn(structuredClone(variables))); flags.configWrites.push(1);
+        if (flags.afterConfigFail) flags.failConfig = true;
+      },
+      async getCharWorldbookNames() { return structuredClone(binding); },
+      async getWorldbook(name) {
+        await pause('book'); if (flags.failBook) throw Error('模拟数据库读取失败');
+        if (!books[name]) throw Error(`世界书「${name}」不存在`);
+        return structuredClone(books[name]);
+      },
+      async getChatMessages(range, options) {
+        await pause('floor'); if (flags.failRead) throw Error('模拟楼层读取失败');
+        const selected = range === '0-{{lastMessageId}}' ? floors : floors.filter(row => row.message_id === Number(range));
+        return structuredClone(options?.include_swipes ? selected.map(row => ({ ...row, swipe_id: flags.page,
+          swipes: [row.message, row.message], swipes_data: [row.data, row.data] })) : selected);
+      },
+      async setChatMessages(rows, options) {
+        if (flags.failWrite) throw Error('模拟楼层保存失败');
+        if (rows.length !== 1 || rows[0].message_id !== 2 || options.refresh !== 'affected') throw Error('只能保存目标assistant');
+        Object.assign(floors[2], structuredClone(rows[0])); flags.writes.push(2);
+        queueMicrotask(() => { void emit('MESSAGE_UPDATED', 2); });
+      },
+      generateRaw() { throw Error('禁止模型请求'); },
+      getModelList() { throw Error('禁止模型请求'); },
+      updateWorldbookWith() { throw Error('禁止世界书写入'); },
+    }, 'cryptLord.contextBuilder': {} };
+    window.cryptLord = { __stage1Modules: modules, contract: {
+      initializeGlobal() {}, releaseGlobal() {}, async waitGlobalInitialized(key) { if (!modules[key]) throw Error(key); return modules[key]; },
+    } };
+    document.getElementById('chat').replaceChildren(...floors.map(row => {
+      const item = document.createElement('div'); item.className = 'mes'; item.setAttribute('mesid', row.message_id);
+      item.setAttribute('is_user', String(row.role === 'user'));
+      const text = document.createElement('div'); text.className = 'mes_text'; text.textContent = `#${row.message_id} ${row.role}\n${row.message}`;
+      item.append(text); return item;
+    }));
+    window.preview = { floors, flags, binding, books, emit,
+      get api() { return modules['cryptLord.attributeRecalculationUi']; },
+      get settings() { return modules['cryptLord.systemSettingsUi']; },
+      get service() { return modules['cryptLord.playerProgression']; },
+      get variables() { return variables; },
+      get untouched() { return JSON.stringify(floors) === initial && !flags.writes.length && !flags.configWrites.length; },
+      get protected() { return JSON.stringify(floors.slice(0, 2)) === protectedValue &&
+        document.getElementById('send_textarea').value === '保留原生输入草稿' &&
+        floors[2].data.otherPlugin.keep && variables.otherPlugin.keep; },
+      hold(kind) { flags.hold = kind; },
+      release() { flags.hold = ''; releases.splice(0).forEach(resolve => resolve()); },
+      async advance(values) {
+        const patch = Object.entries(values).map(([key, value]) => ({ op: 'replace', path: `/${key}`, value }));
+        const raw = '<gametxt>调查：晋升后的灯火映在街道上。</gametxt><UpdateVariable><JSONPatch>' +
+          JSON.stringify({ stat_data: patch }) + '</JSONPatch></UpdateVariable>';
+        return modules['cryptLord.nativeFloorBridge'].completeNarrative(raw, { userMessageId: 1, assistantMessageId: 2,
+          userText: '晋升', narrativeText: '正文', floorText: raw, guard: () => true });
+      },
+      async save(values) {
+        const draft = structuredClone(floors[2].data); Object.assign(draft.stat_data, values);
+        return modules['cryptLord.stateStore'].writeAssistantData(2, draft);
+      },
+      dispose() {
+        preview.api.dispose(); preview.settings.dispose(); preview.service.dispose();
+        modules['cryptLord.attributeRecalculation'].dispose();
+      },
+    };
+    document.getElementById('attributes').onclick = () => preview.api.open(2);
+    document.getElementById('settings').onclick = () => preview.settings.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/shared/after-native-host.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/battle-experience.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/attribute-recalculation.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/player-progression.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/mystery-analysis.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-patch.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/response-normalizer.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/variable-settlement-api.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/generation-bridge.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/attribute-recalculation/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/system-settings/index.js"></script>
+</body>
+</html>

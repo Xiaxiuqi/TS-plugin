@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>我的产业完整预览</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/organization-console/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body{margin:20px;background:#17211c;color:#e6e8ed;font:14px sans-serif}button{padding:8px}</style>
+</head>
+<body>
+  <button id="open">我的产业</button>
+  <script>
+    const modules = {}, handlers = new Map(), writes = [], notices = [], updates = [];
+    const time = '第五纪1349年1月1日星期一0:00';
+    const data = {stat_data:{名称:'克莱恩',产业:{
+      $meta:{extensible:true,总估值:'旧估值',自定义:'保留'},
+      '工坊.a[0]':{名称:'银湾机械工坊',类型:'第二产业',当前投入资本总额:'50000 金镑',负责人:'诺兰',利润倍率:1.5,
+        生产分配_1级:60,生产分配_2级:40,产业情况概述:'银湾港的机械、船坞与运输工坊。\n与教区商会共同经营。',
+        资产:'港口船坞\n蒸汽运输机组',收入来源:'修缮与贸易',创建时间:time,上次结算时间:time,其他字段:{保留:true}},
+      商行:{名称:'银湾商行',类型:'第三产业',当前投入资本总额:'5000 铜便士',负责人:'诺兰',利润倍率:1,'$轻负荷运营':true},
+    },人物关系列表:{诺兰:{好感度:80}},货币:{鲁恩王国:{金镑:20,银苏勒:0,铜便士:10},其他:{}},
+    领地:{已建立:true,物资库:{保留物资:3}},生产力:{$meta:{extensible:true},剧情生产力:13}},
+    npc_data:{诺兰:{当前序列:'序列5-工匠'}},world_data:{当前时间纪元:time,_lastTimeEra:time},otherPlugin:{保留:true}};
+    let floors = [
+      {message_id:0,role:'assistant',message:'<UpdateVariable>绝不初始化</UpdateVariable>',data:{stat_data:{}}},
+      {message_id:1,role:'user',message:'行动',data:{保留:true}},
+      {message_id:2,role:'assistant',message:'原生正文\n<UpdateVariable>保留标签</UpdateVariable>',data,swipe_id:1},
+    ];
+    const initial = structuredClone(floors);
+    let readFail=false,writeFail=false,postFail=false,gate=null,waiting=0,release=null,badConfig=false,pageRevision=0;
+    let lostReceipt=false,noWrite=false,conflictAfterWrite=false,derivations=0,script='industry',chat='fixture';
+    const binding={primary:'角色规则',additional:['角色规则']};
+    const books={
+      '2历史孔隙':[],
+      '1源堡':[{name:'【配置】产业配置',content:'{"industryInjectRetention":0.99}'}],
+      角色规则:[
+        {name:'【配置】产业配置',content:'{"industryInjectRetention":0.5}'},
+        {name:'[神之途径]通识者',content:'{"通识者途径":["序列5-工匠"]}'},
+      ],
+    };
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]},
+    }};
+    window.toastr=Object.fromEntries(['info','warning','error','success'].map(level=>[level,text=>notices.push({level,text})]));
+    function emit(name,...args){handlers.get(name)?.forEach(fn=>fn(...args))}
+    modules['cryptLord.afterNativeHost']={
+      getHost:()=>({document,window}),tavernEvents:()=>({CHAT_CHANGED:'chat',MESSAGE_UPDATED:'update',
+        MESSAGE_SWIPED:'swipe',MESSAGE_DELETED:'delete',MESSAGE_SENT:'sent',MESSAGE_RECEIVED:'received',
+        GENERATION_STARTED:'start',GENERATION_ENDED:'end',GENERATION_STOPPED:'stop'}),
+      bindEvent(name,fn){const set=handlers.get(name)||new Set();set.add(fn);handlers.set(name,set);return{stop(){set.delete(fn)}}},
+    };
+    modules['cryptLord.hostApi']={
+      scriptVariableOptions:()=>({type:'script',script_id:script}),
+      getCharWorldbookNames:async()=>structuredClone(binding),
+      async getWorldbook(name){
+        if(readFail)throw Error('模拟读取失败');
+        return structuredClone(badConfig?[{name:'【配置】产业配置',content:'{"productionConversion":{"1级":0}}'}]:books[name]||[]);
+      },
+      async getChatMessages(id,options){
+        if(readFail)throw Error('模拟读取失败');
+        const selected=id==='{{lastMessageId}}'?floors.slice(-1):id==='0-{{lastMessageId}}'?floors:
+          floors.filter(row=>row.message_id===Number(id));
+        return structuredClone(options?.include_swipes?selected.map(({message,data,...row})=>({...row,pageRevision,
+          swipe_id:row.swipe_id??1,swipes:['另一正文页',message],swipes_data:[{stat_data:{保留:7}},data],
+          swipes_info:[{send_date:new Date('2026-10-27'),extra:{保留:true}},{}]})):selected);
+      },
+      async setChatMessages(rows){
+        if(writeFail)throw Error('模拟保存失败');
+        writes.push(structuredClone(rows));
+        if(noWrite)return;
+        rows.forEach(row=>Object.assign(floors.find(floor=>floor.message_id===row.message_id),structuredClone(row)));
+        if(conflictAfterWrite)pageRevision++;
+        if(postFail)readFail=true;
+        if(lostReceipt)throw Error('模拟保存回执丢失');
+      },
+    };
+    modules['cryptLord.dynamicStatus']={async load(){if(gate){waiting++;await gate;waiting--}return{rules:[]}},
+      async assertLoaded(){},apply(){derivations++}};
+    window.SillyTavern={getCurrentChatId:()=>chat};
+    modules['cryptLord.variableWorkbench']={notifyUpdate:entry=>updates.push(entry)};
+    window.preview={
+      modules,writes,notices,updates,initial,books,binding,
+      get floors(){return structuredClone(floors)},get waiting(){return waiting},
+      set readFail(value){readFail=value},set writeFail(value){writeFail=value},set postFail(value){postFail=value},
+      set lostReceipt(value){lostReceipt=value},set noWrite(value){noWrite=value},get derivations(){return derivations},
+      set conflictAfterWrite(value){conflictAfterWrite=value},changeScript(){script+='new'},changeChat(){chat+='new'},
+      set badConfig(value){badConfig=value},
+      open(id=2,reload=false){return modules['cryptLord.organizationConsole'].open('industry',id,reload)},
+      external(){floors[2].data.stat_data.货币.鲁恩王国.金镑++},
+      update(){emit('update',2)},change(){emit('chat')},sent(){emit('sent',3)},
+      branch(){pageRevision++},
+      start(type='normal',options={},dryRun=false){emit('start',type,options,dryRun)},
+      end(){emit('end')},stop(){emit('stop')},
+      hold(){gate=new Promise(resolve=>{release=resolve})},
+      release(){const done=release;gate=null;release=null;done?.()},
+      reset(){floors=structuredClone(initial);readFail=false;writeFail=false;postFail=false;badConfig=false},
+      battle(status='active'){floors[2].data.cryptLord={teamBattle:{status,settled:false}}},
+      async week(){
+        const before=structuredClone(floors[2].data),next=structuredClone(before);
+        next.world_data.当前时间纪元='第五纪1349年1月8日星期一0:00';
+        return modules['cryptLord.stateStore'].writeAssistantData(2,next);
+      },
+    };
+    document.getElementById('open').onclick=()=>preview.open();
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/domain-defaults.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/industry-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/cashflow.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/domain-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/faction-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/native-settlement.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/organization-console/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>序列能力完整流程验收</title>
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/abilities/style.css">
+  <link rel="stylesheet" href="../../public/guimizhizhu_ui/modules/game-shell/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>body{margin:16px;background:#192024;color:#eee;font:14px/1.6 "Microsoft YaHei",sans-serif}.preview-tools{display:flex;gap:8px;flex-wrap:wrap}button{padding:8px}#native-input{position:fixed;bottom:8px;left:8px;width:180px}</style>
+</head>
+<body>
+  <div class="preview-tools"><button id="open">序列能力</button><button id="history">历史能力</button></div>
+  <input id="native-input" aria-label="原生输入" value="保留输入草稿">
+  <script>
+    const modules={},handlers=new Map(),writes=[],notices=[],reads=[],bookReads=[];
+    const pool={pathways:{'占卜家途径':['序列9-占卜家','序列8-小丑'],'学徒途径':['序列9-学徒']},
+      abilities:{'占卜家途径-序列9':[{name:'灵视',description:'看见灵体。\n观察身体与灵性。',range:0,aoeRadius:0,isPassive:false,priority:0,
+        effects:[{type:'Buff',stat:'灵性',valueType:'percentage',value:5}]}],
+        '占卜家途径-序列8':[{name:'巧手',description:'精确控制身体。\n以敏捷动作改变姿态。',射程:'global',范围半径:2,power:8}],
+        '学徒途径-序列9':[{name:'开门'}]}};
+    const floors=[
+      {message_id:0,role:'assistant',message:'<UpdateVariable>开场标签不改动</UpdateVariable>',data:{stat_data:{当前序列:'普通人'},opening:true}},
+      {message_id:1,role:'user',message:'行动',data:{keep:true}},
+      {message_id:2,role:'assistant',message:'本轮原生正文\n\n<UpdateVariable>\n保留变量标签\n</UpdateVariable>',
+        data:{stat_data:{姓名:'克莱恩',当前序列:'序列8-小丑',活力:30,灵性:30,理智:30,人性:30,敏捷:30,运气:30,
+          序列能力列表:{$meta:{extensible:true},'序列9-占卜家':[{名称:'灵视',描述:'用户修改\n保持原文',range:77}],
+            '手动分组':[{名称:'同名能力',描述:'甲'}, {名称:'同名能力',描述:'乙'},null,{}],
+            '#秘术强化':[{名称:'秘术强化投影',描述:'专属系统保留'}],
+            '#神秘再现':[{名称:'神秘再现投影'}],'#空想:学徒':[{名称:'空想开门'}],
+            '#放牧:灵魂':[{名称:'放牧祈祷'}]}},
+          npc_data:{同伴:{keep:true}},world_data:{天气:'晴'},otherPlugin:{keep:true}}}
+    ];
+    const initial=structuredClone(floors),flags={branch:'备用分支',metadata:0,chat:'abilities',script:'abilities',lostReceipt:false,noWrite:false,conflictWrite:false};
+    window.SillyTavern={getCurrentChatId:()=>flags.chat};
+    const books={'1源堡':[
+      {name:'[神之途径]默认',content:JSON.stringify(pool.pathways)},{name:'[序列能力]默认',content:JSON.stringify(pool.abilities)}
+    ]};
+    let readFail=false,writeFail=false,bookFail=false,postFail=false,gate=null,release=null,waiting=false,
+      bookGate=null,bookRelease=null,bookWaiting=false;
+    window.cryptLord={__stage1Modules:modules,contract:{
+      initializeGlobal(key,api){modules[key]=api},releaseGlobal(key){delete modules[key]},
+      async waitGlobalInitialized(key){if(!modules[key])throw Error(key);return modules[key]}
+    }};
+    const events={CHAT_CHANGED:'chat',MESSAGE_UPDATED:'update',MESSAGE_DELETED:'delete',MESSAGE_SWIPED:'swipe',CHARACTER_MESSAGE_RENDERED:'render',
+      GENERATION_STARTED:'start',GENERATION_ENDED:'end',GENERATION_STOPPED:'stop'};
+    modules['cryptLord.afterNativeHost']={
+      getHost:()=>({window,document}),createElement:tag=>document.createElement(tag),
+      listAssistantMessages:async()=>structuredClone(floors.filter(row=>row.role==='assistant')),tavernEvents:()=>events,
+      bindEvent(name,fn){if(!handlers.has(name))handlers.set(name,new Set());handlers.get(name).add(fn);return{stop(){handlers.get(name).delete(fn)}}}
+    };
+    modules['cryptLord.hostApi']={
+      async getCharWorldbookNames(){return{primary:'1源堡',additional:[]}},
+      async getWorldbook(name){
+        bookReads.push(name);if(bookGate){bookWaiting=true;await bookGate;bookWaiting=false}
+        if(bookFail)throw Error('模拟能力库失败');if(!books[name])throw Error('世界书不存在');return structuredClone(books[name]);
+      },
+      scriptVariableOptions:()=>({type:'script',script_id:flags.script}),
+      async getChatMessages(range,options){
+        reads.push(range);if(readFail)throw Error('模拟读取失败');
+        const rows=range==='{{lastMessageId}}'?floors.slice(-1):range==='0-{{lastMessageId}}'?floors:floors.filter(row=>row.message_id===Number(range));
+        return structuredClone(options?.include_swipes?rows.map(row=>({
+          message_id:row.message_id,role:row.role,name:row.name,is_hidden:row.is_hidden,swipe_id:1,
+          swipes:[flags.branch,row.message],swipes_data:[{alternate:true},row.data],
+          swipes_info:[{keep:true},{timestamp:new Date('2026-10-16T00:00:00Z'),revision:flags.metadata}]
+        })):rows);
+      },
+      async setChatMessages(rows){
+        if(writeFail)throw Error('模拟保存失败');
+        if(flags.noWrite)return;
+        writes.push(structuredClone(rows));for(const row of rows)Object.assign(floors.find(item=>item.message_id===row.message_id),structuredClone(row));
+        if(postFail)readFail=true;
+        if(flags.conflictWrite)floors[2].data.otherPlugin.conflict=true;
+        if(flags.lostReceipt)throw Error('模拟回执丢失');
+      }
+    };
+    modules['cryptLord.dynamicStatus']={async load(){if(gate){waiting=true;await gate;waiting=false}return{rules:[]}},apply(){}};
+    modules['cryptLord.personalBattleState']={};modules['cryptLord.relationshipState']={};
+    modules['cryptLord.inventoryState']={};
+    modules['cryptLord.variableWorkbench']={notifyUpdate:entry=>notices.push(entry)};
+    modules['cryptLord.responseNormalizer']={extractActions:()=>[]};
+    async function emit(name,...args){for(const fn of handlers.get(events[name]||name)||[])await fn(...args)}
+    window.preview={modules,floors,initial,writes,notices,reads,books,bookReads,emit,flags,
+      set readFail(value){readFail=value},set writeFail(value){writeFail=value},set bookFail(value){bookFail=value},
+      hold(){gate=new Promise(resolve=>release=()=>{gate=null;resolve()})},release(){release?.()},get waiting(){return waiting},
+      holdBook(){bookGate=new Promise(resolve=>bookRelease=()=>{bookGate=null;resolve()})},releaseBook(){bookRelease?.()},get bookWaiting(){return bookWaiting},
+      postFail(){postFail=true},recover(){readFail=false;postFail=false},
+      conflict(){floors[2].message+='外部修改'},chatChanged(){return emit('CHAT_CHANGED')}
+    };
+    document.querySelector('#open').onclick=()=>modules['cryptLord.abilitiesUi'].open(2);
+    document.querySelector('#history').onclick=()=>modules['cryptLord.abilitiesUi'].open(0);
+  </script>
+  <script src="../../public/guimizhizhu_ui/core/native-floor-source.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/ability-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/state-store.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/equipment-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/core/character-panel-state.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/abilities/index.js"></script>
+  <script src="../../public/guimizhizhu_ui/modules/game-shell/index.js"></script>
+</body>
+</html>
