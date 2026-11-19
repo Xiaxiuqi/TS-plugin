@@ -131,24 +131,44 @@
   async function processNativeAssistantFloor(messageId, options = {}) {
     const id = Number(messageId);
     if (options.reprocess && !state.active && !state.inspections.size) state.processedNativeAssistantIds.delete(id);
-    if (state.disposed || state.active || !Number.isInteger(id) || state.processedNativeAssistantIds.has(id)) return false;
+    if (state.disposed || state.active || !Number.isInteger(id) || state.processedNativeAssistantIds.has(id)) {
+      debugEvent('refusal', 'native-assistant-skipped', `messageId=${id}; active=${!!state.active}; processed=${state.processedNativeAssistantIds.has(id)}`, 'warn');
+      return false;
+    }
+    debugEvent('assistant', 'native-assistant-begin', `messageId=${id}; reprocess=${!!options.reprocess}`);
     const epoch = state.epoch;
     const controller = new AbortController();
     const valid = () => !state.disposed && state.epoch === epoch && !controller.signal.aborted && !state.active;
     const floors = await snapshotFloors();
     const assistant = floors.find(message => Number(message?.message_id) === id && message?.role === 'assistant');
     // Only the final native receive event may settle ordinary narrative text.
-    if (!assistant || (!options.allowInheritedState && !isVariableNarrative(assistant))) return false;
+    if (!assistant || (!options.allowInheritedState && !isVariableNarrative(assistant))) {
+      debugEvent('refusal', 'native-assistant-missing', `messageId=${id}; found=${!!assistant}; last=${floors.at(-1)?.message_id}`, 'warn');
+      return false;
+    }
     const user = nearestNativeUser(floors, id);
     if (!user) {
       debugEvent('refusal', 'native-assistant-without-user', `messageId=${id}`, 'warn');
       return false;
     }
-    if (!valid() || state.processedNativeAssistantIds.has(id) || Number(floors.at(-1)?.message_id) !== id) return false;
-    const source = JSON.stringify(floors);
+    if (!valid() || state.processedNativeAssistantIds.has(id) || Number(floors.at(-1)?.message_id) !== id) {
+      debugEvent('refusal', 'native-assistant-stale', `messageId=${id}; last=${floors.at(-1)?.message_id}`, 'warn');
+      return false;
+    }
+    // The host and context-trimming extensions keep updating floor metadata (extra, is_hidden) after receive;
+    // guard only the content we settle from.
+    const fingerprint = list => JSON.stringify(list.map(row => [row?.message_id, row?.role, row?.message, row?.data]));
+    const source = fingerprint(floors);
     const beforeWrite = async () => {
-      if (!valid() || JSON.stringify(await snapshotFloors()) !== source || !valid())
+      if (!valid()) throw new DOMException('原生生成来源已变化', 'AbortError');
+      const latest = await snapshotFloors();
+      if (fingerprint(latest) !== source || !valid()) {
+        const before = JSON.parse(source), now = JSON.parse(fingerprint(latest));
+        const changed = before.length !== now.length ? `length ${before.length}->${now.length}` :
+          before.flatMap((row, i) => row.map((v, k) => JSON.stringify(v) !== JSON.stringify(now[i][k]) ? `${i}:${['id', 'role', 'message', 'data'][k]}` : '').filter(Boolean)).join(',');
+        debugEvent('refusal', 'native-source-changed', `messageId=${id}; ${changed}`, 'warn');
         throw new DOMException('原生生成来源已变化', 'AbortError');
+      }
     };
 
     // Mark before mutation: setChatMessages itself may cause a second DOM mutation.
@@ -834,6 +854,14 @@
       if (state.retryTimer) clearTimeout(state.retryTimer);
       state.retryTimerResolve?.(); state.retryTimer = state.retryTimerResolve = null;
       closeTurn(); state.observedAssistantId = null; state.processedNativeAssistantIds.clear();
+    }));
+    // Deleted floor ids are reused by the next reply; forget them so it can settle again.
+    if (events?.MESSAGE_DELETED) state.subscriptions.push(after.bindEvent(events.MESSAGE_DELETED, messageId => {
+      const from = Number(messageId);
+      for (const id of [...state.processedNativeAssistantIds])
+        if (!Number.isInteger(from) || id >= from) state.processedNativeAssistantIds.delete(id);
+      if (state.observedAssistantId !== null && (!Number.isInteger(from) || state.observedAssistantId >= from))
+        state.observedAssistantId = Number.isInteger(from) ? from - 1 : null;
     }));
     if (events?.GENERATION_STOPPED) state.subscriptions.push(after.bindEvent(events.GENERATION_STOPPED, () => {
       if (state.stoppingOwned) return;

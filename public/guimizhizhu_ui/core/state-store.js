@@ -271,6 +271,8 @@
   }
 
   async function writeAssistantMessage(messageId, message, data, options = {}) {
+    // Hide/unhide by context extensions is not a content change; compare only settlement inputs.
+    const sourceKey = rows => JSON.stringify((rows || []).map(row => row && typeof row === 'object' ? { ...row, is_hidden: undefined, extra: undefined } : row));
     if (!options.preserveData && !options.npcOnly && !options.itemOnly && !options.skipDynamicStatus) {
       const guard = modules['cryptLord.dynamicStatus']?.createGuard?.(options.guard);
       if (guard) options = { ...options, guard };
@@ -301,10 +303,10 @@
       await result.worldService.assertPrepared(result.worldSettlement, options.guard);
     }
     await assertGenerationRules(result, options, options.guard);
-    if (worldRevision && JSON.stringify(await hostApi.getChatMessages('0-{{lastMessageId}}', { include_swipes: true })) !== JSON.stringify(worldRevision))
+    if (worldRevision && sourceKey(await hostApi.getChatMessages('0-{{lastMessageId}}', { include_swipes: true })) !== sourceKey(worldRevision))
       throw Error('世界结算来源正文、变量、消息页或末楼已变化，未写入');
     const current = (await hostApi.getChatMessages(String(messageId)))?.[0];
-    if (JSON.stringify(current) !== JSON.stringify(target)) throw Error('目标assistant楼层已变化，未覆盖外部修改');
+    if (sourceKey([current]) !== sourceKey([target])) throw Error('目标assistant楼层已变化，未覆盖外部修改');
     if (options.preserveData) await options.onWriteAttempt?.(clone(next));
     if (options.guard && !options.guard()) throw new DOMException('楼层保存已取消', 'AbortError');
     guardDynamicSource(result, options.guard);

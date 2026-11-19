@@ -324,6 +324,19 @@
 
   function bindEvent(name, handler) {
     if (!name || typeof handler !== 'function') return null;
+    // Bind SillyTavern's own eventSource first; a page-level window.eventOn may be a
+    // third-party shim that never receives host events.
+    for (const owner of owners()) {
+      try {
+        const source = owner?.SillyTavern?.getContext?.()?.eventSource;
+        if (typeof source?.on === 'function') {
+          source.on(name, handler);
+          return { stop() { try { (source.removeListener || source.off)?.call(source, name, handler); } catch {} } };
+        }
+      } catch {
+        // Try the next owner.
+      }
+    }
     for (const owner of owners()) {
       try {
         if (typeof owner?.eventOn === 'function') {
